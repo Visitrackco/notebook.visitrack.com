@@ -1,0 +1,133 @@
+<nav class="pagenav" aria-label="Navegación del formulario">
+  <div class="pagenav__row">
+    <!-- Con una sola página, «Anterior» no lleva a ninguna parte: su sitio pasa
+         a la única salida que existe. -->
+    @if (isSinglePage()) {
+      <button
+        type="button"
+        class="pagenav__arrow"
+        (click)="leave.emit()"
+        aria-label="Volver a las actividades"
+      >
+        <vt-icon name="chevron" [size]="18" />
+        <span>Volver</span>
+      </button>
+    } @else {
+      <button
+        type="button"
+        class="pagenav__arrow"
+        [disabled]="isFirst()"
+        (click)="previous()"
+        aria-label="Página anterior"
+      >
+        <vt-icon name="chevron" [size]="18" />
+        <span>Anterior</span>
+      </button>
+    }
+
+    <!-- Indicador central: puntos con pocas páginas, contador con muchas.
+         Pulsable en ambos casos para abrir el listado completo. -->
+    @if (hasPages()) {
+      <button
+        type="button"
+        class="pagenav__indicator"
+        (click)="openPicker()"
+        [attr.aria-label]="'Página ' + (current() + 1) + ' de ' + pages().length + '. Ver todas'"
+      >
+        @if (useDots()) {
+          <span class="pagenav__dots">
+            @for (page of pages(); track page.index) {
+              <span
+                class="pagenav__dot"
+                [class.pagenav__dot--current]="page.current"
+                [class.pagenav__dot--incomplete]="page.incomplete"
+              ></span>
+            }
+          </span>
+        } @else {
+          <span class="pagenav__counter vt-figure">
+            {{ current() + 1 }} / {{ pages().length }}
+          </span>
+        }
+
+        <span class="pagenav__unfold" aria-hidden="true">⌃⌄</span>
+      </button>
+    } @else {
+      <span class="pagenav__spacer"></span>
+    }
+
+    <!-- El mismo sitio lleva a «Siguiente» mientras queden páginas y a
+         «Guardar» en la última, igual que en la app. Guardar no escribe en
+         disco —de eso se encarga el autoguardado— sino que da la actividad por
+         terminada, y ofrecer eso en la página 2 de 8 contradice el recorrido
+         que el propio formulario propone. -->
+    @if (isLast()) {
+      <button
+        type="button"
+        class="pagenav__save"
+        [disabled]="saving()"
+        (click)="save.emit()"
+      >
+        <vt-icon name="check" [size]="18" />
+        <span>{{ saving() ? 'Guardando…' : 'Guardar actividad' }}</span>
+      </button>
+    } @else {
+      <button
+        type="button"
+        class="pagenav__arrow pagenav__arrow--next"
+        (click)="next()"
+        aria-label="Página siguiente"
+      >
+        <span>Siguiente</span>
+        <vt-icon name="chevron" [size]="18" />
+      </button>
+    }
+  </div>
+</nav>
+
+<!-- ── Listado de páginas ──────────────────────────────────────────────────── -->
+<dialog #dialog class="pagepick" (click)="onBackdropClick($event)" (close)="closePicker()">
+  <div class="pagepick__panel">
+    <header class="pagepick__header">
+      <div>
+        <h2>Páginas del formulario</h2>
+        @if (incompleteCount() > 0) {
+          <p>
+            {{ incompleteCount() }}
+            {{ incompleteCount() === 1 ? 'página tiene' : 'páginas tienen' }}
+            campos obligatorios sin responder.
+          </p>
+        } @else {
+          <p>Todo lo obligatorio está respondido.</p>
+        }
+      </div>
+      <button type="button" class="pagepick__close" (click)="closePicker()" aria-label="Cerrar">
+        <vt-icon name="close" [size]="18" />
+      </button>
+    </header>
+
+    <ul class="pagepick__list">
+      @for (page of pages(); track page.index) {
+        <li>
+          <button
+            type="button"
+            class="pagepick__item"
+            [class.pagepick__item--current]="page.current"
+            [class.pagepick__item--incomplete]="page.incomplete"
+            (click)="choose(page.index)"
+          >
+            <span class="pagepick__number vt-figure">{{ page.index + 1 }}</span>
+            <span class="pagepick__label">{{ page.label }}</span>
+
+            @if (page.incomplete) {
+              <span class="pagepick__flag">Falta responder</span>
+            }
+            @if (page.current) {
+              <vt-icon name="check" [size]="17" />
+            }
+          </button>
+        </li>
+      }
+    </ul>
+  </div>
+</dialog>

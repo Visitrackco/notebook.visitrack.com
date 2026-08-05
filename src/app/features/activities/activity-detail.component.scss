@@ -1,0 +1,558 @@
+/**
+ * Una actividad abierta.
+ *
+ * Paneles apilados en el orden en que se consultan: qué es y en qué estado
+ * está, dónde se hace, qué falta por diligenciar y, al final, los datos de
+ * control. El indicador de autoguardado va arriba del todo porque responde la
+ * pregunta que el usuario se hace mientras trabaja, no al terminar.
+ */
+
+/**
+ * Altura de la cabecera fija.
+ *
+ * Va como variable porque la barra de estado —que vive en otro componente— se
+ * pega justo debajo y necesita saber cuánto medir el hueco. Las propiedades
+ * personalizadas sí cruzan la frontera de encapsulación, así que basta con
+ * declararla aquí para que el descendiente la use.
+ */
+/**
+ * Ancho de lectura.
+ *
+ * 800 px para el contenido y centrado: un formulario se responde en una
+ * columna, y estirarlo a lo ancho de un monitor obliga a barrer la vista de
+ * lado a lado entre la etiqueta de un campo y su control.
+ *
+ * Cuando aparece el panel de progreso a la derecha, el tope sube lo justo para
+ * alojarlo —los campos siguen ocupando sus 800 px—. Se hace ensanchando el
+ * contenedor y no sacando el panel fuera con un margen negativo: eso último
+ * desborda por la derecha en las ventanas intermedias.
+ */
+/**
+ * El fondo de la página, de papel.
+ *
+ * Va en un pseudo-elemento fijo y no en el propio contenedor porque el
+ * contenido está limitado a 800 px y centrado: pintarlo ahí dejaría dos franjas
+ * del color de fondo a los lados, como una tira de color en medio de la
+ * pantalla. Así el tono cubre el área de trabajo entera mientras la actividad
+ * está abierta, y desaparece al salir.
+ *
+ * `z-index: -1` lo deja por detrás de todo el contenido. Funciona porque ningún
+ * ancestro crea contexto de apilamiento —ni la zona principal ni el `<main>`
+ * llevan `position` ni `transform`—, así que sube hasta el contexto raíz y se
+ * queda entre el fondo del documento y la interfaz.
+ *
+ * Quien diligencia esto lleva años rellenando el mismo formato impreso: el
+ * parecido no es nostalgia, sitúa la tarea de un vistazo. Y el blanco puro
+ * deslumbra en una pantalla a pleno sol, que es justo donde se usa.
+ */
+:host::before {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  content: '';
+
+  /* El grano va encima del color: un fondo plano se lee como una superficie
+     digital, y con la fibra la vista lo interpreta como algo físico. El SVG lo
+     genera el navegador, así que no hay ninguna imagen que descargar. */
+  background-color: var(--vt-paper);
+  background-image: var(--vt-paper-grain);
+  background-repeat: repeat;
+}
+
+.detail {
+  --detail-bar-height: 62px;
+  --detail-width: 800px;
+
+  max-width: var(--detail-width);
+  margin: 0 auto;
+
+  /* Los hijos de un contenedor flex traen `min-width: auto`, que les permite
+     crecer por encima del contenedor cuando su contenido no cabe. Aquí eso se
+     traduce en desplazamiento horizontal de toda la página en cuanto un campo
+     o un descriptivo se pasa de largo. */
+  > * {
+    min-width: 0;
+  }
+
+  /* Mismo corte que usa el formulario para sacar el panel a un lado. */
+  @media (min-width: 1400px) {
+    --detail-width: 1096px;
+  }
+
+  /* Cuánto ocupa lo que queda fijo arriba: el encabezado de la aplicación más
+     esta cabecera. Lo consumen los destinos de desplazamiento para no quedar
+     tapados, y se declara aquí porque las propiedades personalizadas sí cruzan
+     la frontera de encapsulación hacia los componentes hijos. */
+  --vt-sticky-offset: calc(var(--vt-topbar-height) + var(--detail-bar-height));
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--vt-space-4);
+  width: 100%;
+}
+
+/* ── Cabecera fija ─────────────────────────────────────────────────────────── */
+
+.detail__bar {
+  position: sticky;
+  top: var(--vt-topbar-height);
+  z-index: 18;
+  display: flex;
+  gap: var(--vt-space-3);
+  align-items: center;
+  height: var(--detail-bar-height);
+  padding: 0 var(--vt-space-4);
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-rule);
+  border-radius: var(--vt-radius);
+  box-shadow: var(--vt-shadow);
+}
+
+.detail__back {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  color: var(--vt-text-muted);
+  background: var(--vt-surface-2);
+  border: 0;
+  border-radius: var(--vt-radius-full);
+  transition:
+    color var(--vt-transition),
+    background var(--vt-transition);
+
+  /* El icono apunta a la derecha por defecto. */
+  vt-icon {
+    transform: rotate(180deg);
+  }
+
+  &:hover {
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+  }
+}
+
+.detail__heading {
+  flex: 1;
+  min-width: 0;
+
+  h1 {
+    overflow: hidden;
+    font-size: var(--vt-text-md);
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  p {
+    overflow: hidden;
+    font-size: var(--vt-text-xs);
+    color: var(--vt-text-muted);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.detail__signals {
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--vt-space-3);
+  align-items: center;
+}
+
+.detail__state {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  padding: 5px 11px;
+  font-size: var(--vt-text-xs);
+  font-weight: 600;
+  color: var(--tone);
+  background: color-mix(in srgb, var(--tone) 13%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tone) 30%, transparent);
+  border-radius: var(--vt-radius-full);
+  white-space: nowrap;
+}
+
+.detail__state--neutral {
+  --tone: var(--vt-text-subtle);
+}
+.detail__state--draft {
+  --tone: var(--vt-info);
+}
+.detail__state--pending {
+  --tone: var(--vt-brand);
+}
+.detail__state--success {
+  --tone: var(--vt-success);
+}
+.detail__state--waiting {
+  --tone: var(--vt-warning);
+}
+
+/* ── Indicador de autoguardado ─────────────────────────────────────────────── */
+
+.detail__saving {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  font-size: var(--vt-text-xs);
+  font-weight: 500;
+  color: var(--vt-text-subtle);
+  white-space: nowrap;
+}
+
+.detail__saving-dot {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  background: currentcolor;
+  border-radius: var(--vt-radius-full);
+}
+
+.detail__saving--pending {
+  color: var(--vt-warning);
+}
+
+/* El punto late mientras se escribe: es la única señal de que algo ocurre en
+   una operación que, bien hecha, no se nota. */
+.detail__saving--saving {
+  color: var(--vt-warning);
+
+  .detail__saving-dot {
+    animation: detail-pulse 900ms ease-in-out infinite;
+  }
+}
+
+.detail__saving--saved {
+  color: var(--vt-success);
+}
+
+.detail__saving--error {
+  font-weight: 600;
+  color: var(--vt-danger);
+}
+
+@keyframes detail-pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.detail__feedback {
+  padding: 10px var(--vt-space-4);
+  font-size: var(--vt-text-sm);
+  color: var(--vt-text-muted);
+  background: var(--vt-surface-2);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--vt-radius-sm);
+}
+
+/* ── Contexto ──────────────────────────────────────────────────────────────── */
+
+.detail__context {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vt-space-2);
+}
+
+.detail__chip {
+  display: inline-flex;
+  gap: 9px;
+  align-items: center;
+  max-width: 100%;
+  padding: 7px var(--vt-space-3);
+  text-align: left;
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-rule);
+  border-radius: var(--vt-radius-full);
+  transition:
+    border-color var(--vt-transition),
+    background var(--vt-transition);
+
+  > vt-icon {
+    flex-shrink: 0;
+    color: var(--accent);
+  }
+
+  &:hover {
+    background: var(--vt-surface-2);
+    border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+
+    .detail__chip-action {
+      color: var(--accent);
+    }
+  }
+}
+
+.detail__chip-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+
+  em {
+    font-size: 9px;
+    font-style: normal;
+    font-weight: 600;
+    color: var(--vt-text-subtle);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  b {
+    overflow: hidden;
+    font-size: var(--vt-text-xs);
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.detail__chip-action {
+  flex-shrink: 0;
+  padding-left: var(--vt-space-2);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--vt-text-subtle);
+  border-left: 1px solid var(--vt-rule);
+  transition: color var(--vt-transition);
+}
+
+/* ── Paneles ───────────────────────────────────────────────────────────────── */
+
+.detail__panel {
+  padding: var(--vt-space-4) var(--vt-space-5);
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-rule);
+  border-radius: var(--vt-radius-lg);
+  box-shadow: var(--vt-shadow-sm);
+
+  h2 {
+    font-size: var(--vt-text-sm);
+    font-weight: 600;
+    color: var(--vt-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+}
+
+/* El formulario arranca despejado bajo las dos barras fijas. */
+.detail__panel {
+  scroll-margin-top: calc(var(--vt-sticky-offset) + 16px);
+}
+
+/* ── Detalles ──────────────────────────────────────────────────────────────── */
+
+/**
+ * Datos de control.
+ *
+ * Fichas sueltas en vez de un panel con lista: son cuatro datos que se
+ * consultan de reojo —cuándo se creó, cuándo se tocó, con qué número—, no un
+ * bloque que se lea entero. Sin el marco del panel dejan de competir con el
+ * formulario, que es lo que de verdad ocupa la pantalla.
+ */
+.detail__facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr));
+  gap: var(--vt-space-2);
+}
+
+.detail__fact {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 10px var(--vt-space-3);
+  text-align: left;
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-rule);
+  border-radius: var(--vt-radius);
+
+  dt {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--vt-text-subtle);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  dd {
+    margin-top: 1px;
+    font-size: var(--vt-text-sm);
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+}
+
+.detail__fact--copy {
+  cursor: pointer;
+  transition:
+    background var(--vt-transition),
+    border-color var(--vt-transition);
+
+  &:hover {
+    background: var(--vt-surface-2);
+    border-color: var(--accent);
+
+    .detail__fact-icon {
+      color: var(--accent);
+    }
+  }
+}
+
+.detail__fact-icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  color: var(--vt-text-subtle);
+  background: var(--vt-surface-2);
+  border-radius: var(--vt-radius-sm);
+  transition: color var(--vt-transition);
+}
+
+.detail__guid {
+  font-family: var(--vt-font-mono);
+  font-size: var(--vt-text-xs) !important;
+  font-weight: 500 !important;
+  color: var(--vt-text-muted);
+}
+
+/* Avisos de la política de borrado. Van fuera de las fichas porque son una
+   frase que sí se lee entera. */
+.detail__expiry,
+.detail__rule {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 10px var(--vt-space-4);
+  font-size: var(--vt-text-xs);
+  line-height: 1.5;
+  border-radius: var(--vt-radius);
+
+  vt-icon {
+    flex-shrink: 0;
+  }
+}
+
+.detail__expiry {
+  color: var(--vt-warning);
+  background: color-mix(in srgb, var(--vt-warning) 10%, transparent);
+}
+
+.detail__rule {
+  color: var(--vt-text-muted);
+  background: var(--vt-surface-2);
+}
+
+/* ── Acciones ──────────────────────────────────────────────────────────────── */
+
+.detail__actions {
+  display: flex;
+  gap: var(--vt-space-3);
+  justify-content: flex-end;
+}
+
+/* ── Actividad inexistente ─────────────────────────────────────────────────── */
+
+.detail__missing {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vt-space-3);
+  align-items: center;
+  max-width: 520px;
+  margin: var(--vt-space-8) auto;
+  padding: var(--vt-space-12) var(--vt-space-6);
+  text-align: center;
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-rule);
+  border-radius: var(--vt-radius-lg);
+
+  h2 {
+    font-size: var(--vt-text-lg);
+  }
+
+  p {
+    font-size: var(--vt-text-sm);
+    color: var(--vt-text-muted);
+  }
+
+  .vt-btn {
+    margin-top: var(--vt-space-2);
+  }
+}
+
+.detail__missing-icon {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  color: var(--vt-warning);
+  background: color-mix(in srgb, var(--vt-warning) 13%, transparent);
+  border-radius: var(--vt-radius-full);
+}
+
+/**
+ * Pantalla estrecha.
+ *
+ * La cabecera lleva cinco cosas —volver, título, autoguardado, estado de
+ * despacho y estado de sincronización— y en un teléfono no caben con su texto:
+ * sumaban más ancho del que hay, y como la barra no envuelve, empujaban el
+ * contenido fuera de la pantalla y aparecía desplazamiento horizontal en toda
+ * la página.
+ *
+ * La salida no es apilar —la barra está fija y crecería hasta comerse media
+ * pantalla— sino reducir cada señal a su símbolo: el punto del autoguardado y
+ * el icono del estado dicen lo mismo sin el rótulo, y el estado de despacho
+ * conserva su bolita de color, que es lo que de verdad se reconoce.
+ */
+@media (max-width: 720px) {
+  .detail__bar {
+    gap: var(--vt-space-2);
+    padding: 0 var(--vt-space-3);
+  }
+
+  .detail__signals {
+    gap: 8px;
+  }
+
+  .detail__saving-text,
+  .detail__state span {
+    display: none;
+  }
+
+  .detail__state {
+    padding: 6px;
+  }
+
+  .detail__heading p {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .detail__actions {
+    flex-direction: column-reverse;
+
+    .vt-btn {
+      width: 100%;
+    }
+  }
+}
+
+/**
+ * En el teléfono los paneles ceden su margen interior al contenido.
+ *
+ * Con 20 px a cada lado dentro de un panel que ya está dentro de la página,
+ * a un campo le quedaban unos 300 px útiles de los 360 de la pantalla: las
+ * etiquetas se partían en tres líneas y las opciones se apretaban unas contra
+ * otras. El aire vertical se conserva, que es el que separa una pregunta de la
+ * siguiente; el lateral no aporta nada que no aporte ya el borde del panel.
+ */
+@media (max-width: 640px) {
+  .detail__panel {
+    padding: var(--vt-space-3) var(--vt-space-2);
+  }
+}

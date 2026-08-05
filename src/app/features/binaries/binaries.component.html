@@ -1,0 +1,275 @@
+<div class="bins">
+  <header class="bins__head">
+    <div class="bins__title">
+      <h1>Archivos</h1>
+      <p>Fotografías, firmas, grabaciones y documentos capturados en este dispositivo.</p>
+    </div>
+
+    <div class="bins__actions">
+      <button
+        type="button"
+        class="bins__btn"
+        [disabled]="busy() || !connectivity.isOnline()"
+        (click)="uploadPending()"
+      >
+        <vt-icon name="cloud-upload" [size]="17" />
+        Subir pendientes
+      </button>
+
+      <button
+        type="button"
+        class="bins__btn"
+        [disabled]="busy() || !connectivity.isOnline()"
+        (click)="confirmOnline()"
+      >
+        <vt-icon name="refresh" [size]="17" />
+        Confirmar en línea
+      </button>
+
+      <button
+        type="button"
+        class="bins__btn bins__btn--primary"
+        [disabled]="busy() || !connectivity.isOnline()"
+        (click)="processAll()"
+      >
+        <vt-icon name="send" [size]="17" />
+        Procesar todo
+      </button>
+    </div>
+  </header>
+
+  <!-- Estado de la conexión: sin ella ninguna de las acciones puede hacer nada,
+       y decirlo aquí evita que se pulsen esperando un resultado. -->
+  @if (!connectivity.isOnline()) {
+    <p class="bins__offline">
+      <vt-icon name="wifi-off" [size]="16" />
+      Sin conexión. Los archivos se guardan en este dispositivo y se subirán cuando vuelva la red.
+    </p>
+  }
+
+  @if (busy()) {
+    <div class="bins__progress">
+      <span class="bins__spinner" aria-hidden="true"></span>
+      <span>
+        @if (uploads.isRunning()) {
+          Subiendo archivos… {{ uploads.progress().done }} de {{ uploads.progress().total }}
+        } @else if (verify.verifying()) {
+          Consultando al servidor cuáles ya están publicados…
+        } @else {
+          Procesando pendientes…
+        }
+      </span>
+    </div>
+  }
+
+  @if (feedback()) {
+    <p class="bins__feedback">{{ feedback() }}</p>
+  }
+
+  <!-- ── Recuento por estado ─────────────────────────────────────────────── -->
+  <div class="bins__stats">
+    <button
+      type="button"
+      class="bins__stat"
+      [class.bins__stat--on]="state() === -1"
+      (click)="setFilter(-1)"
+    >
+      <span class="vt-figure">{{ stats().total }}</span>
+      <small>Total</small>
+    </button>
+
+    <button
+      type="button"
+      class="bins__stat bins__stat--warning"
+      [class.bins__stat--on]="state() === 0"
+      (click)="setFilter(0)"
+    >
+      <span class="vt-figure">{{ stats().pending }}</span>
+      <small>Pendientes</small>
+    </button>
+
+    <button
+      type="button"
+      class="bins__stat bins__stat--info"
+      [class.bins__stat--on]="state() === 1"
+      (click)="setFilter(1)"
+    >
+      <span class="vt-figure">{{ stats().inRepository }}</span>
+      <small>En servidor</small>
+    </button>
+
+    <button
+      type="button"
+      class="bins__stat bins__stat--success"
+      [class.bins__stat--on]="state() === 2"
+      (click)="setFilter(2)"
+    >
+      <span class="vt-figure">{{ stats().online }}</span>
+      <small>En línea</small>
+    </button>
+
+    @if (stats().unrecoverable > 0 || stats().discarded > 0) {
+      <button
+        type="button"
+        class="bins__stat bins__stat--danger"
+        [class.bins__stat--on]="state() === 4"
+        (click)="setFilter(4)"
+      >
+        <span class="vt-figure">{{ stats().unrecoverable + stats().discarded }}</span>
+        <small>No disponibles</small>
+      </button>
+    }
+  </div>
+
+  <label class="bins__search">
+    <vt-icon name="clipboard" [size]="17" />
+    <input
+      type="search"
+      [value]="search()"
+      (input)="onSearch($event)"
+      placeholder="Buscar por actividad, identificador o extensión"
+    />
+  </label>
+
+  <!-- ── Listado ─────────────────────────────────────────────────────────── -->
+  @if (loading()) {
+    <p class="bins__empty">Cargando archivos…</p>
+  } @else if (entries().length === 0) {
+    <div class="bins__empty-box">
+      <span class="bins__empty-icon"><vt-icon name="image" [size]="28" /></span>
+      <strong>No hay archivos que mostrar</strong>
+      <small>
+        @if (search() || state() !== -1) {
+          Prueba a quitar el filtro o la búsqueda.
+        } @else {
+          Los archivos aparecerán aquí a medida que captures fotos, firmas o grabaciones.
+        }
+      </small>
+    </div>
+  } @else {
+    <ul class="bins__list">
+      @for (entry of entries(); track entry.resource.GUID) {
+        <li class="bin">
+          <!-- ── Vista previa ──────────────────────────────────────────────
+               Cada tipo se muestra como se mira: la fotografía y la firma en
+               miniatura ampliable, el video con su reproductor y el audio con
+               el mismo control que en el formulario. Un icono genérico para
+               todo obligaba a abrir cada archivo para saber qué era. -->
+          @if (isImage(entry) && previewUrl(entry)) {
+            <button
+              type="button"
+              class="bin__frame"
+              [class.bin__frame--sign]="isSignature(entry)"
+              (click)="open(entry)"
+              title="Ver en grande"
+            >
+              <img [src]="previewUrl(entry)" alt="" loading="lazy" />
+              <span class="bin__zoom"><vt-icon name="image" [size]="14" /> Ampliar</span>
+            </button>
+          } @else if (isVideo(entry)) {
+            <!-- El video no se reproduce en la lista: veinte reproductores
+                 cargando a la vez consumen memoria para algo que casi nunca se
+                 mira entero. Se abre en el visor.
+
+                 Y no se comprueba `previewUrl`: la del video se resuelve al
+                 abrirlo, así que aquí siempre está vacía — comprobarla dejaba
+                 los videos cayendo en la rama del documento genérico. -->
+            <button type="button" class="bin__frame bin__frame--video" (click)="open(entry)">
+              <span class="bin__play"><vt-icon name="play" [size]="22" /></span>
+              <span class="bin__zoom"><vt-icon name="video" [size]="14" /> Reproducir</span>
+            </button>
+          } @else {
+            <span class="bin__badge">
+              <vt-icon [name]="typeOf(entry).icon" [size]="24" />
+            </span>
+          }
+
+          <!-- Datos -->
+          <div class="bin__body">
+            <div class="bin__row">
+              <strong class="bin__title">{{ entry.answerTitle }}</strong>
+
+              <span class="bin__state bin__state--{{ stateOf(entry).tone }}">
+                {{ stateOf(entry).label }}
+              </span>
+            </div>
+
+            <p class="bin__detail">{{ stateOf(entry).detail }}</p>
+
+            <div class="bin__facts">
+              <span>{{ typeOf(entry).label }}</span>
+              @if (entry.resource.Ext) {
+                <span class="bin__ext">{{ entry.resource.Ext }}</span>
+              }
+              <span>{{ size(entry) }}</span>
+              @if (captured(entry)) {
+                <span>{{ captured(entry) }}</span>
+              }
+              @if (entry.resource.VerifyAttempts) {
+                <span>{{ entry.resource.VerifyAttempts }} intento(s)</span>
+              }
+            </div>
+
+            <code class="bin__guid">{{ entry.resource.GUID }}</code>
+          </div>
+
+          <!-- Acciones -->
+          <div class="bin__tools">
+            <button type="button" class="bin__tool" (click)="download(entry)" title="Descargar">
+              <vt-icon name="download" [size]="17" />
+            </button>
+          </div>
+
+          <!-- El reproductor de audio va en su propia fila: necesita todo el
+               ancho para que la barra de nivel sirva de algo. -->
+          @if (isAudio(entry) && previewUrl(entry)) {
+            <div class="bin__player">
+              <vt-audio-player [src]="previewUrl(entry)" [caption]="size(entry)" />
+            </div>
+          }
+        </li>
+      }
+    </ul>
+
+    <!-- ── Paginación ────────────────────────────────────────────────────── -->
+    @if (result().pages > 1) {
+      <nav class="bins__pager">
+        <button
+          type="button"
+          class="bins__page-btn"
+          [disabled]="result().page === 0"
+          (click)="goToPage(result().page - 1)"
+        >
+          <vt-icon name="chevron" [size]="17" class="bins__flip" />
+          Anterior
+        </button>
+
+        <span class="bins__range">{{ range() }}</span>
+
+        <button
+          type="button"
+          class="bins__page-btn"
+          [disabled]="result().page >= result().pages - 1"
+          (click)="goToPage(result().page + 1)"
+        >
+          Siguiente
+          <vt-icon name="chevron" [size]="17" />
+        </button>
+      </nav>
+    } @else if (range()) {
+      <p class="bins__range bins__range--alone">{{ range() }}</p>
+    }
+  }
+</div>
+
+@if (viewing(); as entry) {
+  <vt-media-viewer
+    [kind]="isImage(entry) ? 'image' : 'video'"
+    [src]="previewUrl(entry)"
+    [title]="entry.answerTitle"
+    [caption]="typeOf(entry).label + ' · ' + size(entry)"
+    [onWhite]="entry.resource.TypeBinarie === 2"
+    (download)="download(entry)"
+    (close)="closeViewer()"
+  />
+}

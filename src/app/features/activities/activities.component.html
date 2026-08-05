@@ -1,0 +1,428 @@
+@if (survey(); as form) {
+  <div
+    class="acts"
+    [style.--form-from]="palette().from"
+    [style.--form-to]="palette().to"
+    [style.--form-gradient]="gradient()"
+  >
+    <!-- ── Cabecera ────────────────────────────────────────────────────────── -->
+    <header class="acts__header">
+      <button
+        mat-icon-button
+        type="button"
+        class="acts__back"
+        routerLink="/formularios"
+        matTooltip="Volver a formularios"
+        aria-label="Volver a formularios"
+      >
+        <vt-icon name="chevron" [size]="20" />
+      </button>
+
+      <span class="acts__badge">{{ initial() }}</span>
+
+      <div class="acts__heading">
+        <h1>{{ form.Title }}</h1>
+        <p>
+          @if (loading()) {
+            Cargando actividades…
+          } @else {
+            {{ total() }} {{ total() === 1 ? 'actividad' : 'actividades' }}
+            @if (isFiltered()) {
+              · {{ visible() }} tras el filtro
+            }
+            @if (requirements(); as req) {
+              @if (req.requiresLocation && req.requiresAsset) {
+                · requiere ubicación y activo
+              } @else if (req.requiresLocation) {
+                · requiere ubicación
+              } @else if (req.requiresAsset) {
+                · requiere activo
+              }
+            }
+          }
+        </p>
+      </div>
+
+      <div class="acts__header-actions">
+        <button
+          mat-icon-button
+          type="button"
+          (click)="refresh()"
+          matTooltip="Refrescar y limpiar borradores caducados"
+          aria-label="Refrescar"
+        >
+          <vt-icon name="refresh" [size]="20" />
+        </button>
+        <button
+          mat-icon-button
+          type="button"
+          [class.acts__on]="showInfo()"
+          (click)="toggleInfo()"
+          matTooltip="Información y regla de borrado"
+          aria-label="Información del formulario"
+        >
+          <vt-icon name="info" [size]="20" />
+        </button>
+        <button
+          mat-icon-button
+          type="button"
+          [class.acts__on]="showFilters() || stateFilter() !== null"
+          (click)="toggleFilters()"
+          matTooltip="Filtrar y ordenar"
+          aria-label="Filtrar y ordenar"
+        >
+          <vt-icon name="database" [size]="19" />
+          @if (stateFilter() !== null) {
+            <span class="acts__dot" aria-hidden="true"></span>
+          }
+        </button>
+      </div>
+    </header>
+
+    <!-- ── Panel de información ────────────────────────────────────────────── -->
+    @if (showInfo()) {
+      <section class="acts__info">
+        <header>
+          <h2>Información del formulario</h2>
+          <button mat-icon-button type="button" (click)="toggleInfo()" aria-label="Cerrar">
+            <vt-icon name="close" [size]="18" />
+          </button>
+        </header>
+
+        <dl class="acts__info-grid">
+          <div>
+            <dt>Identificador</dt>
+            <dd class="vt-figure">{{ form.SurveyID }}</dd>
+          </div>
+          <div>
+            <dt>Regla de borrado</dt>
+            <dd>
+              @if (deleteRule().enabled) {
+                <span class="vt-figure">{{ deleteRule().value }}</span> {{ deleteRule().unit }}
+              } @else {
+                Sin borrado automático
+              }
+            </dd>
+          </div>
+          @if (requirements(); as req) {
+            <div>
+              <dt>Requiere</dt>
+              <dd>
+                @if (req.requiresLocation && req.requiresAsset) {
+                  Ubicación y activo
+                } @else if (req.requiresLocation) {
+                  Ubicación
+                } @else if (req.requiresAsset) {
+                  Activo
+                } @else {
+                  Nada previo
+                }
+              </dd>
+            </div>
+          }
+        </dl>
+
+        <p class="acts__info-note">{{ deleteRule().summary }}</p>
+
+        <h3>Qué significa cada estado</h3>
+        <ul class="acts__legend">
+          @for (state of states; track state.key) {
+            <li [class]="'acts__legend-item acts__legend-item--' + state.tone">
+              <span class="acts__legend-icon">
+                <vt-icon [name]="state.icon" [size]="15" />
+              </span>
+              <div>
+                <strong>{{ state.label }}</strong>
+                <span>{{ state.description }}</span>
+              </div>
+            </li>
+          }
+        </ul>
+      </section>
+    }
+
+    <!-- ── Aviso de actividades esperando archivos ─────────────────────────── -->
+    @if (waitingCount() > 0) {
+      <aside class="acts__waiting">
+        <span class="acts__waiting-icon">
+          <vt-icon name="image" [size]="19" />
+        </span>
+        <div>
+          <strong>
+            {{ waitingCount() }}
+            {{ waitingCount() === 1 ? 'actividad espera' : 'actividades esperan' }}
+            que sus archivos lleguen al servidor
+          </strong>
+          <span>Se enviarán solas en cuanto estén confirmados. No hay que hacer nada.</span>
+        </div>
+        <button mat-stroked-button type="button" (click)="refresh()">
+          <vt-icon name="refresh" [size]="16" />
+          Comprobar
+        </button>
+      </aside>
+    }
+
+    @if (feedback()) {
+      <p class="acts__feedback">{{ feedback() }}</p>
+    }
+
+    <!-- ── Buscador ────────────────────────────────────────────────────────── -->
+    <div class="acts__search">
+      <span class="acts__search-icon" aria-hidden="true">
+        <svg viewBox="0 0 20 20" fill="none">
+          <circle cx="9" cy="9" r="5.5" stroke="currentColor" stroke-width="1.8" />
+          <path d="m13.5 13.5 3.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+        </svg>
+      </span>
+      <input
+        type="search"
+        placeholder="Buscar por descriptivo, ubicación, activo o consecutivo…"
+        aria-label="Buscar actividad"
+        [value]="search()"
+        (input)="onSearch($event)"
+      />
+      @if (search()) {
+        <button mat-icon-button type="button" (click)="clearSearch()" aria-label="Limpiar búsqueda">
+          <vt-icon name="close" [size]="16" />
+        </button>
+      }
+    </div>
+
+    <!-- ── Filtros ─────────────────────────────────────────────────────────── -->
+    @if (showFilters()) {
+      <section class="acts__filters">
+        <!-- Selección única: el listbox lleva la selección y el componente solo
+             escucha el cambio. Enlazar `[selected]` y `(click)` a la vez haría
+             que el chip y el signal se alternaran por separado. -->
+        <div class="acts__filter-group">
+          <span class="acts__filter-label">Estado</span>
+          <mat-chip-listbox
+            aria-label="Filtrar por estado"
+            hideSingleSelectionIndicator
+            [value]="stateFilter()"
+            (change)="onStateChange($event)"
+          >
+            <mat-chip-option [value]="null">Todos</mat-chip-option>
+            <mat-chip-option [value]="draftFilter">Borrador</mat-chip-option>
+            <mat-chip-option [value]="0">Sin guardar</mat-chip-option>
+            <mat-chip-option [value]="1">Pendiente</mat-chip-option>
+            <mat-chip-option [value]="2">Sincronizada</mat-chip-option>
+            <mat-chip-option [value]="3">Esperando archivos</mat-chip-option>
+          </mat-chip-listbox>
+        </div>
+
+        <!-- Botones y no chips: volver a pulsar el activo invierte la
+             dirección, y un listbox de selección única no sabe expresar eso. -->
+        <div class="acts__filter-group">
+          <span class="acts__filter-label">Ordenar por</span>
+          <div class="acts__sort">
+            <button
+              mat-stroked-button
+              type="button"
+              [class.acts__sort--on]="sortField() === 'UpdatedOn'"
+              (click)="setSort('UpdatedOn')"
+              matTooltip="Pulsa de nuevo para invertir el orden"
+            >
+              Modificación
+              @if (sortField() === 'UpdatedOn') {
+                <span class="acts__arrow">{{ sortDescending() ? '↓' : '↑' }}</span>
+              }
+            </button>
+            <button
+              mat-stroked-button
+              type="button"
+              [class.acts__sort--on]="sortField() === 'CreatedOn'"
+              (click)="setSort('CreatedOn')"
+              matTooltip="Pulsa de nuevo para invertir el orden"
+            >
+              Creación
+              @if (sortField() === 'CreatedOn') {
+                <span class="acts__arrow">{{ sortDescending() ? '↓' : '↑' }}</span>
+              }
+            </button>
+          </div>
+        </div>
+
+        @if (isFiltered()) {
+          <button mat-button type="button" (click)="clearFilters()">Limpiar filtros</button>
+        }
+      </section>
+    }
+
+    <!-- ── Listado ─────────────────────────────────────────────────────────── -->
+    @if (loading()) {
+      <div class="acts__list">
+        @for (placeholder of [1, 2, 3]; track placeholder) {
+          <div class="acts__card acts__card--loading"></div>
+        }
+      </div>
+    } @else if (cards().length === 0) {
+      <div class="acts__empty">
+        <span class="acts__empty-icon">
+          <vt-icon name="clipboard" [size]="28" />
+        </span>
+
+        @if (isFiltered()) {
+          <h2>Ninguna actividad coincide</h2>
+          <p>Prueba con otro término o quita los filtros para ver todas.</p>
+          <button mat-stroked-button type="button" (click)="clearFilters()">Ver todas</button>
+        } @else {
+          <h2>Todavía no hay actividades</h2>
+          <p>Crea la primera para empezar a diligenciar este formulario.</p>
+          <button
+            mat-flat-button
+            type="button"
+            class="acts__cta"
+            (click)="createActivity()"
+            [disabled]="creating()"
+          >
+            <vt-icon name="clipboard" [size]="17" />
+            Nueva actividad
+          </button>
+        }
+      </div>
+    } @else {
+      <div class="acts__list">
+        @for (card of cards(); track trackByGuid($index, card)) {
+          <article [class]="'acts__card acts__card--' + card.state.tone">
+            <button type="button" class="acts__card-main" (click)="open(card)">
+              <!-- La bolita lleva el estado: es lo primero que se busca al
+                   repasar la lista, y un disco de color se localiza de un
+                   vistazo sin leer nada. -->
+              <span class="acts__bubble" [matTooltip]="card.state.description">
+                <vt-icon [name]="card.state.icon" [size]="20" />
+                @if (card.dispatchColor) {
+                  <!-- Punto con el color del estado de despacho que configuró
+                       el cliente: es el que su gente reconoce. -->
+                  <span class="acts__bubble-dot" [style.background]="card.dispatchColor"></span>
+                }
+              </span>
+
+              <span class="acts__card-body">
+                <span class="acts__card-head">
+                  <span class="acts__title">
+                    @if (card.answer.LocationName) {
+                      {{ card.answer.LocationName }}
+                    } @else if (card.descriptors.length > 0) {
+                      {{ card.descriptors[0].val }}
+                    } @else {
+                      Actividad sin datos
+                    }
+                  </span>
+
+                  @if (card.answer.Consecutive) {
+                    <span class="acts__consecutive vt-figure">#{{ card.answer.Consecutive }}</span>
+                  }
+                </span>
+
+                <span class="acts__tags">
+                  <span class="acts__state">{{ card.state.label }}</span>
+                  @if (card.dispatchName) {
+                    <span class="acts__dispatch" [style.--dispatch]="card.dispatchColor || null">
+                      {{ card.dispatchName }}
+                    </span>
+                  }
+                  @if (card.answer.AssetName) {
+                    <span class="acts__asset">
+                      <vt-icon name="box" [size]="13" />
+                      {{ card.answer.AssetName }}
+                    </span>
+                  }
+                </span>
+
+                <!-- Descriptivos como una planilla: etiqueta a la izquierda,
+                     valor a la derecha y una línea de puntos entre ambos. Es lo
+                     único que distingue una actividad de sus vecinas cuando
+                     todas son del mismo formulario. -->
+                @if (card.descriptors.length > 0) {
+                  <span class="acts__descriptors">
+                    @for (descriptor of card.descriptors; track descriptor.lab) {
+                      <span class="acts__descriptor">
+                        <span class="acts__descriptor-label">{{ descriptor.lab }}</span>
+                        <span class="acts__descriptor-value">{{ descriptor.val }}</span>
+                      </span>
+                    }
+                  </span>
+                } @else {
+                  <span class="acts__blank">Sin datos diligenciados todavía</span>
+                }
+
+                @if (card.answer.Msg) {
+                  <span class="acts__msg">
+                    <vt-icon name="alert" [size]="14" />
+                    {{ card.answer.Msg }}
+                  </span>
+                }
+
+                <span class="acts__foot">
+                  <span class="acts__foot-item" matTooltip="Fecha de creación">
+                    <vt-icon name="clipboard" [size]="12" />
+                    {{ card.created }}
+                  </span>
+                  <span class="acts__foot-item" matTooltip="Última modificación">
+                    <vt-icon name="refresh" [size]="12" />
+                    {{ card.updated }}
+                  </span>
+                  <span class="acts__guid">{{ card.shortGuid }}</span>
+                </span>
+              </span>
+            </button>
+
+            <button
+              mat-icon-button
+              type="button"
+              class="acts__more"
+              (click)="openActions(card)"
+              matTooltip="Opciones"
+              aria-label="Opciones de la actividad"
+            >
+              <vt-icon name="menu" [size]="18" />
+            </button>
+          </article>
+        }
+      </div>
+    }
+
+    <!-- Botón flotante: acompaña el desplazamiento en listas largas, donde un
+         botón en la cabecera quedaría fuera de pantalla justo cuando hace falta. -->
+    <button type="button" class="acts__fab" (click)="createActivity()" [disabled]="creating()">
+      <span class="acts__fab-icon">
+        <vt-icon name="clipboard" [size]="19" />
+      </span>
+      <span class="acts__fab-label">{{ creating() ? 'Creando…' : 'Nueva actividad' }}</span>
+    </button>
+
+    <vt-confirm-dialog
+      [open]="removing()"
+      tone="danger"
+      icon="trash"
+      [title]="'¿Eliminar ' + removingLabel() + '?'"
+      message="Se borrará esta actividad y los archivos que tenga asociados. No se puede deshacer."
+      [detail]="removingDetail()"
+      confirmLabel="Eliminar"
+      cancelLabel="Conservar"
+      (confirm)="remove()"
+      (cancel)="removing.set(false)"
+    />
+
+    @if (selected(); as chosen) {
+      <vt-activity-actions
+        [open]="actionsOpen()"
+        [title]="chosen.descriptors[0]?.val || chosen.answer.LocationName || 'Actividad'"
+        [subtitle]="chosen.state.label + ' · ' + chosen.updated"
+        [actions]="actions()"
+        (choose)="onAction($event)"
+        (close)="closeActions()"
+      />
+    }
+  </div>
+} @else if (!loading()) {
+  <div class="acts__empty acts__empty--standalone">
+    <span class="acts__empty-icon">
+      <vt-icon name="alert" [size]="28" />
+    </span>
+    <h2>Formulario no encontrado</h2>
+    <p>No está en este equipo. Sincroniza tus datos y vuelve a intentarlo.</p>
+    <a mat-flat-button class="acts__cta" routerLink="/formularios">Volver a formularios</a>
+  </div>
+}

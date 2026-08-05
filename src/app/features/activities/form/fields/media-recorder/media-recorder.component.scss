@@ -1,0 +1,286 @@
+@use '../../../../../shared/styles/overlay';
+
+/**
+ * Grabador de audio y video.
+ *
+ * Fondo oscuro en los dos temas: es una pantalla de captura, y el contenido
+ * —una imagen en vivo o un estado de grabación— se lee mejor sin competencia.
+ * Ventana en el escritorio y pantalla completa en el teléfono, por lo que
+ * explica [overlay.shell].
+ */
+
+:host {
+  @include overlay.shell;
+}
+
+.rec {
+  @include overlay.panel;
+
+  display: flex;
+  flex-direction: column;
+  color: #f4f6f8;
+  background: #0b0d10;
+}
+
+.rec__bar {
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--vt-space-3);
+  align-items: center;
+  padding: var(--vt-space-3) var(--vt-space-4);
+}
+
+.rec__close {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  color: #f4f6f8;
+  background: rgb(255 255 255 / 12%);
+  border: 0;
+  border-radius: var(--vt-radius-full);
+
+  &:hover {
+    background: rgb(255 255 255 / 20%);
+  }
+}
+
+.rec__title {
+  flex: 1;
+  font-size: var(--vt-text-sm);
+  font-weight: 650;
+}
+
+/** Contador en vivo: sin él no se sabe cuánto lleva grabado. */
+.rec__live {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 13px;
+  font-size: var(--vt-text-xs);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  background: rgb(239 68 68 / 22%);
+  border-radius: var(--vt-radius-full);
+}
+
+.rec__dot {
+  width: 8px;
+  height: 8px;
+  background: #ef4444;
+  border-radius: 50%;
+  animation: rec-blink 1.1s ease-in-out infinite;
+}
+
+@keyframes rec-blink {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rec__dot {
+    animation: none;
+  }
+}
+
+.rec__stage {
+  position: relative;
+  display: grid;
+  flex: 1;
+  place-items: center;
+  min-height: 0;
+  padding: 0 var(--vt-space-4);
+  overflow: hidden;
+}
+
+.rec__preview,
+.rec__player {
+  max-width: 100%;
+  max-height: 100%;
+  background: #000;
+  border-radius: var(--vt-radius-lg);
+}
+
+.rec__preview[hidden] {
+  display: none;
+}
+
+.rec__review {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  max-width: 620px;
+}
+
+/* ── Audio ─────────────────────────────────────────────────────────────────── */
+
+.rec__idle,
+.rec__audio {
+  display: grid;
+  gap: var(--vt-space-4);
+  justify-items: center;
+  width: 100%;
+  max-width: 420px;
+}
+
+.rec__pulse,
+.rec__wave {
+  display: grid;
+  place-items: center;
+  width: 118px;
+  height: 118px;
+  color: #f4f6f8;
+  background: rgb(255 255 255 / 8%);
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 50%;
+}
+
+/**
+ * El halo late mientras se graba.
+ *
+ * Un contador que avanza puede pasar desapercibido; un elemento que se mueve
+ * en el centro de la pantalla no deja duda de que el micrófono está abierto.
+ */
+.rec__pulse--on {
+  color: #fff;
+  background: rgb(239 68 68 / 20%);
+  border-color: rgb(239 68 68 / 45%);
+  animation: rec-pulse 1.6s ease-out infinite;
+}
+
+@keyframes rec-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgb(239 68 68 / 45%);
+  }
+
+  100% {
+    box-shadow: 0 0 0 26px rgb(239 68 68 / 0%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rec__pulse--on {
+    animation: none;
+  }
+}
+
+.rec__len {
+  font-size: var(--vt-text-lg);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: rgb(244 246 248 / 78%);
+}
+
+.rec__track {
+  width: 100%;
+}
+
+/* ── Errores ───────────────────────────────────────────────────────────────── */
+
+.rec__error {
+  display: grid;
+  gap: var(--vt-space-3);
+  justify-items: center;
+  max-width: 400px;
+  padding: var(--vt-space-5);
+  color: #fca5a5;
+  text-align: center;
+  background: rgb(239 68 68 / 12%);
+  border: 1px solid rgb(239 68 68 / 30%);
+  border-radius: var(--vt-radius-lg);
+
+  p {
+    font-size: var(--vt-text-sm);
+    line-height: 1.55;
+    color: rgb(244 246 248 / 88%);
+  }
+}
+
+/* ── Controles ─────────────────────────────────────────────────────────────── */
+
+.rec__foot {
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--vt-space-3);
+  align-items: center;
+  justify-content: center;
+  padding: var(--vt-space-4) var(--vt-space-4) calc(var(--vt-space-5) + env(safe-area-inset-bottom));
+}
+
+/** Botón de grabar: círculo rojo, el gesto que todo el mundo reconoce. */
+.rec__start {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  background: transparent;
+  border: 4px solid rgb(255 255 255 / 85%);
+  border-radius: 50%;
+
+  &:disabled {
+    opacity: 0.4;
+  }
+}
+
+.rec__start-core {
+  width: 52px;
+  height: 52px;
+  background: #ef4444;
+  border-radius: 50%;
+  transition: transform 0.12s ease;
+}
+
+.rec__start:active .rec__start-core {
+  transform: scale(0.88);
+}
+
+.rec__stop {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  color: #fff;
+  background: #ef4444;
+  border: 0;
+  border-radius: 50%;
+
+  &:hover {
+    background: #dc2626;
+  }
+}
+
+.rec__accept {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  padding: 12px 24px;
+  font-size: var(--vt-text-sm);
+  font-weight: 650;
+  color: var(--vt-on-brand);
+  background: var(--vt-brand);
+  border: 0;
+  border-radius: var(--vt-radius-full);
+
+  &:hover {
+    background: var(--vt-brand-dark);
+  }
+}
+
+.rec__ghost {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  padding: 12px 22px;
+  font-size: var(--vt-text-sm);
+  font-weight: 600;
+  color: #f4f6f8;
+  background: rgb(255 255 255 / 10%);
+  border: 0;
+  border-radius: var(--vt-radius-full);
+
+  &:hover {
+    background: rgb(255 255 255 / 18%);
+  }
+}

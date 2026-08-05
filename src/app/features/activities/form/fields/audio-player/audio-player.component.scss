@@ -1,0 +1,89 @@
+/**
+ * Reproductor de grabaciones.
+ *
+ * Un botón grande y un nivel que se llena. Nada más: lo único que se hace con
+ * una grabación de campo es escucharla entera y, como mucho, volver a un punto.
+ */
+
+:host {
+  display: block;
+  width: 100%;
+}
+
+.player {
+  display: flex;
+  gap: var(--vt-space-3);
+  align-items: center;
+  width: 100%;
+}
+
+.player__play {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  color: var(--vt-on-brand);
+  background: var(--vt-brand);
+  border: 0;
+  border-radius: 50%;
+  transition: transform 0.12s ease;
+
+  &:hover {
+    background: var(--vt-brand-dark);
+  }
+
+  &:active {
+    transform: scale(0.94);
+  }
+}
+
+.player__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.player__wave {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  height: 34px;
+  cursor: pointer;
+}
+
+.player__bar {
+  flex: 1;
+  min-width: 2px;
+  background: var(--vt-rule-strong);
+  border-radius: 2px;
+  transition: background 0.1s linear;
+}
+
+.player__bar--on {
+  background: var(--vt-brand);
+}
+
+.player__meta {
+  display: flex;
+  gap: var(--vt-space-3);
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.player__time {
+  font-size: var(--vt-text-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--vt-text-muted);
+}
+
+.player__caption {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 11px;
+  color: var(--vt-text-subtle);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

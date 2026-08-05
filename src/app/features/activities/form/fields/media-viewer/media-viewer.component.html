@@ -1,0 +1,75 @@
+<div class="viewer" tabindex="-1" (keydown)="onKeydown($event)">
+  <header class="viewer__bar">
+    <button type="button" class="viewer__icon" (click)="close.emit()" aria-label="Cerrar">
+      <vt-icon name="close" [size]="20" />
+    </button>
+
+    <div class="viewer__titles">
+      @if (title()) {
+        <strong>{{ title() }}</strong>
+      }
+      @if (caption()) {
+        <small>{{ caption() }}</small>
+      }
+    </div>
+
+    <button type="button" class="viewer__icon" (click)="download.emit()" title="Descargar">
+      <vt-icon name="download" [size]="19" />
+    </button>
+  </header>
+
+  <div
+    #stage
+    class="viewer__stage"
+    [class.viewer__stage--white]="onWhite()"
+    [class.viewer__stage--grab]="isImage()"
+    (wheel)="onWheel($event)"
+    (dblclick)="onDoubleClick($event)"
+    (pointerdown)="onPointerDown($event)"
+    (pointermove)="onPointerMove($event)"
+    (pointerup)="onPointerUp($event)"
+    (pointercancel)="onPointerUp($event)"
+  >
+    @if (isImage()) {
+      <img
+        #media
+        class="viewer__media"
+        [src]="src()"
+        [alt]="title()"
+        [style.transform]="transform()"
+        draggable="false"
+      />
+    } @else {
+      <video class="viewer__media viewer__media--video" [src]="src()" controls playsinline></video>
+    }
+  </div>
+
+  @if (isImage()) {
+    <footer class="viewer__foot">
+      <button type="button" class="viewer__zoom" (click)="step(1 / 1.4)" aria-label="Reducir">
+        <span aria-hidden="true">−</span>
+      </button>
+
+      <button type="button" class="viewer__level" (click)="reset()" title="Tamaño original">
+        {{ percent() }}
+      </button>
+
+      <button type="button" class="viewer__zoom" (click)="step(1.4)" aria-label="Ampliar">
+        <span aria-hidden="true">+</span>
+      </button>
+
+      <!-- Aparece solo cuando hay algo que deshacer: es la salida de un encuadre
+           en el que uno se perdió. -->
+      @if (moved()) {
+        <button type="button" class="viewer__center" (click)="reset()">
+          <vt-icon name="refresh" [size]="15" />
+          Centrar
+        </button>
+      }
+    </footer>
+
+    @if (!moved()) {
+      <p class="viewer__hint">Arrastra para desplazar · doble clic o pellizco para ampliar</p>
+    }
+  }
+</div>

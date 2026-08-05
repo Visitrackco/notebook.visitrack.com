@@ -1,0 +1,256 @@
+.home {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vt-space-6);
+  /* Al ancho completo del área de trabajo: el contenido son cuadrículas que se
+     reacomodan solas, así que más ancho significa más columnas, no líneas de
+     texto más largas. */
+  width: 100%;
+}
+
+.home__header {
+  h1 {
+    margin-bottom: 4px;
+    font-size: var(--vt-text-2xl);
+    letter-spacing: -0.4px;
+  }
+
+  p {
+    color: var(--vt-text-muted);
+  }
+}
+
+.home__offline {
+  display: flex;
+  gap: var(--vt-space-3);
+  align-items: flex-start;
+  padding: var(--vt-space-4);
+
+  /* Por tokens y no por valores fijos: `--vt-warning-bg` pasa a marrón oscuro
+     en modo oscuro, y el ámbar oscuro que había aquí quedaba ilegible encima.
+     El par `--vt-warning` / `--vt-warning-bg` mantiene el contraste en los dos
+     temas porque se define en cada uno. */
+  color: var(--vt-warning);
+  background: var(--vt-warning-bg);
+  border: 1px solid color-mix(in srgb, var(--vt-warning) 40%, transparent);
+  border-radius: var(--vt-radius);
+
+  strong {
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  span {
+    font-size: var(--vt-text-sm);
+    opacity: 0.9;
+  }
+}
+
+/* ── Tarjetas de resumen ───────────────────────────────────────────────────── */
+
+.home__cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr));
+  gap: var(--vt-space-4);
+}
+
+/**
+ * Casilla de dato: la cifra del conteo con su rótulo.
+ *
+ * El relieve sale de `--vt-card-shadow` (contorno + sombra difusa) en vez de un
+ * borde sólido, y al pasar el cursor se acentúa y el bloque sube un pixel: un
+ * gesto corto que confirma que la tarjeta responde.
+ */
+.home__card {
+  display: flex;
+  gap: var(--vt-space-4);
+  align-items: center;
+  padding: var(--vt-space-5);
+  background: var(--vt-surface);
+  border: 0;
+  border-radius: var(--vt-radius-lg);
+  box-shadow: var(--vt-card-shadow);
+  transition:
+    box-shadow var(--vt-transition),
+    transform var(--vt-transition);
+
+  &:hover {
+    box-shadow: var(--vt-card-shadow-hover);
+    transform: translateY(-1px);
+  }
+}
+
+/* Marcador de posición mientras se leen los conteos. Mantiene el alto para que
+   la página no dé un salto cuando llegan los datos. */
+.home__card--loading {
+  min-height: 92px;
+  background: linear-gradient(
+    100deg,
+    var(--vt-surface-2) 30%,
+    var(--vt-surface-3) 50%,
+    var(--vt-surface-2) 70%
+  );
+  background-size: 200% 100%;
+  animation: card-shimmer 1.4s ease-in-out infinite;
+
+  &:hover {
+    box-shadow: none;
+    transform: none;
+  }
+}
+
+@keyframes card-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/**
+ * Contenedor del icono.
+ *
+ * Circular, y cada tipo de dato con su propia familia de color: así se
+ * distinguen de un vistazo sin leer el rótulo, que es justo lo que se busca en
+ * una fila de cifras parecidas.
+ *
+ * El color va como variable local (`--icon-fg` / `--icon-bg`) y cada
+ * modificador solo la redefine — el resto de la regla no se repite.
+ */
+.home__card-icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  color: var(--icon-fg, var(--vt-text));
+  background: var(--icon-bg, var(--vt-surface-3));
+  border-radius: var(--vt-radius-full);
+}
+
+/**
+ * Cada familia toma su par de `--vt-icon-*`, que ya viene invertido para el
+ * modo oscuro.
+ *
+ * Antes los valores estaban aquí y la inversión vivía en un bloque
+ * `:root[data-theme='dark']` de este mismo archivo — que **nunca aplicó**:
+ * Angular le añade el atributo de ámbito al `:root`, y el `<html>` no lo lleva.
+ * En oscuro los discos seguían con sus fondos pastel claros.
+ */
+.home__card-icon--brand {
+  --icon-fg: var(--vt-icon-brand-fg);
+  --icon-bg: var(--vt-icon-brand-bg);
+}
+
+.home__card-icon--amber {
+  --icon-fg: var(--vt-icon-amber-fg);
+  --icon-bg: var(--vt-icon-amber-bg);
+}
+
+.home__card-icon--blue {
+  --icon-fg: var(--vt-icon-blue-fg);
+  --icon-bg: var(--vt-icon-blue-bg);
+}
+
+.home__card-icon--green {
+  --icon-fg: var(--vt-icon-green-fg);
+  --icon-bg: var(--vt-icon-green-bg);
+}
+
+.home__card-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* Cifra tabular: los conteos de las casillas deben alinearse entre sí. Se
+   consigue con la variante numérica, sin cambiar de tipografía. */
+.home__card-value {
+  font-size: 30px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.05;
+  letter-spacing: -1px;
+}
+
+.home__card-label {
+  font-size: var(--vt-text-base);
+  font-weight: 600;
+}
+
+.home__card-hint {
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-subtle);
+}
+
+/* ── Paneles ───────────────────────────────────────────────────────────────── */
+
+.home__panels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+  gap: var(--vt-space-4);
+}
+
+.home__panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vt-space-3);
+  align-items: flex-start;
+  padding: var(--vt-space-5);
+  background: var(--vt-surface);
+  border: 0;
+  border-radius: var(--vt-radius-lg);
+  box-shadow: var(--vt-card-shadow);
+
+  header {
+    display: flex;
+    gap: var(--vt-space-2);
+    align-items: center;
+    color: var(--vt-text);
+  }
+
+  h2 {
+    font-size: var(--vt-text-md);
+  }
+
+  p {
+    font-size: var(--vt-text-sm);
+    color: var(--vt-text-muted);
+  }
+}
+
+.home__panel--muted {
+  background: var(--vt-surface-2);
+
+  header {
+    color: var(--vt-text-muted);
+  }
+}
+
+.home__panel-link {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  margin-top: auto;
+  font-size: var(--vt-text-sm);
+  font-weight: 600;
+
+  vt-icon {
+    transition: transform var(--vt-transition);
+  }
+
+  &:hover {
+    text-decoration: none;
+
+    vt-icon {
+      transform: translateX(3px);
+    }
+  }
+}
+
+.home__panel-badge {
+  padding: 4px 11px;
+  margin-top: auto;
+  font-size: var(--vt-text-xs);
+  font-weight: 600;
+  color: var(--vt-text-muted);
+  background: var(--vt-surface-3);
+  border-radius: var(--vt-radius-full);
+}

@@ -1,0 +1,178 @@
+<div class="shell" [class.shell--collapsed]="collapsed()">
+  <!-- Capa que oscurece el contenido cuando el menú móvil está abierto -->
+  @if (mobileOpen()) {
+    <div class="shell__scrim" (click)="closeMobile()"></div>
+  }
+
+  <!-- ── Barra lateral ─────────────────────────────────────────────────── -->
+  <aside class="shell__sidebar" [class.shell__sidebar--open]="mobileOpen()">
+    <!-- Encabezado: el logo de la compañía del usuario. Es su empresa la que
+         debe estar aquí, no la nuestra; Visitrack firma al pie. -->
+    <div class="shell__brand">
+      @if (companyLogo(); as logo) {
+        <img
+          class="shell__company-logo"
+          [class.shell__company-logo--collapsed]="collapsed()"
+          [src]="logo"
+          [alt]="companyName()"
+        />
+      } @else {
+        <!-- Sin logo: la inicial de la compañía en una casilla, para que el
+             encabezado no quede vacío mientras carga o si no hay ninguno. -->
+        <span class="shell__company-fallback">{{ companyInitial() }}</span>
+        @if (!collapsed()) {
+          <span class="shell__company-name">{{ companyName() }}</span>
+        }
+      }
+
+      <button type="button" class="shell__mobile-close" (click)="closeMobile()" aria-label="Cerrar menú">
+        <vt-icon name="close" [size]="20" />
+      </button>
+    </div>
+
+    <nav class="shell__nav">
+      @for (section of navigation; track section.title) {
+        @if (section.title && !collapsed()) {
+          <h2 class="shell__nav-title">{{ section.title }}</h2>
+        } @else if (section.title && collapsed()) {
+          <div class="shell__nav-divider"></div>
+        }
+
+        @for (item of section.items; track item.key) {
+          <a
+            class="shell__nav-item"
+            [class.shell__nav-item--disabled]="item.comingSoon"
+            [routerLink]="item.comingSoon ? null : item.route"
+            routerLinkActive="shell__nav-item--active"
+            [title]="collapsed() ? item.label : (item.description ?? '')"
+            (click)="onNavigate(item, $event)"
+          >
+            <vt-icon [name]="item.icon" [size]="20" />
+            @if (!collapsed()) {
+              <span class="shell__nav-label">{{ item.label }}</span>
+              @if (item.comingSoon) {
+                <span class="shell__nav-soon">Pronto</span>
+              }
+            }
+
+            <!-- Cuántas actividades esperan salir. Va en el menú porque es la
+                 única señal de que queda trabajo sin enviar cuando el usuario
+                 no está mirando esa pantalla. -->
+            @if (item.key === 'pending' && pendingCount() > 0) {
+              <span class="shell__nav-badge" [title]="pendingCount() + ' por subir'">
+                {{ pendingCount() }}
+              </span>
+            }
+          </a>
+        }
+      }
+    </nav>
+
+    <button type="button" class="shell__collapse" (click)="toggleSidebar()">
+      <vt-icon name="chevron" [size]="18" />
+      @if (!collapsed()) {
+        <span>Contraer menú</span>
+      }
+    </button>
+
+    <!-- La firma de Visitrack va al pie, como el sello del fabricante en un
+         formato: presente, pero sin disputarle el encabezado a la empresa. -->
+    <footer class="shell__signature">
+      <svg
+        class="shell__signature-mark"
+        viewBox="0 0 48 48"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        aria-hidden="true"
+      >
+        <path
+          d="M24 4 6 12v12c0 11.05 7.68 21.38 18 24 10.32-2.62 18-12.95 18-24V12L24 4Z"
+          stroke="currentColor"
+          stroke-width="2.5"
+          stroke-linejoin="round"
+        />
+        <path
+          d="m16 24 6 6 11-12"
+          stroke="currentColor"
+          stroke-width="3.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+      @if (!collapsed()) {
+        <span class="shell__signature-text">
+          <span>Visitrack</span>
+          <span class="vt-figure">v{{ appVersion }}</span>
+        </span>
+      }
+    </footer>
+  </aside>
+
+  <!-- ── Contenido ─────────────────────────────────────────────────────── -->
+  <div class="shell__main">
+    <header class="shell__topbar">
+      <button type="button" class="shell__menu-btn" (click)="toggleMobile()" aria-label="Abrir menú">
+        <vt-icon name="menu" [size]="22" />
+      </button>
+
+      <div class="shell__topbar-spacer"></div>
+
+      <!-- Estado de conexión: siempre visible, porque determina si lo que el
+           usuario hace se está guardando solo en local o llegando al servidor -->
+      <div
+        class="shell__connection"
+        [class.shell__connection--offline]="connectivity.isOffline()"
+        [title]="
+          connectivity.isOnline()
+            ? 'Conectado al servidor'
+            : 'Sin conexión. Los cambios se guardan en este equipo y se sincronizarán después.'
+        "
+      >
+        <vt-icon [name]="connectivity.isOnline() ? 'wifi' : 'wifi-off'" [size]="17" />
+        <span>{{ connectivity.isOnline() ? 'En línea' : 'Sin conexión' }}</span>
+      </div>
+
+      <div class="shell__account">
+        <button type="button" class="shell__account-btn" (click)="toggleAccountMenu()">
+          <span class="shell__avatar">{{ userInitials() }}</span>
+          <span class="shell__account-name">{{ userName() }}</span>
+          <vt-icon name="chevron" [size]="15" />
+        </button>
+
+        @if (accountMenuOpen()) {
+          <div class="shell__account-scrim" (click)="closeAccountMenu()"></div>
+          <div class="shell__account-menu">
+            <div class="shell__account-header">
+              <span class="shell__avatar shell__avatar--lg">{{ userInitials() }}</span>
+              <div>
+                <strong>{{ userName() }}</strong>
+                <span>{{ userEmail() }}</span>
+              </div>
+            </div>
+
+            <a class="shell__account-item" routerLink="/perfil" (click)="closeAccountMenu()">
+              <vt-icon name="user" [size]="18" />
+              <span>Mi perfil</span>
+            </a>
+
+            <a class="shell__account-item" routerLink="/sincronizacion" (click)="closeAccountMenu()">
+              <vt-icon name="refresh" [size]="18" />
+              <span>Sincronización</span>
+            </a>
+
+            <div class="shell__account-divider"></div>
+
+            <button type="button" class="shell__account-item shell__account-item--danger" (click)="logout()">
+              <vt-icon name="logout" [size]="18" />
+              <span>Cerrar sesión</span>
+            </button>
+          </div>
+        }
+      </div>
+    </header>
+
+    <main class="shell__content">
+      <router-outlet />
+    </main>
+  </div>
+</div>

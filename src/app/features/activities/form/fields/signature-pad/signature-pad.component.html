@@ -1,0 +1,88 @@
+<div class="sign">
+  <header class="sign__bar">
+    <button type="button" class="sign__close" (click)="cancel.emit()" aria-label="Cerrar">
+      <vt-icon name="close" [size]="20" />
+    </button>
+
+    <span class="sign__title">Firma</span>
+
+    <button type="button" class="sign__accept" [disabled]="!canSave()" (click)="accept()">
+      <vt-icon name="check" [size]="17" />
+      {{ saving() ? 'Guardando…' : 'Guardar' }}
+    </button>
+  </header>
+
+  <!-- El nombre va antes del lienzo: pedirlo después de firmar es pedirlo
+       cuando la persona ya devolvió el dispositivo. -->
+  <label class="sign__name" [class.sign__name--invalid]="nameMissing()">
+    <span>Nombre de quien firma <em>*</em></span>
+
+    <span class="sign__name-box">
+      <vt-icon name="user" [size]="18" />
+      <input
+        #nameInput
+        type="text"
+        [value]="name()"
+        (input)="onName($event)"
+        (blur)="nameTouched.set(true)"
+        placeholder="Nombre completo"
+        autocomplete="name"
+        enterkeyhint="done"
+      />
+    </span>
+
+    @if (nameMissing()) {
+      <small class="sign__name-error">
+        <vt-icon name="alert" [size]="14" />
+        Escribe el nombre de quien firma para poder guardar.
+      </small>
+    }
+  </label>
+
+  <div class="sign__stage">
+    <canvas
+      #canvas
+      class="sign__canvas"
+      (pointerdown)="onPointerDown($event)"
+      (pointermove)="onPointerMove($event)"
+      (pointerup)="onPointerUp()"
+      (pointercancel)="onPointerUp()"
+    ></canvas>
+
+    @if (!hasSignature()) {
+      <span class="sign__placeholder">Firma aquí con el dedo o el ratón</span>
+    }
+
+    <!-- La línea guía es la del papel: sitúa la firma sin obligar a apuntar. -->
+    <span class="sign__rule" aria-hidden="true"></span>
+  </div>
+
+  <footer class="sign__foot">
+    <div class="sign__state">
+      <span class="sign__hint" [class.sign__hint--warn]="hasSignature() && !validSignature()">
+        @if (!hasSignature()) {
+          Firma en el recuadro para continuar.
+        } @else if (!validSignature()) {
+          El trazo es muy corto para ser una firma. Firma completo, no un punto.
+        } @else if (!hasName()) {
+          Falta el nombre de quien firma.
+        } @else {
+          Listo para guardar.
+        }
+      </span>
+
+      <!-- Un botón apagado que no dice cuánto falta se lee como que la
+           aplicación no funciona. -->
+      @if (hasSignature() && !validSignature()) {
+        <span class="sign__meter" aria-hidden="true">
+          <span class="sign__meter-fill" [style.width.%]="quality() * 100"></span>
+        </span>
+      }
+    </div>
+
+    <button type="button" class="sign__clear" [disabled]="!hasSignature()" (click)="clear()">
+      <vt-icon name="trash" [size]="16" />
+      Borrar
+    </button>
+  </footer>
+</div>

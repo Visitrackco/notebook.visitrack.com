@@ -1,0 +1,241 @@
+/**
+ * Aviso de campos obligatorios.
+ *
+ * Empieza por el icono y el titular —cuántos faltan—, sigue con la lista de
+ * cuáles y termina con las dos salidas. Ese orden es el de las preguntas que se
+ * hace quien lo ve: qué pasa, qué falta exactamente, qué puedo hacer.
+ *
+ * Las dos acciones tienen peso distinto a propósito: revisar es lo que conviene
+ * casi siempre y va destacada; guardar incompleto existe porque a veces el dato
+ * no está disponible, pero no debería ser el camino cómodo.
+ */
+
+.req {
+  padding: 0;
+  margin: auto;
+  color: var(--vt-text);
+  background: transparent;
+  border: 0;
+
+  &::backdrop {
+    background: rgb(12 14 18 / 58%);
+    backdrop-filter: blur(3px);
+  }
+}
+
+.req__panel {
+  display: flex;
+  flex-direction: column;
+  width: min(480px, calc(100vw - 2rem));
+  max-height: calc(100vh - 4rem);
+  padding: var(--vt-space-6);
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-rule);
+  border-radius: var(--vt-radius-xl);
+  box-shadow: 0 28px 70px -22px rgb(12 14 18 / 50%);
+  animation: req-in 200ms cubic-bezier(0.2, 0, 0.2, 1);
+}
+
+@keyframes req-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.97);
+  }
+}
+
+.req__head {
+  text-align: center;
+
+  h2 {
+    margin-top: var(--vt-space-3);
+    font-size: var(--vt-text-xl);
+    line-height: 1.25;
+  }
+
+  p {
+    margin-top: 8px;
+    font-size: var(--vt-text-sm);
+    line-height: 1.55;
+    color: var(--vt-text-muted);
+  }
+}
+
+/* El halo alrededor del icono lo separa del fondo sin recurrir a una franja de
+   color en todo el ancho, que gritaría más de lo necesario. */
+.req__icon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin: 0 auto;
+  color: var(--vt-danger);
+  background: color-mix(in srgb, var(--vt-danger) 12%, transparent);
+  border-radius: var(--vt-radius-full);
+  box-shadow: 0 0 0 8px color-mix(in srgb, var(--vt-danger) 6%, transparent);
+}
+
+/* ── Lista ─────────────────────────────────────────────────────────────────── */
+
+/* Los grupos son lo que se desplaza: la cabecera y las acciones se quedan
+   fijas cuando la lista es larga. */
+.req__groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vt-space-4);
+  margin-top: var(--vt-space-5);
+  overflow-y: auto;
+}
+
+.req__group-head {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  padding-bottom: 7px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--vt-rule);
+}
+
+.req__group-number {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--vt-on-state);
+  background: var(--vt-danger);
+  border-radius: var(--vt-radius-full);
+}
+
+.req__group-label {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--vt-text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  overflow-wrap: anywhere;
+}
+
+.req__group-count {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--vt-text-subtle);
+}
+
+.req__list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+
+  button {
+    display: flex;
+    gap: var(--vt-space-3);
+    align-items: center;
+    width: 100%;
+    padding: 11px var(--vt-space-3);
+    text-align: left;
+    background: var(--vt-surface-2);
+    border: 1px solid transparent;
+    border-radius: var(--vt-radius);
+    transition:
+      background var(--vt-transition),
+      border-color var(--vt-transition);
+
+    &:hover {
+      background: color-mix(in srgb, var(--vt-danger) 7%, transparent);
+      border-color: color-mix(in srgb, var(--vt-danger) 28%, transparent);
+    }
+
+    vt-icon {
+      flex-shrink: 0;
+      color: var(--vt-text-subtle);
+    }
+  }
+}
+
+.req__marker {
+  flex-shrink: 0;
+  width: 9px;
+  height: 9px;
+  background: var(--vt-danger);
+  border-radius: var(--vt-radius-full);
+}
+
+.req__field {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--vt-text-sm);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.req__page {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--vt-text-subtle);
+}
+
+/* ── Acciones ──────────────────────────────────────────────────────────────── */
+
+.req__foot {
+  display: flex;
+  gap: var(--vt-space-2);
+  align-items: center;
+  margin-top: var(--vt-space-5);
+}
+
+.req__ghost {
+  flex: 1;
+  padding: 12px var(--vt-space-4);
+  font-size: var(--vt-text-sm);
+  font-weight: 600;
+  color: var(--vt-text-muted);
+  background: transparent;
+  border: 1px solid var(--vt-rule-strong);
+  border-radius: var(--vt-radius-full);
+
+  &:hover {
+    color: var(--vt-text);
+    background: var(--vt-surface-2);
+  }
+}
+
+.req__primary {
+  display: inline-flex;
+  flex: 1;
+  gap: 7px;
+  align-items: center;
+  justify-content: center;
+  padding: 12px var(--vt-space-4);
+  font-size: var(--vt-text-sm);
+  font-weight: 650;
+  color: var(--vt-on-brand);
+  background: var(--vt-brand);
+  border: 0;
+  border-radius: var(--vt-radius-full);
+
+  &:hover {
+    background: var(--vt-brand-dark);
+  }
+}
+
+@media (max-width: 480px) {
+  .req__foot {
+    flex-direction: column-reverse;
+
+    button {
+      width: 100%;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .req__panel {
+    animation: none;
+  }
+}

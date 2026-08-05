@@ -1,0 +1,152 @@
+/**
+ * Diálogo de confirmación.
+ *
+ * Icono, titular, explicación y las dos salidas, en ese orden: es la secuencia
+ * de preguntas de quien lo ve —qué pasa, por qué, qué hago—. La acción que
+ * confirma va a la derecha y con peso; la de cancelar, sin relleno, porque
+ * cancelar nunca debería ser el camino que más llama la atención.
+ */
+
+.cdlg {
+  padding: 0;
+  margin: auto;
+  color: var(--vt-text);
+  background: transparent;
+  border: 0;
+
+  &::backdrop {
+    background: rgb(12 14 18 / 58%);
+    backdrop-filter: blur(3px);
+  }
+}
+
+.cdlg__panel {
+  width: min(420px, calc(100vw - 2rem));
+  padding: var(--vt-space-6);
+  text-align: center;
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-rule);
+  border-radius: var(--vt-radius-xl);
+  box-shadow: 0 28px 70px -22px rgb(12 14 18 / 50%);
+  animation: cdlg-in 190ms cubic-bezier(0.2, 0, 0.2, 1);
+
+  h2 {
+    margin-top: var(--vt-space-3);
+    font-size: var(--vt-text-lg);
+    line-height: 1.3;
+  }
+}
+
+@keyframes cdlg-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.97);
+  }
+}
+
+/* `--tone` lo fija la variante y lo consumen el icono y el botón principal. */
+.cdlg__panel--brand {
+  --tone: var(--vt-brand);
+}
+.cdlg__panel--warning {
+  --tone: var(--vt-warning);
+}
+.cdlg__panel--danger {
+  --tone: var(--vt-danger);
+}
+.cdlg__panel--info {
+  --tone: var(--vt-info);
+}
+
+/* El halo separa el icono del fondo sin una franja de color a todo lo ancho,
+   que gritaría más de lo que la mayoría de estos avisos merece. */
+.cdlg__icon {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  margin: 0 auto;
+  color: var(--tone);
+  background: color-mix(in srgb, var(--tone) 12%, transparent);
+  border-radius: var(--vt-radius-full);
+  box-shadow: 0 0 0 7px color-mix(in srgb, var(--tone) 6%, transparent);
+}
+
+.cdlg__message {
+  margin-top: 8px;
+  font-size: var(--vt-text-sm);
+  line-height: 1.55;
+  color: var(--vt-text-muted);
+}
+
+/* El detalle técnico, más apagado: ayuda a quien lo necesita sin competir con
+   la explicación principal. */
+.cdlg__detail {
+  padding: 9px 12px;
+  margin-top: var(--vt-space-3);
+  font-size: var(--vt-text-xs);
+  line-height: 1.5;
+  color: var(--vt-text-subtle);
+  text-align: left;
+  background: var(--vt-surface-2);
+  border-radius: var(--vt-radius-sm);
+}
+
+.cdlg__actions {
+  display: flex;
+  gap: var(--vt-space-2);
+  align-items: center;
+  margin-top: var(--vt-space-5);
+}
+
+.cdlg__cancel {
+  flex: 1;
+  padding: 12px var(--vt-space-4);
+  font-size: var(--vt-text-sm);
+  font-weight: 600;
+  color: var(--vt-text-muted);
+  background: transparent;
+  border: 1px solid var(--vt-rule-strong);
+  border-radius: var(--vt-radius-full);
+
+  &:hover {
+    color: var(--vt-text);
+    background: var(--vt-surface-2);
+  }
+}
+
+.cdlg__confirm {
+  flex: 1;
+  padding: 12px var(--vt-space-4);
+  font-size: var(--vt-text-sm);
+  font-weight: 650;
+  color: var(--vt-on-state);
+  background: var(--tone);
+  border: 0;
+  border-radius: var(--vt-radius-full);
+
+  &:hover:not(:disabled) {
+    filter: brightness(0.92);
+  }
+
+  &:disabled {
+    cursor: progress;
+    opacity: 0.7;
+  }
+}
+
+@media (max-width: 420px) {
+  .cdlg__actions {
+    flex-direction: column-reverse;
+
+    button {
+      width: 100%;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cdlg__panel {
+    animation: none;
+  }
+}

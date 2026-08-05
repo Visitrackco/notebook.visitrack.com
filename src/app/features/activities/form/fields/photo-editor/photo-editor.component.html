@@ -1,0 +1,128 @@
+<div class="pedit">
+  <header class="pedit__bar">
+    <button type="button" class="pedit__close" (click)="close()" aria-label="Cerrar sin guardar">
+      <vt-icon name="close" [size]="20" />
+    </button>
+
+    <span class="pedit__title">Editar foto</span>
+
+    <button type="button" class="pedit__save" [disabled]="saving()" (click)="exportImage()">
+      <vt-icon name="check" [size]="17" />
+      {{ saving() ? 'Guardando…' : 'Guardar' }}
+    </button>
+  </header>
+
+  <!-- El lienzo se escala para caber; los trazos se guardan en coordenadas de
+       la imagen, así que no se desplazan al cambiar el tamaño de la ventana. -->
+  <div class="pedit__stage">
+    <canvas
+      #canvas
+      class="pedit__canvas"
+      [class.pedit__canvas--crop]="tool() === 'crop'"
+      (pointerdown)="onPointerDown($event)"
+      (pointermove)="onPointerMove($event)"
+      (pointerup)="onPointerUp()"
+      (pointercancel)="onPointerUp()"
+    ></canvas>
+  </div>
+
+  <footer class="pedit__tools">
+    <!-- ── Herramienta ─────────────────────────────────────────────────── -->
+    <div class="pedit__group">
+      <button
+        type="button"
+        class="pedit__tool"
+        [class.pedit__tool--on]="tool() === 'draw'"
+        (click)="setTool('draw')"
+        title="Dibujar"
+      >
+        <vt-icon name="clipboard" [size]="18" />
+        <span>Dibujar</span>
+      </button>
+      <button
+        type="button"
+        class="pedit__tool"
+        [class.pedit__tool--on]="tool() === 'crop'"
+        (click)="setTool('crop')"
+        title="Recortar"
+      >
+        <vt-icon name="box" [size]="18" />
+        <span>Recortar</span>
+      </button>
+      <button type="button" class="pedit__tool" (click)="rotate()" title="Girar 90 grados">
+        <vt-icon name="refresh" [size]="18" />
+        <span>Girar</span>
+      </button>
+    </div>
+
+    <!-- ── Trazo ───────────────────────────────────────────────────────── -->
+    @if (tool() === 'draw') {
+      <div class="pedit__group pedit__group--colors">
+        @for (value of colors; track value) {
+          <button
+            type="button"
+            class="pedit__color"
+            [class.pedit__color--on]="color() === value"
+            [style.background]="value"
+            (click)="color.set(value)"
+            [attr.aria-label]="'Color ' + value"
+          ></button>
+        }
+      </div>
+
+      <div class="pedit__group">
+        @for (value of widths; track value) {
+          <button
+            type="button"
+            class="pedit__width"
+            [class.pedit__width--on]="width() === value"
+            (click)="width.set(value)"
+            [attr.aria-label]="'Grosor ' + value"
+          >
+            <span [style.width.px]="value" [style.height.px]="value"></span>
+          </button>
+        }
+      </div>
+
+      <div class="pedit__group">
+        <button type="button" class="pedit__tool" [disabled]="!canUndo()" (click)="undo()">
+          <vt-icon name="chevron" [size]="17" class="pedit__undo-icon" />
+          <span>Deshacer</span>
+        </button>
+        <button type="button" class="pedit__tool" [disabled]="!canUndo()" (click)="clearStrokes()">
+          <vt-icon name="trash" [size]="17" />
+          <span>Limpiar</span>
+        </button>
+      </div>
+    }
+
+    <!-- ── Recorte ─────────────────────────────────────────────────────── -->
+    @if (tool() === 'crop') {
+      <div class="pedit__group">
+        <span class="pedit__hint">Arrastra sobre la foto para marcar el área</span>
+        <button type="button" class="pedit__tool pedit__tool--primary" (click)="applyCrop()">
+          <vt-icon name="check" [size]="17" />
+          <span>Aplicar</span>
+        </button>
+        @if (hasCrop()) {
+          <button type="button" class="pedit__tool" (click)="resetCrop()">
+            <vt-icon name="refresh" [size]="17" />
+            <span>Foto completa</span>
+          </button>
+        }
+      </div>
+    }
+  </footer>
+</div>
+
+<vt-confirm-dialog
+  [open]="askingDiscard()"
+  tone="warning"
+  icon="alert"
+  title="Hay dibujos sobre la foto"
+  message="Al girar o recortar, las marcas que hiciste se borrarán."
+  confirmLabel="Continuar"
+  cancelLabel="Cancelar"
+  (confirm)="confirmDiscard()"
+  (cancel)="cancelDiscard()"
+/>

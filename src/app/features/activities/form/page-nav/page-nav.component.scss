@@ -1,0 +1,412 @@
+/**
+ * Navegación inferior.
+ *
+ * Pegada al fondo y a todo el ancho, como la de la app. Se queda ahí mientras
+ * se baja por los campos: al terminar la página, la mano ya está abajo.
+ */
+
+:host {
+  position: sticky;
+  bottom: 0;
+  z-index: 12;
+  display: block;
+
+  /**
+   * El velo evita que los campos se transparenten bajo la barra al desplazarse
+   * y se lean encima de los botones.
+   *
+   * Se degrada hacia `--vt-surface` y no hacia `--vt-bg`: esta barra vive
+   * dentro del panel de la actividad, no sobre el fondo de la página. Con el
+   * color equivocado aparecía una banda de otro tono justo encima de los
+   * botones — y se nota más ahora que el fondo de la página es de papel.
+   */
+  padding-top: var(--vt-space-3);
+  margin-top: var(--vt-space-2);
+  background: linear-gradient(to top, var(--vt-surface) 68%, transparent);
+}
+
+.pagenav {
+  display: flex;
+  padding: var(--vt-space-3);
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-rule);
+  border-radius: var(--vt-radius-lg);
+  box-shadow: var(--vt-shadow-lg);
+
+  /* En el teléfono los botones necesitan el ancho más que el margen interior:
+     «Guardar actividad» a la derecha y «Anterior» a la izquierda se tocaban. */
+  @media (max-width: 640px) {
+    padding: var(--vt-space-2);
+  }
+}
+
+/**
+ * Anterior a la izquierda, indicador al centro, guardar o siguiente a la
+ * derecha.
+ *
+ * `flex: 1` es lo que hace que la fila ocupe el ancho de la barra. Sin él se
+ * dimensiona por su contenido y los tres botones quedan apelotonados a la
+ * izquierda —justo lo que pasaba con los formularios de una sola página, donde
+ * no hay indicador que rellene el hueco.
+ */
+.pagenav__row {
+  display: flex;
+  flex: 1;
+  gap: var(--vt-space-2);
+  align-items: center;
+  min-width: 0;
+}
+
+.pagenav__arrow {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  padding: 11px var(--vt-space-4);
+  font-size: var(--vt-text-sm);
+  font-weight: 600;
+  color: var(--vt-text);
+  background: var(--vt-surface-2);
+  border: 1px solid var(--vt-rule);
+  border-radius: var(--vt-radius-full);
+  transition:
+    background var(--vt-transition),
+    border-color var(--vt-transition);
+
+  vt-icon {
+    /* El icono apunta a la derecha; en «Anterior» se voltea. */
+    transform: rotate(180deg);
+  }
+
+  &:hover:not(:disabled) {
+    background: var(--vt-surface-3);
+    border-color: var(--vt-rule-strong);
+  }
+
+  &:disabled {
+    color: var(--vt-text-subtle);
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+}
+
+.pagenav__arrow--next vt-icon {
+  transform: none;
+}
+
+/* ── Indicador central ─────────────────────────────────────────────────────── */
+
+.pagenav__indicator {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 8px;
+  align-items: center;
+  padding: 9px 14px;
+  background: var(--vt-surface-2);
+  border: 1px solid transparent;
+  border-radius: var(--vt-radius-full);
+  transition:
+    background var(--vt-transition),
+    border-color var(--vt-transition);
+
+  &:hover {
+    background: var(--vt-surface-3);
+    border-color: var(--vt-rule);
+  }
+}
+
+.pagenav__spacer {
+  flex: 1;
+}
+
+.pagenav__dots {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+/* El punto de la página actual se alarga en vez de crecer: mantiene la altura
+   de la fila y se distingue igual de bien. */
+.pagenav__dot {
+  width: 6px;
+  height: 6px;
+  background: var(--vt-rule-strong);
+  border-radius: 3px;
+  transition:
+    width var(--vt-transition),
+    background var(--vt-transition);
+}
+
+.pagenav__dot--current {
+  width: 20px;
+  background: var(--vt-brand);
+}
+
+/* Rojo en las que tienen algo pendiente, también cuando es la actual. */
+.pagenav__dot--incomplete {
+  background: var(--vt-danger);
+}
+
+.pagenav__counter {
+  font-size: var(--vt-text-sm);
+  font-weight: 700;
+  color: var(--vt-brand);
+}
+
+.pagenav__unfold {
+  font-size: 10px;
+  line-height: 1;
+  color: var(--vt-text-subtle);
+  letter-spacing: -2px;
+}
+
+/* ── Guardar ───────────────────────────────────────────────────────────────── */
+
+/* Ocupa el sitio de «Siguiente» en la última página, así que comparte su
+   posición en la fila y solo cambia de peso visual. */
+.pagenav__save {
+  display: inline-flex;
+
+  /* No crece, pero sí se encoge si el ancho aprieta. Con `flex: 1` se repartía
+     el espacio con el botón de la izquierda y los dos quedaban juntos en el
+     centro, sin nada que los separase. */
+  flex: 0 1 auto;
+  gap: 8px;
+
+  /* Pegado a la derecha en cualquier ancho: es la acción que cierra el trabajo
+     y su posición no debería moverse según cuántas páginas tenga el formulario
+     o cuánto sitio quede libre. */
+  margin-left: auto;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  padding: 11px var(--vt-space-5);
+  font-size: var(--vt-text-sm);
+  font-weight: 650;
+  color: var(--vt-on-brand);
+  background: var(--vt-brand);
+  border: 0;
+  border-radius: var(--vt-radius-full);
+  transition: background var(--vt-transition);
+
+  &:hover:not(:disabled) {
+    background: var(--vt-brand-dark);
+  }
+
+  &:disabled {
+    cursor: progress;
+    opacity: 0.7;
+  }
+}
+
+/* En pantalla ancha las flechas ocupan lo justo y el indicador queda centrado
+   de verdad, con el mismo hueco a cada lado. */
+@media (min-width: 720px) {
+  .pagenav__row .pagenav__indicator {
+    margin: 0 auto;
+  }
+}
+
+/**
+ * En pantalla estrecha las flechas se reducen al icono: su texto empujaría el
+ * indicador fuera del centro.
+ *
+ * El de guardar **conserva el suyo**: es la acción que cierra el trabajo, y un
+ * icono suelto no basta para distinguirla de una flecha más.
+ */
+@media (max-width: 460px) {
+  .pagenav__arrow {
+    flex: 0 0 auto;
+    padding: 11px 14px;
+
+    span {
+      display: none;
+    }
+  }
+
+  .pagenav__indicator {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .pagenav__save {
+    min-width: 0;
+    padding: 11px var(--vt-space-3);
+    font-size: var(--vt-text-xs);
+
+    span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+}
+
+/* ── Listado de páginas ────────────────────────────────────────────────────── */
+
+.pagepick {
+  padding: 0;
+  margin: auto;
+  color: var(--vt-text);
+  background: transparent;
+  border: 0;
+
+  &::backdrop {
+    background: rgb(12 14 18 / 55%);
+    backdrop-filter: blur(2px);
+  }
+}
+
+.pagepick__panel {
+  display: flex;
+  flex-direction: column;
+  width: min(460px, calc(100vw - 2rem));
+  max-height: min(620px, calc(100vh - 4rem));
+  padding: var(--vt-space-5);
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-rule);
+  border-radius: var(--vt-radius-xl);
+  box-shadow: 0 24px 60px -20px rgb(12 14 18 / 45%);
+  animation: pagepick-in 180ms cubic-bezier(0.2, 0, 0.2, 1);
+}
+
+@keyframes pagepick-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+}
+
+.pagepick__header {
+  display: flex;
+  gap: var(--vt-space-3);
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--vt-space-3);
+
+  h2 {
+    font-size: var(--vt-text-lg);
+  }
+
+  p {
+    margin-top: 2px;
+    font-size: var(--vt-text-xs);
+    color: var(--vt-text-muted);
+  }
+}
+
+.pagepick__close {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  color: var(--vt-text-subtle);
+  background: var(--vt-surface-2);
+  border: 0;
+  border-radius: var(--vt-radius-full);
+
+  &:hover {
+    color: var(--vt-text);
+    background: var(--vt-surface-3);
+  }
+}
+
+.pagepick__list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0;
+  margin: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.pagepick__item {
+  display: flex;
+  gap: var(--vt-space-3);
+  align-items: center;
+  width: 100%;
+  padding: 10px var(--vt-space-3);
+  text-align: left;
+  background: transparent;
+  border: 1.5px solid transparent;
+  border-radius: var(--vt-radius);
+  transition:
+    background var(--vt-transition),
+    border-color var(--vt-transition);
+
+  &:hover {
+    background: var(--vt-surface-2);
+  }
+
+  vt-icon {
+    flex-shrink: 0;
+    margin-left: auto;
+    color: var(--vt-brand);
+  }
+}
+
+.pagepick__item--current {
+  background: var(--vt-icon-brand-bg);
+  border-color: color-mix(in srgb, var(--vt-brand) 40%, transparent);
+}
+
+.pagepick__item--incomplete .pagepick__number {
+  color: var(--vt-on-state);
+  background: var(--vt-danger);
+}
+
+.pagepick__number {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  font-size: var(--vt-text-xs);
+  font-weight: 700;
+  color: var(--vt-text-muted);
+  background: var(--vt-surface-3);
+  border-radius: var(--vt-radius-full);
+}
+
+.pagepick__label {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--vt-text-sm);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.pagepick__flag {
+  flex-shrink: 0;
+  padding: 3px 9px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--vt-danger);
+  background: color-mix(in srgb, var(--vt-danger) 12%, transparent);
+  border-radius: var(--vt-radius-full);
+}
+
+@media (max-width: 560px) {
+  .pagepick {
+    width: 100%;
+    max-width: 100%;
+    margin: auto auto 0;
+  }
+
+  .pagepick__panel {
+    width: 100%;
+    border-radius: var(--vt-radius-xl) var(--vt-radius-xl) 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pagenav__dot,
+  .pagepick__panel {
+    transition: none;
+    animation: none;
+  }
+}

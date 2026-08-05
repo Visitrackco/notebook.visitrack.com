@@ -1,0 +1,222 @@
+/**
+ * Panel de acciones de una actividad.
+ *
+ * Discos grandes en cuadrícula, como en la app. La alternativa —un menú de
+ * líneas de texto— es más compacta pero obliga a leer cada opción para
+ * distinguirlas; aquí el color y la forma hacen ese trabajo, y el área de
+ * acierto es varias veces mayor.
+ */
+
+.actions {
+  padding: 0;
+  color: var(--vt-text);
+  background: transparent;
+  border: 0;
+
+  /* Centrado en pantalla ancha; pegado abajo en móvil (ver el @media final). */
+  margin: auto;
+
+  &::backdrop {
+    background: rgb(12 14 18 / 55%);
+    backdrop-filter: blur(2px);
+  }
+}
+
+.actions__panel {
+  width: min(560px, calc(100vw - 2rem));
+  padding: var(--vt-space-5);
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-rule);
+  border-radius: var(--vt-radius-xl);
+  box-shadow: 0 24px 60px -20px rgb(12 14 18 / 45%);
+  animation: actions-in 180ms cubic-bezier(0.2, 0, 0.2, 1);
+}
+
+@keyframes actions-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+}
+
+.actions__header {
+  display: flex;
+  gap: var(--vt-space-3);
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--vt-space-4);
+
+  h2 {
+    font-size: var(--vt-text-lg);
+    line-height: 1.3;
+  }
+
+  p {
+    margin-top: 2px;
+    font-size: var(--vt-text-xs);
+    color: var(--vt-text-muted);
+  }
+}
+
+.actions__close {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  color: var(--vt-text-subtle);
+  background: var(--vt-surface-2);
+  border: 0;
+  border-radius: var(--vt-radius-full);
+
+  &:hover {
+    color: var(--vt-text);
+    background: var(--vt-surface-3);
+  }
+}
+
+/* Tres por fila en pantalla normal; dos en las estrechas. `auto-fit` con mínimo
+   holgado lo resuelve sin puntos de corte. */
+.actions__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(148px, 100%), 1fr));
+  gap: var(--vt-space-2);
+}
+
+.actions__item {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  align-items: center;
+  padding: var(--vt-space-4) var(--vt-space-2);
+  text-align: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--vt-radius-lg);
+  transition:
+    background var(--vt-transition),
+    border-color var(--vt-transition),
+    transform var(--vt-transition);
+
+  &:hover:not(:disabled) {
+    background: var(--vt-surface-2);
+    border-color: var(--vt-rule);
+    transform: translateY(-2px);
+
+    .actions__disc {
+      transform: scale(1.06);
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--tone);
+    outline-offset: 2px;
+  }
+}
+
+/* Deshabilitada pero legible: el motivo es lo importante, y atenuarlo hasta
+   hacerlo ilegible dejaría al usuario sin saber qué le falta. */
+.actions__item--off {
+  cursor: not-allowed;
+
+  .actions__disc {
+    opacity: 0.35;
+  }
+
+  .actions__label {
+    color: var(--vt-text-subtle);
+  }
+
+  .actions__hint {
+    font-style: italic;
+    color: var(--vt-warning);
+  }
+}
+
+/**
+ * El disco.
+ *
+ * Color sólido y no tinte translúcido: es el elemento que se busca con la
+ * vista, y sobre el fondo del panel un tinte al 12 % se pierde. El icono va en
+ * blanco encima.
+ */
+.actions__disc {
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+
+  /* Mismo motivo que en las fichas: en oscuro los colores de estado son claros,
+     y un icono blanco encima se pierde. */
+  color: var(--vt-on-state);
+  background: var(--tone);
+  border-radius: var(--vt-radius-full);
+  box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--tone) 75%, transparent);
+  transition: transform var(--vt-transition);
+}
+
+.actions__item--brand {
+  --tone: var(--vt-brand);
+}
+.actions__item--neutral {
+  --tone: var(--vt-text-muted);
+}
+.actions__item--warning {
+  --tone: var(--vt-warning);
+}
+.actions__item--danger {
+  --tone: var(--vt-danger);
+}
+
+.actions__label {
+  font-size: var(--vt-text-sm);
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.actions__hint {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--vt-text-subtle);
+}
+
+/* En móvil el panel se ancla abajo: es donde alcanza el pulgar, y es como se
+   comporta el panel de la app. */
+@media (max-width: 560px) {
+  .actions {
+    width: 100%;
+    max-width: 100%;
+    margin: auto auto 0;
+  }
+
+  .actions__panel {
+    width: 100%;
+    padding-bottom: var(--vt-space-6);
+    border-radius: var(--vt-radius-xl) var(--vt-radius-xl) 0 0;
+  }
+
+  @keyframes actions-in {
+    from {
+      transform: translateY(100%);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .actions__panel {
+    animation: none;
+  }
+
+  .actions__item,
+  .actions__disc {
+    transition: none;
+  }
+
+  .actions__item:hover:not(:disabled) {
+    transform: none;
+
+    .actions__disc {
+      transform: none;
+    }
+  }
+}

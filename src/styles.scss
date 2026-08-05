@@ -1,0 +1,1063 @@
+/**
+ * Estilos globales y sistema de diseño.
+ *
+ * Todo el color, espaciado y tipografía sale de las variables de este archivo.
+ * Los componentes NO definen colores propios: si algo necesita un tono nuevo,
+ * se agrega aquí como variable. Es lo que permite cambiar el tema —o soportar
+ * modo oscuro— sin recorrer cada componente.
+ */
+
+@use '@angular/material' as mat;
+
+/**
+ * Roboto, servida desde este mismo servidor.
+ *
+ * La documentación de Angular Material la incluye con un `<link>` a Google
+ * Fonts, pero esta aplicación tiene que arrancar sin conexión: una petición a
+ * un dominio externo falla justo en el primer uso en campo, que es cuando peor
+ * viene. Alojarla cuesta 72 KB y elimina esa dependencia — y de paso evita que
+ * cada visita se anuncie a un tercero.
+ *
+ * Es la versión **variable** (100–900): un archivo por subconjunto cubre todos
+ * los pesos. Con los que usa la interfaz —400, 500, 600, 650, 700— la
+ * alternativa estática serían cinco descargas.
+ *
+ * `latin` cubre el español; `latin-ext` añade los diacríticos de otras lenguas
+ * europeas y solo se descarga si algún texto los necesita, gracias a
+ * `unicode-range`.
+ *
+ * `swap` pinta el texto de inmediato con la fuente del sistema y cambia a
+ * Roboto al cargar: ante un arranque lento es preferible un cambio de
+ * tipografía a una pantalla en blanco.
+ */
+@font-face {
+  font-family: 'Roboto';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/roboto-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Roboto';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/roboto-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+    U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+    U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/**
+ * Material 3.
+ *
+ * Se usa solo para los controles donde su comportamiento vale la pena —el
+ * interruptor, con su animación y su accesibilidad ya resueltas— no como
+ * sistema visual completo: la identidad la define nuestro propio conjunto de
+ * tokens.
+ *
+ * `mat.theme` emite las variables de M3. Después se sobrescriben las que
+ * gobiernan el color para que Material siga la marca elegida por el usuario en
+ * vez de su paleta por defecto.
+ */
+html {
+  @include mat.theme(
+    (
+      color: (
+        primary: mat.$red-palette,
+        theme-type: light,
+      ),
+      typography: Roboto,
+      density: 0,
+    )
+  );
+}
+
+/* ── Design tokens ─────────────────────────────────────────────────────────── */
+
+/**
+ * La marca es **rojo y negro**. El negro construye la estructura (barra
+ * lateral, tipografía, superficies oscuras) y el rojo se reserva para lo que
+ * exige atención: la acción principal, la sección activa, los acentos.
+ *
+ * ## Personalización
+ *
+ * El color de marca sale de `--vt-brand-*`. Cambiando esas tres variables se
+ * repinta la aplicación entera, porque todo lo demás las deriva. `ThemeService`
+ * las sobrescribe en tiempo de ejecución para que cada compañía use su propio
+ * color sin recompilar.
+ *
+ * Los tokens de superficie y texto se redefinen bajo `[data-theme='dark']`.
+ * Ningún componente define colores propios: si hace falta un tono nuevo, se
+ * agrega aquí.
+ */
+:root {
+  /* Color de marca. Es lo único que hay que tocar para reteñir la aplicación. */
+  --vt-brand: #d32029;
+  --vt-brand-dark: #a3141c;
+  --vt-brand-light: #ef4444;
+
+  /* Derivados del negro corporativo. */
+  --vt-primary: #16181d;
+  --vt-primary-light: #262a32;
+  --vt-primary-lighter: #3a3f4a;
+  --vt-primary-dark: #0b0c0f;
+
+  /* El acento es la marca: rige botones, enlaces y estado activo. */
+  --vt-accent: var(--vt-brand);
+  --vt-accent-light: var(--vt-brand-light);
+
+  /* Estados. */
+  --vt-success: #15803d;
+  --vt-success-bg: #dcfce7;
+  --vt-warning: #b45309;
+  --vt-warning-bg: #fef3c7;
+  /* Fondo de fila que requiere atención. Mucho más tenue que `--vt-warning-bg`:
+     una fila entera con el amarillo del distintivo sería demasiado peso. */
+  --vt-row-warning: #fffbeb;
+  --vt-row-warning-hover: #fef6db;
+  --vt-danger: #b91c1c;
+  --vt-danger-bg: #fee2e2;
+  --vt-info: #334155;
+  --vt-info-bg: #e9edf2;
+
+  /**
+   * Color legible **encima** de un color de estado.
+   *
+   * Los estados se invierten con el tema: en claro son tonos profundos (un
+   * verde bosque, un ámbar quemado) y en oscuro son claros y saturados (un
+   * verde menta, un amarillo). Un icono blanco sobre un disco de estado se ve
+   * bien en claro y desaparece en oscuro, porque el disco pasó a ser casi tan
+   * claro como él.
+   *
+   * Este token acompaña esa inversión, así que cualquier elemento que use un
+   * estado como **fondo** debe tomar de aquí su color de texto o de trazo.
+   */
+  --vt-on-state: #ffffff;
+
+  /* Superficies. */
+  --vt-bg: #f5f6f8;
+  --vt-surface: #ffffff;
+  --vt-surface-2: #fafbfc;
+  --vt-surface-3: #eef0f3;
+
+  /* Texto. */
+  --vt-text: #15171c;
+  --vt-text-muted: #5f6672;
+  --vt-text-subtle: #8f96a3;
+  --vt-text-on-primary: #ffffff;
+
+  /* Bordes. */
+  --vt-border: #e2e5ea;
+  --vt-border-strong: #c8ccd4;
+
+  /* Tinte de marca al 8%, para fondos suaves de elementos activos. */
+  --vt-brand-tint: #fdeceD;
+
+  /**
+   * Discos de icono: pares de trazo y fondo por familia de color.
+   *
+   * Son tokens y no valores resueltos en cada componente por dos razones.
+   *
+   * La primera es que el par correcto **cambia con el tema**: los fondos pastel
+   * se vuelven manchas claras sobre superficie oscura, y hay que invertirlos a
+   * tonos profundos con el trazo aclarado. La segunda es que un componente **no
+   * puede** resolverlo por su cuenta: dentro de estilos con encapsulación,
+   * Angular reescribe `:root[data-theme='dark'] .algo` como
+   * `[_ngcontent-…]:root[data-theme='dark'] .algo[_ngcontent-…]`, y como el
+   * `<html>` nunca lleva el atributo de ámbito, la regla no llega a aplicarse
+   * jamás. El síntoma es silencioso —no hay error, el modo oscuro simplemente
+   * no cambia nada— y por eso conviene que estos pares vivan aquí.
+   */
+  --vt-icon-brand-fg: var(--vt-brand);
+  --vt-icon-brand-bg: color-mix(in srgb, var(--vt-brand) 13%, transparent);
+  --vt-icon-amber-fg: #b45309;
+  --vt-icon-amber-bg: #fef3c7;
+  --vt-icon-blue-fg: #1d4ed8;
+  --vt-icon-blue-bg: #dbeafe;
+  --vt-icon-green-fg: #15803d;
+  --vt-icon-green-bg: #dcfce7;
+
+  /**
+   * Color de texto legible sobre el color de marca.
+   *
+   * `ThemeService` lo recalcula al elegir un color: con un ámbar o un amarillo,
+   * el texto blanco desaparece; con un azul oscuro, el negro. La decisión se
+   * toma por luminancia y no a ojo, así que ningún color del selector deja un
+   * botón ilegible.
+   */
+  --vt-on-brand: #ffffff;
+
+  /**
+   * Tokens del formato.
+   *
+   * El sujeto de esta aplicación es la planilla de inspección: el formato que
+   * el técnico llenaba en papel sobre un portapapeles. De ahí salen los tres
+   * materiales que rigen el diseño —tinta, papel y sello— y la retícula.
+   */
+  --vt-ink: #101114;
+  --vt-ink-soft: #2a2d34;
+  /* Encabezado: un punto más claro que la barra lateral, para que el marco no
+     se lea como un único bloque plano. */
+  --vt-ink-header: #1c1f26;
+
+  /**
+   * El papel.
+   *
+   * Un crema apagado, el del papel de oficina, en lugar del blanco de las demás
+   * superficies. No es adorno: quien diligencia esto lleva años rellenando el
+   * mismo formato impreso, y el tono lo sitúa de inmediato en esa tarea. El
+   * blanco puro, además, deslumbra en una pantalla a pleno sol —que es donde se
+   * usa— y hace que las horas de formularios cansen más de lo necesario.
+   *
+   * Un marfil apagado, no el crema amarillo del papel reciclado: tiene que
+   * leerse como papel limpio y no llamar la atención sobre sí mismo. Las
+   * tarjetas siguen siendo blancas encima, así que se leen como hojas sobre una
+   * mesa y no como parches recortados.
+   *
+   * La diferencia con el blanco es pequeña a propósito. Basta para que la
+   * pantalla deje de deslumbrar a pleno sol —que es donde se usa esto— sin
+   * teñir de amarillo las fotografías que se revisan al lado.
+   */
+  --vt-paper: #faf8f4;
+  --vt-paper-rule: #ece7dd;
+
+  /**
+   * Grano del papel.
+   *
+   * Es un SVG en línea con `feTurbulence`: ruido fractal generado por el propio
+   * navegador, sin descargar ninguna imagen. Un color plano se lee como una
+   * superficie digital; con este grano —al 3,5 % de opacidad, casi invisible
+   * mirándolo de frente— la vista lo interpreta como una textura física.
+   *
+   * `baseFrequency` alta da un grano fino, de fibra, en vez de manchas. Va como
+   * token para que el tema oscuro pueda cambiar solo la opacidad sin repetir
+   * todo el filtro.
+   */
+  --vt-paper-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+
+  --vt-stamp: var(--vt-brand);
+
+  /* Línea de la planilla: la que separa un campo del siguiente. */
+  --vt-rule: #e4e4e0;
+  --vt-rule-strong: #c9c9c3;
+  /* Paso de la retícula del formato. */
+  --vt-grid: 26px;
+
+  /* Radios. */
+  --vt-radius-sm: 8px;
+  --vt-radius: 12px;
+  --vt-radius-lg: 18px;
+  --vt-radius-xl: 26px;
+  --vt-radius-full: 999px;
+
+  /* Sombras. Sutiles: la jerarquía la da el color, no la profundidad. */
+  --vt-shadow-sm: 0 1px 2px rgb(15 28 46 / 6%);
+  --vt-shadow: 0 4px 14px rgb(15 28 46 / 8%);
+  --vt-shadow-lg: 0 12px 32px rgb(15 28 46 / 12%);
+  --vt-shadow-xl: 0 24px 60px rgb(15 28 46 / 18%);
+
+  /**
+   * Relieve de las tarjetas.
+   *
+   * Tres capas: un contorno de 1px hecho con sombra en vez de borde —así no
+   * ocupa espacio ni recorta el fondo—, una sombra corta que asienta el bloque
+   * y una difusa que lo despega de la superficie.
+   */
+  --vt-card-shadow:
+    0 0 0 1px rgb(20 22 26 / 6%),
+    0 1px 2px rgb(20 22 26 / 4%),
+    0 8px 24px -12px rgb(20 22 26 / 18%);
+
+  /** El mismo relieve, acentuado, para el estado de foco o cursor encima. */
+  --vt-card-shadow-hover:
+    0 0 0 1px rgb(20 22 26 / 9%),
+    0 2px 4px rgb(20 22 26 / 5%),
+    0 14px 32px -14px rgb(20 22 26 / 26%);
+
+  /* Espaciado, en escala de 4px. */
+  --vt-space-1: 4px;
+  --vt-space-2: 8px;
+  --vt-space-3: 12px;
+  --vt-space-4: 16px;
+  --vt-space-5: 20px;
+  --vt-space-6: 24px;
+  --vt-space-8: 32px;
+  --vt-space-10: 40px;
+  --vt-space-12: 48px;
+
+  /**
+   * Tipografía — tres roles.
+   *
+   * **Roboto** para texto y titulares. Es la que Angular Material espera, así
+   * que sus controles y el resto de la interfaz dejan de mezclar dos familias.
+   * Va servida desde este mismo servidor (ver el `@font-face` de arriba): la
+   * aplicación debe abrir sin conexión, y una fuente traída de un dominio
+   * externo falla justo en el primer arranque en campo.
+   *
+   * Antes el titular usaba una grotesca condensada del sistema —Bahnschrift,
+   * DIN— que daba carácter de plano de ingeniería, pero solo existía en
+   * Windows: en macOS o Linux caía a una genérica y la aplicación se veía
+   * distinta según el equipo. Con Roboto se ve igual en todas partes, y el
+   * peso y el tracking siguen distinguiendo el titular del texto.
+   *
+   * `--vt-font-mono` queda para los **identificadores** —el GUID de una
+   * actividad, el del dispositivo—, donde el ancho fijo permite comparar
+   * carácter a carácter contra un ticket sin perder la cuenta. Las cifras no la
+   * usan: se alinean con `tabular-nums` sobre la misma Roboto, así que ya no
+   * hay números con aspecto de venir de otra aplicación.
+   *
+   * Se queda en fuentes del sistema porque la usan cadenas cortas y contadas, y
+   * no compensa un archivo más.
+   */
+  --vt-font-display: 'Roboto', 'Segoe UI', system-ui, sans-serif;
+  --vt-font: 'Roboto', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --vt-font-mono: 'Consolas', ui-monospace, 'Cascadia Mono', 'SF Mono', monospace;
+
+  --vt-text-xs: 12px;
+  --vt-text-sm: 13px;
+  --vt-text-base: 14px;
+  --vt-text-md: 16px;
+  --vt-text-lg: 18px;
+  --vt-text-xl: 22px;
+  --vt-text-2xl: 28px;
+
+  /* Tracking de los rótulos en mayúscula del formato. */
+  --vt-track-label: 1.4px;
+  --vt-track-display: -0.4px;
+
+  /* Transiciones. */
+  --vt-transition: 180ms cubic-bezier(0.4, 0, 0.2, 1);
+  --vt-transition-slow: 320ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Medidas del layout. */
+  --vt-sidebar-width: 264px;
+  --vt-sidebar-collapsed: 72px;
+  --vt-topbar-height: 62px;
+}
+
+/**
+ * Tema oscuro.
+ *
+ * Solo se redefinen superficies, texto y bordes: la marca no cambia, porque es
+ * la marca. Los fondos no son negro puro sino grises muy oscuros — el negro
+ * absoluto contra texto blanco produce un contraste que cansa la vista en
+ * sesiones largas.
+ */
+:root[data-theme='dark'] {
+  --vt-bg: #0d0e11;
+  --vt-surface: #16181d;
+  --vt-surface-2: #1c1f26;
+  --vt-surface-3: #262a32;
+
+  --vt-text: #eceef2;
+  --vt-text-muted: #a2a9b6;
+  --vt-text-subtle: #737b8a;
+
+  --vt-border: #2a2e37;
+  --vt-border-strong: #3b414c;
+
+  /* En oscuro el rojo puro vibra sobre el fondo: se aclara un punto. */
+  --vt-brand: #f04b52;
+  --vt-brand-dark: #d32029;
+  --vt-brand-light: #ff6b70;
+  --vt-brand-tint: #2a1416;
+
+  /* Discos de icono invertidos: el velo gana cuerpo para separarse del fondo y
+     el trazo se aclara para contrastar contra él. */
+  --vt-icon-brand-fg: var(--vt-brand-light);
+  --vt-icon-brand-bg: color-mix(in srgb, var(--vt-brand) 22%, transparent);
+  --vt-icon-amber-fg: #fbbf24;
+  --vt-icon-amber-bg: #2a2011;
+  --vt-icon-blue-fg: #93c5fd;
+  --vt-icon-blue-bg: #16233a;
+  --vt-icon-green-fg: #4ade80;
+  --vt-icon-green-bg: #16281c;
+
+  --vt-primary: #eceef2;
+  --vt-primary-light: #d5d9e0;
+  --vt-primary-lighter: #b9bfc9;
+  --vt-primary-dark: #ffffff;
+
+  --vt-success: #4ade80;
+  --vt-success-bg: #16281c;
+  --vt-warning: #fbbf24;
+  --vt-warning-bg: #2a2011;
+  /* En oscuro el amarillo pastel deslumbra: un tono cálido apenas más claro que
+     la superficie logra el mismo efecto sin agredir. */
+  --vt-row-warning: #24200f;
+  --vt-row-warning-hover: #2c2713;
+  --vt-danger: #f87171;
+  --vt-danger-bg: #2a1416;
+  --vt-info: #cbd5e1;
+  --vt-info-bg: #1e232b;
+
+  /* Los estados pasan a tonos claros: encima va tinta, no blanco. */
+  --vt-on-state: #0f1216;
+
+  --vt-shadow-sm: 0 1px 2px rgb(0 0 0 / 40%);
+  --vt-shadow: 0 4px 14px rgb(0 0 0 / 45%);
+  --vt-shadow-lg: 0 12px 32px rgb(0 0 0 / 55%);
+  --vt-shadow-xl: 0 24px 60px rgb(0 0 0 / 65%);
+
+  /**
+   * Materiales del formato en oscuro.
+   *
+   * `--vt-ink` **NO se invierte**: es el negro con el que está pintada la barra
+   * lateral y es un material, no un color de texto. Invertirlo dejaba el menú
+   * blanco en modo oscuro. Para texto sobre superficie está `--vt-text`, que sí
+   * se adapta al tema.
+   *
+   * Solo cambian el papel y las líneas, que sí son superficie.
+   */
+  /* Más oscuro que el fondo para que la barra lateral se distinga del área de
+     trabajo: menú (#0a0b0e) < fondo (#0d0e11) < tarjetas (#16181d). */
+  --vt-ink: #0a0b0e;
+  --vt-ink-soft: #262a32;
+  --vt-ink-header: #16181d;
+
+  /**
+   * El papel, de noche.
+   *
+   * Un crema oscuro no existe: aclarar el amarillo sobre fondo negro da un
+   * mostaza sucio contra el que pelea el texto claro. Lo que se conserva es la
+   * **intención** —que la mesa de trabajo se distinga del resto de la
+   * aplicación—, con un tono levemente cálido y un punto más claro que el
+   * fondo normal.
+   *
+   * El valor queda **entre** el fondo (`#0d0e11`) y las tarjetas (`#16181d`).
+   * Más claro que las tarjetas invertiría la jerarquía: los paneles se verían
+   * hundidos en la página en vez de apoyados sobre ella.
+   */
+  --vt-paper: #121216;
+  --vt-paper-rule: #33353c;
+
+  /**
+   * El grano, de noche, es blanco y va más suave.
+   *
+   * El ruido oscuro sobre una superficie oscura no se ve; el claro sí, pero al
+   * 2,5 % — sobre fondo oscuro el mismo grano se percibe bastante más que sobre
+   * uno claro, y a la opacidad del tema claro parecería una pantalla sucia.
+   */
+  --vt-paper-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025' style='mix-blend-mode:screen'/%3E%3C/svg%3E");
+
+  --vt-rule: #2a2e37;
+  --vt-rule-strong: #3b414c;
+
+  /* Sobre fondo oscuro el contorno claro desaparece: se invierte a una línea
+     luminosa y la sombra necesita más peso para leerse. */
+  --vt-card-shadow:
+    0 0 0 1px rgb(255 255 255 / 8%),
+    0 2px 6px rgb(0 0 0 / 40%),
+    0 10px 28px -14px rgb(0 0 0 / 60%);
+
+  --vt-card-shadow-hover:
+    0 0 0 1px rgb(255 255 255 / 14%),
+    0 4px 10px rgb(0 0 0 / 45%),
+    0 16px 36px -16px rgb(0 0 0 / 70%);
+}
+
+/**
+ * Cuando el usuario no eligió tema (`data-theme="system"` o sin atributo), se
+ * respeta la preferencia del sistema operativo.
+ */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --vt-bg: #0d0e11;
+    --vt-surface: #16181d;
+    --vt-surface-2: #1c1f26;
+    --vt-surface-3: #262a32;
+
+    /* Tinta, papel y línea del formato. Estaban solo en `[data-theme='dark']`,
+       así que con el tema en «sistema» la hoja y las separaciones se quedaban
+       con los valores claros sobre fondo oscuro. */
+    --vt-ink: #0a0b0e;
+    --vt-ink-soft: #262a32;
+    --vt-ink-header: #16181d;
+
+    --vt-paper: #121216;
+    --vt-paper-rule: #33353c;
+    --vt-paper-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025' style='mix-blend-mode:screen'/%3E%3C/svg%3E");
+
+    --vt-rule: #2a2e37;
+    --vt-rule-strong: #3b414c;
+
+    --vt-text: #eceef2;
+    --vt-text-muted: #a2a9b6;
+    --vt-text-subtle: #737b8a;
+
+    --vt-border: #2a2e37;
+    --vt-border-strong: #3b414c;
+
+    --vt-card-shadow:
+      0 0 0 1px rgb(255 255 255 / 8%),
+      0 2px 6px rgb(0 0 0 / 40%),
+      0 10px 28px -14px rgb(0 0 0 / 60%);
+
+    --vt-card-shadow-hover:
+      0 0 0 1px rgb(255 255 255 / 14%),
+      0 4px 10px rgb(0 0 0 / 45%),
+      0 16px 36px -16px rgb(0 0 0 / 70%);
+
+    --vt-brand: #f04b52;
+    --vt-brand-dark: #d32029;
+    --vt-brand-light: #ff6b70;
+    --vt-brand-tint: #2a1416;
+
+    --vt-icon-brand-fg: var(--vt-brand-light);
+    --vt-icon-brand-bg: color-mix(in srgb, var(--vt-brand) 22%, transparent);
+    --vt-icon-amber-fg: #fbbf24;
+    --vt-icon-amber-bg: #2a2011;
+    --vt-icon-blue-fg: #93c5fd;
+    --vt-icon-blue-bg: #16233a;
+    --vt-icon-green-fg: #4ade80;
+    --vt-icon-green-bg: #16281c;
+
+    --vt-primary: #eceef2;
+    --vt-primary-light: #d5d9e0;
+    --vt-primary-lighter: #b9bfc9;
+    --vt-primary-dark: #ffffff;
+
+    --vt-success: #4ade80;
+    --vt-success-bg: #16281c;
+    --vt-warning: #fbbf24;
+    --vt-warning-bg: #2a2011;
+    --vt-row-warning: #24200f;
+    --vt-row-warning-hover: #2c2713;
+    --vt-danger: #f87171;
+    --vt-danger-bg: #2a1416;
+    --vt-info: #cbd5e1;
+    --vt-info-bg: #1e232b;
+    --vt-on-state: #0f1216;
+  }
+}
+
+/* ── Reset ─────────────────────────────────────────────────────────────────── */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--vt-bg);
+  color: var(--vt-text);
+  font-family: var(--vt-font);
+  font-size: var(--vt-text-base);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin: 0;
+  font-family: var(--vt-font-display);
+  font-weight: 600;
+  line-height: 1.22;
+  letter-spacing: var(--vt-track-display);
+}
+
+/**
+ * Rótulo de campo del formato: mayúscula pequeña con tracking abierto, como el
+ * encabezado impreso sobre la línea donde se escribe el dato.
+ */
+.vt-label {
+  display: block;
+  font-family: var(--vt-font-display);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--vt-text-subtle);
+  text-transform: uppercase;
+  letter-spacing: var(--vt-track-label);
+}
+
+/** Cifras que deben alinearse: folios, consecutivos, conteos, identificadores. */
+/**
+ * Cifras que deben alinearse: folios, consecutivos, conteos, identificadores.
+ *
+ * Van en la **misma familia que el resto** y solo cambian la variante numérica.
+ * Antes usaban la monoespaciada, y con Roboto en toda la interfaz eso hacía que
+ * cada número saltara a la vista como si fuera de otra aplicación.
+ *
+ * La monoespaciada estaba ahí para que las cifras se alinearan en columna, pero
+ * eso lo resuelve `tabular-nums`: le pide a la fuente sus glifos de ancho fijo
+ * —Roboto los trae— sin cambiar de tipografía. Se conserva lo que se buscaba y
+ * desaparece el efecto secundario.
+ */
+.vt-figure {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+p {
+  margin: 0;
+}
+
+/**
+ * El color también se hereda.
+ *
+ * Sin `color: inherit`, el navegador le da a todo `<button>` el color de sistema
+ * `ButtonText` —negro fijo— y ese valor **no responde al tema**. El síntoma es
+ * engañoso: un botón con texto propio se ve bien en modo claro y sigue negro en
+ * oscuro, ilegible sobre superficie oscura, sin que ninguna regla de la hoja lo
+ * explique.
+ *
+ * Afecta a cualquier zona interactiva construida sobre un botón —una fila de
+ * lista, una tarjeta pulsable—, que es justo donde el texto importa. Los botones
+ * de Material y las clases `.vt-btn-*` fijan su propio color, así que esto no
+ * los toca.
+ */
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: var(--vt-brand);
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+/* Scrollbar discreta. Solo WebKit; en Firefox se deja la nativa. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--vt-border-strong);
+  border: 2px solid transparent;
+  border-radius: var(--vt-radius-full);
+  background-clip: content-box;
+
+  &:hover {
+    background: var(--vt-text-subtle);
+    background-clip: content-box;
+  }
+}
+
+/* ── Utilidades ────────────────────────────────────────────────────────────── */
+
+/** Visible solo para lectores de pantalla. */
+.vt-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/** Contenedor con scroll horizontal propio, para tablas anchas. */
+.vt-scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Componentes compartidos ───────────────────────────────────────────────── */
+
+/**
+ * Tarjeta.
+ *
+ * El relieve lo dan dos sombras superpuestas, no un borde: una línea de 1px muy
+ * tenue que hace de contorno y una sombra difusa por debajo. Un borde sólido
+ * marca un canto duro; así el bloque se separa del fondo sin recortarse contra
+ * él, que es lo que se busca sobre una superficie clara.
+ */
+.vt-card {
+  background: var(--vt-surface);
+  border: 0;
+  border-radius: var(--vt-radius-lg);
+  box-shadow: var(--vt-card-shadow);
+}
+
+.vt-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--vt-space-2);
+  padding: 10px 18px;
+  font-size: var(--vt-text-base);
+  font-weight: 600;
+  border: 1px solid transparent;
+  border-radius: var(--vt-radius);
+  transition:
+    background var(--vt-transition),
+    box-shadow var(--vt-transition),
+    transform var(--vt-transition),
+    border-color var(--vt-transition);
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+
+  &:not(:disabled):active {
+    transform: translateY(1px);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--vt-accent);
+    outline-offset: 2px;
+  }
+}
+
+/**
+ * Acción principal. Va en el color de marca.
+ *
+ * El texto usa `--vt-on-brand`, que se calcula por luminancia: así el botón
+ * sigue siendo legible con cualquier color que el usuario elija, incluidos los
+ * claros donde el blanco se pierde.
+ */
+.vt-btn-primary {
+  background: var(--vt-brand);
+  color: var(--vt-on-brand);
+
+  &:not(:disabled):hover {
+    background: var(--vt-brand-dark);
+    /* El hover oscurece el fondo, así que el texto pasa a blanco siempre. */
+    color: #fff;
+    box-shadow: var(--vt-shadow);
+  }
+}
+
+/** Acción secundaria de peso: negro, para no competir con la principal. */
+.vt-btn-dark {
+  background: var(--vt-primary);
+  color: var(--vt-text-on-primary);
+
+  &:not(:disabled):hover {
+    background: var(--vt-primary-light);
+    box-shadow: var(--vt-shadow);
+  }
+}
+
+.vt-btn-ghost {
+  background: transparent;
+  color: var(--vt-text-muted);
+  border-color: var(--vt-border);
+
+  &:not(:disabled):hover {
+    background: var(--vt-surface-2);
+    color: var(--vt-text);
+  }
+}
+
+.vt-btn-danger {
+  background: var(--vt-danger);
+  color: #fff;
+
+  &:not(:disabled):hover {
+    background: #b91c1c;
+  }
+}
+
+/** Etiqueta de estado. El color se pasa con una clase modificadora. */
+.vt-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  font-size: var(--vt-text-xs);
+  font-weight: 600;
+  border-radius: var(--vt-radius-full);
+  white-space: nowrap;
+}
+
+.vt-badge-success {
+  background: var(--vt-success-bg);
+  color: var(--vt-success);
+}
+
+.vt-badge-warning {
+  background: var(--vt-warning-bg);
+  color: var(--vt-warning);
+}
+
+.vt-badge-danger {
+  background: var(--vt-danger-bg);
+  color: var(--vt-danger);
+}
+
+.vt-badge-info {
+  background: var(--vt-info-bg);
+  color: var(--vt-info);
+}
+
+/* ── Material 3: alineación con nuestros tokens ────────────────────────────── */
+
+/**
+ * Material trae su propia paleta. Estas variables la redirigen a la marca, así
+ * que cuando el usuario elige un color en el perfil, el interruptor cambia con
+ * el resto de la aplicación en vez de quedarse en el rojo por defecto.
+ *
+ * El texto sobre la marca usa `--vt-on-brand`, que se calcula por luminancia:
+ * con un color claro el interruptor sigue siendo legible.
+ */
+:root {
+  --mat-sys-primary: var(--vt-brand);
+  --mat-sys-on-primary: var(--vt-on-brand);
+  --mat-sys-primary-container: var(--vt-brand-tint);
+  --mat-sys-on-primary-container: var(--vt-brand-dark);
+
+  --mat-sys-surface: var(--vt-surface);
+  --mat-sys-on-surface: var(--vt-text);
+  --mat-sys-surface-variant: var(--vt-surface-3);
+  --mat-sys-on-surface-variant: var(--vt-text-muted);
+  --mat-sys-outline: var(--vt-border-strong);
+  --mat-sys-outline-variant: var(--vt-rule);
+
+  --mat-sys-error: var(--vt-danger);
+
+  /**
+   * La familia de contenedores.
+   *
+   * `mat.theme` se emite con `theme-type: light`, así que **todos** los tokens
+   * de Material salen con la paleta clara y se quedan así aunque la aplicación
+   * cambie de tema. Los de arriba ya se redirigían, pero los emergentes
+   * —calendario del selector de fecha, panel del reloj, menús— no usan
+   * `--mat-sys-surface` sino esta otra familia, y por eso se dibujaban en claro
+   * sobre el resto en oscuro: fondo blanco, o texto oscuro sobre fondo oscuro,
+   * según el trozo.
+   *
+   * Al derivarlos de nuestros tokens siguen el tema solos, sin necesidad de
+   * duplicar el bloque en cada esquema.
+   */
+  --mat-sys-background: var(--vt-bg);
+  --mat-sys-on-background: var(--vt-text);
+  --mat-sys-surface-dim: var(--vt-bg);
+  --mat-sys-surface-bright: var(--vt-surface);
+  --mat-sys-surface-container-lowest: var(--vt-surface);
+  --mat-sys-surface-container-low: var(--vt-surface);
+  --mat-sys-surface-container: var(--vt-surface);
+  --mat-sys-surface-container-high: var(--vt-surface);
+  --mat-sys-surface-container-highest: var(--vt-surface-2);
+
+  /* El día seleccionado y las fichas del reloj salen de aquí. */
+  --mat-sys-secondary-container: var(--vt-brand-tint);
+  --mat-sys-on-secondary-container: var(--vt-brand-dark);
+  --mat-sys-tertiary-container: var(--vt-surface-3);
+  --mat-sys-on-tertiary-container: var(--vt-text);
+
+  --mat-sys-on-error: var(--vt-on-brand);
+  --mat-sys-error-container: var(--vt-danger-bg);
+  --mat-sys-on-error-container: var(--vt-danger);
+
+  /* Los avisos flotantes invierten el fondo: sin esto quedan claros sobre claro. */
+  --mat-sys-inverse-surface: var(--vt-ink-soft);
+  --mat-sys-inverse-on-surface: var(--vt-surface);
+  --mat-sys-inverse-primary: var(--vt-brand-light);
+
+  --mat-sys-scrim: rgb(0 0 0 / 45%);
+}
+
+/**
+ * El esquema de color del documento.
+ *
+ * Es lo que decide cómo pinta el navegador lo que no controlamos: el cursor de
+ * texto de un `<input>`, las barras de desplazamiento y los desplegables
+ * nativos. Sin esto, en tema oscuro seguían saliendo claros y desentonaban con
+ * todo lo demás.
+ */
+:root {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+  }
+}
+
+/* El interruptor hereda la tipografía del resto de la interfaz. */
+.mat-mdc-slide-toggle {
+  --mdc-form-field-label-text-font: var(--vt-font);
+}
+
+/**
+ * Panel de los menús.
+ *
+ * Material lo monta en un overlay a nivel de documento, fuera del árbol del
+ * componente, así que la encapsulación de vista no lo alcanza: sus estilos
+ * tienen que ser globales. Es también la razón por la que se usa este menú en
+ * vez de uno propio — un panel absoluto dentro de una tabla con scroll quedaba
+ * recortado por el `overflow`.
+ */
+.mat-mdc-menu-panel {
+  --mat-menu-container-color: var(--vt-surface);
+  --mat-menu-item-label-text-color: var(--vt-text);
+
+  min-width: 272px !important;
+  border-radius: var(--vt-radius) !important;
+  box-shadow: var(--vt-card-shadow-hover) !important;
+}
+
+.mat-mdc-menu-item {
+  min-height: 0 !important;
+  padding: 8px 12px !important;
+
+  &:hover {
+    background: var(--vt-surface-2) !important;
+  }
+}
+
+/**
+ * Calendario y reloj.
+ *
+ * Estos dos se dibujan en un overlay a nivel de documento y traen su propia
+ * familia de tokens —`--mat-datepicker-*`, `--mat-timepicker-*`—, que se emiten
+ * con valores **fijos** de la paleta clara al compilar el tema. Redirigir los
+ * `--mat-sys-*` no los alcanza, así que se atan aquí uno a uno: es la única
+ * forma de que sigan el tema del usuario.
+ *
+ * Sin esto, en oscuro el calendario salía sobre fondo claro y los números del
+ * mes en un gris casi invisible.
+ */
+.mat-datepicker-content {
+  --mat-datepicker-calendar-container-background-color: var(--vt-surface);
+  --mat-datepicker-calendar-container-text-color: var(--vt-text);
+  --mat-datepicker-calendar-date-text-color: var(--vt-text);
+  --mat-datepicker-calendar-body-label-text-color: var(--vt-text-muted);
+  --mat-datepicker-calendar-period-button-text-color: var(--vt-text);
+  --mat-datepicker-calendar-period-button-icon-color: var(--vt-text-muted);
+  --mat-datepicker-calendar-navigation-button-icon-color: var(--vt-text-muted);
+  --mat-datepicker-calendar-header-text-color: var(--vt-text-subtle);
+  --mat-datepicker-calendar-header-divider-color: var(--vt-rule);
+  --mat-datepicker-calendar-date-disabled-state-text-color: var(--vt-text-subtle);
+  --mat-datepicker-calendar-date-outline-color: transparent;
+
+  /* Hoy se marca con un contorno; el día elegido, con el color de marca. */
+  --mat-datepicker-calendar-date-today-outline-color: var(--vt-brand);
+  --mat-datepicker-calendar-date-selected-state-background-color: var(--vt-brand);
+  --mat-datepicker-calendar-date-selected-state-text-color: var(--vt-on-brand);
+  --mat-datepicker-calendar-date-hover-state-background-color: var(--vt-surface-3);
+  --mat-datepicker-calendar-date-focus-state-background-color: var(--vt-surface-3);
+  --mat-datepicker-calendar-date-in-range-state-background-color: var(--vt-brand-tint);
+
+  border: 1px solid var(--vt-rule);
+  border-radius: var(--vt-radius) !important;
+  box-shadow: var(--vt-card-shadow-hover) !important;
+}
+
+.mat-timepicker-panel {
+  --mat-timepicker-container-background-color: var(--vt-surface);
+
+  border: 1px solid var(--vt-rule);
+  border-radius: var(--vt-radius) !important;
+  box-shadow: var(--vt-card-shadow-hover) !important;
+}
+
+/* Las horas del desplegable son opciones de lista: sin color propio salían en
+   el gris de Material, que contra la superficie oscura no se lee. */
+.mat-timepicker-panel .mat-mdc-option {
+  color: var(--vt-text);
+
+  &:hover:not(.mdc-list-item--disabled) {
+    background: var(--vt-surface-2);
+  }
+
+  &.mdc-list-item--selected {
+    color: var(--vt-brand);
+    background: var(--vt-brand-tint);
+  }
+}
+
+/**
+ * El campo de texto con contorno.
+ *
+ * Mismo problema que el calendario: los tokens del campo se emiten fijos con la
+ * paleta clara, así que en oscuro el texto escrito y la etiqueta salían en un
+ * gris pensado para fondo blanco — sobre superficie oscura, prácticamente
+ * invisibles. Como todos los campos del formulario usan `appearance="outline"`,
+ * esto los cubre a la vez.
+ */
+.mat-mdc-form-field {
+  --mat-form-field-outlined-input-text-color: var(--vt-text);
+  --mat-form-field-outlined-input-text-placeholder-color: var(--vt-text-subtle);
+  --mat-form-field-outlined-label-text-color: var(--vt-text-muted);
+  --mat-form-field-outlined-hover-label-text-color: var(--vt-text);
+  --mat-form-field-outlined-focus-label-text-color: var(--vt-brand);
+  --mat-form-field-outlined-disabled-input-text-color: var(--vt-text-subtle);
+  --mat-form-field-outlined-disabled-label-text-color: var(--vt-text-subtle);
+  --mat-form-field-outlined-outline-color: var(--vt-rule-strong);
+  --mat-form-field-outlined-hover-outline-color: var(--vt-text-muted);
+  --mat-form-field-outlined-focus-outline-color: var(--vt-brand);
+  --mat-form-field-outlined-disabled-outline-color: var(--vt-rule);
+  --mat-form-field-outlined-caret-color: var(--vt-brand);
+
+  --mat-form-field-error-text-color: var(--vt-danger);
+  --mat-form-field-outlined-error-outline-color: var(--vt-danger);
+  --mat-form-field-outlined-error-label-text-color: var(--vt-danger);
+  --mat-form-field-outlined-error-focus-outline-color: var(--vt-danger);
+  --mat-form-field-outlined-error-focus-label-text-color: var(--vt-danger);
+  --mat-form-field-outlined-error-hover-outline-color: var(--vt-danger);
+  --mat-form-field-outlined-error-hover-label-text-color: var(--vt-danger);
+  --mat-form-field-outlined-error-caret-color: var(--vt-danger);
+
+  /* Los iconos que abren el calendario y el reloj. */
+  --mat-datepicker-toggle-icon-color: var(--vt-text-muted);
+  --mat-datepicker-toggle-active-state-icon-color: var(--vt-brand);
+  --mat-timepicker-toggle-icon-color: var(--vt-text-muted);
+  --mat-timepicker-toggle-active-state-icon-color: var(--vt-brand);
+}
+
+/* El texto de ayuda bajo el campo. */
+.mat-mdc-form-field-subscript-wrapper {
+  --mat-form-field-subscript-text-color: var(--vt-text-subtle);
+}
+
+/* ── Accesibilidad ─────────────────────────────────────────────────────────── */
+
+/**
+ * Respeta a quien pidió menos animación en su sistema. No es opcional: para
+ * personas con trastornos vestibulares el movimiento puede provocar mareo.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

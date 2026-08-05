@@ -1,0 +1,144 @@
+<fieldset class="gps" [class.gps--invalid]="invalid()">
+  <legend>
+    {{ label() }}
+    @if (required()) {
+      <span class="gps__required">*</span>
+    }
+  </legend>
+
+  @if (!available()) {
+    <!-- Sin contexto seguro o sin API no hay nada que intentar: se dice por qué
+         en vez de dejar un botón que siempre falla. -->
+    <div class="gps__blocked">
+      <span class="gps__blocked-icon">
+        <vt-icon name="alert" [size]="18" />
+      </span>
+      <div>
+        <strong>Ubicación no disponible</strong>
+        <span>
+          El navegador solo entrega la ubicación sobre una conexión segura
+          (HTTPS). Este campo se puede diligenciar desde la app móvil.
+        </span>
+      </div>
+    </div>
+  } @else if (reading(); as value) {
+    <!-- ── Lectura capturada ─────────────────────────────────────────────── -->
+    <div class="gps__card">
+      <span class="gps__pin" [class]="'gps__pin--' + accuracy()?.level">
+        <vt-icon name="map-pin" [size]="20" />
+      </span>
+
+      <div class="gps__data">
+        <span class="gps__coords vt-figure">
+          {{ value.lat.toFixed(6) }}, {{ value.lng.toFixed(6) }}
+        </span>
+
+        <span class="gps__meta">
+          @if (accuracy(); as acc) {
+            <span [class]="'gps__accuracy gps__accuracy--' + acc.level">
+              {{ acc.label }} · ±{{ value.acc.toFixed(0) }} m
+            </span>
+          }
+          @if (capturedAt()) {
+            <span class="gps__time">{{ capturedAt() }}</span>
+          }
+        </span>
+      </div>
+
+      <a
+        class="gps__map"
+        [href]="mapUrl()"
+        target="_blank"
+        rel="noopener"
+        title="Ver en el mapa"
+      >
+        <vt-icon name="chevron" [size]="16" />
+      </a>
+    </div>
+
+    @if (!readOnly()) {
+      <div class="gps__actions">
+        <button type="button" class="gps__action" [disabled]="capturing()" (click)="requestCapture()">
+          <vt-icon name="refresh" [size]="15" />
+          {{ capturing() ? 'Capturando…' : 'Volver a capturar' }}
+        </button>
+        <button type="button" class="gps__action gps__action--danger" (click)="askRemove()">
+          <vt-icon name="trash" [size]="15" />
+          Eliminar
+        </button>
+      </div>
+    }
+  } @else {
+    <!-- ── Sin capturar ──────────────────────────────────────────────────── -->
+    <button
+      type="button"
+      class="gps__capture"
+      [disabled]="readOnly() || capturing()"
+      (click)="requestCapture()"
+    >
+      @if (capturing()) {
+        <span class="gps__spinner" aria-hidden="true"></span>
+        <span class="gps__capture-text">
+          <strong>Buscando señal…</strong>
+          <small>Puede tardar unos segundos bajo techo</small>
+        </span>
+      } @else {
+        <vt-icon name="map-pin" [size]="20" />
+        <span class="gps__capture-text">
+          <strong>Capturar ubicación</strong>
+          <small>Se usará la posición actual del dispositivo</small>
+        </span>
+      }
+    </button>
+  }
+
+  @if (help()) {
+    <p class="gps__hint">{{ help() }}</p>
+  }
+  @if (invalid()) {
+    <p class="gps__error">Captura la ubicación para continuar.</p>
+  }
+</fieldset>
+
+<!-- ── Diálogos ────────────────────────────────────────────────────────────
+     Propios y no los del navegador: el `confirm()` nativo sale con el aspecto
+     del sistema y el nombre del sitio en el título, y parece un aviso del
+     navegador y no una pregunta de la aplicación. -->
+
+<vt-confirm-dialog
+  [open]="dialog() === 'explain'"
+  tone="brand"
+  icon="map-pin"
+  title="Usar tu ubicación"
+  message="Visitrack registra la ubicación para dejar constancia de dónde se realizó esta actividad. Solo se toma cuando pulsas el botón: no se registra en segundo plano ni con la aplicación cerrada."
+  detail="Al aceptar, el navegador te pedirá permiso. Si lo rechazas ahí, tendrás que habilitarlo desde su configuración."
+  confirmLabel="Continuar"
+  cancelLabel="Ahora no"
+  (confirm)="confirmExplain()"
+  (cancel)="closeDialog()"
+/>
+
+<vt-confirm-dialog
+  [open]="dialog() === 'error'"
+  tone="warning"
+  icon="alert"
+  [title]="errorTitle()"
+  [message]="errorAdvice()"
+  [detail]="error()?.message || ''"
+  confirmLabel="Entendido"
+  cancelLabel=""
+  (confirm)="closeDialog()"
+  (cancel)="closeDialog()"
+/>
+
+<vt-confirm-dialog
+  [open]="dialog() === 'remove'"
+  tone="danger"
+  icon="trash"
+  title="¿Eliminar la ubicación?"
+  message="Se borrarán las coordenadas capturadas en este campo. Podrás volver a capturarlas, pero serán las de donde estés en ese momento."
+  confirmLabel="Eliminar"
+  cancelLabel="Conservar"
+  (confirm)="confirmRemove()"
+  (cancel)="closeDialog()"
+/>

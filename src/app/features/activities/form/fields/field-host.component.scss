@@ -1,0 +1,309 @@
+/**
+ * Un campo del formulario.
+ *
+ * Los controles vienen de Material —su comportamiento de foco, teclado y
+ * lectores de pantalla ya está resuelto— y aquí solo se ajusta el envoltorio:
+ * ancho, agrupaciones y los estados que Material no cubre, como el recuadro de
+ * un grupo de opciones sin responder.
+ */
+
+/**
+ * El campo ocupa todo el ancho disponible.
+ *
+ * Un formulario de campo se llena en una sola columna: dos controles a medio
+ * ancho obligan a decidir en cada salto hacia dónde sigue la lectura, y con
+ * guantes o al sol esa decisión es la que produce los saltos de casilla.
+ */
+:host {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 2px;
+  border-radius: var(--vt-radius);
+  transition:
+    background var(--vt-transition),
+    box-shadow var(--vt-transition);
+}
+
+/**
+ * Campo obligatorio sin responder.
+ *
+ * Rojo muy diluido sobre el contenedor completo, con un filo del mismo color.
+ * El tinte sale de `color-mix` contra `--vt-danger`, que cambia con el tema:
+ * en claro queda un rosa pálido y en oscuro un granate apagado, y en los dos
+ * casos el texto de encima conserva su contraste. Un `#fee2e2` fijo se vuelve
+ * una mancha clara ilegible en modo oscuro.
+ *
+ * **Va como `:host(...)` y no como `.fld--invalid` a secas.** La clase la pone
+ * el propio componente sobre su elemento anfitrión, y con encapsulación
+ * emulada Angular compila un selector suelto como
+ * `.fld--invalid[_ngcontent-…]` — un atributo que llevan los hijos, no el
+ * anfitrión, que lleva `_nghost-…`. Escrito así la regla no llegaba a aplicarse
+ * nunca: al pulsar «Revisar campos» no pasaba nada visible.
+ */
+:host(.fld--invalid) {
+  padding: var(--vt-space-3);
+  background: color-mix(in srgb, var(--vt-danger) 9%, transparent);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--vt-danger) 35%, transparent);
+}
+
+.fld__control {
+  width: 100%;
+}
+
+/**
+ * Marca de obligatorio.
+ *
+ * Un punto en la esquina superior, fuera del control: un asterisco dentro de la
+ * etiqueta se pierde cuando la etiqueta es larga o cuando Material la encoge al
+ * enfocar. Aquí siempre está en el mismo sitio, y al fallar la validación se
+ * enciende sin cambiar de posición — lo que se mueve distrae, lo que cambia de
+ * color informa.
+ */
+.fld__flag {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--vt-on-state);
+  background: var(--vt-text-subtle);
+  border: 2px solid var(--vt-surface);
+  border-radius: var(--vt-radius-full);
+  transition: background var(--vt-transition);
+}
+
+.fld__flag--on {
+  background: var(--vt-danger);
+  animation: fld-flag 320ms ease-out;
+}
+
+@keyframes fld-flag {
+  from {
+    transform: scale(1.6);
+  }
+}
+
+/* ── Presentación ──────────────────────────────────────────────────────────── */
+
+.fld__title {
+  padding-bottom: 6px;
+  margin-top: var(--vt-space-2);
+  font-size: var(--vt-text-md);
+  font-weight: 650;
+  border-bottom: 2px solid var(--vt-icon-brand-bg);
+}
+
+.fld__paragraph {
+  font-size: var(--vt-text-sm);
+  line-height: 1.6;
+  color: var(--vt-text-muted);
+}
+
+.fld__link {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  font-size: var(--vt-text-sm);
+  font-weight: 600;
+  color: var(--vt-brand);
+}
+
+/* ── Grupos de opciones ────────────────────────────────────────────────────── */
+
+/**
+ * Los grupos van en un recuadro propio.
+ *
+ * Un `mat-form-field` da ese marco a los campos de texto, pero los grupos de
+ * radio y de casillas no lo tienen: sin recuadro, sus opciones flotan sueltas y
+ * no se ve dónde acaba una pregunta y empieza la siguiente.
+ */
+.fld__group {
+  padding: var(--vt-space-3) var(--vt-space-4) var(--vt-space-4);
+  margin: 0;
+
+  /**
+   * Un `<fieldset>` trae `min-width: min-content` del navegador y **no** lo
+   * suelta con `min-width: 0` a secas en todos los motores: hay que forzarlo.
+   * Sin esto, una opción de texto largo estira el grupo más allá del ancho
+   * disponible y arrastra a toda la página con desplazamiento horizontal, que
+   * es justo lo que se nota en un teléfono.
+   */
+  min-width: 0;
+  max-width: 100%;
+  background: var(--vt-surface-2);
+  border: 1px solid var(--vt-rule);
+  border-radius: var(--vt-radius);
+
+  legend {
+    padding: 0 6px;
+    font-size: var(--vt-text-sm);
+    font-weight: 600;
+  }
+}
+
+/* El tinte lo pone el contenedor; aquí solo se refuerza el borde para que el
+   recuadro del grupo no se pierda dentro del recuadro rojo. */
+.fld__group--invalid {
+  background: transparent;
+  border-color: color-mix(in srgb, var(--vt-danger) 40%, transparent);
+}
+
+.fld__required {
+  color: var(--vt-danger);
+}
+
+/* Fecha y hora lado a lado cuando hay sitio; apiladas si no. La hora necesita
+   menos ancho que la fecha, de ahí el reparto desigual. */
+.fld__datetime {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: var(--vt-space-3);
+  margin-top: var(--vt-space-2);
+}
+
+@media (max-width: 520px) {
+  .fld__datetime {
+    grid-template-columns: 1fr;
+  }
+}
+
+.fld__radios {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fld__checks {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fld__hint {
+  margin-top: 6px;
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-subtle);
+}
+
+/* Aviso de que falta una mitad. En ámbar y no en rojo: no es un error del
+   usuario, es un paso a medio terminar. */
+.fld__warn {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 8px;
+  font-size: var(--vt-text-xs);
+  font-weight: 600;
+  color: var(--vt-warning);
+}
+
+.fld__error {
+  margin-top: 6px;
+  font-size: var(--vt-text-xs);
+  font-weight: 600;
+  color: var(--vt-danger);
+}
+
+/* ── Imagen de referencia ──────────────────────────────────────────────────── */
+
+.fld__figure {
+  margin: 0;
+  overflow: hidden;
+  background: var(--vt-surface-2);
+  border: 1px solid var(--vt-rule);
+  border-radius: var(--vt-radius);
+
+  img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  figcaption {
+    padding: 9px var(--vt-space-3);
+    font-size: var(--vt-text-xs);
+    color: var(--vt-text-muted);
+    border-top: 1px solid var(--vt-rule);
+  }
+}
+
+/* ── Archivos ──────────────────────────────────────────────────────────────── */
+
+/**
+ * Los campos de archivo llevan su etiqueta encima, no dentro.
+ *
+ * Un `mat-form-field` flota la etiqueta sobre el borde del control, pero aquí el
+ * «control» es una tarjeta con una fotografía dentro; meter la etiqueta ahí la
+ * dejaría encima de la imagen.
+ */
+.fld__binary {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  width: 100%;
+}
+
+.fld__binary-label {
+  font-size: var(--vt-text-sm);
+  font-weight: 600;
+  color: var(--vt-text-muted);
+}
+
+.fld__binary-help {
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-subtle);
+}
+
+.fld__binary-error {
+  font-size: var(--vt-text-xs);
+  font-weight: 600;
+  color: var(--vt-danger);
+}
+
+/* ── Tipos pendientes ──────────────────────────────────────────────────────── */
+
+.fld__pending {
+  display: flex;
+  gap: var(--vt-space-3);
+  align-items: flex-start;
+  padding: var(--vt-space-3) var(--vt-space-4);
+  background: var(--vt-surface-2);
+  border: 1px dashed var(--vt-rule-strong);
+  border-radius: var(--vt-radius);
+
+  strong {
+    display: block;
+    font-size: var(--vt-text-sm);
+  }
+
+  span {
+    font-size: var(--vt-text-xs);
+    line-height: 1.5;
+    color: var(--vt-text-muted);
+  }
+}
+
+/* Uno obligatorio bloquea la actividad entera: se avisa con el color de aviso
+   para que no pase por un adorno. */
+.fld__pending--required {
+  background: color-mix(in srgb, var(--vt-warning) 8%, transparent);
+  border-color: color-mix(in srgb, var(--vt-warning) 45%, transparent);
+}
+
+.fld__pending-icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  color: var(--vt-warning);
+  background: color-mix(in srgb, var(--vt-warning) 15%, transparent);
+  border-radius: var(--vt-radius-sm);
+}

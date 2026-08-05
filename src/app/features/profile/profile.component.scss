@@ -1,0 +1,763 @@
+/**
+ * Mi perfil.
+ *
+ * Tres niveles de jerarquía, en vez de una rejilla de paneles idénticos:
+ *
+ * 1. El banner de identidad, sobre la tinta corporativa. Responde «quién eres y
+ *    dónde estás», que es distinto de todo lo demás.
+ * 2. La columna ancha, con lo que se **cambia**: apariencia, preferencias,
+ *    cuentas.
+ * 3. La columna estrecha, con lo que se **consulta**: almacenamiento, datos de
+ *    la cuenta, datos del equipo.
+ *
+ * Con paneles todos iguales, ajustar el tema y leer el identificador del equipo
+ * parecían tener el mismo peso, y encontrar cualquiera de las dos cosas exigía
+ * leerlo todo.
+ */
+
+.profile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vt-space-5);
+  width: 100%;
+}
+
+/* ── Banner de identidad ───────────────────────────────────────────────────── */
+
+.profile__banner {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vt-space-4);
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--vt-space-6);
+  overflow: hidden;
+  color: rgb(255 255 255 / 92%);
+  background: linear-gradient(115deg, var(--vt-ink) 0%, var(--vt-ink-soft) 100%);
+  border-radius: var(--vt-radius-xl);
+}
+
+/* Resplandor del color de marca en la esquina: teñir todo el banner competiría
+   con el logo del cliente, que es lo que debe destacar. */
+.profile__banner-glow {
+  position: absolute;
+  top: -40%;
+  right: -6%;
+  width: 340px;
+  height: 340px;
+  background: radial-gradient(circle, var(--vt-brand) 0%, transparent 68%);
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.profile__identity {
+  position: relative;
+  display: flex;
+  gap: var(--vt-space-4);
+  align-items: center;
+  min-width: 0;
+}
+
+.profile__avatar {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 68px;
+  height: 68px;
+  font-family: var(--vt-font-display);
+  font-size: 26px;
+  font-weight: 700;
+  color: #14161a;
+  background: #fff;
+  border-radius: var(--vt-radius-full);
+}
+
+/* Marco claro tras el logo: los logos suelen venir en tinta oscura y sobre el
+   banner negro desaparecerían. */
+.profile__logo-frame {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 78px;
+  height: 78px;
+  padding: 10px;
+  background: #fff;
+  border-radius: var(--vt-radius-lg);
+
+  img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+}
+
+.profile__identity-info {
+  min-width: 0;
+
+  h1 {
+    font-size: var(--vt-text-2xl);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+  }
+
+  p {
+    margin-top: 2px;
+    font-size: var(--vt-text-sm);
+    color: rgb(255 255 255 / 62%);
+  }
+}
+
+.profile__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: var(--vt-space-3);
+}
+
+/* Sobre el banner oscuro, los distintivos usan un velo translúcido: los fondos
+   pastel del sistema están calculados para superficies claras. */
+.profile__chip {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  padding: 4px 11px;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgb(255 255 255 / 82%);
+  background: rgb(255 255 255 / 12%);
+  border-radius: var(--vt-radius-full);
+}
+
+.profile__chip--ok {
+  color: #86efac;
+  background: rgb(134 239 172 / 15%);
+}
+
+.profile__chip--warn {
+  color: #fcd34d;
+  background: rgb(252 211 77 / 15%);
+}
+
+.profile__logout {
+  position: relative;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 18px;
+  font-size: var(--vt-text-sm);
+  font-weight: 600;
+  color: rgb(255 255 255 / 88%);
+  background: rgb(255 255 255 / 10%);
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: var(--vt-radius-full);
+  transition:
+    background var(--vt-transition),
+    border-color var(--vt-transition);
+
+  &:hover {
+    color: #fff;
+    background: var(--vt-brand);
+    border-color: var(--vt-brand);
+  }
+}
+
+.profile__feedback {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 12px var(--vt-space-4);
+  font-size: var(--vt-text-sm);
+  color: var(--vt-success);
+  background: var(--vt-success-bg);
+  border-radius: var(--vt-radius);
+}
+
+/* ── Disposición ───────────────────────────────────────────────────────────── */
+
+.profile__layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--vt-space-4);
+}
+
+/* Asimétrica en pantalla amplia: lo que se cambia pide más sitio que lo que
+   solo se lee. */
+@media (min-width: 1080px) {
+  .profile__layout {
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+.profile__column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vt-space-4);
+  min-width: 0;
+}
+
+/* ── Paneles ───────────────────────────────────────────────────────────────── */
+
+.profile__panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vt-space-4);
+  padding: var(--vt-space-5);
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-rule);
+  border-radius: var(--vt-radius-lg);
+  box-shadow: var(--vt-shadow-sm);
+}
+
+.profile__panel-head {
+  display: flex;
+  gap: var(--vt-space-3);
+  align-items: center;
+
+  h2 {
+    font-size: var(--vt-text-md);
+    line-height: 1.3;
+  }
+
+  p {
+    margin-top: 1px;
+    font-size: var(--vt-text-xs);
+    color: var(--vt-text-muted);
+  }
+}
+
+.profile__panel-icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  color: var(--vt-icon-brand-fg);
+  background: var(--vt-icon-brand-bg);
+  border-radius: 12px;
+}
+
+.profile__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vt-space-3);
+}
+
+.profile__field-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--vt-text-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.profile__hint {
+  font-size: var(--vt-text-xs);
+  line-height: 1.5;
+  color: var(--vt-text-subtle);
+}
+
+/* ── Modo de color ─────────────────────────────────────────────────────────── */
+
+.profile__modes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--vt-space-2);
+}
+
+.profile__mode {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  background: var(--vt-surface-2);
+  border: 1.5px solid var(--vt-rule);
+  border-radius: var(--vt-radius);
+  transition:
+    border-color var(--vt-transition),
+    background var(--vt-transition);
+
+  &:hover {
+    border-color: var(--vt-rule-strong);
+  }
+}
+
+.profile__mode--active {
+  background: color-mix(in srgb, var(--vt-brand) 8%, transparent);
+  border-color: var(--vt-brand);
+}
+
+/**
+ * Miniatura del tema: una barra superior y un cuerpo, en los colores que
+ * tendría la aplicación con ese modo.
+ *
+ * Los valores van fijos y no por tokens **a propósito**: la muestra del modo
+ * claro debe verse clara aunque se esté en oscuro, que es justo el sentido de
+ * previsualizar.
+ */
+.profile__mode-preview {
+  display: flex;
+  flex-direction: column;
+  height: 44px;
+  overflow: hidden;
+  border: 1px solid rgb(0 0 0 / 10%);
+  border-radius: var(--vt-radius-sm);
+}
+
+.profile__mode-bar {
+  height: 12px;
+}
+
+.profile__mode-body {
+  flex: 1;
+}
+
+.profile__mode--light {
+  .profile__mode-bar {
+    background: #1c1f26;
+  }
+
+  .profile__mode-body {
+    background: #f5f6f8;
+  }
+}
+
+.profile__mode--dark {
+  .profile__mode-bar {
+    background: #05070a;
+  }
+
+  .profile__mode-body {
+    background: #14161b;
+  }
+}
+
+/* El automático se parte en dos mitades: es exactamente lo que hace. */
+.profile__mode--system {
+  .profile__mode-bar {
+    background: linear-gradient(90deg, #1c1f26 50%, #05070a 50%);
+  }
+
+  .profile__mode-body {
+    background: linear-gradient(90deg, #f5f6f8 50%, #14161b 50%);
+  }
+}
+
+.profile__mode-name {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--vt-text-xs);
+  font-weight: 600;
+}
+
+/* ── Color de marca ────────────────────────────────────────────────────────── */
+
+.profile__colors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.profile__color {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  color: #fff;
+  border: 2px solid transparent;
+  border-radius: var(--vt-radius-full);
+  box-shadow: 0 2px 6px -2px rgb(20 22 26 / 35%);
+  transition:
+    transform var(--vt-transition),
+    box-shadow var(--vt-transition);
+
+  &:hover {
+    transform: scale(1.1);
+  }
+}
+
+/* El anillo va separado de la muestra, para que se distinga sobre cualquier
+   color —incluido uno casi blanco, donde un borde interior desaparecería. */
+.profile__color--active {
+  outline: 2px solid var(--vt-text);
+  outline-offset: 2px;
+}
+
+.profile__color--custom {
+  position: relative;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--vt-text-muted);
+  cursor: pointer;
+  background: var(--vt-surface-2);
+  border: 1.5px dashed var(--vt-rule-strong);
+  box-shadow: none;
+
+  input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+}
+
+/**
+ * Muestra en vivo.
+ *
+ * Un color no se juzga en un círculo de 34 px: se juzga sobre los elementos
+ * donde va a vivir. Aquí se ve si el texto sigue legible encima —que es lo que
+ * `--vt-on-brand` recalcula por luminancia— antes de dejarlo puesto.
+ */
+.profile__preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vt-space-3);
+  align-items: center;
+  padding: var(--vt-space-3);
+  background: var(--vt-surface-2);
+  border: 1px dashed var(--vt-rule);
+  border-radius: var(--vt-radius);
+}
+
+.profile__preview-btn {
+  padding: 8px 16px;
+  font-size: var(--vt-text-xs);
+  font-weight: 600;
+  color: var(--vt-on-brand);
+  background: var(--vt-brand);
+  border-radius: var(--vt-radius-full);
+}
+
+.profile__preview-chip {
+  padding: 5px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--vt-icon-brand-fg);
+  background: var(--vt-icon-brand-bg);
+  border-radius: var(--vt-radius-full);
+}
+
+.profile__preview-link {
+  font-size: var(--vt-text-xs);
+  font-weight: 600;
+  color: var(--vt-brand);
+  text-decoration: underline;
+}
+
+.profile__reset {
+  margin-left: auto;
+  font-size: var(--vt-text-xs);
+  font-weight: 600;
+  color: var(--vt-text-subtle);
+  text-decoration: underline;
+  background: none;
+  border: 0;
+
+  &:hover {
+    color: var(--vt-text);
+  }
+}
+
+/* ── Preferencias ──────────────────────────────────────────────────────────── */
+
+.profile__switch {
+  display: flex;
+  gap: var(--vt-space-4);
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--vt-space-3);
+  background: var(--vt-surface-2);
+  border-radius: var(--vt-radius);
+
+  > div {
+    min-width: 0;
+  }
+
+  strong {
+    display: block;
+    font-size: var(--vt-text-sm);
+  }
+
+  span {
+    font-size: var(--vt-text-xs);
+    line-height: 1.5;
+    color: var(--vt-text-muted);
+  }
+}
+
+/* Sangrada y con guía a la izquierda: depende del interruptor de arriba y debe
+   leerse como subordinada, no como otra preferencia al mismo nivel. */
+.profile__switch--nested {
+  margin-left: var(--vt-space-5);
+  border-left: 2px solid var(--vt-icon-brand-bg);
+  border-radius: 0 var(--vt-radius) var(--vt-radius) 0;
+}
+
+.profile__number-field {
+  display: flex;
+  flex-shrink: 0;
+  gap: 4px;
+  align-items: center;
+  padding: 6px 12px;
+  background: var(--vt-surface);
+  border: 1.5px solid var(--vt-rule);
+  border-radius: var(--vt-radius-sm);
+
+  &:focus-within {
+    border-color: var(--vt-brand);
+  }
+
+  input {
+    width: 52px;
+    font-size: var(--vt-text-sm);
+    font-weight: 600;
+    text-align: right;
+    background: transparent;
+    border: 0;
+
+    &:focus {
+      outline: none;
+    }
+  }
+
+  span {
+    font-size: var(--vt-text-xs);
+    color: var(--vt-text-subtle);
+  }
+}
+
+/* ── Almacenamiento ────────────────────────────────────────────────────────── */
+
+.profile__storage {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.profile__storage-figures {
+  display: flex;
+  gap: 7px;
+  align-items: baseline;
+}
+
+.profile__storage-used {
+  font-size: var(--vt-text-2xl);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.profile__storage-quota {
+  font-size: var(--vt-text-sm);
+  color: var(--vt-text-muted);
+}
+
+.profile__storage-bar {
+  height: 8px;
+  overflow: hidden;
+  background: var(--vt-surface-3);
+  border-radius: var(--vt-radius-full);
+}
+
+.profile__storage-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--vt-brand) 0%, var(--vt-brand-light) 100%);
+  border-radius: inherit;
+  transition: width var(--vt-transition-slow);
+}
+
+.profile__notice {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 11px 13px;
+  font-size: var(--vt-text-xs);
+  line-height: 1.5;
+  border-radius: var(--vt-radius);
+
+  vt-icon {
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+}
+
+.profile__notice--ok {
+  color: var(--vt-success);
+  background: var(--vt-success-bg);
+}
+
+.profile__notice--warn {
+  color: var(--vt-warning);
+  background: var(--vt-warning-bg);
+}
+
+/* ── Datos ─────────────────────────────────────────────────────────────────── */
+
+/* Etiqueta a la izquierda y valor a la derecha, separados por una línea: es un
+   listado que se consulta puntualmente, y así se recorre en vertical buscando
+   una fila concreta. */
+.profile__facts {
+  display: flex;
+  flex-direction: column;
+
+  > div {
+    display: flex;
+    gap: var(--vt-space-4);
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--vt-rule);
+
+    &:last-child {
+      border-bottom: 0;
+    }
+  }
+
+  dt {
+    flex-shrink: 0;
+    font-size: var(--vt-text-xs);
+    color: var(--vt-text-muted);
+  }
+
+  dd {
+    font-size: var(--vt-text-sm);
+    font-weight: 600;
+    text-align: right;
+    overflow-wrap: anywhere;
+  }
+}
+
+.profile__mono {
+  font-family: var(--vt-font-mono);
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  color: var(--vt-text-muted);
+}
+
+.profile__action {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  align-self: flex-start;
+  padding: 9px 16px;
+  font-size: var(--vt-text-xs);
+  font-weight: 600;
+  color: var(--vt-text);
+  background: var(--vt-surface-2);
+  border: 1px solid var(--vt-rule-strong);
+  border-radius: var(--vt-radius-full);
+  transition:
+    background var(--vt-transition),
+    border-color var(--vt-transition);
+
+  &:hover:not(:disabled) {
+    background: var(--vt-surface-3);
+    border-color: var(--vt-text-subtle);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+}
+
+/* ── Cuentas ───────────────────────────────────────────────────────────────── */
+
+.profile__accounts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vt-space-2);
+}
+
+.profile__account {
+  display: flex;
+  gap: var(--vt-space-3);
+  align-items: center;
+  padding: 10px var(--vt-space-3);
+  text-align: left;
+  background: var(--vt-surface-2);
+  border: 1px solid transparent;
+  border-radius: var(--vt-radius);
+  transition:
+    background var(--vt-transition),
+    border-color var(--vt-transition);
+
+  &:hover {
+    background: var(--vt-surface-3);
+  }
+}
+
+.profile__account--current {
+  cursor: default;
+  background: var(--vt-icon-brand-bg);
+  border-color: color-mix(in srgb, var(--vt-brand) 30%, transparent);
+
+  /* Dentro de la tarjeta clara, el distintivo vuelve a los colores del sistema:
+     los del banner están calculados para fondo oscuro. */
+  .profile__chip--ok {
+    color: var(--vt-success);
+    background: var(--vt-success-bg);
+  }
+}
+
+.profile__avatar--sm {
+  width: 38px;
+  height: 38px;
+  font-size: var(--vt-text-sm);
+  color: #fff;
+  background: var(--vt-ink);
+}
+
+.profile__account-info {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.profile__account-name {
+  font-size: var(--vt-text-sm);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.profile__account-login {
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-subtle);
+}
+
+/* ── Responsive ────────────────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .profile__banner {
+    padding: var(--vt-space-4);
+  }
+
+  .profile__logout {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .profile__switch {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .profile__switch--nested {
+    margin-left: var(--vt-space-3);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .profile__color,
+  .profile__storage-fill {
+    transition: none;
+  }
+
+  .profile__color:hover {
+    transform: none;
+  }
+}

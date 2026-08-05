@@ -1,0 +1,352 @@
+/**
+ * Selector de ubicación o de activo.
+ *
+ * Filas y no tarjetas: son listas largas que se recorren de arriba abajo
+ * buscando un nombre, y una cuadrícula obligaría a barrer con la vista en dos
+ * direcciones. Cada fila es un botón completo para que el área de acierto sea
+ * generosa — esto se usa con una mano y a veces con guantes.
+ */
+
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vt-space-4);
+  width: 100%;
+}
+
+/* ── Cabecera ──────────────────────────────────────────────────────────────── */
+
+.picker__header {
+  display: flex;
+  gap: var(--vt-space-3);
+  align-items: center;
+}
+
+/* El icono apunta a la derecha por defecto; aquí se usa como «volver». */
+.picker__back vt-icon {
+  transform: rotate(180deg);
+}
+
+/**
+ * Discos de icono.
+ *
+ * Usan `--vt-icon-brand-*` y no `--vt-brand-tint`: ese tinte
+ * es un granate casi negro en modo oscuro y el icono rojo encima desaparecía.
+ * Los tokens nuevos traen el par ya ajustado a cada tema —velo más denso y
+ * trazo aclarado sobre superficie oscura—, así que aquí no hace falta ninguna
+ * regla condicional.
+ */
+.picker__icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  color: var(--vt-icon-brand-fg);
+  background: var(--vt-icon-brand-bg);
+  border-radius: 13px;
+}
+
+.picker__heading {
+  flex: 1;
+  min-width: 0;
+
+  h1 {
+    font-size: var(--vt-text-xl);
+    line-height: 1.25;
+  }
+
+  p {
+    margin-top: 2px;
+    font-size: var(--vt-text-sm);
+    color: var(--vt-text-muted);
+  }
+}
+
+.picker__count {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.1;
+
+  .vt-figure {
+    font-size: var(--vt-text-lg);
+    font-weight: 700;
+  }
+
+  small {
+    font-size: 11px;
+    color: var(--vt-text-subtle);
+  }
+}
+
+/* ── Buscador ──────────────────────────────────────────────────────────────── */
+
+.picker__search {
+  display: flex;
+  align-items: center;
+  padding: 0 10px 0 14px;
+  background: var(--vt-surface);
+  border: 1.5px solid var(--vt-rule);
+  border-radius: var(--vt-radius-full);
+  transition:
+    border-color var(--vt-transition),
+    box-shadow var(--vt-transition);
+
+  &:focus-within {
+    border-color: var(--vt-brand);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--vt-brand) 14%, transparent);
+  }
+
+  input {
+    flex: 1;
+    min-width: 0;
+    padding: 11px 10px;
+    background: transparent;
+    border: 0;
+
+    &:focus {
+      outline: none;
+    }
+
+    &::-webkit-search-cancel-button {
+      display: none;
+    }
+  }
+}
+
+.picker__search-icon {
+  display: flex;
+  flex-shrink: 0;
+  color: var(--vt-text-subtle);
+
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.picker__hint {
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-subtle);
+}
+
+/* Indicador de que la búsqueda está recorriendo el conjunto completo. Ocupa el
+   sitio del botón de limpiar para que la barra no cambie de ancho. */
+.picker__spinner {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin: 0 5px;
+  border: 2px solid color-mix(in srgb, var(--vt-brand) 25%, transparent);
+  border-top-color: var(--vt-brand);
+  border-radius: var(--vt-radius-full);
+  animation: picker-spin 700ms linear infinite;
+}
+
+@keyframes picker-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── Lista ─────────────────────────────────────────────────────────────────── */
+
+.picker__list {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  list-style: none;
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-rule);
+  border-radius: var(--vt-radius-lg);
+
+  > li + li .picker__row {
+    border-top: 1px solid var(--vt-rule);
+  }
+}
+
+.picker__row {
+  display: flex;
+  gap: var(--vt-space-3);
+  align-items: flex-start;
+  width: 100%;
+  padding: var(--vt-space-3) var(--vt-space-4);
+  text-align: left;
+  background: transparent;
+  border: 0;
+  transition: background var(--vt-transition);
+
+  &:hover {
+    background: var(--vt-surface-2);
+
+    .picker__row-go {
+      color: var(--vt-brand);
+      transform: translateX(3px);
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--vt-brand);
+    outline-offset: -2px;
+  }
+}
+
+.picker__row--loading {
+  height: 62px;
+  background: linear-gradient(
+    100deg,
+    var(--vt-surface-2) 30%,
+    var(--vt-surface-3) 50%,
+    var(--vt-surface-2) 70%
+  );
+  background-size: 200% 100%;
+  animation: picker-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes picker-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.picker__row-icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  color: var(--vt-icon-brand-fg);
+  background: var(--vt-icon-brand-bg);
+  border-radius: 10px;
+}
+
+.picker__row-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.picker__row-title {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: baseline;
+}
+
+.picker__row-name {
+  font-size: var(--vt-text-sm);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.picker__row-hint {
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-muted);
+}
+
+/**
+ * Descriptivos en columnas.
+ *
+ * Cada uno lleva su etiqueta encima del valor, que es como se leen en la app y
+ * lo que permite distinguir dos sedes con nombre parecido. Se reparten el ancho
+ * disponible en lugar de apilarse: en una pantalla amplia caben cinco por fila
+ * y la lista sigue mostrando muchas opciones a la vez.
+ */
+.picker__descriptors {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr));
+  gap: 4px var(--vt-space-4);
+}
+
+.picker__descriptor {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+
+  em {
+    font-size: 10px;
+    font-style: normal;
+    font-weight: 600;
+    color: var(--vt-text-subtle);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  b {
+    font-size: var(--vt-text-xs);
+    font-weight: 500;
+    color: var(--vt-text-muted);
+    overflow-wrap: anywhere;
+  }
+}
+
+.picker__row-go {
+  display: flex;
+  flex-shrink: 0;
+  align-self: center;
+  color: var(--vt-text-subtle);
+  transition:
+    color var(--vt-transition),
+    transform var(--vt-transition);
+}
+
+.picker__more {
+  align-self: center;
+}
+
+/* Cuántas se llevan cargadas: en una lista de miles, «Cargar más» a secas no
+   dice si quedan diez o diez mil. */
+.picker__more-count {
+  margin-left: 8px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--vt-text-subtle);
+}
+
+/* ── Vacío ─────────────────────────────────────────────────────────────────── */
+
+.picker__empty {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vt-space-3);
+  align-items: center;
+  padding: var(--vt-space-12) var(--vt-space-6);
+  text-align: center;
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-rule);
+  border-radius: var(--vt-radius-lg);
+
+  h2 {
+    font-size: var(--vt-text-lg);
+  }
+
+  p {
+    max-width: 42ch;
+    font-size: var(--vt-text-sm);
+    color: var(--vt-text-muted);
+  }
+}
+
+.picker__empty-icon {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  color: var(--vt-text-subtle);
+  background: var(--vt-surface-2);
+  border-radius: var(--vt-radius-full);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .picker__row,
+  .picker__row-go {
+    transition: none;
+  }
+
+  .picker__row:hover .picker__row-go {
+    transform: none;
+  }
+}

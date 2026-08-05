@@ -1,0 +1,292 @@
+/**
+ * Campo de ubicación.
+ *
+ * Dos estados bien distintos: sin capturar es un botón grande —la única acción
+ * posible— y con lectura pasa a ser una ficha de datos con sus acciones
+ * secundarias debajo. El salto es deliberado: que se note de un vistazo si el
+ * campo ya está resuelto o todavía no.
+ */
+
+:host {
+  display: block;
+  width: 100%;
+}
+
+.gps {
+  padding: var(--vt-space-3) var(--vt-space-4) var(--vt-space-4);
+  margin: 0;
+
+  /* Igual que en los demás grupos: un `<fieldset>` trae `min-width:
+     min-content` del navegador y desborda con contenido ancho. */
+  min-width: 0;
+  max-width: 100%;
+  background: var(--vt-surface-2);
+  border: 1px solid var(--vt-rule);
+  border-radius: var(--vt-radius);
+
+  legend {
+    padding: 0 6px;
+    font-size: var(--vt-text-sm);
+    font-weight: 600;
+  }
+}
+
+.gps--invalid {
+  background: transparent;
+  border-color: color-mix(in srgb, var(--vt-danger) 40%, transparent);
+}
+
+.gps__required {
+  color: var(--vt-danger);
+}
+
+/* ── Sin capturar ──────────────────────────────────────────────────────────── */
+
+.gps__capture {
+  display: flex;
+  gap: var(--vt-space-3);
+  align-items: center;
+  width: 100%;
+  padding: var(--vt-space-4);
+  text-align: left;
+  background: var(--vt-surface);
+  border: 1.5px dashed var(--vt-rule-strong);
+  border-radius: var(--vt-radius);
+  transition:
+    border-color var(--vt-transition),
+    background var(--vt-transition);
+
+  > vt-icon {
+    flex-shrink: 0;
+    color: var(--vt-brand);
+  }
+
+  &:hover:not(:disabled) {
+    background: var(--vt-icon-brand-bg);
+    border-color: var(--vt-brand);
+  }
+
+  &:disabled {
+    cursor: progress;
+  }
+}
+
+.gps__capture-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+
+  strong {
+    font-size: var(--vt-text-sm);
+  }
+
+  small {
+    font-size: var(--vt-text-xs);
+    color: var(--vt-text-subtle);
+  }
+}
+
+/* Fijar la posición puede tardar: el giro es lo que distingue «está buscando»
+   de «se quedó colgado». */
+.gps__spinner {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border: 2.5px solid color-mix(in srgb, var(--vt-brand) 25%, transparent);
+  border-top-color: var(--vt-brand);
+  border-radius: var(--vt-radius-full);
+  animation: gps-spin 750ms linear infinite;
+}
+
+@keyframes gps-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── Lectura capturada ─────────────────────────────────────────────────────── */
+
+.gps__card {
+  display: flex;
+  gap: var(--vt-space-3);
+  align-items: center;
+  padding: var(--vt-space-3);
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-rule);
+  border-radius: var(--vt-radius);
+}
+
+/* El color del pin lleva la precisión: es lo primero que se mira, y una lectura
+   de baja calidad conviene detectarla antes de irse del sitio. */
+.gps__pin {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  color: var(--vt-on-state);
+  border-radius: var(--vt-radius-full);
+}
+
+.gps__pin--good {
+  background: var(--vt-success);
+}
+.gps__pin--fair {
+  background: var(--vt-warning);
+}
+.gps__pin--poor {
+  background: var(--vt-danger);
+}
+
+.gps__data {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.gps__coords {
+  font-size: var(--vt-text-sm);
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.gps__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px var(--vt-space-3);
+  align-items: baseline;
+  font-size: 11px;
+}
+
+.gps__accuracy {
+  font-weight: 600;
+}
+
+.gps__accuracy--good {
+  color: var(--vt-success);
+}
+.gps__accuracy--fair {
+  color: var(--vt-warning);
+}
+.gps__accuracy--poor {
+  color: var(--vt-danger);
+}
+
+.gps__time {
+  color: var(--vt-text-subtle);
+}
+
+.gps__map {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  color: var(--vt-text-subtle);
+  background: var(--vt-surface-2);
+  border-radius: var(--vt-radius-full);
+
+  &:hover {
+    color: var(--vt-brand);
+    background: var(--vt-icon-brand-bg);
+  }
+}
+
+/* ── Acciones ──────────────────────────────────────────────────────────────── */
+
+.gps__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vt-space-2);
+  margin-top: var(--vt-space-2);
+}
+
+.gps__action {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding: 7px 13px;
+  font-size: var(--vt-text-xs);
+  font-weight: 600;
+  color: var(--vt-text-muted);
+  background: transparent;
+  border: 1px solid var(--vt-rule-strong);
+  border-radius: var(--vt-radius-full);
+
+  &:hover:not(:disabled) {
+    color: var(--vt-text);
+    background: var(--vt-surface);
+  }
+
+  &:disabled {
+    cursor: progress;
+    opacity: 0.6;
+  }
+}
+
+.gps__action--danger {
+  color: var(--vt-danger);
+  border-color: color-mix(in srgb, var(--vt-danger) 35%, transparent);
+
+  &:hover {
+    color: var(--vt-danger);
+    background: color-mix(in srgb, var(--vt-danger) 8%, transparent);
+  }
+}
+
+/* ── Bloqueado ─────────────────────────────────────────────────────────────── */
+
+.gps__blocked {
+  display: flex;
+  gap: var(--vt-space-3);
+  align-items: flex-start;
+  padding: var(--vt-space-3);
+  background: color-mix(in srgb, var(--vt-warning) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--vt-warning) 32%, transparent);
+  border-radius: var(--vt-radius);
+
+  strong {
+    display: block;
+    font-size: var(--vt-text-sm);
+  }
+
+  span {
+    font-size: var(--vt-text-xs);
+    line-height: 1.5;
+    color: var(--vt-text-muted);
+  }
+}
+
+.gps__blocked-icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  color: var(--vt-warning);
+  background: color-mix(in srgb, var(--vt-warning) 15%, transparent);
+  border-radius: var(--vt-radius-sm);
+}
+
+/* ── Mensajes ──────────────────────────────────────────────────────────────── */
+
+.gps__hint {
+  margin-top: 8px;
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-subtle);
+}
+
+.gps__error {
+  margin-top: 8px;
+  font-size: var(--vt-text-xs);
+  font-weight: 600;
+  color: var(--vt-danger);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gps__spinner {
+    animation-duration: 2s;
+  }
+}

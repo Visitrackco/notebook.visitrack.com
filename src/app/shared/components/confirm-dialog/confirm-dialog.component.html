@@ -1,0 +1,33 @@
+<dialog #dialog class="cdlg" (click)="onBackdropClick($event)" (close)="cancel.emit()">
+  <div [class]="'cdlg__panel cdlg__panel--' + tone()">
+    <span class="cdlg__icon">
+      <vt-icon [name]="icon()" [size]="26" />
+    </span>
+
+    <h2>{{ title() }}</h2>
+
+    @if (message()) {
+      <p class="cdlg__message">{{ message() }}</p>
+    }
+
+    @if (detail()) {
+      <p class="cdlg__detail">{{ detail() }}</p>
+    }
+
+    <footer class="cdlg__actions">
+      @if (cancelLabel()) {
+        <button type="button" class="cdlg__cancel" (click)="cancel.emit()">
+          {{ cancelLabel() }}
+        </button>
+      }
+      <button
+        type="button"
+        class="cdlg__confirm"
+        [disabled]="busy()"
+        (click)="confirm.emit()"
+      >
+        {{ confirmLabel() }}
+      </button>
+    </footer>
+  </div>
+</dialog>

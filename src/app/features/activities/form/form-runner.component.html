@@ -1,0 +1,159 @@
+@if (engine(); as eng) {
+  <section class="runner">
+    <!-- ── Progreso ────────────────────────────────────────────────────────
+         En pantalla ancha vive fijo a la derecha, donde se ve sin buscarlo
+         mientras se baja por los campos; en estrecha vuelve arriba, que es el
+         único sitio donde cabe sin robarle ancho a las preguntas. -->
+    <aside class="runner__aside">
+      <div class="runner__progress-card">
+        <span class="runner__page-name">{{ pageLabel() }}</span>
+
+        <!-- Anillo de progreso.
+             Un aro se lee de un vistazo sin comparar con nada: la porción
+             llena habla por sí sola, mientras que una barra necesita ver dónde
+             termina para saber cuánto falta. El hueco del centro además deja
+             sitio a la cifra exacta, que es lo que se busca cuando el aro dice
+             «casi». -->
+        <div class="runner__ring" [class.runner__ring--done]="eng.isComplete()">
+          <svg viewBox="0 0 120 120" aria-hidden="true">
+            <defs>
+              <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="var(--vt-brand-light)" />
+                <stop offset="100%" stop-color="var(--vt-brand)" />
+              </linearGradient>
+            </defs>
+
+            <!-- Canal: el mismo grosor que el progreso, para que el aro se lea
+                 como una pieza y no como dos arcos sueltos. -->
+            <circle class="runner__ring-track" cx="60" cy="60" r="50" />
+
+            <!-- El degradado se referencia desde el atributo y no desde el CSS:
+                 con rutas por hash, un `url(#id)` en una hoja de estilos se
+                 resuelve contra la URL del documento y hay motores que no
+                 encuentran la definición. -->
+            <circle
+              class="runner__ring-fill"
+              cx="60"
+              cy="60"
+              r="50"
+              stroke="url(#ringGrad)"
+              [attr.stroke-dasharray]="ringLength()"
+              [attr.stroke-dashoffset]="ringOffset()"
+            />
+          </svg>
+
+          <div class="runner__ring-center">
+            <span class="runner__ring-value">
+              <span class="runner__ring-percent vt-figure">{{ eng.progress().percent }}</span>
+              <span class="runner__ring-unit">%</span>
+            </span>
+          </div>
+        </div>
+
+        <p class="runner__ring-caption">
+          <strong class="vt-figure">{{ eng.progress().filled }}</strong>
+          de {{ eng.progress().total }} campos
+        </p>
+
+        <dl class="runner__stats">
+          <div>
+            <dt>Página</dt>
+            <dd>
+              <span class="vt-figure">{{ eng.page() + 1 }}</span>
+              <small>de {{ eng.totalPages() }}</small>
+            </dd>
+          </div>
+
+          @if (eng.missing().length > 0) {
+            <div class="runner__stat--alert">
+              <dt>Obligatorios</dt>
+              <dd>
+                <span class="vt-figure">{{ eng.missing().length }}</span>
+                <small>sin responder</small>
+              </dd>
+            </div>
+          } @else {
+            <div class="runner__stat--ok">
+              <dt>Obligatorios</dt>
+              <dd>
+                <vt-icon name="check" [size]="15" />
+                <small>completos</small>
+              </dd>
+            </div>
+          }
+        </dl>
+      </div>
+    </aside>
+
+    <div class="runner__main">
+    <!-- Recordatorio de lo que quedó pendiente tras «Revisar campos». Se
+         mantiene a la vista mientras se corrigen, para no tener que volver a
+         intentar guardar solo para saber qué falta. -->
+    @if (blocking().length > 0) {
+      <aside class="runner__blocking">
+        <span class="runner__blocking-icon">
+          <vt-icon name="alert" [size]="19" />
+        </span>
+        <div>
+          <strong>
+            Falta
+            {{ blocking().length === 1 ? 'un campo obligatorio' : blocking().length + ' campos obligatorios' }}
+          </strong>
+          <ul>
+            @for (entry of blocking(); track entry.field.id) {
+              <li>
+                <button type="button" (click)="goToMissing(entry)">
+                  {{ entry.field.lab }}
+                  <small>página {{ entry.page + 1 }}</small>
+                </button>
+              </li>
+            }
+          </ul>
+        </div>
+      </aside>
+    }
+
+    @if (feedback()) {
+      <p class="runner__feedback">{{ feedback() }}</p>
+    }
+
+    <!-- ── Campos ──────────────────────────────────────────────────────────── -->
+    <div class="runner__fields" #fields>
+      @for (field of eng.visibleFields(); track field.id) {
+        <div class="runner__field" [id]="'field-' + field.id">
+          <vt-field-host
+            [field]="field"
+            [value]="eng.valueOf(field.id)"
+            [invalid]="eng.showsError(field)"
+            [answerGuid]="answer().GUID"
+            (valueChange)="onValueChange(field, $event)"
+          />
+        </div>
+      } @empty {
+        <p class="runner__empty">Esta página no tiene campos visibles.</p>
+      }
+    </div>
+
+    </div>
+
+    <!-- ── Navegación y guardado ───────────────────────────────────────────── -->
+    <vt-page-nav
+      [pages]="pageMarks()"
+      [current]="eng.page()"
+      [saving]="saving()"
+      (goTo)="goToPage($event)"
+      (save)="save()"
+      (leave)="requestLeave()"
+    />
+
+    <vt-required-dialog
+      [open]="askingRequired()"
+      [missing]="eng.missing()"
+      [pageLabels]="pageLabels()"
+      (review)="onReviewRequired()"
+      (saveAnyway)="onSaveAnyway()"
+      (goToField)="goToMissing($event)"
+      (close)="askingRequired.set(false)"
+    />
+  </section>
+}

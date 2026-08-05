@@ -1,0 +1,65 @@
+/**
+ * Envoltorio de las pantallas de captura: cámara, editor de fotos, firma y
+ * grabador.
+ *
+ * ## Ventana en el escritorio, pantalla completa en el teléfono
+ *
+ * En un monitor de 27 pulgadas, una cámara ocupando los 2560 píxeles de ancho
+ * no es inmersiva sino desconcertante: se pierde de vista el formulario del que
+ * se salió y la imagen se estira hasta verse peor de lo que es. Como ventana
+ * al 80 % queda claro que es un paso dentro del formulario, y el fondo oscuro
+ * recuerda dónde se vuelve.
+ *
+ * En un teléfono ese razonamiento se invierte: el 80 % de una pantalla de 5
+ * pulgadas no deja sitio para firmar ni para encuadrar, y el margen sobrante no
+ * muestra nada útil. Por debajo de 768 píxeles de ancho —o de 600 de alto, que
+ * es el móvil en horizontal— la ventana se convierte en pantalla completa.
+ *
+ * ## Cómo se usa
+ *
+ * ```scss
+ * @use '../../../../../shared/styles/overlay';
+ *
+ * :host { @include overlay.shell; }
+ * .sign { @include overlay.panel; }
+ * ```
+ */
+
+/** El fondo: cubre la aplicación y centra la ventana. */
+@mixin shell {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: var(--vt-space-4);
+
+  /* El velo separa la captura de lo que quedó detrás sin ocultarlo del todo:
+     se sigue viendo que hay un formulario esperando. */
+  background: rgb(8 10 13 / 62%);
+
+  @supports (backdrop-filter: blur(2px)) {
+    backdrop-filter: blur(3px);
+  }
+
+  @media (max-width: 768px), (max-height: 600px) {
+    padding: 0;
+  }
+}
+
+/** La ventana en sí. */
+@mixin panel {
+  width: min(1100px, 80vw);
+  height: min(860px, 80vh);
+  overflow: hidden;
+  border-radius: var(--vt-radius-lg);
+  box-shadow: 0 24px 64px rgb(0 0 0 / 45%);
+
+  @media (max-width: 768px), (max-height: 600px) {
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    max-height: none;
+    border-radius: 0;
+  }
+}

@@ -1,0 +1,104 @@
+<div class="rec" [class.rec--video]="isVideo()">
+  <header class="rec__bar">
+    <button type="button" class="rec__close" (click)="close()" aria-label="Cerrar">
+      <vt-icon name="close" [size]="20" />
+    </button>
+
+    <span class="rec__title">{{ title() }}</span>
+
+    @if (recording()) {
+      <span class="rec__live">
+        <span class="rec__dot" aria-hidden="true"></span>
+        {{ elapsed() }}
+      </span>
+    }
+  </header>
+
+  <div class="rec__stage">
+    @if (error()) {
+      <div class="rec__error">
+        <vt-icon name="alert" [size]="30" />
+        <p>{{ error() }}</p>
+      </div>
+    } @else if (result(); as done) {
+      <!-- Se escucha o se ve antes de guardar: un micrófono tapado se descubre
+           aquí y no cuando ya nadie está en el sitio. -->
+      <div class="rec__review">
+        @if (isVideo()) {
+          <video class="rec__player" [src]="done.url" controls playsinline></video>
+        } @else {
+          <div class="rec__audio">
+            <div class="rec__wave" aria-hidden="true">
+              <vt-icon name="mic" [size]="34" />
+            </div>
+            <span class="rec__len">{{ elapsed() }}</span>
+            <audio class="rec__track" [src]="done.url" controls></audio>
+          </div>
+        }
+      </div>
+    } @else {
+      <!--
+        El vídeo se mantiene en el DOM aunque no se use: `srcObject` se asigna
+        en cuanto llega el permiso, y crearlo después llegaría tarde.
+
+        `[muted]` va como enlace de propiedad y no como atributo suelto. El
+        atributo `muted` solo fija `defaultMuted`, y eso únicamente cuenta
+        cuando el elemento lo crea el analizador de HTML; Angular lo crea con
+        `createElement` y le pone el atributo después, así que la propiedad
+        `muted` se quedaba en `false` y **el altavoz reproducía lo que el
+        micrófono estaba grabando**. De ahí el eco.
+      -->
+      <video
+        #video
+        class="rec__preview"
+        [hidden]="!isVideo()"
+        [muted]="true"
+        playsinline
+        autoplay
+      ></video>
+
+      @if (!isVideo()) {
+        <div class="rec__idle">
+          <div class="rec__pulse" [class.rec__pulse--on]="recording()" aria-hidden="true">
+            <vt-icon name="mic" [size]="40" />
+          </div>
+          <span class="rec__len">{{ recording() ? elapsed() : 'Listo para grabar' }}</span>
+        </div>
+      }
+    }
+  </div>
+
+  @if (!error()) {
+    <footer class="rec__foot">
+      @if (result()) {
+        <button type="button" class="rec__ghost" (click)="discard()">
+          <vt-icon name="refresh" [size]="17" />
+          Repetir
+        </button>
+
+        <button type="button" class="rec__accept" (click)="accept()">
+          <vt-icon name="check" [size]="17" />
+          Guardar
+        </button>
+      } @else if (recording()) {
+        <button type="button" class="rec__stop" (click)="stop()" aria-label="Detener">
+          <vt-icon name="stop" [size]="26" />
+        </button>
+      } @else {
+        <button
+          type="button"
+          class="rec__start"
+          [disabled]="!ready()"
+          (click)="start()"
+          aria-label="Grabar"
+        >
+          <span class="rec__start-core"></span>
+        </button>
+      }
+    </footer>
+  } @else {
+    <footer class="rec__foot">
+      <button type="button" class="rec__ghost" (click)="close()">Cerrar</button>
+    </footer>
+  }
+</div>

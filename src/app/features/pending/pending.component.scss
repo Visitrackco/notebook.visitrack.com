@@ -1,0 +1,303 @@
+/**
+ * Cola de subida.
+ *
+ * Dos grupos y no una lista sola: «lista para enviarse» y «esperando archivos»
+ * son situaciones distintas y solo una de ellas depende del usuario. Mezclarlas
+ * obligaría a leer actividad por actividad para saber cuál es cuál.
+ */
+
+:host {
+  display: block;
+  width: 100%;
+}
+
+.pend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vt-space-4);
+  width: 100%;
+}
+
+/* ── Cabecera ──────────────────────────────────────────────────────────────── */
+
+.pend__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vt-space-4);
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.pend__title {
+  min-width: 0;
+
+  h1 {
+    margin: 0;
+    font-size: var(--vt-text-2xl);
+    font-weight: 700;
+  }
+
+  p {
+    margin: 4px 0 0;
+    font-size: var(--vt-text-sm);
+    color: var(--vt-text-muted);
+  }
+}
+
+.pend__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vt-space-2);
+}
+
+.pend__btn {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  padding: 10px 16px;
+  font-size: var(--vt-text-sm);
+  font-weight: 600;
+  color: var(--vt-text);
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-rule-strong);
+  border-radius: var(--vt-radius-full);
+
+  &:hover:not(:disabled) {
+    border-color: var(--vt-brand);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+  }
+}
+
+.pend__btn--primary {
+  color: var(--vt-on-brand);
+  background: var(--vt-brand);
+  border-color: transparent;
+
+  &:hover:not(:disabled) {
+    background: var(--vt-brand-dark);
+    border-color: transparent;
+  }
+}
+
+/* ── Avisos ────────────────────────────────────────────────────────────────── */
+
+.pend__auto,
+.pend__offline,
+.pend__feedback {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  padding: 10px var(--vt-space-4);
+  margin: 0;
+  font-size: var(--vt-text-xs);
+  line-height: 1.5;
+  border-radius: var(--vt-radius);
+}
+
+.pend__auto {
+  color: var(--vt-text-subtle);
+  background: var(--vt-surface-2);
+}
+
+.pend__offline {
+  font-size: var(--vt-text-sm);
+  color: var(--vt-warning);
+  background: color-mix(in srgb, var(--vt-warning) 12%, transparent);
+}
+
+.pend__feedback {
+  font-size: var(--vt-text-sm);
+  color: var(--vt-text);
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-rule);
+}
+
+.pend__muted {
+  font-size: var(--vt-text-sm);
+  color: var(--vt-text-subtle);
+}
+
+/* ── Grupos ────────────────────────────────────────────────────────────────── */
+
+.pend__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vt-space-2);
+}
+
+.pend__group-title {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  margin: 0;
+  font-size: var(--vt-text-sm);
+  font-weight: 650;
+}
+
+.pend__dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.pend__dot--ready {
+  background: var(--vt-success);
+}
+
+.pend__dot--waiting {
+  background: var(--vt-warning);
+}
+
+.pend__count {
+  padding: 1px 9px;
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--vt-text-muted);
+  background: var(--vt-surface-3);
+  border-radius: var(--vt-radius-full);
+}
+
+.pend__note {
+  padding: 10px var(--vt-space-4);
+  margin: 0;
+  font-size: var(--vt-text-xs);
+  line-height: 1.55;
+  color: var(--vt-text-muted);
+  background: color-mix(in srgb, var(--vt-warning) 8%, transparent);
+  border-radius: var(--vt-radius);
+}
+
+.pend__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vt-space-2);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+/* ── Actividad ─────────────────────────────────────────────────────────────── */
+
+.act {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vt-space-3);
+  align-items: center;
+  padding: var(--vt-space-3) var(--vt-space-4);
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-rule);
+  border-left: 3px solid var(--vt-success);
+  border-radius: var(--vt-radius-lg);
+}
+
+.act--waiting {
+  border-left-color: var(--vt-warning);
+}
+
+.act__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.act__title {
+  overflow: hidden;
+  font-size: var(--vt-text-sm);
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.act__reason {
+  margin: 0;
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-muted);
+}
+
+.act__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: 11px;
+  color: var(--vt-text-subtle);
+}
+
+/* Lo que la propia actividad tenga que decir —un archivo que se perdió— pesa
+   más que el resto de los datos de la línea. */
+.act__msg {
+  color: var(--vt-warning);
+}
+
+.act__send {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 6px;
+  align-items: center;
+  padding: 9px 15px;
+  font-size: var(--vt-text-xs);
+  font-weight: 650;
+  color: var(--vt-text);
+  background: var(--vt-surface-2);
+  border: 1px solid var(--vt-rule-strong);
+  border-radius: var(--vt-radius-full);
+
+  &:hover:not(:disabled) {
+    color: var(--vt-brand);
+    border-color: var(--vt-brand);
+  }
+
+  &:disabled {
+    opacity: 0.45;
+  }
+}
+
+/* ── Vacío ─────────────────────────────────────────────────────────────────── */
+
+.pend__empty {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  padding: var(--vt-space-8) var(--vt-space-4);
+  text-align: center;
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-rule);
+  border-radius: var(--vt-radius-lg);
+
+  strong {
+    font-size: var(--vt-text-base);
+  }
+
+  small {
+    font-size: var(--vt-text-sm);
+    color: var(--vt-text-subtle);
+  }
+}
+
+.pend__empty-icon {
+  display: grid;
+  place-items: center;
+  width: 66px;
+  height: 66px;
+  margin-bottom: 6px;
+  color: var(--vt-icon-green-fg);
+  background: var(--vt-icon-green-bg);
+  border-radius: 50%;
+}
+
+@media (max-width: 640px) {
+  .pend__actions .pend__btn {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .act__send {
+    width: 100%;
+    justify-content: center;
+  }
+}

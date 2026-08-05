@@ -1,0 +1,155 @@
+<div class="forms">
+  <header class="forms__header">
+    <div>
+      <h1>Formularios</h1>
+      <p>
+        @if (loading()) {
+          Cargando…
+        } @else if (total() === 0) {
+          Todavía no tienes formularios en este equipo
+        } @else {
+          {{ total() }} {{ total() === 1 ? 'formulario' : 'formularios' }} ·
+          {{ totalActivities() }} {{ totalActivities() === 1 ? 'actividad' : 'actividades' }}
+        }
+      </p>
+    </div>
+  </header>
+
+  <!-- ── Buscador y orden ─────────────────────────────────────────────── -->
+  <div class="forms__toolbar">
+    <div class="forms__search">
+      <span class="forms__search-icon" aria-hidden="true">
+        <svg viewBox="0 0 20 20" fill="none">
+          <circle cx="9" cy="9" r="5.5" stroke="currentColor" stroke-width="1.8" />
+          <path d="m13.5 13.5 3.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+        </svg>
+      </span>
+      <input
+        type="search"
+        placeholder="Buscar formulario…"
+        aria-label="Buscar formulario"
+        [value]="search()"
+        (input)="onSearch($event)"
+      />
+      @if (search()) {
+        <button type="button" class="forms__search-clear" (click)="clearSearch()" aria-label="Limpiar búsqueda">
+          <vt-icon name="close" [size]="16" />
+        </button>
+      }
+    </div>
+
+    <div class="forms__sort" role="group" aria-label="Ordenar por">
+      <button
+        type="button"
+        [class.forms__sort-btn--active]="sortMode() === 'title'"
+        class="forms__sort-btn"
+        (click)="setSort('title')"
+      >
+        Nombre
+      </button>
+      <button
+        type="button"
+        [class.forms__sort-btn--active]="sortMode() === 'activity'"
+        class="forms__sort-btn"
+        (click)="setSort('activity')"
+      >
+        Actividad
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Contenido ────────────────────────────────────────────────────── -->
+  @if (loading()) {
+    <div class="forms__grid">
+      @for (placeholder of [1, 2, 3, 4, 5, 6]; track placeholder) {
+        <div class="forms__card forms__card--loading"></div>
+      }
+    </div>
+  } @else if (!hasResults()) {
+    <div class="forms__empty">
+      <span class="forms__empty-icon">
+        <vt-icon name="clipboard" [size]="30" />
+      </span>
+
+      @if (search()) {
+        <h2>Sin resultados para «{{ search() }}»</h2>
+        <p>Revisa la palabra o borra el filtro para ver todos tus formularios.</p>
+        <button type="button" class="vt-btn vt-btn-ghost" (click)="clearSearch()">
+          Ver todos
+        </button>
+      } @else {
+        <h2>Aún no hay formularios</h2>
+        <p>
+          Los formularios se descargan desde Visitrack. Ve a Sincronización y trae tus datos para
+          empezar.
+        </p>
+        <a class="vt-btn vt-btn-primary" routerLink="/sincronizacion">
+          <vt-icon name="refresh" [size]="17" />
+          Ir a Sincronización
+        </a>
+      }
+    </div>
+  } @else {
+    <div class="forms__grid">
+      @for (card of cards(); track card.survey.ID) {
+        <!-- El color de la ficha se inyecta como variables locales: el resto de
+             las reglas las consume, así que no hay estilos en línea repartidos
+             por la plantilla. -->
+        <article
+          class="forms__card"
+          [style.--card-from]="card.palette.from"
+          [style.--card-to]="card.palette.to"
+          [style.--card-gradient]="card.gradient"
+          (click)="open(card)"
+          tabindex="0"
+          role="button"
+        >
+          <span class="forms__stripe" aria-hidden="true"></span>
+
+          <header class="forms__card-head">
+            <span class="forms__badge">
+              <span class="forms__badge-glow" aria-hidden="true"></span>
+              <span class="forms__badge-letter">{{ card.initial }}</span>
+            </span>
+
+            @if (card.count > 0) {
+              <span class="forms__count">
+                <span class="vt-figure">{{ card.count }}</span>
+                <small>{{ card.count === 1 ? 'actividad' : 'actividades' }}</small>
+              </span>
+            }
+          </header>
+
+          <div class="forms__body">
+            <h3 class="forms__title">{{ card.survey.Title }}</h3>
+            @if (card.survey.Description) {
+              <p class="forms__desc">{{ card.survey.Description }}</p>
+            }
+          </div>
+
+          <footer class="forms__foot">
+            @if (card.waiting > 0) {
+              <span class="forms__tag forms__tag--waiting">
+                <vt-icon name="image" [size]="13" />
+                {{ card.waiting }} esperando archivos
+              </span>
+            } @else if (card.survey.hasAsset === 1) {
+              <span class="forms__tag">
+                <vt-icon name="box" [size]="13" />
+                Con activo
+              </span>
+            }
+            @if (card.count === 0) {
+              <span class="forms__tag forms__tag--muted">Sin actividades</span>
+            }
+
+            <span class="forms__open">
+              Abrir
+              <vt-icon name="chevron" [size]="15" />
+            </span>
+          </footer>
+        </article>
+      }
+    </div>
+  }
+</div>

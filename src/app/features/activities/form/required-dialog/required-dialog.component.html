@@ -1,0 +1,62 @@
+<dialog #dialog class="req" (click)="onBackdropClick($event)" (close)="close.emit()">
+  <div class="req__panel">
+    <header class="req__head">
+      <span class="req__icon">
+        <vt-icon name="alert" [size]="28" />
+      </span>
+
+      <h2>
+        @if (missing().length === 1) {
+          Falta un campo obligatorio
+        } @else {
+          Faltan {{ missing().length }} campos obligatorios
+        }
+      </h2>
+
+      <p>
+        Puedes completarlos ahora o guardar la actividad como está — quedará
+        registrada y marcada como incompleta.
+      </p>
+    </header>
+
+    <!-- Agrupados por página y cada uno enlazado a su sitio: con varias
+         páginas, una lista plana deja al usuario recomponiendo mentalmente
+         dónde está cada cosa. -->
+    <div class="req__groups">
+      @for (group of groups(); track group.page) {
+        <section class="req__group">
+          <header class="req__group-head">
+            <span class="req__group-number vt-figure">{{ group.page + 1 }}</span>
+            <span class="req__group-label">{{ group.label }}</span>
+            <span class="req__group-count">
+              {{ group.entries.length }}
+              {{ group.entries.length === 1 ? 'campo' : 'campos' }}
+            </span>
+          </header>
+
+          <ul class="req__list">
+            @for (entry of group.entries; track entry.field.id) {
+              <li>
+                <button type="button" (click)="goToField.emit(entry)">
+                  <span class="req__marker" aria-hidden="true"></span>
+                  <span class="req__field">{{ entry.field.lab || entry.field.id }}</span>
+                  <vt-icon name="chevron" [size]="15" />
+                </button>
+              </li>
+            }
+          </ul>
+        </section>
+      }
+    </div>
+
+    <footer class="req__foot">
+      <button type="button" class="req__ghost" (click)="saveAnyway.emit()">
+        Guardar de todos modos
+      </button>
+      <button type="button" class="req__primary" (click)="review.emit()">
+        <vt-icon name="check" [size]="17" />
+        Revisar campos
+      </button>
+    </footer>
+  </div>
+</dialog>

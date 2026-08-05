@@ -1,0 +1,41 @@
+<audio
+  #audio
+  [src]="src()"
+  preload="metadata"
+  (timeupdate)="onTimeUpdate()"
+  (loadedmetadata)="onMetadata()"
+  (durationchange)="onMetadata()"
+  (ended)="onEnded()"
+></audio>
+
+<div class="player">
+  <button
+    type="button"
+    class="player__play"
+    (click)="toggle()"
+    [attr.aria-label]="playing() ? 'Pausar' : 'Reproducir'"
+  >
+    <vt-icon [name]="playing() ? 'stop' : 'play'" [size]="21" />
+  </button>
+
+  <div class="player__body">
+    <!-- El nivel marca el avance tiñendo las barras ya reproducidas. -->
+    <div class="player__wave" (click)="seek($event)">
+      @for (height of bars; track $index) {
+        <span
+          class="player__bar"
+          [class.player__bar--on]="$index / bars.length < progress()"
+          [style.height.%]="height"
+        ></span>
+      }
+    </div>
+
+    <div class="player__meta">
+      <span class="player__time">{{ elapsed() }} / {{ total() }}</span>
+
+      @if (caption()) {
+        <span class="player__caption">{{ caption() }}</span>
+      }
+    </div>
+  </div>
+</div>

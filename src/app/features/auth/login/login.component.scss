@@ -1,0 +1,515 @@
+/**
+ * Acceso.
+ *
+ * Formulario a la izquierda sobre blanco, ilustración a la derecha sobre
+ * círculos concéntricos en el rojo de la marca. La pantalla vive del espacio en
+ * blanco: solo hay dos cosas que hacer aquí —entrar, o entender qué es esto— y
+ * cada una tiene su mitad.
+ *
+ * ## Siempre en claro
+ *
+ * Ignora el tema oscuro **a propósito**: es la puerta de entrada y debe verse
+ * igual siempre. Los tokens se redefinen en `:host` con valores fijos; el tema
+ * vuelve a mandar en cuanto se entra a la aplicación.
+ */
+
+:host {
+  --lg-brand: #d32029;
+  --lg-brand-dark: #a3141c;
+  --lg-ink: #16181d;
+  --lg-muted: #6b7280;
+  --lg-subtle: #9ca3af;
+  --lg-line: #e6e8ec;
+  --lg-field: #f7f8fa;
+
+  display: block;
+}
+
+.login {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1.15fr;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow: hidden;
+  color: var(--lg-ink);
+  background: #fff;
+}
+
+/* ── Marca ─────────────────────────────────────────────────────────────────── */
+
+.login__topbar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--vt-space-6) var(--vt-space-8);
+}
+
+.login__logo {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+
+  svg {
+    width: 34px;
+    height: 34px;
+  }
+
+  span {
+    font-family: var(--vt-font-display);
+    font-size: var(--vt-text-lg);
+    font-weight: 700;
+    letter-spacing: -0.2px;
+  }
+}
+
+.login__topbar-state {
+  padding: 5px 13px;
+  font-size: var(--vt-text-xs);
+  font-weight: 600;
+  color: #15803d;
+  background: #dcfce7;
+  border-radius: var(--vt-radius-full);
+}
+
+.login__topbar-state--off {
+  color: #b45309;
+  background: #fef3c7;
+}
+
+/* ── Formulario ────────────────────────────────────────────────────────────── */
+
+.login__form-side {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--vt-space-10) var(--vt-space-8);
+}
+
+.login__form-wrap {
+  width: 100%;
+  max-width: 352px;
+}
+
+/**
+ * El título lleva el subrayado rojo bajo la palabra, como la pestaña activa de
+ * la referencia: señala dónde estás sin necesidad de una pestaña que no existe.
+ */
+.login__title {
+  position: relative;
+  display: inline-block;
+  padding-bottom: 10px;
+  margin-bottom: var(--vt-space-3);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+
+  &::after {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 42px;
+    height: 3px;
+    content: '';
+    background: var(--lg-brand);
+    border-radius: var(--vt-radius-full);
+  }
+}
+
+.login__subtitle {
+  margin-bottom: var(--vt-space-6);
+  font-size: var(--vt-text-base);
+  color: var(--lg-muted);
+}
+
+.login__offline {
+  padding: 10px 13px;
+  margin-bottom: var(--vt-space-5);
+  font-size: var(--vt-text-sm);
+  color: #92400e;
+  background: #fef3c7;
+  border-radius: var(--vt-radius);
+}
+
+/* ── Cuentas recordadas ────────────────────────────────────────────────────── */
+
+/**
+ * Cuentas recordadas.
+ *
+ * Apiladas y del mismo ancho que los campos, con esquinas rectas: se leen como
+ * una lista de opciones sobre el formulario, no como etiquetas sueltas. El
+ * contraste de forma con los campos —redondos— evita confundirlas con ellos.
+ */
+.login__accounts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 168px;
+  margin-bottom: var(--vt-space-5);
+  overflow-y: auto;
+}
+
+.login__account {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  padding: 8px 12px;
+  text-align: left;
+  background: var(--lg-field);
+  border: 1.5px solid var(--lg-line);
+  border-radius: 4px;
+  transition:
+    border-color var(--vt-transition),
+    background var(--vt-transition);
+
+  &:hover {
+    border-color: #d5d8de;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--lg-brand);
+    outline-offset: 2px;
+  }
+}
+
+.login__account--active {
+  background: #fdeced;
+  border-color: var(--lg-brand);
+}
+
+.login__account-avatar {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding-left: 1px;
+  font-family: var(--vt-font-display);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  color: #fff;
+  letter-spacing: 0.4px;
+  background: var(--lg-brand);
+  border-radius: var(--vt-radius-full);
+}
+
+.login__account-name {
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--vt-text-sm);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Campos ────────────────────────────────────────────────────────────────── */
+
+.login__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vt-space-3);
+}
+
+/**
+ * Campo tipo píldora con el icono dentro, como en la referencia.
+ *
+ * El borde lo lleva el contenedor y no el `input`: así el icono y el botón de
+ * ver contraseña quedan dentro del mismo recuadro y el foco ilumina el conjunto.
+ */
+.login__field {
+  display: flex;
+  align-items: center;
+  padding: 0 6px 0 14px;
+  background: var(--lg-field);
+  border: 1.5px solid transparent;
+  border-radius: var(--vt-radius-full);
+  transition:
+    border-color var(--vt-transition),
+    background var(--vt-transition),
+    box-shadow var(--vt-transition);
+
+  &:focus-within {
+    background: #fff;
+    border-color: var(--lg-brand);
+    box-shadow: 0 0 0 4px rgb(211 32 41 / 10%);
+
+    .login__field-icon {
+      color: var(--lg-brand);
+    }
+  }
+
+  input {
+    flex: 1;
+    min-width: 0;
+    padding: 13px 10px;
+    background: transparent;
+    border: 0;
+
+    &::placeholder {
+      color: var(--lg-subtle);
+    }
+
+    &:focus {
+      outline: none;
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+  }
+}
+
+.login__field-icon {
+  display: flex;
+  flex-shrink: 0;
+  color: var(--lg-subtle);
+  transition: color var(--vt-transition);
+
+  svg {
+    width: 19px;
+    height: 19px;
+  }
+}
+
+.login__reveal {
+  flex-shrink: 0;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--lg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  background: transparent;
+  border: 0;
+  border-radius: var(--vt-radius-full);
+
+  &:hover {
+    color: var(--lg-brand);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--lg-brand);
+    outline-offset: 1px;
+  }
+}
+
+/* ── Mensajes ──────────────────────────────────────────────────────────────── */
+
+.login__error,
+.login__info {
+  padding: 9px 13px;
+  font-size: var(--vt-text-sm);
+  border-radius: var(--vt-radius);
+}
+
+.login__error {
+  color: #b91c1c;
+  background: #fee2e2;
+}
+
+.login__info {
+  color: #334155;
+  background: #eef0f3;
+}
+
+/* ── Botón ─────────────────────────────────────────────────────────────────── */
+
+.login__submit {
+  display: flex;
+  gap: var(--vt-space-2);
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  margin-top: var(--vt-space-2);
+  font-size: var(--vt-text-md);
+  font-weight: 600;
+  color: #fff;
+  background: var(--lg-brand);
+  border: 0;
+  border-radius: var(--vt-radius-full);
+  transition:
+    background var(--vt-transition),
+    box-shadow var(--vt-transition),
+    transform var(--vt-transition);
+
+  &:not(:disabled):hover {
+    background: var(--lg-brand-dark);
+    box-shadow: 0 8px 20px rgb(211 32 41 / 30%);
+    transform: translateY(-1px);
+  }
+
+  &:not(:disabled):active {
+    transform: translateY(0);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    background: #e6e8ec;
+    color: var(--lg-subtle);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--lg-brand);
+    outline-offset: 3px;
+  }
+}
+
+.login__spinner {
+  width: 15px;
+  height: 15px;
+  border: 2px solid rgb(255 255 255 / 40%);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: login-spin 700ms linear infinite;
+}
+
+@keyframes login-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.login__version {
+  margin-top: var(--vt-space-6);
+  font-size: 11px;
+  color: var(--lg-subtle);
+  text-align: center;
+}
+
+/* ── Ilustración ───────────────────────────────────────────────────────────── */
+
+/**
+ * Panel de la ilustración.
+ *
+ * Arranca en blanco puro por la izquierda y se tiñe hacia la derecha, así que
+ * no hay costura visible con el formulario: los dos lados son la misma
+ * superficie. Un borde o un cambio de color seco partiría la pantalla en dos.
+ */
+.login__art {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--vt-space-10);
+  overflow: hidden;
+  background: linear-gradient(105deg, #fff 0%, #fdf3f3 22%, #fbe6e7 65%, #f8d9da 100%);
+}
+
+/**
+ * Círculos concéntricos.
+ *
+ * Nacen fuera del marco por la derecha, así que se leen como ondas que entran
+ * en la pantalla en vez de tres anillos centrados y estáticos.
+ */
+.login__ring {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.login__ring--1 {
+  top: 50%;
+  right: -32%;
+  width: 128%;
+  aspect-ratio: 1;
+  background: rgb(211 32 41 / 7%);
+  transform: translateY(-50%);
+}
+
+.login__ring--2 {
+  top: 50%;
+  right: -18%;
+  width: 96%;
+  aspect-ratio: 1;
+  background: rgb(211 32 41 / 8%);
+  transform: translateY(-50%);
+}
+
+.login__ring--3 {
+  top: 50%;
+  right: -4%;
+  width: 64%;
+  aspect-ratio: 1;
+  background: rgb(211 32 41 / 9%);
+  transform: translateY(-50%);
+}
+
+.login__art-content {
+  position: relative;
+  z-index: 1;
+  max-width: 460px;
+  text-align: center;
+}
+
+.login__scene {
+  width: 100%;
+  max-width: 400px;
+  height: auto;
+  margin-bottom: var(--vt-space-6);
+}
+
+.login__art-title {
+  margin-bottom: var(--vt-space-3);
+  font-size: clamp(24px, 2.4vw, 32px);
+  font-weight: 700;
+  line-height: 1.18;
+  letter-spacing: -0.5px;
+}
+
+.login__art-text {
+  max-width: 38ch;
+  margin: 0 auto;
+  font-size: var(--vt-text-base);
+  color: var(--lg-muted);
+}
+
+/* ── Responsive ────────────────────────────────────────────────────────────── */
+
+@media (max-width: 980px) {
+  /* La ilustración pasa arriba y se reduce a su mensaje: en vertical, el
+     formulario es lo que el usuario vino a usar y debe quedar a la vista. */
+  .login {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+
+  .login__art {
+    order: -1;
+    padding: 92px var(--vt-space-6) var(--vt-space-8);
+  }
+
+  .login__scene {
+    max-width: 260px;
+    margin-bottom: var(--vt-space-4);
+  }
+
+  .login__form-side {
+    padding: var(--vt-space-8) var(--vt-space-6) var(--vt-space-10);
+  }
+}
+
+@media (max-width: 560px) {
+  .login__topbar {
+    padding: var(--vt-space-4) var(--vt-space-5);
+  }
+
+  .login__scene {
+    max-width: 200px;
+  }
+
+  .login__art-title {
+    font-size: var(--vt-text-xl);
+  }
+
+  .login__art-text {
+    font-size: var(--vt-text-sm);
+  }
+}

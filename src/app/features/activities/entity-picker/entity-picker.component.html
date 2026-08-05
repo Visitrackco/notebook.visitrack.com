@@ -1,0 +1,132 @@
+<div class="picker">
+  <header class="picker__header">
+    <button
+      mat-icon-button
+      type="button"
+      class="picker__back"
+      (click)="back.emit()"
+      matTooltip="Volver"
+      aria-label="Volver"
+    >
+      <vt-icon name="chevron" [size]="20" />
+    </button>
+
+    <span class="picker__icon">
+      <vt-icon [name]="icon()" [size]="21" />
+    </span>
+
+    <div class="picker__heading">
+      <h1>{{ title() }}</h1>
+      @if (subtitle()) {
+        <p>{{ subtitle() }}</p>
+      }
+    </div>
+
+    @if (totalCount() > 0) {
+      <span class="picker__count">
+        <span class="vt-figure">{{ totalCount() }}</span>
+        <small>{{ totalCount() === 1 ? 'opción' : 'opciones' }}</small>
+      </span>
+    }
+  </header>
+
+  <div class="picker__search">
+    <span class="picker__search-icon" aria-hidden="true">
+      <svg viewBox="0 0 20 20" fill="none">
+        <circle cx="9" cy="9" r="5.5" stroke="currentColor" stroke-width="1.8" />
+        <path d="m13.5 13.5 3.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+      </svg>
+    </span>
+    <input
+      type="search"
+      placeholder="Buscar por nombre o por cualquier descriptivo…"
+      aria-label="Buscar"
+      [value]="searchTerm()"
+      (input)="onSearch($event)"
+    />
+    @if (searching()) {
+      <span class="picker__spinner" aria-label="Buscando"></span>
+    } @else if (searchTerm()) {
+      <button mat-icon-button type="button" (click)="clearSearch()" aria-label="Limpiar búsqueda">
+        <vt-icon name="close" [size]="16" />
+      </button>
+    }
+  </div>
+
+  <!-- La búsqueda recorre todas las opciones, no solo las cargadas: decirlo
+       evita que alguien concluya que le faltan datos por no haber paginado. -->
+  @if (searchTerm() && !searching()) {
+    <p class="picker__hint">
+      {{ items().length }} de {{ totalCount() }} coinciden con «{{ searchTerm() }}»
+    </p>
+  }
+
+  @if (loading()) {
+    <ul class="picker__list">
+      @for (placeholder of [1, 2, 3, 4, 5, 6]; track placeholder) {
+        <li class="picker__row picker__row--loading"></li>
+      }
+    </ul>
+  } @else if (items().length === 0) {
+    <div class="picker__empty">
+      <span class="picker__empty-icon">
+        <vt-icon [name]="icon()" [size]="26" />
+      </span>
+      @if (searchTerm()) {
+        <h2>Sin resultados para «{{ searchTerm() }}»</h2>
+        <p>Se buscó en el nombre y en todos los descriptivos. Prueba con otra palabra.</p>
+        <button mat-stroked-button type="button" (click)="clearSearch()">Ver todas</button>
+      } @else {
+        <h2>Nada para elegir</h2>
+        <p>{{ emptyMessage() }}</p>
+      }
+    </div>
+  } @else {
+    <ul class="picker__list">
+      @for (item of items(); track item.id) {
+        <li>
+          <button type="button" class="picker__row" (click)="choose.emit(item)">
+            <span class="picker__row-icon">
+              <vt-icon [name]="icon()" [size]="18" />
+            </span>
+
+            <span class="picker__row-body">
+              <span class="picker__row-title">
+                <span class="picker__row-name">{{ item.name }}</span>
+                @if (item.hint) {
+                  <span class="picker__row-hint">{{ item.hint }}</span>
+                }
+              </span>
+
+              <!-- Descriptivos en columnas de etiqueta y valor, como en la app:
+                   son los que permiten distinguir dos sedes con nombre parecido. -->
+              @if (item.descriptors.length > 0) {
+                <span class="picker__descriptors">
+                  @for (descriptor of item.descriptors; track descriptor.lab) {
+                    <span class="picker__descriptor">
+                      <em>{{ descriptor.lab }}</em>
+                      <b>{{ descriptor.val || '—' }}</b>
+                    </span>
+                  }
+                </span>
+              }
+            </span>
+
+            <span class="picker__row-go" aria-hidden="true">
+              <vt-icon name="chevron" [size]="17" />
+            </span>
+          </button>
+        </li>
+      }
+    </ul>
+
+    @if (hasMore()) {
+      <button mat-stroked-button type="button" class="picker__more" (click)="loadMore.emit()">
+        Cargar más
+        <span class="picker__more-count">
+          {{ items().length }} de {{ totalCount() }}
+        </span>
+      </button>
+    }
+  }
+</div>

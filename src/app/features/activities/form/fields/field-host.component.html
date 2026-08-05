@@ -1,0 +1,371 @@
+@let f = field();
+
+<!-- Marca de obligatorio: siempre en el mismo sitio, encendida en rojo cuando
+     la validación lo señala. Los campos de solo presentación no la llevan
+     porque no reciben datos. -->
+@if (f.req && !isDisplay()) {
+  <span
+    class="fld__flag"
+    [class.fld__flag--on]="invalid()"
+    [title]="invalid() ? 'Este campo obligatorio está sin responder' : 'Campo obligatorio'"
+    aria-hidden="true"
+  >
+    *
+  </span>
+}
+
+@switch (f.fty) {
+  <!-- ── Solo presentación ──────────────────────────────────────────────── -->
+  @case ('title') {
+    <h3 class="fld__title">{{ f.txt || f.lab }}</h3>
+  }
+  @case ('paragraph') {
+    <p class="fld__paragraph">{{ f.txt || f.lab }}</p>
+  }
+  @case ('hyperlink') {
+    <a class="fld__link" [href]="f.url || f.txt" target="_blank" rel="noopener">
+      <vt-icon name="chevron" [size]="15" />
+      {{ f.lab || f.txt }}
+    </a>
+  }
+
+  <!-- ── Texto largo ────────────────────────────────────────────────────── -->
+  @case ('textarea') {
+    <mat-form-field appearance="outline" class="fld__control">
+      <mat-label>{{ f.lab }}{{ f.req ? ' *' : '' }}</mat-label>
+      <textarea
+        matInput
+        rows="4"
+        [value]="text()"
+        [placeholder]="f.pho || ''"
+        [readonly]="readOnly()"
+        (input)="onText($event)"
+      ></textarea>
+      @if (f.hel) {
+        <mat-hint>{{ f.hel }}</mat-hint>
+      }
+      @if (invalid()) {
+        <mat-error>Este campo es obligatorio.</mat-error>
+      }
+    </mat-form-field>
+  }
+
+  <!-- ── Selección única ────────────────────────────────────────────────── -->
+  @case ('radio') {
+    <fieldset class="fld__group" [class.fld__group--invalid]="invalid()">
+      <legend>
+        {{ f.lab }}
+        @if (f.req) {
+          <span class="fld__required">*</span>
+        }
+      </legend>
+
+      <mat-radio-group
+        class="fld__radios"
+        [value]="selectedId()"
+        (change)="onSingle($event.value)"
+      >
+        @for (option of options(); track option.id) {
+          <mat-radio-button [value]="option.id" [disabled]="readOnly()">
+            {{ option.txt }}
+          </mat-radio-button>
+        }
+      </mat-radio-group>
+
+      @if (f.hel) {
+        <p class="fld__hint">{{ f.hel }}</p>
+      }
+      @if (invalid()) {
+        <p class="fld__error">Elige una opción.</p>
+      }
+    </fieldset>
+  }
+
+  <!-- ── Selección múltiple ─────────────────────────────────────────────── -->
+  @case ('checkbox') {
+    <fieldset class="fld__group" [class.fld__group--invalid]="invalid()">
+      <legend>
+        {{ f.lab }}
+        @if (f.req) {
+          <span class="fld__required">*</span>
+        }
+      </legend>
+
+      <div class="fld__checks">
+        @for (option of options(); track option.id) {
+          <mat-checkbox
+            [checked]="isChecked(option.id)"
+            [disabled]="readOnly()"
+            (change)="onMultiple(option.id, $event.checked)"
+          >
+            {{ option.txt }}
+          </mat-checkbox>
+        }
+      </div>
+
+      @if (f.hel) {
+        <p class="fld__hint">{{ f.hel }}</p>
+      }
+      @if (invalid()) {
+        <p class="fld__error">Marca al menos una opción.</p>
+      }
+    </fieldset>
+  }
+
+  <!-- ── Fecha ──────────────────────────────────────────────────────────── -->
+  @case ('date') {
+    <mat-form-field appearance="outline" class="fld__control">
+      <mat-label>{{ f.lab }}{{ f.req ? ' *' : '' }}</mat-label>
+      <input
+        matInput
+        [matDatepicker]="datePicker"
+        [ngModel]="dateValue()"
+        [readonly]="true"
+        [placeholder]="f.pho || 'dd/mm/aaaa'"
+        (click)="readOnly() || datePicker.open()"
+        (dateChange)="onDate($event.value)"
+      />
+      <mat-datepicker-toggle matIconSuffix [for]="datePicker" [disabled]="readOnly()" />
+      <mat-datepicker #datePicker />
+      @if (f.hel) {
+        <mat-hint>{{ f.hel }}</mat-hint>
+      }
+      @if (invalid()) {
+        <mat-error>Este campo es obligatorio.</mat-error>
+      }
+    </mat-form-field>
+  }
+
+  <!-- ── Hora ───────────────────────────────────────────────────────────── -->
+  @case ('time') {
+    <mat-form-field appearance="outline" class="fld__control">
+      <mat-label>{{ f.lab }}{{ f.req ? ' *' : '' }}</mat-label>
+      <input
+        matInput
+        [matTimepicker]="timePicker"
+        [ngModel]="timeValue()"
+        [readonly]="readOnly()"
+        (valueChange)="onTime($event)"
+      />
+      <mat-timepicker-toggle matIconSuffix [for]="timePicker" [disabled]="readOnly()" />
+      <mat-timepicker #timePicker interval="15m" />
+      @if (f.hel) {
+        <mat-hint>{{ f.hel }}</mat-hint>
+      }
+      @if (invalid()) {
+        <mat-error>Este campo es obligatorio.</mat-error>
+      }
+    </mat-form-field>
+  }
+
+  <!-- ── Fecha y hora ───────────────────────────────────────────────────── -->
+  @case ('datetime') {
+    <fieldset class="fld__group" [class.fld__group--invalid]="invalid()">
+      <legend>
+        {{ f.lab }}
+        @if (f.req) {
+          <span class="fld__required">*</span>
+        }
+      </legend>
+
+      <!-- Dos controles y no uno: el selector de fecha y el de hora son
+           interacciones distintas, y un único campo obligaría a elegir cuál de
+           los dos calendarios abrir. -->
+      <div class="fld__datetime">
+        <mat-form-field appearance="outline">
+          <mat-label>Fecha</mat-label>
+          <input
+            matInput
+            [matDatepicker]="dtDate"
+            [ngModel]="dateValue()"
+            [readonly]="true"
+            (click)="readOnly() || dtDate.open()"
+            (dateChange)="onDate($event.value)"
+          />
+          <mat-datepicker-toggle matIconSuffix [for]="dtDate" [disabled]="readOnly()" />
+          <mat-datepicker #dtDate />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Hora</mat-label>
+          <input
+            matInput
+            [matTimepicker]="dtTime"
+            [ngModel]="timeValue()"
+            [readonly]="readOnly()"
+            (valueChange)="onTime($event)"
+          />
+          <mat-timepicker-toggle matIconSuffix [for]="dtTime" [disabled]="readOnly()" />
+          <mat-timepicker #dtTime interval="15m" />
+        </mat-form-field>
+      </div>
+
+      @if (f.hel) {
+        <p class="fld__hint">{{ f.hel }}</p>
+      }
+
+      <!-- Media fecha y hora no se guarda: hay que decirlo en el momento, o el
+           usuario cree que ya quedó registrada. -->
+      @if (incompleteDateTime()) {
+        <p class="fld__warn">
+          <vt-icon name="alert" [size]="14" />
+          Falta {{ missingHalf() }}. El campo no se guarda hasta tener las dos.
+        </p>
+      } @else if (invalid()) {
+        <p class="fld__error">Indica la fecha y la hora.</p>
+      }
+    </fieldset>
+  }
+
+  <!-- ── Desplegable ────────────────────────────────────────────────────── -->
+  @case ('dropdownlist') {
+    <mat-form-field appearance="outline" class="fld__control">
+      <mat-label>{{ f.lab }}{{ f.req ? ' *' : '' }}</mat-label>
+      <mat-select
+        [value]="selectedId()"
+        [disabled]="readOnly()"
+        (selectionChange)="onSingle($event.value)"
+      >
+        @for (option of options(); track option.id) {
+          <mat-option [value]="option.id">{{ option.txt }}</mat-option>
+        }
+      </mat-select>
+      @if (f.hel) {
+        <mat-hint>{{ f.hel }}</mat-hint>
+      }
+      @if (invalid()) {
+        <mat-error>Elige una opción.</mat-error>
+      }
+    </mat-form-field>
+  }
+
+  <!-- Fotografía de referencia que trae el propio formulario: un plano, un
+       modelo de etiqueta, un ejemplo de lo que hay que buscar. No se responde
+       nada aquí; la foto que se toma en campo es `picture`. -->
+  @case ('image') {
+    <figure class="fld__figure">
+      @if (f.url) {
+        <img [src]="f.url" [alt]="f.lab" loading="lazy" />
+      }
+      @if (f.lab) {
+        <figcaption>{{ f.lab }}</figcaption>
+      }
+    </figure>
+  }
+
+  <!-- ── Archivos: foto, firma, audio, video, documento ─────────────────── -->
+  @case ('picture') {
+    <ng-container *ngTemplateOutlet="binaryTpl" />
+  }
+  @case ('signature') {
+    <ng-container *ngTemplateOutlet="binaryTpl" />
+  }
+  @case ('audio') {
+    <ng-container *ngTemplateOutlet="binaryTpl" />
+  }
+  @case ('video') {
+    <ng-container *ngTemplateOutlet="binaryTpl" />
+  }
+  @case ('file') {
+    <ng-container *ngTemplateOutlet="binaryTpl" />
+  }
+  <!-- ── Ubicación ──────────────────────────────────────────────────────── -->
+  @case ('gps') {
+    <vt-gps-field
+      [label]="f.lab"
+      [help]="f.hel || ''"
+      [required]="!!f.req"
+      [readOnly]="readOnly()"
+      [invalid]="invalid()"
+      [reading]="geoValue()"
+      (readingChange)="valueChange.emit($event)"
+    />
+  }
+  @case ('masterdetail') {
+    <ng-container *ngTemplateOutlet="pendingTpl" />
+  }
+  @case ('sumdetail') {
+    <ng-container *ngTemplateOutlet="pendingTpl" />
+  }
+  @case ('calculation') {
+    <ng-container *ngTemplateOutlet="pendingTpl" />
+  }
+  @case ('datediff') {
+    <ng-container *ngTemplateOutlet="pendingTpl" />
+  }
+  @case ('form') {
+    <ng-container *ngTemplateOutlet="pendingTpl" />
+  }
+
+  <!-- ── Texto, número, fecha, hora, correo, teléfono, dirección ────────── -->
+  @default {
+    <mat-form-field appearance="outline" class="fld__control">
+      <mat-label>{{ f.lab }}{{ f.req ? ' *' : '' }}</mat-label>
+      <input
+        matInput
+        [type]="inputType()"
+        [value]="text()"
+        [placeholder]="f.pho || ''"
+        [readonly]="readOnly()"
+        (input)="onText($event)"
+      />
+      @if (f.hel) {
+        <mat-hint>{{ f.hel }}</mat-hint>
+      }
+      @if (invalid()) {
+        <mat-error>Este campo es obligatorio.</mat-error>
+      }
+    </mat-form-field>
+  }
+}
+
+<!-- Los seis tipos de archivo comparten componente: lo que cambia entre una foto
+     y una firma es de dónde sale el contenido, no cómo se guarda ni cómo se
+     muestra después. -->
+<ng-template #binaryTpl>
+  <div class="fld__binary">
+    <span class="fld__binary-label">{{ f.lab }}{{ f.req ? ' *' : '' }}</span>
+
+    <vt-binary-field
+      [fty]="f.fty"
+      [label]="f.lab"
+      [help]="f.hel || ''"
+      [required]="!!f.req"
+      [readOnly]="readOnly()"
+      [invalid]="invalid()"
+      [allowGallery]="allowsGallery()"
+      [answerGuid]="answerGuid()"
+      [fieldId]="f.id"
+      [value]="fileValue()"
+      (valueChange)="valueChange.emit($event)"
+    />
+
+    @if (f.hel) {
+      <small class="fld__binary-help">{{ f.hel }}</small>
+    }
+
+    @if (invalid()) {
+      <small class="fld__binary-error">Este campo es obligatorio.</small>
+    }
+  </div>
+</ng-template>
+
+<!-- Los tipos que faltan se anuncian con su nombre y el del campo. Un hueco en
+     silencio haría creer que el formulario está completo cuando le falta justo
+     la foto que se pedía. -->
+<ng-template #pendingTpl>
+  <div class="fld__pending" [class.fld__pending--required]="f.req">
+    <span class="fld__pending-icon">
+      <vt-icon name="alert" [size]="17" />
+    </span>
+    <div>
+      <strong>{{ f.lab || pending() }}</strong>
+      <span>
+        {{ pending() }} — este tipo de campo llega en la siguiente entrega.
+        @if (f.req) {
+          Es obligatorio, así que esta actividad hay que terminarla en la app móvil.
+        }
+      </span>
+    </div>
+  </div>
+</ng-template>

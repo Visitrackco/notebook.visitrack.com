@@ -1,0 +1,215 @@
+<div class="sync">
+  <header class="sync__header">
+    <div>
+      <h1>Sincronización</h1>
+      <p>Qué información tienes guardada y qué falta por descargar.</p>
+    </div>
+
+    <div class="sync__actions">
+      @if (sync.isRunning()) {
+        <button type="button" class="vt-btn vt-btn-ghost" (click)="cancel()">Cancelar</button>
+      } @else {
+        <button
+          type="button"
+          class="vt-btn vt-btn-ghost"
+          [disabled]="status.checking() || connectivity.isOffline()"
+          (click)="check()"
+        >
+          <vt-icon name="check" [size]="17" />
+          {{ status.checking() ? 'Comparando…' : 'Comparar' }}
+        </button>
+        <button
+          type="button"
+          class="vt-btn vt-btn-primary"
+          [disabled]="connectivity.isOffline()"
+          (click)="downloadAll()"
+        >
+          <vt-icon name="refresh" [size]="17" />
+          Descargar datos
+        </button>
+      }
+    </div>
+  </header>
+
+  @if (connectivity.isOffline()) {
+    <div class="sync__note sync__note--warning">
+      <vt-icon name="wifi-off" [size]="19" />
+      <div>
+        <strong>Sin conexión</strong>
+        <span>
+          Puedes seguir trabajando con lo que ya está guardado. Para descargar datos nuevos
+          necesitas internet.
+        </span>
+      </div>
+    </div>
+  }
+
+  @if (feedback()) {
+    <div class="sync__note sync__note--info" role="status">
+      <vt-icon name="info" [size]="19" />
+      <span>{{ feedback() }}</span>
+    </div>
+  }
+
+  @if (status.lastError()) {
+    <div class="sync__note sync__note--error" role="alert">
+      <vt-icon name="alert" [size]="19" />
+      <span>{{ status.lastError() }}</span>
+    </div>
+  }
+
+  <!-- Progreso de la descarga en curso -->
+  @if (sync.isRunning()) {
+    <section class="sync__progress">
+      <div class="sync__progress-head">
+        <strong>{{ sync.state().message }}</strong>
+        @if (sync.state().total > 0) {
+          <span class="vt-figure">{{ sync.progress() }}%</span>
+        }
+      </div>
+      <div class="sync__progress-bar">
+        <div
+          class="sync__progress-fill"
+          [class.sync__progress-fill--indeterminate]="sync.state().total === 0"
+          [style.width.%]="sync.state().total > 0 ? sync.progress() : 100"
+        ></div>
+      </div>
+      <span class="sync__progress-detail vt-figure">
+        {{ sync.state().processed }}@if (sync.state().total > 0) { / {{ sync.state().total }} }
+        registros
+      </span>
+    </section>
+  }
+
+  <!-- Resumen -->
+  <section class="sync__summary">
+    <article class="sync__stat">
+      <span class="sync__stat-value vt-figure">{{ totalLocal() }}</span>
+      <span class="sync__stat-label">Registros guardados</span>
+    </article>
+
+    <article class="sync__stat" [class.sync__stat--alert]="totalMissing() > 0">
+      <span class="sync__stat-value vt-figure">{{ totalMissing() }}</span>
+      <span class="sync__stat-label">Faltan por descargar</span>
+    </article>
+
+    <article class="sync__stat">
+      <span class="sync__stat-value vt-figure">{{ storage()?.used ?? '—' }}</span>
+      <span class="sync__stat-label">Espacio ocupado</span>
+    </article>
+  </section>
+
+  <!-- Detalle por entidad -->
+  <section class="sync__panel">
+    <header class="sync__panel-head">
+      <h2>Detalle por tipo de dato</h2>
+      @if (lastCheck()) {
+        <span class="sync__panel-meta">Comparado {{ lastCheck() }}</span>
+      }
+    </header>
+
+    <div class="vt-scroll-x">
+      <table mat-table [dataSource]="cards()" class="sync__table">
+        <!-- Tipo de dato -->
+        <ng-container matColumnDef="entity">
+          <th mat-header-cell *matHeaderCellDef>Dato</th>
+          <td mat-cell *matCellDef="let card">
+            <span class="sync__name">{{ card.label }}</span>
+            <span class="sync__hint">{{ card.hint }}</span>
+          </td>
+        </ng-container>
+
+        <!-- Cantidad local -->
+        <ng-container matColumnDef="local">
+          <th mat-header-cell *matHeaderCellDef class="sync__num">Aquí</th>
+          <td mat-cell *matCellDef="let card" class="sync__num vt-figure">
+            {{ card.localCount }}
+          </td>
+        </ng-container>
+
+        <!-- Cantidad en el servidor -->
+        <ng-container matColumnDef="server">
+          <th mat-header-cell *matHeaderCellDef class="sync__num">Servidor</th>
+          <td mat-cell *matCellDef="let card" class="sync__num vt-figure">
+            {{ card.status === 'unknown' ? '—' : card.serverCount }}
+          </td>
+        </ng-container>
+
+        <!-- Diferencia -->
+        <ng-container matColumnDef="missing">
+          <th mat-header-cell *matHeaderCellDef class="sync__num">Faltan</th>
+          <td mat-cell *matCellDef="let card" class="sync__num vt-figure">
+            @if (card.missing > 0) {
+              <span class="sync__missing">{{ card.missing }}</span>
+            } @else {
+              <span class="sync__dash">—</span>
+            }
+          </td>
+        </ng-container>
+
+        <!-- Estado -->
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef>Estado</th>
+          <td mat-cell *matCellDef="let card">
+            <span class="sync__chip" [class]="'sync__chip--' + card.status">
+              <span class="sync__dot"></span>
+              {{ statusLabel(card) }}
+            </span>
+            @if (sync.state().byEntity[card.entity]) {
+              <span class="sync__live">+{{ sync.state().byEntity[card.entity] }}</span>
+            }
+          </td>
+        </ng-container>
+
+        <!-- Acciones -->
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef aria-label="Acciones"></th>
+          <!-- El panel lo monta el overlay de Material fuera del flujo: un menú
+               posicionado en absoluto dentro de la tabla quedaba recortado por
+               el `overflow-x` del contenedor con scroll. -->
+          <td mat-cell *matCellDef="let card" class="sync__actions-cell">
+            <button
+              type="button"
+              class="sync__more"
+              [matMenuTriggerFor]="rowMenu"
+              [attr.aria-label]="'Opciones de ' + card.label"
+            >
+              ⋯
+            </button>
+
+            <mat-menu #rowMenu="matMenu" class="sync__menu-panel">
+              <button mat-menu-item type="button" (click)="resetEntity(card)">
+                <span class="sync__menu-item">
+                  <vt-icon name="refresh" [size]="16" />
+                  <span>
+                    <strong>Pedir todo de nuevo</strong>
+                    <small>El servidor reenviará esta información</small>
+                  </span>
+                </span>
+              </button>
+
+              <button mat-menu-item type="button" (click)="clearEntity(card)">
+                <span class="sync__menu-item sync__menu-item--danger">
+                  <vt-icon name="close" [size]="16" />
+                  <span>
+                    <strong>Borrar de este equipo</strong>
+                    <small>Se descargará completa la próxima vez</small>
+                  </span>
+                </span>
+              </button>
+            </mat-menu>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="columns"></tr>
+        <!-- La fila se tiñe cuando faltan datos: permite ubicar de un vistazo
+             qué necesita atención sin leer columna por columna. -->
+        <tr
+          mat-row
+          *matRowDef="let row; columns: columns"
+          [class.sync__row--outdated]="row.status === 'outdated'"
+        ></tr>
+      </table>
+    </div>
+  </section>
+</div>

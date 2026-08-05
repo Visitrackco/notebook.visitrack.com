@@ -1,0 +1,148 @@
+<div class="pend">
+  <header class="pend__head">
+    <div class="pend__title">
+      <h1>Pendientes por subir</h1>
+      <p>Actividades guardadas en este dispositivo que todavía no llegaron a Visitrack.</p>
+    </div>
+
+    <div class="pend__actions">
+      <button type="button" class="pend__btn" [disabled]="running()" (click)="reload()">
+        <vt-icon name="refresh" [size]="17" />
+        Actualizar
+      </button>
+
+      <button
+        type="button"
+        class="pend__btn pend__btn--primary"
+        [disabled]="running() || !connectivity.isOnline() || pending().length === 0"
+        (click)="runNow()"
+      >
+        <vt-icon name="send" [size]="17" />
+        {{ running() ? 'Subiendo…' : 'Subir ahora' }}
+      </button>
+    </div>
+  </header>
+
+  <!-- El proceso automático revisa la cola cada minuto. Decirlo evita que el
+       usuario crea que nada avanza si no pulsa el botón. -->
+  <p class="pend__auto">
+    <vt-icon name="clipboard" [size]="15" />
+    La aplicación revisa esta cola cada minuto mientras la pestaña esté abierta.
+    {{ lastRunLabel() }}
+  </p>
+
+  @if (!connectivity.isOnline()) {
+    <p class="pend__offline">
+      <vt-icon name="wifi-off" [size]="16" />
+      Sin conexión. Nada se pierde: todo está guardado aquí y saldrá cuando vuelva la red.
+    </p>
+  }
+
+  @if (feedback()) {
+    <p class="pend__feedback">{{ feedback() }}</p>
+  }
+
+  @if (loading()) {
+    <p class="pend__muted">Revisando la cola…</p>
+  } @else if (pending().length === 0) {
+    <div class="pend__empty">
+      <span class="pend__empty-icon"><vt-icon name="check" [size]="30" /></span>
+      <strong>Todo está enviado</strong>
+      <small>No queda ninguna actividad por subir a Visitrack.</small>
+    </div>
+  } @else {
+    <!-- ── Listas para salir ─────────────────────────────────────────────── -->
+    @if (ready().length > 0) {
+      <section class="pend__group">
+        <h2 class="pend__group-title">
+          <span class="pend__dot pend__dot--ready" aria-hidden="true"></span>
+          Listas para enviarse
+          <span class="pend__count">{{ ready().length }}</span>
+        </h2>
+
+        <ul class="pend__list">
+          @for (entry of ready(); track entry.answer.GUID) {
+            <li class="act">
+              <div class="act__body" (click)="open(entry)">
+                <strong class="act__title">{{ title(entry.answer) }}</strong>
+                <p class="act__reason">{{ reason(entry) }}</p>
+
+                <div class="act__facts">
+                  @if (when(entry.answer)) {
+                    <span>{{ when(entry.answer) }}</span>
+                  }
+                  @if (entry.totalFiles > 0) {
+                    <span>{{ entry.totalFiles }} archivo(s)</span>
+                  }
+                  @if (entry.answer.LocationName) {
+                    <span>{{ entry.answer.LocationName }}</span>
+                  }
+                </div>
+              </div>
+
+              <button
+                type="button"
+                class="act__send"
+                [disabled]="retrying() === entry.answer.GUID || !connectivity.isOnline()"
+                (click)="retry(entry)"
+              >
+                <vt-icon name="send" [size]="16" />
+                {{ retrying() === entry.answer.GUID ? 'Enviando…' : 'Enviar' }}
+              </button>
+            </li>
+          }
+        </ul>
+      </section>
+    }
+
+    <!-- ── Esperando archivos ────────────────────────────────────────────── -->
+    @if (waiting().length > 0) {
+      <section class="pend__group">
+        <h2 class="pend__group-title">
+          <span class="pend__dot pend__dot--waiting" aria-hidden="true"></span>
+          Esperando archivos
+          <span class="pend__count">{{ waiting().length }}</span>
+        </h2>
+
+        <!-- Esta es la explicación que faltaba: por qué una actividad guardada
+             puede quedarse quieta sin que nadie haya hecho nada mal. -->
+        <p class="pend__note">
+          Una actividad no se envía hasta que sus fotografías y grabaciones estén publicadas en el
+          servidor de archivos. El servidor las procesa por lotes, así que puede tardar unos
+          minutos.
+        </p>
+
+        <ul class="pend__list">
+          @for (entry of waiting(); track entry.answer.GUID) {
+            <li class="act act--waiting">
+              <div class="act__body" (click)="open(entry)">
+                <strong class="act__title">{{ title(entry.answer) }}</strong>
+                <p class="act__reason">{{ reason(entry) }}</p>
+
+                <div class="act__facts">
+                  @if (when(entry.answer)) {
+                    <span>{{ when(entry.answer) }}</span>
+                  }
+                  <span>{{ entry.blockingFiles }} de {{ entry.totalFiles }} sin publicar</span>
+                  @if (entry.answer.Msg) {
+                    <span class="act__msg">{{ entry.answer.Msg }}</span>
+                  }
+                </div>
+              </div>
+
+              <button
+                type="button"
+                class="act__send"
+                [disabled]="retrying() === entry.answer.GUID || !connectivity.isOnline()"
+                (click)="retry(entry)"
+              >
+                <vt-icon name="refresh" [size]="16" />
+                {{ retrying() === entry.answer.GUID ? 'Revisando…' : 'Reintentar' }}
+              </button>
+            </li>
+          }
+        </ul>
+      </section>
+    }
+  }
+</div>

@@ -1,0 +1,220 @@
+<!-- Selector nativo, oculto: es el único camino a los archivos del dispositivo,
+     y su aspecto por defecto no se puede vestir. -->
+<input
+  #picker
+  type="file"
+  class="bin__picker"
+  [attr.accept]="config().accept || null"
+  (change)="onFilePicked($event)"
+/>
+
+@if (!hasValue()) {
+  <button
+    type="button"
+    class="bin__empty"
+    [disabled]="readOnly() || busy()"
+    (click)="usesPicker() ? picker.click() : start()"
+  >
+    <span class="bin__empty-icon">
+      <vt-icon [name]="config().icon" [size]="24" />
+    </span>
+
+    <span class="bin__empty-text">
+      <strong>{{ busy() ? 'Guardando…' : config().action }}</strong>
+      <small>{{ config().hint }}</small>
+    </span>
+
+    @if (!readOnly()) {
+      <vt-icon name="chevron" [size]="18" />
+    }
+  </button>
+} @else {
+  <div class="bin__card">
+    <!-- Vista previa -->
+    <div class="bin__preview" [class.bin__preview--sign]="isSignature()">
+      @if (showsImage() && previewUrl()) {
+        <!-- La miniatura abre el visor: en un recuadro de 300 píxeles no se lee
+             un número de serie ni se distingue una firma. -->
+        <button
+          type="button"
+          class="bin__open"
+          [class.bin__open--portrait]="portrait()"
+          [class.bin__open--sign]="isSignature()"
+          (click)="openViewer()"
+          title="Ver en grande"
+        >
+          <img class="bin__thumb" [src]="previewUrl()" (load)="onThumbLoad($event)" alt="" />
+
+          <span class="bin__zoom">
+            <vt-icon name="image" [size]="16" />
+            {{ portrait() ? 'Ver completa' : 'Ampliar' }}
+          </span>
+        </button>
+      } @else if (isVideo() && previewUrl()) {
+        <div class="bin__video">
+          <video class="bin__thumb" [src]="previewUrl()" controls playsinline></video>
+          <button type="button" class="bin__expand" (click)="openViewer()">
+            <vt-icon name="play" [size]="15" />
+            Ver en grande
+          </button>
+        </div>
+      } @else if (isAudio() && previewUrl()) {
+        <vt-audio-player [src]="previewUrl()" [caption]="size()" />
+      } @else {
+        <div class="bin__doc">
+          <span class="bin__doc-icon"><vt-icon name="file" [size]="26" /></span>
+          <span class="bin__doc-name">{{ caption() || 'Documento adjunto' }}</span>
+        </div>
+      }
+    </div>
+
+    <!-- Datos y acciones -->
+    <div class="bin__meta">
+      <div class="bin__facts">
+        @if (caption()) {
+          <span class="bin__caption">{{ caption() }}</span>
+        }
+
+        <span class="bin__chip bin__chip--{{ uploadState().tone }}">
+          <vt-icon
+            [name]="uploadState().tone === 'success' ? 'check' : 'cloud-upload'"
+            [size]="13"
+          />
+          {{ uploadState().label }}
+        </span>
+
+        @if (size()) {
+          <span class="bin__size">{{ size() }}</span>
+        }
+      </div>
+
+      <div class="bin__actions">
+        <button type="button" class="bin__act" (click)="download()" title="Descargar">
+          <vt-icon name="download" [size]="17" />
+        </button>
+
+        @if (!readOnly()) {
+          <button
+            type="button"
+            class="bin__act"
+            [disabled]="busy()"
+            (click)="usesPicker() ? picker.click() : start()"
+            title="Reemplazar"
+          >
+            <vt-icon name="refresh" [size]="17" />
+          </button>
+
+          <button
+            type="button"
+            class="bin__act bin__act--danger"
+            [disabled]="busy()"
+            (click)="askRemove()"
+            title="Eliminar"
+          >
+            <vt-icon name="trash" [size]="17" />
+          </button>
+        }
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Solo mientras hay algo suspendido encima: un recuadro permanente de «suelta
+     aquí» ocuparía sitio en todos los campos para algo que casi nunca se usa. -->
+@if (dragging()) {
+  <div class="bin__dropzone">
+    <vt-icon name="cloud-upload" [size]="26" />
+    <strong>Suelta el archivo para adjuntarlo</strong>
+    @if (isVideo()) {
+      <small>Hasta 100 MB</small>
+    }
+  </div>
+}
+
+@if (error()) {
+  <p class="bin__error">
+    <vt-icon name="alert" [size]="15" />
+    {{ error() }}
+  </p>
+}
+
+<!-- ── Visor ──────────────────────────────────────────────────────────────── -->
+
+@if (overlay() === 'viewer' && previewUrl()) {
+  <vt-media-viewer
+    [kind]="isVideo() ? 'video' : 'image'"
+    [src]="previewUrl()"
+    [title]="label()"
+    [caption]="viewerCaption()"
+    [onWhite]="isSignature()"
+    (download)="download()"
+    (close)="closeOverlay()"
+  />
+}
+
+<!-- ── Pantallas de captura ───────────────────────────────────────────────── -->
+
+<!-- De dónde sale la fotografía. Dos destinos, dos botones grandes: es la misma
+     decisión que plantea la hoja de opciones de la app. -->
+@if (overlay() === 'source') {
+  <div class="bin__sheet" (click)="closeOverlay()">
+    <div class="bin__sheet-card" (click)="$event.stopPropagation()">
+      <div class="bin__sheet-head">
+        <strong>{{ label() }}</strong>
+        <button type="button" class="bin__sheet-close" (click)="closeOverlay()" aria-label="Cerrar">
+          <vt-icon name="close" [size]="19" />
+        </button>
+      </div>
+
+      <div class="bin__sources">
+        <button type="button" class="bin__source" (click)="useCamera()">
+          <span class="bin__source-disc"><vt-icon name="camera" [size]="30" /></span>
+          <strong>Tomar foto</strong>
+          <small>Con la cámara del dispositivo</small>
+        </button>
+
+        <button type="button" class="bin__source" (click)="picker.click()">
+          <span class="bin__source-disc bin__source-disc--alt">
+            <vt-icon name="image" [size]="30" />
+          </span>
+          <strong>Galería</strong>
+          <small>Buscar en los archivos del equipo</small>
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (overlay() === 'camera') {
+  <vt-camera-capture (captured)="onCaptured($event)" (cancel)="closeOverlay()" />
+}
+
+@if (overlay() === 'editor') {
+  @if (pendingImage(); as image) {
+    <vt-photo-editor [source]="image" (save)="onEdited($event)" (cancel)="closeOverlay()" />
+  }
+}
+
+@if (overlay() === 'signature') {
+  <vt-signature-pad (signed)="onSigned($event)" (cancel)="closeOverlay()" />
+}
+
+@if (overlay() === 'recorder') {
+  <vt-media-recorder
+    [kind]="isVideo() ? 'video' : 'audio'"
+    (recorded)="onRecorded($event)"
+    (cancel)="closeOverlay()"
+  />
+}
+
+<vt-confirm-dialog
+  [open]="overlay() === 'remove'"
+  tone="danger"
+  icon="trash"
+  title="¿Eliminar el archivo?"
+  [message]="'Se quitará de «' + label() + '» y no se podrá recuperar.'"
+  detail="Si la actividad ya se envió, el archivo del servidor no se ve afectado."
+  confirmLabel="Eliminar"
+  (confirm)="confirmRemove()"
+  (cancel)="closeOverlay()"
+/>

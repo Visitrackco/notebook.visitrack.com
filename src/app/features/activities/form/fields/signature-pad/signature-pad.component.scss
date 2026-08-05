@@ -1,0 +1,283 @@
+@use '../../../../../shared/styles/overlay';
+
+/**
+ * Lienzo de firma.
+ *
+ * Firmar con el dedo en un recuadro pequeño produce una firma que no se parece
+ * a la de nadie: por eso ocupa la pantalla en el teléfono. En el escritorio se
+ * firma con el ratón sobre un área ya de sobra grande, así que va como ventana
+ * —lo que explica [overlay.shell]—.
+ */
+
+:host {
+  @include overlay.shell;
+}
+
+.sign {
+  @include overlay.panel;
+
+  display: flex;
+  flex-direction: column;
+  background: var(--vt-bg);
+}
+
+.sign__bar {
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--vt-space-3);
+  align-items: center;
+  padding: var(--vt-space-3) var(--vt-space-4);
+  background: var(--vt-surface);
+  border-bottom: 1px solid var(--vt-rule);
+}
+
+.sign__close {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  color: var(--vt-text-muted);
+  background: var(--vt-surface-2);
+  border: 0;
+  border-radius: var(--vt-radius-full);
+
+  &:hover {
+    color: var(--vt-text);
+    background: var(--vt-surface-3);
+  }
+}
+
+.sign__title {
+  flex: 1;
+  font-size: var(--vt-text-sm);
+  font-weight: 650;
+}
+
+.sign__accept {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  padding: 9px 18px;
+  font-size: var(--vt-text-sm);
+  font-weight: 650;
+  color: var(--vt-on-brand);
+  background: var(--vt-brand);
+  border: 0;
+  border-radius: var(--vt-radius-full);
+
+  &:hover:not(:disabled) {
+    background: var(--vt-brand-dark);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+  }
+}
+
+/**
+ * El área de firma es blanca en los dos temas.
+ *
+ * Es lo que se va a guardar, y firmar sobre gris oscuro para que salga sobre
+ * blanco desconcierta: se firma sobre lo que se verá después.
+ */
+/**
+ * El área de firma no crece sin límite.
+ *
+ * En un monitor grande, un lienzo de 1000 × 600 se firma en una esquina y deja
+ * el resto en blanco. Con una proporción parecida a la de una línea de firma en
+ * papel, el trazo ocupa el sitio que se le da y la ventana no queda medio
+ * vacía. Lo que se guarda se recorta además al trazo real.
+ */
+.sign__stage {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  max-width: 720px;
+  min-height: 140px;
+  max-height: 300px;
+  margin: var(--vt-space-3) auto var(--vt-space-4);
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid var(--vt-rule);
+  border-radius: var(--vt-radius);
+}
+
+/* En el teléfono se aprovecha todo: el sitio para firmar es justo lo que
+   escasea. */
+@media (max-width: 768px), (max-height: 600px) {
+  .sign__stage {
+    max-width: none;
+    max-height: none;
+    margin: var(--vt-space-3) var(--vt-space-4) var(--vt-space-4);
+  }
+}
+
+.sign__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+
+  /* Sin esto, arrastrar el dedo desplaza la página en vez de trazar. */
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.sign__placeholder {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: var(--vt-text-sm);
+  color: #b8bec9;
+  pointer-events: none;
+}
+
+.sign__rule {
+  position: absolute;
+  right: 12%;
+  bottom: 26%;
+  left: 12%;
+  border-bottom: 1.5px dashed #d6dae1;
+  pointer-events: none;
+}
+
+.sign__foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vt-space-3);
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 720px;
+  padding: 0 var(--vt-space-4) var(--vt-space-4);
+  margin: 0 auto;
+}
+
+/* Qué falta para poder guardar. Dicho aquí, y no solo con el botón apagado, se
+   evita que alguien pulse Guardar y no entienda por qué no pasa nada. */
+.sign__state {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 180px;
+}
+
+.sign__hint {
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-subtle);
+}
+
+.sign__hint--warn {
+  font-weight: 600;
+  color: var(--vt-warning);
+}
+
+.sign__meter {
+  display: block;
+  width: 100%;
+  max-width: 240px;
+  height: 4px;
+  overflow: hidden;
+  background: var(--vt-rule);
+  border-radius: 2px;
+}
+
+.sign__meter-fill {
+  display: block;
+  height: 100%;
+  background: var(--vt-warning);
+  border-radius: 2px;
+  transition: width 0.12s linear;
+}
+
+/* ── Nombre de quien firma ─────────────────────────────────────────────────── */
+
+.sign__name {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 100%;
+  max-width: 720px;
+  padding: 0 var(--vt-space-4);
+  margin: var(--vt-space-4) auto 0;
+
+  > span {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--vt-text-subtle);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  em {
+    font-style: normal;
+    color: var(--vt-danger);
+  }
+}
+
+.sign__name-box {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  padding: 0 13px;
+  color: var(--vt-text-subtle);
+  background: var(--vt-surface);
+  border: 1.5px solid var(--vt-rule);
+  border-radius: var(--vt-radius);
+
+  &:focus-within {
+    color: var(--vt-brand);
+    border-color: var(--vt-brand);
+  }
+
+  input {
+    flex: 1;
+    min-width: 0;
+    padding: 12px 0;
+    font-size: var(--vt-text-sm);
+    color: var(--vt-text);
+    background: transparent;
+    border: 0;
+
+    &:focus {
+      outline: none;
+    }
+  }
+}
+
+.sign__name--invalid .sign__name-box {
+  background: color-mix(in srgb, var(--vt-danger) 8%, var(--vt-surface));
+  border-color: var(--vt-danger);
+}
+
+.sign__name-error {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: var(--vt-text-xs);
+  font-weight: 600;
+  color: var(--vt-danger);
+}
+
+.sign__clear {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding: 11px 16px;
+  font-size: var(--vt-text-xs);
+  font-weight: 600;
+  color: var(--vt-text-muted);
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-rule-strong);
+  border-radius: var(--vt-radius-full);
+
+  &:hover:not(:disabled) {
+    color: var(--vt-text);
+  }
+
+  &:disabled {
+    opacity: 0.45;
+  }
+}

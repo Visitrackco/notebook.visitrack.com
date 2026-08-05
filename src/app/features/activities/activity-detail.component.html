@@ -1,0 +1,211 @@
+@if (answer(); as act) {
+  <div class="detail" [style.--accent]="accent()" [style.--form-gradient]="gradient()">
+    <!-- ── Cabecera fija ───────────────────────────────────────────────────
+         Se queda arriba al desplazarse, con el volver y el título del
+         formulario. En un formulario de ocho páginas, perder de vista de qué
+         actividad se trata —y la única salida— es lo que hace que la gente
+         recurra al botón atrás del navegador. -->
+    <header class="detail__bar">
+      <button
+        type="button"
+        class="detail__back"
+        (click)="leave()"
+        matTooltip="Volver a las actividades"
+        aria-label="Volver a las actividades"
+      >
+        <vt-icon name="chevron" [size]="20" />
+      </button>
+
+      <div class="detail__heading">
+        <h1>{{ survey()?.Title }}</h1>
+        <p>
+          @if (descriptors().length > 0) {
+            {{ descriptors()[0].val }}
+          } @else if (act.LocationName) {
+            {{ act.LocationName }}
+          } @else {
+            Actividad nueva
+          }
+        </p>
+      </div>
+
+      <!-- Estado de despacho, sincronización y autoguardado en la misma línea:
+           las tres señales que se consultan de reojo mientras se diligencia. -->
+      <div class="detail__signals">
+        <span [class]="'detail__saving detail__saving--' + autosave.state()">
+          <span class="detail__saving-dot" aria-hidden="true"></span>
+          <span class="detail__saving-text">{{ autosaveLabel() }}</span>
+        </span>
+
+        @if (statusEnabled() && statuses().length > 0) {
+          <vt-status-bar
+            [statuses]="statuses()"
+            [current]="act.Status"
+            (statusChange)="onStatusChange($event)"
+          />
+        }
+
+        @if (state(); as info) {
+          <span
+            [class]="'detail__state detail__state--' + info.tone"
+            [matTooltip]="info.description"
+          >
+            <vt-icon [name]="info.icon" [size]="13" />
+            <span>{{ info.label }}</span>
+          </span>
+        }
+      </div>
+    </header>
+
+    @if (feedback()) {
+      <p class="detail__feedback">{{ feedback() }}</p>
+    }
+
+    <!-- ── Contexto ─────────────────────────────────────────────────────────
+         Una línea de fichas en vez de un panel: ubicación y activo son datos
+         que ya se eligieron y solo se consultan de vez en cuando; ocupando un
+         bloque entero empujaban el formulario fuera de la primera pantalla. -->
+    @if (location() || asset()) {
+      <div class="detail__context">
+        @if (location(); as loc) {
+          <button type="button" class="detail__chip" (click)="changeLocation()">
+            <vt-icon name="map-pin" [size]="15" />
+            <span class="detail__chip-text">
+              <em>Ubicación</em>
+              <b>{{ loc.Name }}</b>
+            </span>
+            <span class="detail__chip-action">Cambiar</span>
+          </button>
+        }
+
+        @if (asset(); as ast) {
+          <button type="button" class="detail__chip" (click)="changeAsset()">
+            <vt-icon name="box" [size]="15" />
+            <span class="detail__chip-text">
+              <em>Activo</em>
+              <b>{{ ast.Name }}</b>
+            </span>
+            <span class="detail__chip-action">Cambiar</span>
+          </button>
+        }
+      </div>
+    }
+
+    <!-- ── Campos del formulario ───────────────────────────────────────────── -->
+    <section class="detail__panel">
+      @if (survey(); as form) {
+        <vt-form-runner
+          [survey]="form"
+          [answer]="act"
+          (saved)="onFormSaved()"
+          (leave)="leave()"
+        />
+      }
+    </section>
+
+    <!-- ── Detalles ────────────────────────────────────────────────────────── -->
+    <section class="detail__facts">
+      <div class="detail__fact">
+        <span class="detail__fact-icon">
+          <vt-icon name="clipboard" [size]="15" />
+        </span>
+        <div>
+          <dt>Creada</dt>
+          <dd>{{ formatDate(act.CreatedOn) }}</dd>
+        </div>
+      </div>
+
+      <div class="detail__fact">
+        <span class="detail__fact-icon">
+          <vt-icon name="refresh" [size]="15" />
+        </span>
+        <div>
+          <dt>Modificada</dt>
+          <dd>{{ formatDate(act.UpdatedOn) }}</dd>
+        </div>
+      </div>
+
+      @if (act.Consecutive) {
+        <div class="detail__fact">
+          <span class="detail__fact-icon">
+            <vt-icon name="check" [size]="15" />
+          </span>
+          <div>
+            <dt>Consecutivo</dt>
+            <dd class="vt-figure">#{{ act.Consecutive }}</dd>
+          </div>
+        </div>
+      }
+
+      <!-- El identificador se copia entero al pulsarlo: soporte lo pide
+           completo y transcribir 36 caracteres a mano garantiza erratas. -->
+      <button type="button" class="detail__fact detail__fact--copy" (click)="copyGuid()">
+        <span class="detail__fact-icon">
+          <vt-icon name="copy" [size]="15" />
+        </span>
+        <div>
+          <dt>Identificador</dt>
+          <dd class="detail__guid">{{ shortGuid() }}</dd>
+        </div>
+      </button>
+    </section>
+
+    @if (expiresAt(); as expiry) {
+      <p class="detail__expiry">
+        <vt-icon name="alert" [size]="15" />
+        Como borrador, se eliminará sola el {{ formatDate(expiry) }} si no se guarda.
+      </p>
+    } @else if (deleteRule().enabled) {
+      <p class="detail__rule">
+        <vt-icon name="info" [size]="15" />
+        {{ deleteRule().summary }}
+      </p>
+    }
+
+    <!-- El guardado vive dentro del formulario, junto a las validaciones que
+         lo condicionan. Aquí solo queda descartar, que no depende de ellas. -->
+    @if (isDiscardable()) {
+      <footer class="detail__actions">
+        <button mat-button type="button" (click)="askDiscard()">Descartar actividad</button>
+      </footer>
+    }
+  </div>
+  <!-- Diálogos propios y no `confirm()` del navegador: ese sale con el aspecto
+       del sistema y el nombre del sitio en el título, y parece un aviso del
+       navegador en vez de una pregunta de la aplicación. -->
+  <vt-confirm-dialog
+    [open]="dialog() === 'exit'"
+    tone="warning"
+    icon="alert"
+    title="Esta actividad no se ha guardado"
+    message="Tienes desactivado el modo borrador, así que al salir se descartará todo lo diligenciado."
+    detail="Puedes cambiarlo en Mi perfil → Preferencias → Guardar borradores."
+    confirmLabel="Salir y descartar"
+    cancelLabel="Seguir aquí"
+    (confirm)="confirmExit()"
+    (cancel)="closeDialog()"
+  />
+
+  <vt-confirm-dialog
+    [open]="dialog() === 'discard'"
+    tone="danger"
+    icon="trash"
+    title="¿Descartar esta actividad?"
+    message="Se borrará lo diligenciado hasta ahora. No se puede deshacer."
+    confirmLabel="Descartar"
+    cancelLabel="Conservar"
+    (confirm)="confirmDiscard()"
+    (cancel)="closeDialog()"
+  />
+} @else if (!loading()) {
+  <div class="detail__missing">
+    <span class="detail__missing-icon">
+      <vt-icon name="alert" [size]="26" />
+    </span>
+    <h2>Actividad no encontrada</h2>
+    <p>Puede que se haya eliminado o que su borrador ya haya caducado.</p>
+    <a mat-flat-button class="detail__cta" [routerLink]="['/formularios', surveyId()]">
+      Volver a las actividades
+    </a>
+  </div>
+}

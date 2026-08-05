@@ -1,0 +1,33 @@
+<dialog #dialog class="actions" (click)="onBackdropClick($event)" (close)="close.emit()">
+  <div class="actions__panel">
+    <header class="actions__header">
+      <div>
+        <h2>{{ title() }}</h2>
+        @if (subtitle()) {
+          <p>{{ subtitle() }}</p>
+        }
+      </div>
+      <button type="button" class="actions__close" (click)="close.emit()" aria-label="Cerrar">
+        <vt-icon name="close" [size]="18" />
+      </button>
+    </header>
+
+    <div class="actions__grid">
+      @for (action of actions(); track action.id) {
+        <button
+          type="button"
+          [class]="'actions__item actions__item--' + action.tone"
+          [class.actions__item--off]="!!action.disabledReason"
+          [disabled]="!!action.disabledReason"
+          (click)="onSelect(action)"
+        >
+          <span class="actions__disc">
+            <vt-icon [name]="action.icon" [size]="26" />
+          </span>
+          <span class="actions__label">{{ action.label }}</span>
+          <span class="actions__hint">{{ action.disabledReason || action.hint }}</span>
+        </button>
+      }
+    </div>
+  </div>
+</dialog>

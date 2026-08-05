@@ -1,0 +1,377 @@
+/**
+ * Diligenciamiento.
+ *
+ * Una columna de campos con el progreso arriba y la navegación abajo. Los
+ * campos van en vertical y a ancho completo: un formulario se recorre de
+ * arriba abajo respondiendo, y dos columnas obligan a decidir en cada salto
+ * hacia dónde sigue la lectura.
+ */
+
+/**
+ * Disposición.
+ *
+ * En pantalla estrecha todo se apila: progreso arriba, campos, navegación
+ * abajo. A partir de 1100 px el progreso pasa a una columna propia a la
+ * derecha, fija, y los campos se quedan con un ancho de lectura cómodo en vez
+ * de estirarse a lo ancho del monitor.
+ *
+ * `grid-template-areas` en vez de reordenar con `order`: el orden del DOM
+ * —progreso, campos, navegación— es el que necesita quien navega con teclado o
+ * lector de pantalla, y aquí solo cambia dónde se dibuja cada bloque.
+ */
+.runner {
+  display: grid;
+  grid-template-areas:
+    'aside'
+    'main'
+    'nav';
+
+  /* `minmax(0, 1fr)` y no la columna implícita `auto`: una columna `auto` se
+     dimensiona por su contenido, así que un campo ancho —una opción larga, una
+     tabla— la estira más allá del contenedor y saca la página de cuadro. El
+     `0` como mínimo autoriza a la columna a encogerse. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--vt-space-4);
+  align-items: start;
+}
+
+.runner__aside {
+  grid-area: aside;
+  min-width: 0;
+}
+
+.runner__main {
+  display: flex;
+  flex-direction: column;
+  grid-area: main;
+  gap: var(--vt-space-4);
+  min-width: 0;
+}
+
+vt-page-nav {
+  grid-area: nav;
+}
+
+/**
+ * El corte va en 1400 px de ventana, no en el ancho que necesitan las dos
+ * columnas.
+ *
+ * La barra lateral de la aplicación se lleva unos 260 px y el margen del área
+ * de trabajo otros 48: en una ventana de 1100 px al contenido le quedan menos
+ * de 800, así que partirlo en dos ahí dejaría las preguntas en una franja
+ * estrecha —o desbordando por la derecha—. A 1400 sí sobra el sitio.
+ */
+@media (min-width: 1400px) {
+  .runner {
+    grid-template-areas:
+      'main aside'
+      'nav  aside';
+    grid-template-columns: minmax(0, 1fr) 264px;
+    grid-template-rows: auto 1fr;
+  }
+
+  /* Acompaña el desplazamiento: el progreso pierde su sentido si hay que subir
+     hasta arriba para consultarlo. */
+  .runner__aside {
+    position: sticky;
+    top: calc(var(--vt-sticky-offset, 124px) + var(--vt-space-4));
+  }
+}
+
+/* ── Panel de progreso ─────────────────────────────────────────────────────── */
+
+/**
+ * Todo centrado en una columna: nombre de la página, aro, cifra y detalle.
+ *
+ * Alinear al centro y no a la izquierda es lo que hace que el aro no quede
+ * flotando fuera de eje respecto al texto — con contenido tan corto, un margen
+ * izquierdo común no basta para que se lea como un bloque.
+ */
+.runner__progress-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vt-space-3);
+  align-items: center;
+  padding: var(--vt-space-5) var(--vt-space-4);
+  text-align: center;
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-rule);
+  border-radius: var(--vt-radius-lg);
+  box-shadow: var(--vt-shadow-sm);
+}
+
+.runner__page-name {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--vt-text-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  overflow-wrap: anywhere;
+}
+
+/* ── Aro ───────────────────────────────────────────────────────────────────── */
+
+.runner__ring {
+  position: relative;
+  width: 132px;
+  height: 132px;
+
+  svg {
+    width: 100%;
+    height: 100%;
+
+    /* El trazo arranca a la derecha por defecto; girándolo un cuarto empieza
+       arriba, que es donde la vista espera el origen de un indicador circular. */
+    transform: rotate(-90deg);
+  }
+}
+
+.runner__ring-track {
+  fill: none;
+  stroke: var(--vt-surface-3);
+  stroke-width: 11;
+}
+
+/**
+ * El arco lleno.
+ *
+ * El degradado va de claro a oscuro en diagonal y la sombra lo despega del
+ * canal: es lo que da el relieve, sin recurrir a un bisel que se vería falso
+ * junto al resto de la interfaz, que es plana.
+ */
+.runner__ring-fill {
+  fill: none;
+  stroke-width: 11;
+  stroke-linecap: round;
+  filter: drop-shadow(0 2px 5px color-mix(in srgb, var(--vt-brand) 45%, transparent));
+  transition: stroke-dashoffset var(--vt-transition-slow);
+}
+
+.runner__ring--done {
+  .runner__ring-fill {
+    stroke: var(--vt-success);
+    filter: drop-shadow(0 2px 5px color-mix(in srgb, var(--vt-success) 45%, transparent));
+  }
+
+  .runner__ring-percent {
+    color: var(--vt-success);
+  }
+}
+
+/**
+ * La cifra va dentro del hueco, no debajo: es la lectura exacta de lo que el
+ * aro dice de forma aproximada, y separarlas obliga a mirar dos veces.
+ *
+ * Dos capas y no una: la de fuera centra el bloque en el aro y la de dentro
+ * alinea el número con su símbolo. Con `align-items: baseline` a secas, el
+ * navegador alinea los dos elementos entre sí pero deja el grupo pegado al
+ * borde superior — el número quedaba alto dentro del círculo.
+ */
+.runner__ring-center {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.runner__ring-value {
+  display: flex;
+  gap: 1px;
+  align-items: baseline;
+}
+
+.runner__ring-percent {
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.runner__ring-unit {
+  font-size: var(--vt-text-sm);
+  font-weight: 600;
+  color: var(--vt-text-subtle);
+}
+
+.runner__ring-caption {
+  margin-top: -4px;
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-muted);
+
+  strong {
+    font-size: var(--vt-text-sm);
+    font-weight: 700;
+    color: var(--vt-text);
+  }
+}
+
+/* ── Cifras ────────────────────────────────────────────────────────────────── */
+
+/* Etiqueta a la izquierda y dato a la derecha, con una línea entre filas: es un
+   par de datos que se consultan, no un titular. */
+.runner__stats {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding-top: var(--vt-space-3);
+  border-top: 1px solid var(--vt-rule);
+
+  > div {
+    display: flex;
+    gap: var(--vt-space-3);
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 6px 0;
+  }
+
+  > div + div {
+    border-top: 1px solid var(--vt-rule);
+  }
+
+  dt {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--vt-text-subtle);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  dd {
+    display: flex;
+    gap: 5px;
+    align-items: baseline;
+  }
+
+  .vt-figure {
+    font-size: var(--vt-text-md);
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  small {
+    font-size: 11px;
+    color: var(--vt-text-subtle);
+  }
+}
+
+.runner__stat--alert .vt-figure {
+  color: var(--vt-danger);
+}
+
+.runner__stat--ok dd {
+  align-items: center;
+  color: var(--vt-success);
+
+  small {
+    color: var(--vt-success);
+  }
+}
+
+/* ── Aviso de obligatorios ─────────────────────────────────────────────────── */
+
+.runner__blocking {
+  display: flex;
+  gap: var(--vt-space-3);
+  align-items: flex-start;
+  padding: var(--vt-space-3) var(--vt-space-4);
+  background: color-mix(in srgb, var(--vt-danger) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--vt-danger) 32%, transparent);
+  border-radius: var(--vt-radius);
+
+  strong {
+    display: block;
+    margin-bottom: 6px;
+    font-size: var(--vt-text-sm);
+    color: var(--vt-danger);
+  }
+
+  ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+  }
+
+  /* Cada campo que falta es un enlace a su sitio: con ocho páginas, decir
+     «faltan campos» sin llevar hasta ellos es no decir nada. */
+  button {
+    display: inline-flex;
+    gap: 6px;
+    align-items: baseline;
+    padding: 4px 11px;
+    font-size: var(--vt-text-xs);
+    font-weight: 600;
+    color: var(--vt-danger);
+    background: var(--vt-surface);
+    border: 1px solid color-mix(in srgb, var(--vt-danger) 30%, transparent);
+    border-radius: var(--vt-radius-full);
+
+    small {
+      font-weight: 500;
+      opacity: 0.75;
+    }
+
+    &:hover {
+      background: color-mix(in srgb, var(--vt-danger) 10%, transparent);
+    }
+  }
+}
+
+.runner__blocking-icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  color: var(--vt-danger);
+  background: color-mix(in srgb, var(--vt-danger) 14%, transparent);
+  border-radius: var(--vt-radius-sm);
+}
+
+.runner__feedback {
+  padding: 10px var(--vt-space-4);
+  font-size: var(--vt-text-sm);
+  color: var(--vt-success);
+  background: var(--vt-success-bg);
+  border-radius: var(--vt-radius);
+}
+
+/* ── Campos ────────────────────────────────────────────────────────────────── */
+
+/* Cada campo a todo el ancho, en una sola columna. Un formulario de campo se
+   responde de arriba abajo, y limitar la anchura dejaría media pantalla vacía
+   al lado de controles que ya son estrechos por dentro. */
+.runner__fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vt-space-3);
+  width: 100%;
+}
+
+/**
+ * Destino del desplazamiento, tanto al cambiar de página como al saltar a un
+ * obligatorio que falta.
+ *
+ * El margen reserva el alto de lo que queda fijo arriba —el encabezado de la
+ * aplicación y la cabecera de la actividad— más un respiro. Sin él, el campo al
+ * que se salta queda tapado por ellas y parece que el salto no hizo nada.
+ */
+.runner__fields,
+.runner__field {
+  scroll-margin-top: calc(var(--vt-sticky-offset, 124px) + 16px);
+}
+
+.runner__empty {
+  font-size: var(--vt-text-sm);
+  font-style: italic;
+  color: var(--vt-text-subtle);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .runner__bar-fill {
+    transition: none;
+  }
+}

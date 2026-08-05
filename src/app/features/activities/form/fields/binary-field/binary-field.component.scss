@@ -1,0 +1,539 @@
+/**
+ * Campo de archivo.
+ *
+ * Dos estados: invitación a capturar cuando está vacío, y ficha del archivo
+ * cuando ya hay algo. La ficha muestra el estado de subida porque una actividad
+ * con archivos sin confirmar no se envía, y sin ese dato el retraso no tiene
+ * explicación visible.
+ */
+
+:host {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+
+/* ── Soltar un archivo ─────────────────────────────────────────────────────── */
+
+/**
+ * El aviso tapa el campo mientras hay algo suspendido encima.
+ *
+ * Sobrepuesto y con `pointer-events: none`: si recibiera el puntero, entrar en
+ * él dispararía `dragleave` sobre el campo y el aviso se apagaría justo al
+ * llegar, con el resultado de que el archivo no se puede soltar nunca.
+ */
+.bin__dropzone {
+  position: absolute;
+  inset: -6px;
+  z-index: 5;
+  display: grid;
+  gap: 4px;
+  place-content: center;
+  justify-items: center;
+  color: var(--vt-brand);
+  pointer-events: none;
+  background: color-mix(in srgb, var(--vt-brand) 12%, var(--vt-surface));
+  border: 2px dashed var(--vt-brand);
+  border-radius: var(--vt-radius-lg);
+
+  strong {
+    font-size: var(--vt-text-sm);
+    font-weight: 650;
+  }
+
+  small {
+    font-size: var(--vt-text-xs);
+    color: var(--vt-text-muted);
+  }
+}
+
+.bin__picker {
+  display: none;
+}
+
+/* ── Vacío ─────────────────────────────────────────────────────────────────── */
+
+.bin__empty {
+  display: flex;
+  gap: var(--vt-space-3);
+  align-items: center;
+  width: 100%;
+  padding: var(--vt-space-4);
+  text-align: left;
+  background: var(--vt-surface-2);
+  border: 1.5px dashed var(--vt-rule-strong);
+  border-radius: var(--vt-radius-lg);
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+
+  &:hover:not(:disabled) {
+    background: var(--vt-surface-3);
+    border-color: var(--vt-brand);
+  }
+
+  &:disabled {
+    opacity: 0.55;
+  }
+}
+
+.bin__empty-icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  color: var(--vt-icon-brand-fg);
+  background: var(--vt-icon-brand-bg);
+  border-radius: var(--vt-radius);
+}
+
+.bin__empty-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+
+  strong {
+    font-size: var(--vt-text-sm);
+    font-weight: 650;
+    color: var(--vt-text);
+  }
+
+  small {
+    font-size: var(--vt-text-xs);
+    line-height: 1.4;
+    color: var(--vt-text-subtle);
+  }
+}
+
+/* ── Con archivo ───────────────────────────────────────────────────────────── */
+
+.bin__card {
+  overflow: hidden;
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-rule);
+  border-radius: var(--vt-radius-lg);
+}
+
+.bin__preview {
+  display: grid;
+  place-items: center;
+  padding: var(--vt-space-3);
+  background: var(--vt-surface-2);
+}
+
+/**
+ * La firma no necesita que se le pinte un fondo blanco detrás.
+ *
+ * El PNG ya lo trae opaco, así que un recuadro blanco alrededor solo añadiría
+ * un parche recortado sobre el papel. El borde marca dónde acaba la imagen.
+ */
+.bin__preview--sign .bin__thumb {
+  border: 1px solid var(--vt-paper-rule, var(--vt-rule));
+}
+
+/**
+ * La miniatura es un botón que abre el visor.
+ *
+ * Toda ella, no un icono en una esquina: es el sitio donde cualquiera pulsa
+ * para ver algo más grande, y un objetivo de 300 píxeles no se falla.
+ */
+/**
+ * La miniatura es un botón que abre el visor.
+ *
+ * Tope de 600 píxeles de ancho: más allá, una foto de 4000 píxeles ocuparía la
+ * pantalla entera para enseñar algo que igualmente hay que ampliar para leer, y
+ * el resto del formulario dejaría de verse.
+ */
+.bin__open {
+  position: relative;
+  display: block;
+  width: 100%;
+  max-width: 600px;
+  padding: 0;
+  margin: 0 auto;
+  overflow: hidden;
+  background: transparent;
+  border: 0;
+  border-radius: var(--vt-radius);
+
+  &:hover .bin__zoom,
+  &:focus-visible .bin__zoom {
+    opacity: 1;
+  }
+}
+
+/**
+ * Fotografía vertical: se recorta.
+ *
+ * A 600 píxeles de ancho, una foto vertical pasa de 800 de alto y empuja los
+ * campos siguientes fuera de la pantalla — parece que el formulario se acabó
+ * ahí. Se recorta a un alto razonable y el degradado inferior avisa de que hay
+ * más: lo completo se ve en el visor, que para eso está.
+ */
+.bin__open--portrait {
+  max-width: 380px;
+
+  .bin__thumb {
+    height: 320px;
+    object-fit: cover;
+    object-position: top;
+  }
+
+  /* La sombra marca el corte. Sin ella, una foto recortada se lee como una
+     foto mal encuadrada. */
+  &::after {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 90px;
+    pointer-events: none;
+    content: '';
+    background: linear-gradient(to bottom, rgb(8 10 13 / 0%), rgb(8 10 13 / 62%));
+  }
+
+  .bin__zoom {
+    opacity: 1;
+  }
+}
+
+/**
+ * La firma se muestra más pequeña.
+ *
+ * Ya viene recortada al trazo, así que a 600 píxeles de ancho un garabato de
+ * dos centímetros se ve ampliado y pixelado: se lee peor cuanto más grande.
+ * A este tamaño se aprecia entera y de un vistazo, que es para lo que se mira.
+ */
+.bin__open--sign {
+  max-width: 340px;
+
+  .bin__thumb {
+    max-height: 150px;
+  }
+}
+
+/* En el teléfono la miniatura baja a 200 píxeles: el ancho de pantalla es lo
+   único que hay, y una evidencia no debe consumirlo entero. La firma sí ocupa
+   todo el ancho disponible, porque a 200 píxeles dejaría de leerse. */
+@media (max-width: 640px) {
+  .bin__open,
+  .bin__open--portrait {
+    max-width: 200px;
+  }
+
+  .bin__open--portrait .bin__thumb {
+    height: 220px;
+  }
+
+  .bin__open--sign {
+    max-width: 100%;
+  }
+}
+
+/* Aparece al pasar por encima. En un táctil no hay hover y nunca se ve, pero
+   allí pulsar la imagen es el gesto evidente de todos modos. */
+.bin__zoom {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 650;
+  color: #f4f6f8;
+  background: rgb(8 10 13 / 72%);
+  border-radius: var(--vt-radius-full);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.bin__thumb {
+  display: block;
+  width: 100%;
+  max-height: 340px;
+  object-fit: contain;
+  border-radius: var(--vt-radius);
+}
+
+.bin__video {
+  display: grid;
+  gap: var(--vt-space-2);
+  justify-items: center;
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.bin__expand {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding: 7px 15px;
+  font-size: var(--vt-text-xs);
+  font-weight: 600;
+  color: var(--vt-text-muted);
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-rule-strong);
+  border-radius: var(--vt-radius-full);
+
+  &:hover {
+    color: var(--vt-text);
+    border-color: var(--vt-brand);
+  }
+}
+
+.bin__doc-icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  color: var(--vt-icon-blue-fg);
+  background: var(--vt-icon-blue-bg);
+  border-radius: var(--vt-radius);
+}
+
+.bin__doc {
+  display: flex;
+  gap: var(--vt-space-3);
+  align-items: center;
+  width: 100%;
+}
+
+.bin__doc-name {
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--vt-text-sm);
+  font-weight: 600;
+  color: var(--vt-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Datos y acciones ──────────────────────────────────────────────────────── */
+
+.bin__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vt-space-3);
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--vt-space-3);
+  border-top: 1px solid var(--vt-rule);
+}
+
+.bin__facts {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.bin__caption {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: var(--vt-text-sm);
+  font-weight: 600;
+  color: var(--vt-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bin__chip {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 650;
+  border-radius: var(--vt-radius-full);
+}
+
+.bin__chip--success {
+  color: var(--vt-icon-green-fg);
+  background: var(--vt-icon-green-bg);
+}
+
+.bin__chip--info {
+  color: var(--vt-icon-blue-fg);
+  background: var(--vt-icon-blue-bg);
+}
+
+.bin__chip--warning {
+  color: var(--vt-icon-amber-fg);
+  background: var(--vt-icon-amber-bg);
+}
+
+.bin__chip--danger {
+  color: var(--vt-danger);
+  background: color-mix(in srgb, var(--vt-danger) 14%, transparent);
+}
+
+.bin__size {
+  font-size: var(--vt-text-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--vt-text-subtle);
+}
+
+.bin__actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 6px;
+}
+
+.bin__act {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  color: var(--vt-text-muted);
+  background: var(--vt-surface-2);
+  border: 0;
+  border-radius: var(--vt-radius-full);
+
+  &:hover:not(:disabled) {
+    color: var(--vt-text);
+    background: var(--vt-surface-3);
+  }
+
+  &:disabled {
+    opacity: 0.45;
+  }
+}
+
+.bin__act--danger:hover:not(:disabled) {
+  color: var(--vt-danger);
+  background: color-mix(in srgb, var(--vt-danger) 12%, transparent);
+}
+
+/* ── Selector de origen ────────────────────────────────────────────────────── */
+
+.bin__sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: end center;
+  padding: var(--vt-space-4);
+  background: rgb(8 10 13 / 55%);
+
+  @supports (backdrop-filter: blur(2px)) {
+    backdrop-filter: blur(3px);
+  }
+
+  /* En el escritorio se centra: pegado abajo, en una pantalla alta, queda
+     lejos del punto donde se pulsó. */
+  @media (min-width: 769px) {
+    place-items: center;
+  }
+}
+
+.bin__sheet-card {
+  width: 100%;
+  max-width: 460px;
+  padding: var(--vt-space-4);
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-rule);
+  border-radius: var(--vt-radius-lg);
+  box-shadow: 0 20px 50px rgb(0 0 0 / 35%);
+}
+
+.bin__sheet-head {
+  display: flex;
+  gap: var(--vt-space-3);
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--vt-space-4);
+
+  strong {
+    min-width: 0;
+    overflow: hidden;
+    font-size: var(--vt-text-sm);
+    font-weight: 650;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.bin__sheet-close {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  color: var(--vt-text-muted);
+  background: var(--vt-surface-2);
+  border: 0;
+  border-radius: var(--vt-radius-full);
+
+  &:hover {
+    color: var(--vt-text);
+    background: var(--vt-surface-3);
+  }
+}
+
+.bin__sources {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--vt-space-3);
+}
+
+.bin__source {
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  padding: var(--vt-space-4) var(--vt-space-3);
+  text-align: center;
+  background: var(--vt-surface-2);
+  border: 1px solid var(--vt-rule);
+  border-radius: var(--vt-radius);
+
+  &:hover {
+    background: var(--vt-surface-3);
+    border-color: var(--vt-brand);
+  }
+
+  strong {
+    font-size: var(--vt-text-sm);
+    font-weight: 650;
+    color: var(--vt-text);
+  }
+
+  small {
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--vt-text-subtle);
+  }
+}
+
+.bin__source-disc {
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  margin-bottom: 7px;
+  color: var(--vt-icon-brand-fg);
+  background: var(--vt-icon-brand-bg);
+  border-radius: 50%;
+}
+
+.bin__source-disc--alt {
+  color: var(--vt-icon-blue-fg);
+  background: var(--vt-icon-blue-bg);
+}
+
+.bin__error {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  margin-top: var(--vt-space-2);
+  font-size: var(--vt-text-xs);
+  color: var(--vt-danger);
+}

@@ -1,0 +1,75 @@
+<div class="home">
+  <header class="home__header">
+    <div>
+      <h1>{{ greeting }}, {{ auth.currentUser()?.FirstName }}</h1>
+      <p>Este es el estado de tus datos en este equipo.</p>
+    </div>
+  </header>
+
+  @if (connectivity.isOffline()) {
+    <div class="home__offline">
+      <vt-icon name="wifi-off" [size]="20" />
+      <div>
+        <strong>Estás trabajando sin conexión</strong>
+        <span>
+          Puedes seguir usando la aplicación con normalidad. Todo lo que hagas se guarda en este
+          equipo y se enviará al servidor cuando vuelva el internet.
+        </span>
+      </div>
+    </div>
+  }
+
+  <section class="home__cards">
+    @if (loading()) {
+      @for (placeholder of [1, 2, 3, 4]; track placeholder) {
+        <div class="home__card home__card--loading"></div>
+      }
+    } @else {
+      @for (card of cards(); track card.key) {
+        <article class="home__card">
+          <!-- La clase base va dentro de la expresión: `[class]` con string
+               reemplaza todo el atributo. -->
+          <div [class]="'home__card-icon home__card-icon--' + card.accent">
+            <vt-icon [name]="card.icon" [size]="22" />
+          </div>
+          <div class="home__card-body">
+            <span class="home__card-value">{{ card.value }}</span>
+            <span class="home__card-label">{{ card.label }}</span>
+            <span class="home__card-hint">{{ card.hint }}</span>
+          </div>
+        </article>
+      }
+    }
+  </section>
+
+  <section class="home__panels">
+    <article class="home__panel">
+      <header>
+        <vt-icon name="database" [size]="20" />
+        <h2>Almacenamiento local</h2>
+      </header>
+      <p>
+        Tus datos viven en este navegador para que puedas trabajar sin internet.
+        @if (storageUsed()) {
+          Actualmente ocupan <strong>{{ storageUsed() }}</strong>.
+        }
+      </p>
+      <a routerLink="/sincronizacion" class="home__panel-link">
+        Ver detalle de sincronización
+        <vt-icon name="chevron" [size]="15" />
+      </a>
+    </article>
+
+    <article class="home__panel home__panel--muted">
+      <header>
+        <vt-icon name="clipboard" [size]="20" />
+        <h2>Formularios</h2>
+      </header>
+      <p>
+        El módulo de diligenciamiento está en construcción. Cuando esté listo podrás llenar
+        formularios, adjuntar fotos y firmar, todo sin conexión.
+      </p>
+      <span class="home__panel-badge">En desarrollo</span>
+    </article>
+  </section>
+</div>
