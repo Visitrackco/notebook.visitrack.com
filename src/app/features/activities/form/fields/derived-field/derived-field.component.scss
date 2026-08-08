@@ -1,0 +1,117 @@
+/**
+ * Campos calculados.
+ *
+ * Se ven distintos de los que se responden, y a propósito: sin recuadro de
+ * entrada ni cursor. Con el mismo aspecto que un campo de texto, la gente
+ * intenta escribir dentro y concluye que la aplicación no responde.
+ */
+
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.calc {
+  display: flex;
+  gap: var(--vt-space-3);
+  align-items: center;
+  padding: var(--vt-space-3) var(--vt-space-4);
+  background: color-mix(in srgb, var(--vt-brand) 5%, var(--vt-surface));
+  border: 1px solid color-mix(in srgb, var(--vt-brand) 18%, transparent);
+  border-left: 3px solid var(--vt-brand);
+  border-radius: var(--vt-radius);
+}
+
+.calc__icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  color: var(--vt-brand);
+  background: color-mix(in srgb, var(--vt-brand) 12%, transparent);
+  border-radius: var(--vt-radius);
+}
+
+.calc__body {
+  flex: 1;
+  min-width: 0;
+}
+
+/* El número, grande: es lo único que se viene a mirar aquí. */
+.calc__value {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  margin: 0;
+  font-size: var(--vt-text-xl);
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--vt-text);
+
+  em {
+    font-size: var(--vt-text-sm);
+    font-style: normal;
+    font-weight: 600;
+    color: var(--vt-text-muted);
+  }
+}
+
+.calc__origin {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-subtle);
+}
+
+/**
+ * La marca de que se actualiza solo.
+ *
+ * Es un rótulo, no un botón: aquí el valor se rehace en cuanto cambia
+ * cualquier campo del que depende. La app lleva un botón de recalcular porque
+ * allí el valor puede quedarse atrás; ponerlo aquí sería un botón que nunca
+ * cambia nada, y eso enseña a desconfiar del número que tiene al lado.
+ */
+.calc__auto {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  color: var(--vt-text-subtle);
+  opacity: 0.65;
+}
+
+/* Sin valor todavía: apagado, para que no se lea como un cero real. */
+.calc--empty {
+  background: var(--vt-surface-2);
+  border-color: var(--vt-rule);
+  border-left-color: var(--vt-rule-strong);
+
+  .calc__icon {
+    color: var(--vt-text-subtle);
+    background: var(--vt-surface);
+  }
+
+  .calc__value {
+    color: var(--vt-text-subtle);
+  }
+}
+
+.calc--invalid {
+  border-color: var(--vt-danger);
+  border-left-color: var(--vt-danger);
+}
+
+.calc__help {
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-subtle);
+}
+
+.calc__error {
+  font-size: var(--vt-text-xs);
+  font-weight: 600;
+  color: var(--vt-danger);
+}

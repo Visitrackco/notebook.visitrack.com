@@ -660,3 +660,61 @@
     padding: 7px;
   }
 }
+
+/**
+ * El botón de la paleta.
+ *
+ * Con aspecto de campo de búsqueda y no de botón: es donde la vista busca «un
+ * sitio donde escribir», y las teclas a la derecha enseñan el atajo a quien
+ * todavía usa el ratón.
+ *
+ * Los colores se sacan del blanco translúcido y no de la paleta de superficies:
+ * la barra es oscura siempre —da igual el tema— y un fondo claro se recortaba
+ * contra ella como un parche. Con transparencias, el botón se apoya en el color
+ * de la barra en vez de taparlo.
+ */
+.shell__palette {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  padding: 7px 12px;
+  font-family: var(--vt-font);
+  font-size: var(--vt-text-sm);
+  color: rgb(255 255 255 / 55%);
+  background: rgb(255 255 255 / 8%);
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: var(--vt-radius-full);
+  transition:
+    background var(--vt-transition),
+    border-color var(--vt-transition),
+    color var(--vt-transition);
+
+  span {
+    min-width: 120px;
+    text-align: left;
+  }
+
+  kbd {
+    padding: 1px 5px;
+    font-family: var(--vt-font);
+    font-size: 10px;
+    font-weight: 700;
+    color: rgb(255 255 255 / 65%);
+    background: rgb(255 255 255 / 10%);
+    border: 1px solid rgb(255 255 255 / 18%);
+    border-radius: 4px;
+  }
+
+  &:hover {
+    color: rgb(255 255 255 / 88%);
+    background: rgb(255 255 255 / 14%);
+    border-color: rgb(255 255 255 / 22%);
+  }
+}
+
+@media (max-width: 900px) {
+  .shell__palette span,
+  .shell__palette kbd {
+    display: none;
+  }
+}

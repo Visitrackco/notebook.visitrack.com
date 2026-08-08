@@ -1,0 +1,533 @@
+/**
+ * Tabla de detalle.
+ *
+ * ## Filas como tarjetas, no como una tabla
+ *
+ * Una tabla necesita columnas fijas, y aquí las columnas dependen del
+ * sub-formulario: una lista de equipos trae marca y serie, una de hallazgos
+ * trae severidad y ubicación. En un teléfono, además, cuatro columnas no caben
+ * sin recortar justo lo que identifica la fila.
+ *
+ * Cada fila es entonces una tarjeta con tres cosas: el ítem del que salió, sus
+ * descriptivos y en qué va. Con eso se sabe cuál abrir sin abrirlas todas.
+ */
+
+:host {
+  display: block;
+  width: 100%;
+}
+
+.md {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vt-space-3);
+  width: 100%;
+}
+
+/* ── Encabezado ───────────────────────────────────────────────────────────── */
+
+.md__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vt-space-3);
+  align-items: center;
+}
+
+/**
+ * El avance del campo, en aro.
+ *
+ * Un aro se lee de un vistazo sin comparar con nada: la porción llena habla por
+ * sí sola, mientras que una barra necesita ver dónde termina para saber cuánto
+ * falta. Y el hueco del centro deja sitio a la cifra exacta. Es el mismo
+ * recurso que corona el formulario, para que el mismo dato se lea igual en los
+ * dos sitios.
+ */
+.md__ring {
+  position: relative;
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+
+  svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+  }
+
+  circle {
+    fill: none;
+    stroke-width: 5;
+  }
+}
+
+.md__ring-track {
+  stroke: var(--vt-surface-2);
+}
+
+.md__ring-fill {
+  stroke: var(--vt-brand);
+  stroke-linecap: round;
+  transition: stroke-dashoffset var(--vt-transition);
+}
+
+.md__ring-value {
+  position: absolute;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--vt-text-muted);
+}
+
+.md__ring--done {
+  .md__ring-fill {
+    stroke: var(--vt-success);
+  }
+
+  .md__ring-value {
+    color: var(--vt-success);
+  }
+}
+
+.md__add {
+  display: grid;
+  flex-shrink: 0;
+  margin-left: auto;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  color: var(--vt-on-brand);
+  background: var(--vt-brand);
+  border: 0;
+  border-radius: var(--vt-radius-full);
+  transition:
+    background var(--vt-transition),
+    opacity var(--vt-transition);
+
+  &:hover:not(:disabled) {
+    background: var(--vt-brand-dark);
+  }
+
+  /* Al tope, el botón se queda a la vista pero apagado: quitarlo dejaría al
+     usuario buscando dónde se fue el «Agregar» que acababa de usar. */
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+}
+
+/**
+ * Apagado, pero pulsable.
+ *
+ * Un `disabled` de verdad no deja explicar por qué: el clic no llega y el
+ * usuario se queda mirando un botón muerto. Así se puede responder «alcanzaste
+ * el máximo» o «no tienes permiso», que es lo que hace falta saber.
+ */
+.md__add--off {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.md__note {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  padding: 8px 12px;
+  margin: 0;
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-muted);
+  background: var(--vt-surface-2);
+  border-radius: var(--vt-radius);
+}
+
+.md__note--warn {
+  color: var(--vt-warning);
+  background: color-mix(in srgb, var(--vt-warning) 10%, transparent);
+}
+
+/* ── Fotos en bloque ──────────────────────────────────────────────────────── */
+
+/**
+ * La zona donde se sueltan las fotografías.
+ *
+ * A la vista y no escondida tras un botón: quien usa esto sube veinte fotos por
+ * actividad, y la zona es el sitio donde va a arrastrarlas. Discreta —de
+ * trazos, sin peso— para que no compita con la tabla de registros, que es lo
+ * que de verdad se lee.
+ */
+.md__drop {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 11px var(--vt-space-3);
+  color: var(--vt-text-muted);
+  background: var(--vt-surface-2);
+  border: 1px dashed var(--vt-rule-strong);
+  border-radius: var(--vt-radius);
+  transition:
+    border-color var(--vt-transition),
+    background var(--vt-transition);
+
+  p {
+    margin: 0;
+    font-size: var(--vt-text-xs);
+  }
+
+  input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  label {
+    position: relative;
+    margin-left: 4px;
+  }
+
+  span {
+    font-weight: 700;
+    color: var(--vt-brand);
+    text-decoration: underline;
+    cursor: pointer;
+  }
+}
+
+/* Con algo encima, la zona se enciende: sin respuesta al arrastrar, el usuario
+   suelta a ciegas y no sabe si acertó. */
+.md__drop--active,
+.md--dropping .md__drop {
+  color: var(--vt-brand);
+  background: color-mix(in srgb, var(--vt-brand) 8%, transparent);
+  border-color: var(--vt-brand);
+}
+
+.md__spinner {
+  width: 13px;
+  height: 13px;
+  border: 2px solid color-mix(in srgb, var(--vt-brand) 30%, transparent);
+  border-top-color: var(--vt-brand);
+  border-radius: 50%;
+  animation: md-spin 0.7s linear infinite;
+}
+
+@keyframes md-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── Filas ────────────────────────────────────────────────────────────────── */
+
+/**
+ * En pantalla ancha, una tabla.
+ *
+ * Con una columna por descriptivo se comparan veinte equipos de un vistazo, que
+ * es justo lo que no permite una lista de tarjetas — ahí cada dato está en un
+ * sitio distinto y hay que leerlos uno a uno.
+ *
+ * En un teléfono las columnas no caben, y la misma tabla se reordena en
+ * tarjetas más abajo. Es una sola plantilla: dos habrían divergido.
+ */
+.md__table-wrap {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--vt-rule);
+  border-radius: var(--vt-radius);
+}
+
+.md__table {
+  width: 100%;
+  font-family: var(--vt-font);
+  border-collapse: collapse;
+
+  th,
+  td {
+    padding: 9px var(--vt-space-3);
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  thead th {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--vt-text-subtle);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: var(--vt-surface-2);
+    border-bottom: 1px solid var(--vt-rule);
+  }
+
+  tbody tr {
+    border-bottom: 1px solid var(--vt-rule);
+
+    &:last-child {
+      border-bottom: 0;
+    }
+
+    &:hover {
+      background: var(--vt-surface-2);
+    }
+  }
+
+  tbody td {
+    font-size: var(--vt-text-sm);
+    color: var(--vt-text);
+  }
+}
+
+/**
+ * Hay más registros de los que se enseñan.
+ *
+ * La última fila se desvanece hacia abajo: el corte limpio parece el final de
+ * la lista, y el degradado dice sin palabras que aquello sigue. Las palabras
+ * —cuántos faltan— van justo debajo, porque una insinuación no es un dato.
+ */
+.md__table--more tbody tr:last-child {
+  mask-image: linear-gradient(to bottom, #000 30%, transparent);
+  opacity: 0.75;
+}
+
+/* La marca de incompleto va en el costado, no en el fondo: un fondo rojo la
+   trataría como un error, y a medio llenar no lo es. */
+.md__row--pending {
+  box-shadow: inset 3px 0 0 var(--vt-warning);
+}
+
+.md__num {
+  width: 40px;
+  font-size: 12px;
+  color: var(--vt-text-subtle);
+}
+
+.md__name button {
+  max-width: 26ch;
+  overflow: hidden;
+  font-family: var(--vt-font);
+  font-size: var(--vt-text-sm);
+  font-weight: 650;
+  color: var(--vt-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: none;
+  border: 0;
+
+  &:hover:not(:disabled) {
+    color: var(--vt-brand);
+    text-decoration: underline;
+  }
+
+  &:disabled {
+    cursor: default;
+  }
+}
+
+.md__actions-head {
+  width: 80px;
+}
+
+.md__actions {
+  display: flex;
+  gap: 2px;
+
+  button {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    color: var(--vt-text-muted);
+    background: none;
+    border: 0;
+    border-radius: var(--vt-radius);
+
+    &:hover {
+      color: var(--vt-brand);
+      background: var(--vt-surface-2);
+    }
+  }
+}
+
+.md__act--danger:hover {
+  color: var(--vt-danger) !important;
+  background: color-mix(in srgb, var(--vt-danger) 10%, transparent) !important;
+}
+
+/* ── Lo que no se enseña ──────────────────────────────────────────────────── */
+
+.md__more {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vt-space-3);
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px var(--vt-space-3);
+  font-size: var(--vt-text-xs);
+  font-weight: 600;
+  color: var(--vt-text-muted);
+  background: var(--vt-surface-2);
+  border-top: 1px solid var(--vt-rule);
+}
+
+.md__see {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  padding: 6px 14px;
+  font-size: var(--vt-text-xs);
+  font-weight: 650;
+  color: var(--vt-on-brand);
+  background: var(--vt-brand);
+  border: 0;
+  border-radius: var(--vt-radius-full);
+
+  vt-icon {
+    transform: rotate(0deg);
+  }
+
+  &:hover {
+    background: var(--vt-brand-dark);
+  }
+}
+
+/* Con pocos registros el enlace sigue estando, pero sin peso: no hay nada
+   escondido, solo una forma más cómoda de mirarlos. */
+.md__see--quiet {
+  align-self: flex-start;
+  padding: 4px 0;
+  color: var(--vt-brand);
+  background: none;
+
+  &:hover {
+    text-decoration: underline;
+    background: none;
+  }
+}
+
+/* ── Vacío, ayuda y error ─────────────────────────────────────────────────── */
+
+.md__empty {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  padding: var(--vt-space-5) var(--vt-space-4);
+  text-align: center;
+  background: var(--vt-surface-2);
+  border: 1px dashed var(--vt-rule-strong);
+  border-radius: var(--vt-radius);
+
+  p {
+    max-width: 34ch;
+    margin: 0;
+    font-size: var(--vt-text-sm);
+    color: var(--vt-text-muted);
+  }
+}
+
+.md__empty--invalid {
+  border-color: var(--vt-danger);
+}
+
+.md__empty-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  color: var(--vt-text-subtle);
+  background: var(--vt-surface);
+  border-radius: var(--vt-radius-full);
+}
+
+.md__help {
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-subtle);
+}
+
+.md__error {
+  font-size: var(--vt-text-xs);
+  font-weight: 600;
+  color: var(--vt-danger);
+}
+
+/**
+ * En un teléfono, cada fila vuelve a ser una tarjeta.
+ *
+ * Cinco columnas no caben en 360 píxeles sin recortar justo lo que identifica
+ * el registro. Los encabezados se ocultan y cada dato lleva el suyo delante,
+ * tomado del atributo que escribe la plantilla — así no hay dos plantillas que
+ * mantener.
+ */
+@media (max-width: 720px) {
+  .md__table-wrap {
+    overflow: visible;
+    border: 0;
+  }
+
+  .md__table,
+  .md__table tbody,
+  .md__table tr,
+  .md__table td {
+    display: block;
+    width: 100%;
+  }
+
+  .md__table thead {
+    display: none;
+  }
+
+  .md__table tbody tr {
+    position: relative;
+    padding: var(--vt-space-3);
+    margin-bottom: 7px;
+    background: var(--vt-surface);
+    border: 1px solid var(--vt-rule);
+    border-left: 3px solid var(--vt-brand);
+    border-radius: var(--vt-radius);
+
+    &:last-child {
+      border-bottom: 1px solid var(--vt-rule);
+    }
+  }
+
+  .md__row--pending {
+    border-left-color: var(--vt-warning);
+    box-shadow: none;
+  }
+
+  .md__table td {
+    padding: 2px 0;
+    white-space: normal;
+  }
+
+  /* La etiqueta delante del dato: sin encabezados, «BC-4471» a secas no dice
+     si es la placa o la serie. */
+  .md__table tbody td[data-label]:not(.md__name):not(.md__num)::before {
+    content: attr(data-label) ': ';
+    font-size: 11px;
+    font-weight: 650;
+    color: var(--vt-text-subtle);
+  }
+
+  .md__num {
+    position: absolute;
+    top: var(--vt-space-3);
+    right: var(--vt-space-3);
+    width: auto;
+    font-weight: 700;
+  }
+
+  .md__name button {
+    max-width: 100%;
+  }
+
+  .md__actions {
+    justify-content: flex-end;
+    margin-top: 4px;
+  }
+
+  .md__more {
+    border: 1px solid var(--vt-rule);
+    border-radius: var(--vt-radius);
+  }
+}

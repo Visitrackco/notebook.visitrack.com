@@ -62,6 +62,12 @@ export interface LocationForm {
   Latitude: string;
   Longitude: string;
 
+  /** Descriptivos ya resueltos, para los listados (JSON sin parsear). */
+  JSONTitle?: string;
+
+  CreatedOn?: string;
+  UpdatedOn?: string;
+
   /** Valores de los campos propios del tipo de ubicación (JSON sin parsear). */
   jsonValues: string;
   /** Estructura de esos campos (JSON sin parsear). */
@@ -94,6 +100,18 @@ export interface Asset {
   AssetTypeGD: string;
   TagUID: string;
   LocationID: number;
+
+  /**
+   * GUID de la ubicación a la que pertenece.
+   *
+   * Existe porque `LocationID` es el identificador **del servidor**, y una
+   * ubicación creada en este dispositivo todavía no tiene ninguno: el activo
+   * quedaba con `LocationID = 0` y se perdía de qué sede colgaba. Con el GUID,
+   * la subida puede rellenar el identificador de verdad cuando su ubicación
+   * llegue a Visitrack.
+   */
+  LocationGUID?: string;
+
   Description: string;
 
   JSONTitle: string;
@@ -103,6 +121,9 @@ export interface Asset {
   jsonQuestion: string;
   jsonDescriptor: string;
   typeTitle: string;
+
+  CreatedOn?: string;
+  UpdatedOn?: string;
 
   Make: string;
   Model: string;
@@ -277,6 +298,7 @@ export interface ListDefinition extends SyncableEntity {
   AssetTypeID: string;
   isAllAssetTypes: string;
   hasUsers: string;
+
   Sect: string;
   ListIDBD: string;
   /** 1 si el usuario eligió descargar los ítems de esta lista. */
@@ -363,6 +385,20 @@ export interface Group {
   GroupID: number;
   UserID: number;
   UpdateOn: string;
+}
+
+/**
+ * Configuración por usuario que entrega el servidor.
+ *
+ * `config` es el JSON crudo: una lista de `{modulo, active}`. Se guarda sin
+ * interpretar, igual que en la app — el catálogo de módulos lo define la
+ * plataforma y darle forma aquí obligaría a seguirle el paso a cada uno.
+ */
+export interface UserConfig {
+  ID?: number;
+  UserID: number;
+  config: string;
+  lastDate: string;
 }
 
 /** Permiso de un módulo para el rol del usuario. */

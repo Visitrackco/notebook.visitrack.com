@@ -1,0 +1,109 @@
+@if (open()) {
+  <div class="rea" (click)="close()">
+    <div class="rea__panel" (click)="$event.stopPropagation()">
+      <header class="rea__head">
+        <span class="rea__icon"><vt-icon name="send" [size]="19" /></span>
+
+        <div class="rea__titles">
+          <strong>Reasignar actividad</strong>
+          @if (label()) {
+            <small>{{ label() }}</small>
+          }
+        </div>
+
+        <button type="button" class="rea__close" (click)="close()" aria-label="Cerrar">
+          <vt-icon name="close" [size]="18" />
+        </button>
+      </header>
+
+      <!-- Lo que de verdad pasa al reasignar. Va antes de elegir a nadie: quien
+           venía buscando «compartir» tiene que enterarse ahora. -->
+      <p class="rea__warn">
+        <vt-icon name="alert" [size]="15" />
+        La actividad pasa a ser de esa persona y <strong>se quita de este
+        equipo</strong>. No podrás seguir editándola.
+      </p>
+
+      @if (blocked()) {
+        <div class="rea__blocked">
+          <vt-icon name="alert" [size]="20" />
+          <p>{{ blocked() }}</p>
+        </div>
+      } @else if (chosen(); as person) {
+        <!-- Confirmación: se repite a quién se le entrega, porque es lo único
+             que no se puede deshacer desde aquí. -->
+        <div class="rea__confirm">
+          <span class="rea__avatar">{{ initialsOf(person.name) }}</span>
+
+          <div>
+            <strong>{{ person.name }}</strong>
+            @if (person.email) {
+              <small>{{ person.email }}</small>
+            }
+          </div>
+        </div>
+
+        @if (error()) {
+          <p class="rea__error">{{ error() }}</p>
+        }
+
+        <footer class="rea__foot">
+          <button type="button" class="rea__back" [disabled]="working()" (click)="back()">
+            Elegir a otra persona
+          </button>
+
+          <button type="button" class="rea__go" [disabled]="working()" (click)="confirm()">
+            <vt-icon name="send" [size]="16" />
+            {{ working() ? 'Reasignando…' : 'Reasignar' }}
+          </button>
+        </footer>
+      } @else {
+        <label class="rea__search">
+          <vt-icon name="user" [size]="16" />
+          <input
+            type="search"
+            [value]="search()"
+            (input)="onSearch($event)"
+            placeholder="Buscar por nombre o correo"
+            autocomplete="off"
+          />
+        </label>
+
+        <div class="rea__body">
+          @if (loading()) {
+            <p class="rea__note">Consultando los usuarios de tu compañía…</p>
+          } @else if (error()) {
+            <p class="rea__error">{{ error() }}</p>
+          } @else if (visible().length === 0) {
+            <p class="rea__note">
+              @if (search()) {
+                Nadie coincide con «{{ search() }}».
+              } @else {
+                No hay otros usuarios activos en tu compañía.
+              }
+            </p>
+          } @else {
+            <ul class="rea__list">
+              @for (person of visible(); track person.id) {
+                <li>
+                  <button type="button" class="rea__item" (click)="choose(person)">
+                    <span class="rea__avatar">{{ initialsOf(person.name) }}</span>
+
+                    <span class="rea__person">
+                      <span class="rea__name">{{ person.name }}</span>
+                      @if (person.email) {
+                        <span class="rea__mail">{{ person.email }}</span>
+                      }
+                    </span>
+
+                    <vt-icon name="chevron" [size]="16" />
+                  </button>
+                </li>
+              }
+            </ul>
+          }
+        </div>
+      }
+    </div>
+  </div>
+}

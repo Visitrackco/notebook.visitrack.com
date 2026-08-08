@@ -19,17 +19,23 @@ import {
   FieldValue,
   FileValue,
   FormField,
+  ResolvedDescriptor,
   asFile,
   asGeo,
   asOption,
+  asOptions,
   blocksGallery,
   isDisplayOnly,
-  pendingTypeName,
 } from '../../../../core/forms/form-schema';
 import { GpsReading } from '../../../../core/services/geolocation.service';
 import { IconComponent } from '../../../../shared/components/icon/icon.component';
 import { BinaryFieldComponent } from './binary-field/binary-field.component';
+import { DerivedFieldComponent } from './derived-field/derived-field.component';
 import { GpsFieldComponent } from './gps-field/gps-field.component';
+import { LinkFieldComponent } from './link-field/link-field.component';
+import { ListFieldComponent, ListSelection } from './list-field/list-field.component';
+import { MasterDetailFieldComponent } from './master-detail-field/master-detail-field.component';
+import { RichTextFieldComponent } from './rich-text-field/rich-text-field.component';
 
 /**
  * Formatos de fecha y hora.
@@ -95,8 +101,13 @@ const VT_DATE_FORMATS: MatDateFormats = {
   standalone: true,
   imports: [
     BinaryFieldComponent,
+    DerivedFieldComponent,
     GpsFieldComponent,
     IconComponent,
+    LinkFieldComponent,
+    ListFieldComponent,
+    MasterDetailFieldComponent,
+    RichTextFieldComponent,
     NgTemplateOutlet,
     FormsModule,
     MatCheckboxModule,
@@ -142,11 +153,21 @@ export class FieldHostComponent {
 
   readonly valueChange = output<FieldValue>();
 
-  /** Nombre del tipo si todavía no se dibuja. Vacío si sí. */
-  readonly pending = computed(() => pendingTypeName(this.field().fty));
-
   /** Solo muestra información: no lleva marca de obligatorio. */
   readonly isDisplay = computed(() => isDisplayOnly(this.field().fty));
+
+  /**
+   * ¿Se dibuja la etiqueta encima?
+   *
+   * Todos los campos que reciben datos y tienen nombre. Los de presentación no:
+   * un título ya **es** su texto, y repetirlo encima lo diría dos veces. El
+   * hipervínculo tampoco, porque su propia tarjeta lleva el rótulo dentro del
+   * botón, que es donde se pulsa.
+   */
+  readonly showsLabel = computed(() => {
+    const field = this.field();
+    return Boolean(field.lab?.trim()) && !isDisplayOnly(field.fty);
+  });
 
   /** Valor como texto, para los controles que lo esperan así. */
   readonly text = computed(() => {
@@ -160,7 +181,7 @@ export class FieldHostComponent {
   /** Ids marcados, en los de selección múltiple. */
   readonly checkedIds = computed(() => {
     const value = this.value();
-    return Array.isArray(value) ? value.map((option) => option.id) : [];
+    return asOptions(value).map((option) => option.id);
   });
 
   /**
@@ -183,6 +204,31 @@ export class FieldHostComponent {
   readonly allowsGallery = computed(() => !blocksGallery(this.field()));
 
   readonly options = computed(() => this.field().opt ?? []);
+
+  /**
+   * ¿Este campo de selección única es una calificación?
+   *
+   * Lo dice `apiId` con `_star`, no el tipo: para el esquema sigue siendo un
+   * `radio` corriente con sus opciones, y lo que cambia es cómo se pide. Cinco
+   * opciones en fila de estrellas se responden de un toque; como lista de
+   * radios ocupan media pantalla y se leen una por una.
+   */
+  readonly isRating = computed(() => String(this.field().apiId ?? '').includes('_star'));
+
+  /**
+   * Cuántas estrellas van encendidas.
+   *
+   * Se encienden **todas hasta la elegida**, como una calificación de toda la
+   * vida: tres estrellas es «tres», no «la tercera». `-1` cuando no hay
+   * respuesta.
+   */
+  readonly ratingIndex = computed(() => {
+    const chosen = this.selectedId();
+    return this.options().findIndex((option) => option.id === chosen);
+  });
+
+  /** Texto de la opción elegida, que acompaña a las estrellas. */
+  readonly ratingLabel = computed(() => this.options()[this.ratingIndex()]?.txt ?? '');
   readonly readOnly = computed(() => Boolean(this.field().rea));
 
   /**
@@ -342,6 +388,48 @@ export class FieldHostComponent {
 
   onText(event: Event): void {
     this.valueChange.emit((event.target as HTMLInputElement | HTMLTextAreaElement).value);
+  }
+
+  /**
+   * Valor del campo de lista.
+   *
+   * Los descriptivos guardados con la respuesta se recuperan aquí para que
+   * reabrir la actividad siga mostrando el detalle del ítem.
+   */
+  readonly listValue = computed<ListSelection | null>(() => {
+    const option = asOption(this.value());
+    if (!option) return null;
+
+    return { id: option.id, txt: option.txt, des: this.descriptors() };
+  });
+
+  /** Elegido en el campo del que depende esta lista. */
+  readonly parentValue = input('');
+
+  /**
+   * Ítem de la fila que contiene este formulario.
+   *
+   * Solo llega cuando el formulario **es** una fila de tabla de detalle, y solo
+   * lo usa la tabla que haya dentro: sus registros son los ítems que cuelgan de
+   * aquel. Ver `DetailContext.parent`.
+   */
+  readonly inheritedParent = input('');
+
+  /** Descriptivos guardados con la respuesta. */
+  readonly descriptors = input<ResolvedDescriptor[]>([]);
+
+  readonly descriptorsChange = output<ResolvedDescriptor[]>();
+
+  /**
+   * Llega una elección de la lista.
+   *
+   * El valor y sus descriptivos viajan por separado: el motor guarda el
+   * primero en `val` y los segundos en `des`, que es como los espera el
+   * backend y como los escribe la app.
+   */
+  onListChange(selection: ListSelection | null): void {
+    this.descriptorsChange.emit(selection?.des ?? []);
+    this.valueChange.emit(selection ? { id: selection.id, txt: selection.txt } : null);
   }
 
   /** Selección única: se emite la opción completa, no solo su id. */

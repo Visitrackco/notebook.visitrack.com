@@ -14,6 +14,7 @@ import {
   BinaryStorageService,
   BinaryValue,
 } from '../../../../../core/services/binary-storage.service';
+import { FILE_ACCEPT, checkFile } from '../../../../../core/services/file-policy';
 import { ConfirmDialogComponent } from '../../../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { IconComponent } from '../../../../../shared/components/icon/icon.component';
 import { AudioPlayerComponent } from '../audio-player/audio-player.component';
@@ -106,8 +107,8 @@ const TYPES: Record<string, TypeConfig> = {
     ext: '',
     icon: 'file',
     action: 'Adjuntar archivo',
-    hint: 'Elige un documento o arrástralo aquí',
-    accept: '',
+    hint: 'Imágenes, PDF y documentos de Office · hasta 100 MB',
+    accept: FILE_ACCEPT,
     drop: '*',
   },
 };
@@ -424,6 +425,26 @@ export class BinaryFieldComponent implements OnDestroy {
         `El video pesa ${this.storage.formatSize(file.size)} y el máximo son 100 MB. ` +
           'Graba uno más corto o comprímelo antes de adjuntarlo.',
       );
+      return;
+    }
+
+    /**
+     * El adjunto genérico pasa por la lista blanca.
+     *
+     * Es el único campo que acepta cualquier cosa del explorador, así que es
+     * por donde entraría un ejecutable —o un archivo de medio giga que nunca
+     * llegaría a subirse—. Los demás ya están acotados por su familia MIME.
+     */
+    if (this.fty() === 'file') {
+      const check = checkFile(file);
+
+      if (!check.ok) {
+        this.error.set(check.error ?? 'Este archivo no se admite.');
+        return;
+      }
+
+      this.error.set('');
+      await this.store(file, file.name, check.ext);
       return;
     }
 

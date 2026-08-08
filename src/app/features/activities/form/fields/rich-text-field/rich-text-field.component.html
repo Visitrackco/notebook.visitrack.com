@@ -1,0 +1,136 @@
+<div class="rte" [class.rte--focus]="focused()" [class.rte--invalid]="invalid()">
+  @if (!readOnly()) {
+    <!-- La barra se desplaza en horizontal si no cabe, como en la app: en un
+         teléfono estrecho, apilarla en dos filas se comería el sitio de
+         escribir. -->
+    <div class="rte__bar">
+      <!-- B, I y U y no N, C y S: son las letras que llevan estos botones en
+           todas partes —del procesador de textos al correo— y la mano ya sabe
+           dónde buscarlas. Las iniciales en español obligan a leer el botón. -->
+      <button type="button" class="rte__btn" (click)="exec('bold')" title="Negrita (Ctrl+B)">
+        <b>B</b>
+      </button>
+
+      <button type="button" class="rte__btn" (click)="exec('italic')" title="Cursiva (Ctrl+I)">
+        <i>I</i>
+      </button>
+
+      <button type="button" class="rte__btn" (click)="exec('underline')" title="Subrayado (Ctrl+U)">
+        <u>U</u>
+      </button>
+
+      <span class="rte__sep" aria-hidden="true"></span>
+
+      <button
+        type="button"
+        class="rte__btn"
+        (click)="exec('insertUnorderedList')"
+        title="Viñetas"
+      >
+        <vt-icon name="menu" [size]="17" />
+      </button>
+
+      <button
+        type="button"
+        class="rte__btn"
+        (click)="exec('insertOrderedList')"
+        title="Numeración"
+      >
+        <span class="rte__ol">1.</span>
+      </button>
+
+      <span class="rte__sep" aria-hidden="true"></span>
+
+      <button type="button" class="rte__btn" (click)="exec('undo')" title="Deshacer">
+        <vt-icon name="refresh" [size]="16" class="rte__flip" />
+      </button>
+
+      <button type="button" class="rte__btn" (click)="exec('redo')" title="Rehacer">
+        <vt-icon name="refresh" [size]="16" />
+      </button>
+
+      <button type="button" class="rte__btn" (click)="clearFormat()" title="Limpiar formato">
+        <vt-icon name="close" [size]="16" />
+      </button>
+
+      <span class="rte__sep" aria-hidden="true"></span>
+
+      <button
+        type="button"
+        class="rte__btn"
+        [class.rte__btn--on]="palette() === 'text'"
+        (click)="togglePalette('text')"
+        title="Color de texto"
+      >
+        <span class="rte__swatch rte__swatch--text">A</span>
+      </button>
+
+      <button
+        type="button"
+        class="rte__btn"
+        [class.rte__btn--on]="palette() === 'highlight'"
+        (click)="togglePalette('highlight')"
+        title="Color de resaltado"
+      >
+        <span class="rte__swatch rte__swatch--mark">A</span>
+      </button>
+
+      <span class="rte__sep" aria-hidden="true"></span>
+
+      <button
+        type="button"
+        class="rte__btn"
+        (click)="insertDateTime()"
+        title="Insertar fecha y hora"
+      >
+        <vt-icon name="clipboard" [size]="16" />
+      </button>
+    </div>
+
+    @if (palette() !== 'none') {
+      <div class="rte__palette">
+        @if (palette() === 'text') {
+          @for (color of colors; track color.value) {
+            <button
+              type="button"
+              class="rte__color"
+              [style.background]="color.value"
+              [title]="color.name"
+              (click)="exec('foreColor', color.value)"
+            ></button>
+          }
+        } @else {
+          @for (color of highlights; track color.value) {
+            <button
+              type="button"
+              class="rte__color"
+              [style.background]="color.value"
+              [title]="color.name"
+              (click)="exec('hiliteColor', color.value)"
+            ></button>
+          }
+        }
+      </div>
+    }
+  }
+
+  <!-- `contenteditable` con el contenido puesto desde el componente: enlazarlo
+       con interpolación reiniciaría el cursor en cada tecla. -->
+  <div
+    #editor
+    class="rte__editor"
+    [attr.contenteditable]="readOnly() ? null : 'true'"
+    [attr.data-placeholder]="placeholder() || 'Escribe aquí…'"
+    [attr.aria-readonly]="readOnly()"
+    role="textbox"
+    aria-multiline="true"
+    (input)="onInput()"
+    (paste)="onPaste($event)"
+    (focus)="focused.set(true)"
+    (blur)="focused.set(false)"
+  ></div>
+
+  <div class="rte__foot">
+    <span>{{ counter() }}</span>
+  </div>
+</div>

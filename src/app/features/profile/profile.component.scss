@@ -75,15 +75,20 @@
 
 /* Marco claro tras el logo: los logos suelen venir en tinta oscura y sobre el
    banner negro desaparecerían. */
+/**
+ * El logo de la compañía, sin recuadro.
+ *
+ * Llevaba un fondo blanco para asegurar el contraste de cualquier logo, pero
+ * sobre la banda de color se leía como una pegatina encima del encabezado en
+ * vez de como parte de él — y los logos con fondo transparente, que son la
+ * mayoría, ya se ven bien sobre él.
+ */
 .profile__logo-frame {
   display: grid;
   flex-shrink: 0;
   place-items: center;
   width: 78px;
   height: 78px;
-  padding: 10px;
-  background: #fff;
-  border-radius: var(--vt-radius-lg);
 
   img {
     max-width: 100%;

@@ -350,3 +350,41 @@
     transform: none;
   }
 }
+
+/**
+ * Crear la entidad que no aparece en la lista.
+ *
+ * En la cabecera y no al final del listado: quien ya sabe que no está no
+ * debería recorrer doscientas opciones para encontrar el botón.
+ */
+.picker__create {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 7px;
+  align-items: center;
+  padding: 9px 16px;
+  font-family: var(--vt-font);
+  font-size: var(--vt-text-sm);
+  font-weight: 650;
+  color: var(--vt-on-brand);
+  background: var(--vt-brand);
+  border: 0;
+  border-radius: var(--vt-radius-full);
+
+  &:hover {
+    background: var(--vt-brand-dark);
+  }
+}
+
+/* El rol no lo permite: queda la marca con su explicación al pasar el ratón, en
+   vez de un hueco que parece un fallo. */
+.picker__denied {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  color: var(--vt-text-subtle);
+  background: var(--vt-surface-2);
+  border-radius: var(--vt-radius-full);
+}

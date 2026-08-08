@@ -40,7 +40,7 @@
               [class.profile__chip--ok]="connectivity.isOnline()"
               [class.profile__chip--warn]="connectivity.isOffline()"
             >
-              <vt-icon [name]="connectivity.isOnline() ? 'wifi' : 'wifi-off'" [size]="13" />
+              <vt-icon [name]="connectivity.isOnline() ? 'connection' : 'connection-off'" [size]="13" />
               {{ connectivity.isOnline() ? 'En línea' : 'Sin conexión' }}
             </span>
           </div>

@@ -1,0 +1,93 @@
+<div class="lst">
+  <!-- La etiqueta la pone el contenedor del campo, encima y alineada con la de
+       todas las demás preguntas. Aquí volvería a decir lo mismo dos veces. -->
+
+  <!-- El disparador enseña lo elegido, no un «Seleccionar» genérico: al revisar
+       un formulario ya diligenciado, lo que se busca es el valor. -->
+  <button
+    type="button"
+    class="lst__trigger"
+    [class.lst__trigger--empty]="!selected()"
+    [class.lst__trigger--invalid]="invalid()"
+    [disabled]="readOnly()"
+    (click)="openPicker()"
+  >
+    <vt-icon name="clipboard" [size]="18" />
+
+    <span class="lst__value">
+      {{ selected() ? selected()!.txt : 'Seleccionar…' }}
+    </span>
+
+    @if (!readOnly()) {
+      <vt-icon name="chevron" [size]="17" class="lst__caret" />
+    }
+  </button>
+
+  <!-- Una lista encadenada se anuncia desde fuera, sin tener que abrirla: si no,
+       el usuario pulsa, encuentra un aviso y sale, cuando lo que necesita es
+       responder antes el campo de arriba. -->
+  @if (needsParent()) {
+    <p class="lst__chain">
+      <vt-icon name="alert" [size]="14" />
+      Depende del campo anterior. Respóndelo para poder elegir aquí.
+    </p>
+  }
+
+  <div class="lst__foot">
+    @if (field().hel) {
+      <small class="lst__help">{{ field().hel }}</small>
+    }
+
+    @if (selected() && !readOnly()) {
+      <button type="button" class="lst__clear" (click)="clear()">
+        <vt-icon name="close" [size]="13" />
+        Quitar
+      </button>
+    }
+  </div>
+
+  <!-- Datos del ítem elegido. Es lo que convierte un nombre suelto en algo
+       verificable: el código, el responsable, la última revisión. -->
+  @if (descriptors().length > 0) {
+    <div class="lst__details">
+      <span class="lst__details-title">
+        <vt-icon name="info" [size]="13" />
+        Detalles del ítem
+      </span>
+
+      <!-- Etiqueta encima del valor, no al lado: en dos columnas, un valor
+           largo empuja y desalinea toda la tabla, y las etiquetas quedan
+           apretadas contra su texto. -->
+      <dl class="lst__grid">
+        @for (item of descriptors(); track item.id) {
+          <div class="lst__cell">
+            <dt>{{ item.lab }}</dt>
+            <dd>{{ item.val }}</dd>
+          </div>
+        }
+      </dl>
+    </div>
+  }
+
+  @if (invalid()) {
+    <small class="lst__error">Este campo es obligatorio.</small>
+  }
+</div>
+
+<!-- ── Selector ─────────────────────────────────────────────────────────── -->
+@if (open()) {
+  <vt-list-picker
+    [title]="field().lab"
+    [source]="items()"
+    [loading]="loading()"
+    [selectedId]="selected()?.id ?? ''"
+    [listDefinition]="listDefinition()"
+    [parentGuid]="parentValue()"
+    [locationId]="context().loc"
+    [assetId]="context().ass"
+    (search)="onSearch($event)"
+    (choose)="choose($event)"
+    (created)="onCreated($event)"
+    (cancel)="close()"
+  />
+}

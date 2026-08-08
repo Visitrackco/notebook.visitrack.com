@@ -39,7 +39,7 @@ export const ENTITY_LABELS: Record<number, string> = {
   2: 'Tipos de ubicación',
   7: 'Listas',
   8: 'Datos de listas',
-  9: 'Actividades',
+  9: 'Consignas',
   10: 'Tipos de activo',
   12: 'Activos',
   14: 'Tipos de ítem',

@@ -14,8 +14,12 @@
       </h2>
 
       <p>
-        Puedes completarlos ahora o guardar la actividad como está — quedará
-        registrada y marcada como incompleta.
+        @if (canSaveAnyway()) {
+          Puedes completarlos ahora o guardar la actividad como está — quedará
+          registrada y marcada como incompleta.
+        } @else {
+          Complétalos para poder guardar.
+        }
       </p>
     </header>
 
@@ -25,6 +29,7 @@
     <div class="req__groups">
       @for (group of groups(); track group.page) {
         <section class="req__group">
+          @if (grouped()) {
           <header class="req__group-head">
             <span class="req__group-number vt-figure">{{ group.page + 1 }}</span>
             <span class="req__group-label">{{ group.label }}</span>
@@ -33,13 +38,19 @@
               {{ group.entries.length === 1 ? 'campo' : 'campos' }}
             </span>
           </header>
+          }
 
           <ul class="req__list">
             @for (entry of group.entries; track entry.field.id) {
               <li>
                 <button type="button" (click)="goToField.emit(entry)">
                   <span class="req__marker" aria-hidden="true"></span>
-                  <span class="req__field">{{ entry.field.lab || entry.field.id }}</span>
+                  <span class="req__field">
+                    {{ entry.field.lab || entry.field.id }}
+                    @if (entry.note) {
+                      <em>{{ entry.note }}</em>
+                    }
+                  </span>
                   <vt-icon name="chevron" [size]="15" />
                 </button>
               </li>
@@ -50,9 +61,12 @@
     </div>
 
     <footer class="req__foot">
-      <button type="button" class="req__ghost" (click)="saveAnyway.emit()">
-        Guardar de todos modos
-      </button>
+      @if (canSaveAnyway()) {
+        <button type="button" class="req__ghost" (click)="saveAnyway.emit()">
+          Guardar de todos modos
+        </button>
+      }
+
       <button type="button" class="req__primary" (click)="review.emit()">
         <vt-icon name="check" [size]="17" />
         Revisar campos

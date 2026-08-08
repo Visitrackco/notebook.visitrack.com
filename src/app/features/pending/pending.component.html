@@ -33,7 +33,7 @@
 
   @if (!connectivity.isOnline()) {
     <p class="pend__offline">
-      <vt-icon name="wifi-off" [size]="16" />
+      <vt-icon name="connection-off" [size]="16" />
       Sin conexión. Nada se pierde: todo está guardado aquí y saldrá cuando vuelva la red.
     </p>
   }
@@ -51,6 +51,50 @@
       <small>No queda ninguna actividad por subir a Visitrack.</small>
     </div>
   } @else {
+    <!-- ── Necesitan una decisión ────────────────────────────────────────── -->
+    @if (blocked().length > 0) {
+      <section class="pend__group">
+        <h2 class="pend__group-title">
+          <span class="pend__dot pend__dot--blocked" aria-hidden="true"></span>
+          Necesitan corrección
+          <span class="pend__count">{{ blocked().length }}</span>
+        </h2>
+
+        <p class="pend__note pend__note--blocked">
+          Estas actividades no se envían solas: sus datos no cuadran entre sí y hace falta que
+          alguien elija. Ábrelas para resolverlo.
+        </p>
+
+        <ul class="pend__list">
+          @for (entry of blocked(); track entry.answer.GUID) {
+            <li class="act act--blocked">
+              <div class="act__body" (click)="open(entry)">
+                <strong class="act__title">{{ title(entry.answer) }}</strong>
+                <p class="act__reason">{{ reason(entry) }}</p>
+
+                <div class="act__facts">
+                  @if (when(entry.answer)) {
+                    <span>{{ when(entry.answer) }}</span>
+                  }
+                  @if (entry.answer.LocationName) {
+                    <span>{{ entry.answer.LocationName }}</span>
+                  }
+                  @if (entry.answer.AssetName) {
+                    <span>{{ entry.answer.AssetName }}</span>
+                  }
+                </div>
+              </div>
+
+              <button type="button" class="act__send" (click)="open(entry)">
+                <vt-icon name="chevron" [size]="16" />
+                Abrir y corregir
+              </button>
+            </li>
+          }
+        </ul>
+      </section>
+    }
+
     <!-- ── Listas para salir ─────────────────────────────────────────────── -->
     @if (ready().length > 0) {
       <section class="pend__group">

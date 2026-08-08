@@ -68,9 +68,22 @@ export class EntityPickerComponent {
   /** Frase para cuando no hay nada que elegir. */
   readonly emptyMessage = input('No hay opciones disponibles.');
 
+  /**
+   * Texto del botón de crear. Vacío lo oculta.
+   *
+   * Se ofrece aquí porque es donde aparece la necesidad: quien viene a elegir
+   * una sede y no la encuentra tiene que poder darla de alta sin abandonar lo
+   * que estaba haciendo — y volver a este mismo punto con ella ya elegida.
+   */
+  readonly createLabel = input('');
+
+  /** Por qué no se puede crear, cuando el rol lo prohíbe. */
+  readonly createBlocked = input('');
+
   readonly search = output<string>();
   readonly loadMore = output<void>();
   readonly choose = output<PickerItem>();
+  readonly create = output<void>();
   readonly back = output<void>();
 
   onSearch(event: Event): void {

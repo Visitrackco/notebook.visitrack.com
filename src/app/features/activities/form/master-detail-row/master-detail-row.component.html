@@ -1,0 +1,182 @@
+<!-- La pila entera, con solo el nivel de arriba a la vista.
+     Los de abajo siguen montados: dentro de cada uno vive el campo que abrió la
+     fila siguiente, y ese campo es quien tiene que recibir el resultado. -->
+@for (level of levels(); track level.trail) {
+  <section class="row" [class.row--hidden]="!isTop(level)" [attr.inert]="isTop(level) ? null : ''">
+    <header class="row__bar">
+      <button
+        type="button"
+        class="row__back"
+        (click)="leave()"
+        aria-label="Volver al formulario"
+      >
+        <vt-icon name="chevron" [size]="20" />
+      </button>
+
+      <div class="row__heading">
+        <p>{{ level.title }}</p>
+        <h1>{{ level.name || 'Registro' }}</h1>
+      </div>
+
+      <!-- Cuánto lleva y qué falta, en la cabecera: en un formulario de varias
+           páginas es lo que dice si se puede salir ya o queda trabajo. -->
+      <span class="row__ring">
+        <svg viewBox="0 0 44 44" aria-hidden="true">
+          <circle class="row__ring-track" cx="22" cy="22" r="18" />
+          <circle
+            class="row__ring-fill"
+            cx="22"
+            cy="22"
+            r="18"
+            [attr.stroke-dasharray]="ringLength()"
+            [attr.stroke-dashoffset]="ringOffset(level)"
+          />
+        </svg>
+        <span class="row__ring-value vt-figure">{{ level.engine.progress().percent }}</span>
+      </span>
+
+      <vt-hint label="Cómo se calcula este porcentaje" align="right">
+        <p>
+          Cuenta las preguntas de este registro que <em>están a la vista</em> y
+          ya tienen respuesta: {{ level.engine.progress().filled }} de
+          {{ level.engine.progress().total }}.
+        </p>
+        <p>
+          Las preguntas ocultas por una condición no cuentan, así que al
+          responder algo que abre nuevas preguntas el total sube y el porcentaje
+          puede bajar. Los títulos y los textos informativos tampoco cuentan.
+        </p>
+        <p>
+          Para guardar no hace falta llegar al 100 %, solo responder las
+          <em>obligatorias</em>.
+        </p>
+      </vt-hint>
+
+      @if (level.engine.missing().length > 0) {
+        <span class="row__pending">
+          <vt-icon name="alert" [size]="15" />
+          {{ level.engine.missing().length }}
+          {{ level.engine.missing().length === 1 ? 'pendiente' : 'pendientes' }}
+        </span>
+      } @else {
+        <span class="row__done">
+          <vt-icon name="check" [size]="15" />
+          Completo
+        </span>
+      }
+    </header>
+
+    @if (level.engine.totalPages() > 1) {
+      <nav class="row__pages">
+        @for (mark of pagesOf(level); track mark.index) {
+          <button
+            type="button"
+            [class.row__page--on]="mark.index === level.engine.page()"
+            (click)="level.engine.goTo(mark.index)"
+          >
+            {{ mark.label }}
+          </button>
+        }
+      </nav>
+    }
+
+    <!-- Cada pregunta en su tarjeta, igual que en el formulario de fuera:
+         dentro de una fila se responde lo mismo y con las mismas reglas, y
+         cambiarles el aspecto haría pensar que son otra cosa. -->
+    <div class="row__body">
+      @for (field of level.engine.visibleFields(); track field.id) {
+        <div
+          class="row__field"
+          [class.row__field--invalid]="level.engine.showsError(field)"
+          [id]="'row-field-' + field.id"
+        >
+          <vt-field-host
+            [field]="field"
+            [value]="level.engine.valueOf(field.id)"
+            [invalid]="level.engine.showsError(field)"
+            [answerGuid]="level.answerGuid"
+            [parentValue]="level.engine.parentValueOf(field)"
+            [inheritedParent]="level.listDetGuid"
+            [descriptors]="level.engine.descriptorsOf(field.id)"
+            (valueChange)="onValue(level, field, $event)"
+            (descriptorsChange)="onDescriptors(level, field, $event)"
+          />
+        </div>
+      } @empty {
+        <p class="row__empty">Este registro no tiene preguntas.</p>
+      }
+    </div>
+
+    <footer class="row__foot">
+      <button type="button" class="row__leave" (click)="leave()">
+        {{ discardsOnExit() ? 'Descartar' : 'Salir' }}
+      </button>
+
+      <button type="button" class="row__save" (click)="save()">
+        <vt-icon name="check" [size]="17" />
+        Guardar registro
+      </button>
+    </footer>
+  </section>
+}
+
+<vt-to-top />
+
+<!-- ── Falta responder ─────────────────────────────────────────────────────
+     El mismo aviso que da la app al intentar guardar una fila incompleta, con
+     las dos salidas. Se enumera lo que falta porque en un formulario de tres
+     páginas «faltan campos» no dice dónde mirar. -->
+@if (asking()) {
+  <div class="warn" (click)="keepEditing()">
+    <div class="warn__panel" (click)="$event.stopPropagation()">
+      <header class="warn__head">
+        <span class="warn__icon"><vt-icon name="alert" [size]="22" /></span>
+        <div>
+          <strong>
+            Falta
+            {{
+              missing().length === 1
+                ? 'un campo obligatorio'
+                : missing().length + ' campos obligatorios'
+            }}
+          </strong>
+          <small>
+            @if (discardsOnExit()) {
+              Si sales ahora, el registro se descarta.
+            } @else {
+              Si sales ahora, el registro queda como estaba.
+            }
+          </small>
+        </div>
+      </header>
+
+      <!-- Cada uno lleva al suyo: en un registro de tres páginas, leer que
+           falta «Estado del equipo» no dice dónde está. -->
+      <ul class="warn__list">
+        @for (entry of missing(); track entry.field.id) {
+          <li>
+            <button type="button" (click)="goToField(entry)">
+              <span class="warn__dot"></span>
+              <span class="warn__label">
+                {{ entry.field.lab }}
+                <em>{{ entry.note || 'página ' + (entry.page + 1) }}</em>
+              </span>
+              <vt-icon name="chevron" [size]="15" />
+            </button>
+          </li>
+        }
+      </ul>
+
+      <footer class="warn__foot">
+        <button type="button" class="warn__leave" (click)="discard()">
+          {{ discardsOnExit() ? 'Descartar registro' : 'Salir sin guardar' }}
+        </button>
+
+        <button type="button" class="warn__stay" (click)="keepEditing()">
+          <vt-icon name="pen" [size]="15" />
+          Seguir llenando
+        </button>
+      </footer>
+    </div>
+  </div>
+}

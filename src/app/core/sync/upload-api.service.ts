@@ -14,6 +14,17 @@ export interface UploadResult {
   notImplemented?: boolean;
 }
 
+/** Lo que devuelve la creación de una entidad: su identificador de servidor. */
+export interface EntityUploadResult extends UploadResult {
+  /**
+   * `LocationID` o `AssetID` asignados por Visitrack.
+   *
+   * Es lo que de verdad se venía a buscar: hasta tenerlo, las actividades que
+   * apuntan a esta entidad llevan su GUID en el sitio del identificador.
+   */
+  serverId?: string;
+}
+
 /** Estado de un archivo respecto al bucket, según el servidor. */
 export type BucketState = 'online' | 'queued' | 'discarded' | 'missing';
 
@@ -115,6 +126,69 @@ export class UploadApiService {
       if (response?.status) return { ok: true };
       return { ok: false, error: response?.error ?? 'El servidor rechazó la actividad.' };
     } catch (error) {
+      return { ok: false, error: describe(error) };
+    }
+  }
+
+  /**
+   * Crea en Visitrack una ubicación dada de alta en este dispositivo.
+   *
+   * El cuerpo son los campos que espera `sp_PutLocationFromMobile`, no la fila
+   * entera: el procedimiento almacenado lee nombres concretos y mandarle
+   * columnas locales —`Upload`, `SyncedToServer`— no aporta nada.
+   */
+  async createLocation(body: Record<string, unknown>): Promise<EntityUploadResult> {
+    return this.createEntity('/putLocationFromMobile', body, 'LocationID');
+  }
+
+  /** Lo mismo para un activo. Devuelve su `AssetID`. */
+  async createAsset(body: Record<string, unknown>): Promise<EntityUploadResult> {
+    return this.createEntity('/putAssetFromMobile', body, 'AssetID');
+  }
+
+  /**
+   * Crea un ítem de lista.
+   *
+   * Aquí sí se manda la fila cruda: es lo que hace la app y lo que el backend
+   * espera. No devuelve identificador — un ítem de lista se referencia por su
+   * GUID, que ya se generó aquí.
+   */
+  async createListItem(row: Record<string, unknown>): Promise<EntityUploadResult> {
+    return this.createEntity('/putListDetFromMobile', row, '');
+  }
+
+  private async createEntity(
+    path: string,
+    body: Record<string, unknown>,
+    idField: string,
+  ): Promise<EntityUploadResult> {
+    try {
+      const response = await firstValueFrom(
+        this.http
+          .put<{ status?: boolean; error?: string; response?: Record<string, unknown> }>(
+            `${this.baseUrl}${path}`,
+            body,
+            { headers: { 'Content-Type': 'application/json' } },
+          )
+          .pipe(timeout(60_000)),
+      );
+
+      if (response?.status !== true) {
+        return { ok: false, error: response?.error ?? 'El servidor rechazó el registro.' };
+      }
+
+      const serverId = idField ? String(response.response?.[idField] ?? '') : '';
+
+      return { ok: true, serverId: serverId && serverId !== '0' ? serverId : undefined };
+    } catch (error) {
+      if (isMissingEndpoint(error)) {
+        return {
+          ok: false,
+          notImplemented: true,
+          error: 'El servidor todavía no tiene habilitada la subida de entidades.',
+        };
+      }
+
       return { ok: false, error: describe(error) };
     }
   }

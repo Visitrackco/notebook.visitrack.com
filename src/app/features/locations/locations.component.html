@@ -1,0 +1,137 @@
+<section class="locs">
+  <header class="locs__head">
+    <div class="locs__title">
+      <h1>Ubicaciones</h1>
+      <p>
+        {{ counter() }}
+        @if (pendingCount() > 0) {
+          · <em>{{ pendingCount() }} sin subir</em>
+        }
+      </p>
+    </div>
+
+    @if (canCreate()) {
+      <a class="locs__new" routerLink="/ubicaciones/nueva">
+        <vt-icon name="plus" [size]="17" />
+        Nueva ubicación
+      </a>
+    } @else if (noPermission()) {
+      <!-- Se dice por qué falta el botón: sin esto parece que la aplicación lo
+           perdió, y se acaba preguntando por algo que es una regla. -->
+      <span class="locs__denied">
+        <vt-icon name="shield" [size]="15" />
+        {{ noPermission() }}
+      </span>
+    }
+  </header>
+
+  <!-- El buscador y los tipos se quedan a la vista al bajar: en una lista de
+       trescientas sedes, cambiar de filtro obligaría a volver arriba cada vez. -->
+  <div class="locs__sticky">
+    <label class="locs__search">
+      <vt-icon name="clipboard" [size]="16" />
+      <input
+        type="search"
+        [value]="search()"
+        (input)="onSearch($event)"
+        placeholder="Buscar por nombre o por sus datos"
+        autocomplete="off"
+      />
+    </label>
+
+    <!-- Por tipo, en un desplegable y no en píldoras: con ocho o diez tipos
+         las píldoras ocupan tres filas y empujan la lista fuera de la pantalla.
+         Un desplegable ocupa siempre lo mismo, en el teléfono y en el
+         escritorio. -->
+    @if (tabs().length > 1) {
+      <label class="locs__filter">
+        <vt-icon name="box" [size]="15" />
+
+        <select [value]="typeFilter()" (change)="onTypePicked($event)">
+          <option value="">Todos los tipos ({{ all().length }})</option>
+
+          @for (tab of tabs(); track tab.name) {
+            <option [value]="tab.name">{{ tab.name }} ({{ tab.count }})</option>
+          }
+        </select>
+      </label>
+    }
+  </div>
+
+  @if (loading()) {
+    <div class="locs__ghosts" aria-label="Cargando ubicaciones">
+      @for (row of [1, 2, 3, 4]; track row) {
+        <div class="locs__ghost"></div>
+      }
+    </div>
+  } @else if (visible().length > 0) {
+    <ul class="locs__list">
+      @for (card of visible(); track card.guid) {
+        <li>
+          <a class="loc" [routerLink]="['/ubicaciones', card.guid]">
+            <!-- El pin dice de un vistazo si la ubicación tiene coordenadas.
+                 En campo, llegar a una sede sin punto en el mapa es la
+                 diferencia entre encontrarla y llamar preguntando. -->
+            <span class="loc__pin" [class.loc__pin--on]="card.located">
+              <vt-icon name="map-pin" [size]="18" />
+            </span>
+
+            <span class="loc__body">
+              <span class="loc__name">
+                {{ card.name }}
+
+                @if (card.own) {
+                  <em class="loc__tag">Creada aquí</em>
+                }
+              </span>
+
+              <span class="loc__type">{{ card.typeName }}</span>
+
+              @if (card.descriptors.length > 0) {
+                <span class="loc__desc">
+                  @for (item of card.descriptors; track item.id) {
+                    <span class="loc__pair">
+                      <b>{{ item.lab }}</b>
+                      <span>{{ item.val }}</span>
+                    </span>
+                  }
+                </span>
+              }
+
+              @if (card.pending) {
+                <span class="loc__pending">
+                  <vt-icon name="cloud-upload" [size]="13" />
+                  Pendiente de subir
+                </span>
+              }
+            </span>
+
+            <vt-icon name="chevron" [size]="18" class="loc__go" />
+          </a>
+        </li>
+      }
+    </ul>
+
+    <!-- Trae la siguiente tanda al asomarse el final. Sin botón de «cargar
+         más»: al bajar, lo siguiente ya está puesto. -->
+    @if (hasMore()) {
+      <div class="locs__more" vtNearEnd (reached)="showMore()">
+        <span class="locs__spinner" aria-hidden="true"></span>
+        Cargando más ubicaciones…
+      </div>
+    }
+  } @else {
+    <div class="locs__empty">
+      <span class="locs__empty-icon"><vt-icon name="map-pin" [size]="26" /></span>
+      <p>
+        @if (search() || typeFilter()) {
+          Ninguna ubicación coincide con lo que buscas.
+        } @else {
+          No hay ubicaciones descargadas. Sincroniza o crea la primera.
+        }
+      </p>
+    </div>
+  }
+</section>
+
+<vt-to-top />

@@ -157,6 +157,18 @@ export enum BinaryType {
   File = 6,
 }
 
+/**
+ * De dónde salió un archivo.
+ *
+ * `device` es lo capturado aquí, que hay que subir. `server` es lo que llegó
+ * **con una consigna** y ya vive en el servidor: se guarda para poder verlo y
+ * descargarlo, pero no se sube — devolvérselo sería duplicarlo.
+ *
+ * Ausente significa `device`: es lo que eran todos antes de que existieran las
+ * consignas con archivos.
+ */
+export type BinaryOrigin = 'device' | 'server';
+
 /** Metadatos de un archivo capturado. El contenido va en `BinariesData`. */
 export interface BinaryResource {
   ID?: number;
@@ -171,6 +183,9 @@ export interface BinaryResource {
   TypeID: number;
   Ext: string;
   Size: string;
+
+  /** Quién lo puso aquí. Ver [BinaryOrigin]. */
+  Origin?: BinaryOrigin;
 
   /**
    * En el móvil era la ruta del archivo. En web no hay rutas: se conserva por

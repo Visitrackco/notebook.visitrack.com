@@ -1,11 +1,6 @@
+<!-- Sin leyenda: la etiqueta la pone el contenedor del campo, encima y alineada
+     con la de todas las demás preguntas. -->
 <fieldset class="gps" [class.gps--invalid]="invalid()">
-  <legend>
-    {{ label() }}
-    @if (required()) {
-      <span class="gps__required">*</span>
-    }
-  </legend>
-
   @if (!available()) {
     <!-- Sin contexto seguro o sin API no hay nada que intentar: se dice por qué
          en vez de dejar un botón que siempre falla. -->

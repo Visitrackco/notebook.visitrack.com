@@ -1,0 +1,511 @@
+@use '../../../../../shared/styles/overlay';
+
+/**
+ * Ventana de selección de un ítem.
+ *
+ * Vive aparte del campo porque la usan dos: el desplegable y el MasterDetail,
+ * cuyas filas nacen de la misma elección.
+ */
+
+.picker {
+  @include overlay.shell;
+}
+
+.picker__panel {
+  @include overlay.panel;
+
+  display: flex;
+  flex-direction: column;
+  max-width: 620px;
+  background: var(--vt-surface);
+}
+
+/**
+ * El encabezado, en el color de marca.
+ *
+ * Agrupa lo que manda —de qué lista se está eligiendo, cuántas opciones hay y
+ * el buscador— en un bloque de color que lo separa de los resultados sin
+ * necesidad de una línea ni de un título más. Es también lo que da al selector
+ * identidad propia: sin él, la ventana era un rectángulo blanco indistinguible
+ * de cualquier otro.
+ *
+ * El degradado sutil evita que un bloque grande de color plano resulte pesado.
+ */
+.picker__head {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  gap: var(--vt-space-3);
+  padding: var(--vt-space-4);
+  color: var(--vt-on-brand);
+  background: linear-gradient(135deg, var(--vt-brand), var(--vt-brand-dark));
+}
+
+.picker__head-row {
+  display: flex;
+  gap: var(--vt-space-3);
+  align-items: center;
+}
+
+/* El disco del icono en blanco translúcido: sobre el color de marca, un fondo
+   sólido obligaría a elegir un tercer color que compitiera con él. */
+.picker__head-icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  background: rgb(255 255 255 / 18%);
+  border-radius: var(--vt-radius);
+}
+
+.picker__titles {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+
+  strong {
+    overflow: hidden;
+    font-size: var(--vt-text-md);
+    font-weight: 650;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  small {
+    font-size: var(--vt-text-xs);
+
+    /* Blanco al 78 %, no un gris: cualquier gris fijo se ensucia sobre un fondo
+       de color que cambia con la marca de cada compañía. */
+    color: rgb(255 255 255 / 78%);
+  }
+}
+
+.picker__close {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  color: inherit;
+  background: rgb(255 255 255 / 16%);
+  border: 0;
+  border-radius: var(--vt-radius-full);
+  transition: background var(--vt-transition);
+
+  &:hover {
+    background: rgb(255 255 255 / 28%);
+  }
+}
+
+/**
+ * El buscador, dentro del encabezado.
+ *
+ * En blanco translúcido en vez de blanco sólido: así se lee como parte de la
+ * barra de color y no como un trozo del cuerpo que se coló arriba. Al escribir
+ * se vuelve opaco, que es la forma de decir «ahora estás aquí» sin añadir
+ * ningún borde.
+ */
+.picker__search {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  padding: 0 var(--vt-space-3);
+  color: rgb(255 255 255 / 75%);
+  background: rgb(255 255 255 / 16%);
+  border: 1px solid rgb(255 255 255 / 22%);
+  border-radius: var(--vt-radius-full);
+  transition:
+    background var(--vt-transition),
+    border-color var(--vt-transition);
+
+  &:focus-within {
+    color: var(--vt-text-subtle);
+    background: var(--vt-surface);
+    border-color: transparent;
+
+    input {
+      color: var(--vt-text);
+
+      &::placeholder {
+        color: var(--vt-text-subtle);
+      }
+    }
+  }
+
+  input {
+    flex: 1;
+    min-width: 0;
+    padding: 10px 0;
+    font-family: var(--vt-font);
+    font-size: var(--vt-text-sm);
+    color: #fff;
+    background: transparent;
+    border: 0;
+
+    &::placeholder {
+      color: rgb(255 255 255 / 70%);
+    }
+
+    &:focus {
+      outline: none;
+    }
+
+    /* La cruz nativa del buscador se pinta oscura y desaparece sobre el color
+       de marca; el vaciado se hace borrando, que es lo que hace todo el mundo. */
+    &::-webkit-search-cancel-button {
+      display: none;
+    }
+  }
+}
+
+/* Gira mientras se consulta. Dentro del propio buscador: es donde se está
+   mirando al escribir, y un indicador en otro sitio pasa desapercibido. */
+.picker__spinner {
+  flex-shrink: 0;
+  width: 15px;
+  height: 15px;
+  border: 2px solid rgb(255 255 255 / 35%);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: picker-spin 0.7s linear infinite;
+}
+
+.picker__search:focus-within .picker__spinner {
+  border-color: var(--vt-rule-strong);
+  border-top-color: var(--vt-brand);
+}
+
+@keyframes picker-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .picker__spinner {
+    animation-duration: 2s;
+  }
+}
+
+.picker__body {
+  flex: 1;
+  min-height: 0;
+  padding: var(--vt-space-3) var(--vt-space-4) var(--vt-space-4);
+  overflow-y: auto;
+  transition: opacity var(--vt-transition);
+}
+
+/* Mientras se busca, lo que hay se apaga y deja de aceptar pulsaciones: sigue
+   sirviendo de referencia, pero elegir un resultado que está a punto de
+   cambiar sería elegir a ciegas. */
+.picker__body--busy {
+  pointer-events: none;
+  opacity: 0.45;
+}
+
+.picker__list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.picker__item {
+  display: flex;
+  gap: var(--vt-space-3);
+  align-items: center;
+  width: 100%;
+  padding: 10px var(--vt-space-3);
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--vt-radius);
+  transition:
+    background var(--vt-transition),
+    border-color var(--vt-transition);
+
+  &:hover {
+    background: var(--vt-surface-2);
+    border-color: var(--vt-rule);
+  }
+}
+
+/* Lo ya elegido se marca: al reabrir el selector se ve dónde estaba uno. */
+.picker__item--on {
+  background: var(--vt-brand-tint);
+  border-color: var(--vt-brand);
+
+  .picker__mark {
+    color: var(--vt-on-brand);
+    background: var(--vt-brand);
+  }
+}
+
+/* La inicial en un disco: recorriendo una lista larga, las letras hacen de
+   guía y se localiza antes lo que se busca. */
+.picker__mark {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  font-size: var(--vt-text-sm);
+  font-weight: 700;
+  color: var(--vt-icon-brand-fg);
+  background: var(--vt-icon-brand-bg);
+  border-radius: 50%;
+}
+
+.picker__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.picker__name {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  overflow: hidden;
+  font-size: var(--vt-text-sm);
+  font-weight: 600;
+  color: var(--vt-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Ya tiene fila. Se apaga la fila y se rotula, sin desactivarla: repetir un
+   ítem es legítimo a veces, y lo que hace falta es que no pase por descuido. */
+.picker__item--used {
+  opacity: 0.72;
+}
+
+.picker__used {
+  flex-shrink: 0;
+  padding: 2px 7px;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 700;
+  color: var(--vt-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  background: var(--vt-surface-2);
+  border-radius: var(--vt-radius-full);
+}
+
+/**
+ * Los datos del ítem en la propia fila.
+ *
+ * Son lo que distingue dos ítems que se llaman parecido, así que tienen que
+ * estar a la vista al elegir. En una línea seguida y separados por un punto:
+ * con cuatro o cinco, cada uno en su píldora convertía cada fila en un mosaico
+ * y la lista dejaba de recorrerse con la vista.
+ */
+.picker__desc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 6px;
+  align-items: baseline;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--vt-text-muted);
+}
+
+.picker__pair {
+  display: inline-flex;
+  gap: 4px;
+  align-items: baseline;
+  min-width: 0;
+
+  b {
+    font-weight: 650;
+    color: var(--vt-text-subtle);
+
+    /* Los dos puntos van aquí y no en la plantilla: son puntuación, no
+       contenido, y en el HTML estorban al leer y al traducir. */
+    &::after {
+      content: ':';
+    }
+  }
+
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Punto de separación entre datos. En el pseudo-elemento para que no
+     aparezca detrás del último ni sea seleccionable al copiar. */
+  &:not(:last-child)::after {
+    margin-left: 4px;
+    color: var(--vt-rule-strong);
+    content: '·';
+  }
+}
+
+.picker__tick {
+  flex-shrink: 0;
+  color: var(--vt-brand);
+}
+
+/**
+ * Filas fantasma mientras cargan las opciones.
+ *
+ * Con listas de miles de registros —los activos de un tipo, por ejemplo— la
+ * consulta local tarda lo suyo, y un panel vacío durante ese rato se lee como
+ * «no hay nada». Estas filas dicen que viene una lista y cuántas caben, así que
+ * el panel tampoco pega un salto de alto cuando llegan los datos.
+ */
+.picker__ghosts {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    gap: var(--vt-space-3);
+    align-items: center;
+    padding: 10px var(--vt-space-3);
+  }
+}
+
+.picker__ghost-mark {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+}
+
+.picker__ghost-lines {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+
+  span {
+    height: 9px;
+    border-radius: 4px;
+  }
+
+  /* La segunda más corta: imita el descriptivo bajo el nombre y evita que el
+     bloque parezca una tabla de barras iguales. */
+  span:first-child {
+    width: 55%;
+  }
+
+  span:last-child {
+    width: 32%;
+  }
+}
+
+.picker__ghost-mark,
+.picker__ghost-lines span {
+  background: var(--vt-surface-3);
+  animation: picker-pulse 1.3s ease-in-out infinite;
+}
+
+@keyframes picker-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .picker__ghost-mark,
+  .picker__ghost-lines span {
+    animation: none;
+  }
+}
+
+.picker__note {
+  padding: var(--vt-space-4) 0;
+  margin: 0;
+  font-size: var(--vt-text-sm);
+  color: var(--vt-text-subtle);
+  text-align: center;
+}
+
+.picker__note--hint {
+  padding: var(--vt-space-3) 0 0;
+  font-size: var(--vt-text-xs);
+}
+
+.picker__empty {
+  display: grid;
+  gap: var(--vt-space-3);
+  justify-items: center;
+  padding: var(--vt-space-6) var(--vt-space-4);
+  text-align: center;
+
+  p {
+    max-width: 380px;
+    margin: 0;
+    font-size: var(--vt-text-sm);
+    line-height: 1.55;
+    color: var(--vt-text-muted);
+  }
+}
+
+.picker__empty-icon {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  color: var(--vt-icon-amber-fg);
+  background: var(--vt-icon-amber-bg);
+  border-radius: 50%;
+}
+
+/* ── Crear un ítem ────────────────────────────────────────────────────────── */
+
+/**
+ * Al pie del selector y no en la cabecera.
+ *
+ * Arriba competiría con el buscador, que es lo que se usa el 95 % de las veces.
+ * Abajo aparece justo donde termina la búsqueda infructuosa — que es cuando
+ * surge la necesidad.
+ */
+.picker__new {
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  padding: 12px var(--vt-space-4);
+  font-family: var(--vt-font);
+  font-size: var(--vt-text-sm);
+  font-weight: 650;
+  color: var(--vt-brand);
+  background: var(--vt-surface-2);
+  border: 0;
+  border-top: 1px solid var(--vt-rule);
+
+  &:hover {
+    background: var(--vt-brand-tint);
+  }
+}
+
+.picker__denied {
+  display: flex;
+  flex-shrink: 0;
+  gap: 7px;
+  align-items: center;
+  justify-content: center;
+  padding: 10px var(--vt-space-4);
+  margin: 0;
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-subtle);
+  background: var(--vt-surface-2);
+  border-top: 1px solid var(--vt-rule);
+}

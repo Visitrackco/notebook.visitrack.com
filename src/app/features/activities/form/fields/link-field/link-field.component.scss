@@ -1,0 +1,147 @@
+/**
+ * Campo de hipervínculo.
+ *
+ * Se presenta como una tarjeta con acción, no como un enlace de texto: lo que
+ * hace es **salir del formulario** hacia otro sistema, y eso merece un objetivo
+ * grande y un destino visible antes de pulsar.
+ */
+
+:host {
+  display: block;
+  width: 100%;
+}
+
+.lnk {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vt-space-2);
+  width: 100%;
+}
+
+.lnk__open {
+  display: flex;
+  gap: var(--vt-space-3);
+  align-items: center;
+  width: 100%;
+  padding: var(--vt-space-3) var(--vt-space-4);
+  text-align: left;
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-rule-strong);
+  border-radius: var(--vt-radius);
+  transition:
+    border-color var(--vt-transition),
+    background var(--vt-transition);
+
+  &:hover {
+    background: var(--vt-surface-2);
+    border-color: var(--vt-brand);
+
+    .lnk__caret {
+      color: var(--vt-brand);
+      transform: translateX(2px);
+    }
+  }
+}
+
+.lnk__icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  color: var(--vt-icon-brand-fg);
+  background: var(--vt-icon-brand-bg);
+  border-radius: var(--vt-radius);
+}
+
+.lnk__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+
+  strong {
+    font-size: var(--vt-text-sm);
+    font-weight: 650;
+    color: var(--vt-text);
+  }
+
+  /* El destino en una línea, recortado: sirve para reconocer a dónde lleva,
+     no para leerlo entero. */
+  small {
+    overflow: hidden;
+    font-size: 11px;
+    color: var(--vt-text-subtle);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.lnk__caret {
+  flex-shrink: 0;
+  color: var(--vt-text-subtle);
+  transition:
+    color var(--vt-transition),
+    transform var(--vt-transition);
+}
+
+.lnk__tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vt-space-2);
+  align-items: center;
+}
+
+.lnk__tool {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  padding: 5px 12px;
+  font-size: var(--vt-text-xs);
+  font-weight: 600;
+  color: var(--vt-text-muted);
+  background: var(--vt-surface-2);
+  border: 1px solid var(--vt-rule);
+  border-radius: var(--vt-radius-full);
+
+  &:hover {
+    color: var(--vt-text);
+    border-color: var(--vt-rule-strong);
+  }
+}
+
+/* Aviso de que el enlace va firmado. Discreto pero presente: quien lo pegue en
+   un chat debe saber que lleva su sesión dentro. */
+.lnk__note {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--vt-text-subtle);
+}
+
+.lnk__feedback {
+  margin: 0;
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-muted);
+}
+
+.lnk__empty {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  padding: 10px var(--vt-space-3);
+  margin: 0;
+  font-size: var(--vt-text-xs);
+  color: var(--vt-warning);
+  background: color-mix(in srgb, var(--vt-warning) 10%, transparent);
+  border-radius: var(--vt-radius);
+}
+
+@media (max-width: 640px) {
+  .lnk__note {
+    margin-left: 0;
+  }
+}

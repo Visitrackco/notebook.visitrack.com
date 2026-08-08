@@ -1,5 +1,13 @@
+<!-- La pantalla de la actividad se oculta —no se desmonta— mientras hay una
+     fila de tabla de detalle abierta: dentro vive el campo que la abrió, y es
+     quien recibirá lo que se responda en ella. -->
 @if (answer(); as act) {
-  <div class="detail" [style.--accent]="accent()" [style.--form-gradient]="gradient()">
+  <div
+    class="detail"
+    [class.detail--behind]="rowOpen()"
+    [style.--accent]="accent()"
+    [style.--form-gradient]="gradient()"
+  >
     <!-- ── Cabecera fija ───────────────────────────────────────────────────
          Se queda arriba al desplazarse, con el volver y el título del
          formulario. En un formulario de ocho páginas, perder de vista de qué
@@ -64,36 +72,84 @@
     <!-- ── Contexto ─────────────────────────────────────────────────────────
          Una línea de fichas en vez de un panel: ubicación y activo son datos
          que ya se eligieron y solo se consultan de vez en cuando; ocupando un
-         bloque entero empujaban el formulario fuera de la primera pantalla. -->
+         bloque entero empujaban el formulario fuera de la primera pantalla.
+
+         **Solo se leen, no se cambian.** Se eligen al abrir la actividad y ahí
+         quedan: cambiarlos con el formulario ya diligenciado deja las respuestas
+         atadas a una sede o un equipo que no son los que se inspeccionaron, y
+         eso llega a Visitrack como un registro válido que nadie cuestiona. Para
+         otra ubicación o otro activo, la actividad es otra. -->
     @if (location() || asset()) {
       <div class="detail__context">
         @if (location(); as loc) {
-          <button type="button" class="detail__chip" (click)="changeLocation()">
-            <vt-icon name="map-pin" [size]="15" />
-            <span class="detail__chip-text">
-              <em>Ubicación</em>
-              <b>{{ loc.Name }}</b>
+          <article class="detail__entity detail__entity--location">
+            <span class="detail__entity-icon">
+              <vt-icon name="map-pin" [size]="22" />
             </span>
-            <span class="detail__chip-action">Cambiar</span>
-          </button>
+
+            <div class="detail__entity-text">
+              <small>Ubicación</small>
+              <strong>{{ loc.Name }}</strong>
+
+              <!-- La dirección o la etiqueta: es lo que confirma que la sede es
+                   la correcta cuando dos se llaman parecido. -->
+              @if (loc.FullAddress || loc.TagUID) {
+                <span>{{ loc.FullAddress || loc.TagUID }}</span>
+              }
+            </div>
+          </article>
         }
 
         @if (asset(); as ast) {
-          <button type="button" class="detail__chip" (click)="changeAsset()">
-            <vt-icon name="box" [size]="15" />
-            <span class="detail__chip-text">
-              <em>Activo</em>
-              <b>{{ ast.Name }}</b>
+          <article class="detail__entity detail__entity--asset">
+            <span class="detail__entity-icon">
+              <vt-icon name="box" [size]="22" />
             </span>
-            <span class="detail__chip-action">Cambiar</span>
-          </button>
+
+            <div class="detail__entity-text">
+              <small>Activo</small>
+              <strong>{{ ast.Name }}</strong>
+
+              @if (assetDetail(ast); as detail) {
+                <span>{{ detail }}</span>
+              }
+            </div>
+          </article>
         }
       </div>
     }
 
-    <!-- ── Campos del formulario ───────────────────────────────────────────── -->
-    <section class="detail__panel">
-      @if (survey(); as form) {
+    <!-- ── Campos del formulario ─────────────────────────────────────────────
+         Sin fondo de panel: cada pregunta trae el suyo, y una tarjeta blanca
+         sobre otra tarjeta blanca no se distingue. Lo que queda detrás es el
+         papel de la página. -->
+    <section class="detail__panel detail__panel--sheet">
+      @if (issue(); as problem) {
+        <!-- El formulario queda bloqueado a propósito.
+             Responder con la ubicación y el activo descuadrados produce una
+             actividad que dice haber inspeccionado un equipo donde no está, y
+             eso llega a Visitrack como un dato bueno que nadie cuestiona. -->
+        <div class="detail__blocked">
+          <span class="detail__blocked-icon"><vt-icon name="alert" [size]="28" /></span>
+
+          <div class="detail__blocked-text">
+            <strong>Falta elegir el activo de esta ubicación</strong>
+            <p>{{ problem.message }}</p>
+          </div>
+
+          <div class="detail__blocked-actions">
+            <button type="button" class="vt-btn vt-btn--primary" (click)="changeAsset()">
+              <vt-icon name="box" [size]="17" />
+              Elegir activo
+            </button>
+
+            <button type="button" class="vt-btn" (click)="changeLocation()">
+              <vt-icon name="map-pin" [size]="17" />
+              Cambiar ubicación
+            </button>
+          </div>
+        </div>
+      } @else if (survey(); as form) {
         <vt-form-runner
           [survey]="form"
           [answer]="act"
@@ -103,50 +159,61 @@
       }
     </section>
 
-    <!-- ── Detalles ────────────────────────────────────────────────────────── -->
+    <!-- ── Detalles ──────────────────────────────────────────────────────────
+         Sin `dt`/`dd`: fuera de un `<dl>` son HTML inválido, y el `<dd>` trae
+         del navegador un margen izquierdo de 40 px que descolgaba el valor
+         respecto a su etiqueta. Un par de `<span>` dice lo mismo y se alinea
+         donde se le pide. -->
     <section class="detail__facts">
       <div class="detail__fact">
         <span class="detail__fact-icon">
-          <vt-icon name="clipboard" [size]="15" />
+          <vt-icon name="clipboard" [size]="16" />
         </span>
-        <div>
-          <dt>Creada</dt>
-          <dd>{{ formatDate(act.CreatedOn) }}</dd>
-        </div>
+        <span class="detail__fact-text">
+          <small>Creada</small>
+          <strong>{{ formatDate(act.CreatedOn) }}</strong>
+        </span>
       </div>
 
       <div class="detail__fact">
         <span class="detail__fact-icon">
-          <vt-icon name="refresh" [size]="15" />
+          <vt-icon name="refresh" [size]="16" />
         </span>
-        <div>
-          <dt>Modificada</dt>
-          <dd>{{ formatDate(act.UpdatedOn) }}</dd>
-        </div>
+        <span class="detail__fact-text">
+          <small>Modificada</small>
+          <strong>{{ formatDate(act.UpdatedOn) }}</strong>
+        </span>
       </div>
 
       @if (act.Consecutive) {
         <div class="detail__fact">
           <span class="detail__fact-icon">
-            <vt-icon name="check" [size]="15" />
+            <vt-icon name="check" [size]="16" />
           </span>
-          <div>
-            <dt>Consecutivo</dt>
-            <dd class="vt-figure">#{{ act.Consecutive }}</dd>
-          </div>
+          <span class="detail__fact-text">
+            <small>Consecutivo</small>
+            <strong class="vt-figure">#{{ act.Consecutive }}</strong>
+          </span>
         </div>
       }
 
       <!-- El identificador se copia entero al pulsarlo: soporte lo pide
            completo y transcribir 36 caracteres a mano garantiza erratas. -->
-      <button type="button" class="detail__fact detail__fact--copy" (click)="copyGuid()">
+      <button
+        type="button"
+        class="detail__fact detail__fact--copy"
+        (click)="copyGuid()"
+        title="Copiar el identificador completo"
+      >
         <span class="detail__fact-icon">
-          <vt-icon name="copy" [size]="15" />
+          <vt-icon name="copy" [size]="16" />
         </span>
-        <div>
-          <dt>Identificador</dt>
-          <dd class="detail__guid">{{ shortGuid() }}</dd>
-        </div>
+        <span class="detail__fact-text">
+          <small>Identificador</small>
+          <strong class="detail__guid">{{ shortGuid() }}</strong>
+        </span>
+
+        <vt-icon name="copy" [size]="15" class="detail__fact-hint" />
       </button>
     </section>
 
@@ -209,3 +276,11 @@
     </a>
   </div>
 }
+
+<!-- ── La fila abierta ──────────────────────────────────────────────────────
+     Ruta hija: el formulario de una fila de tabla de detalle. Es una pantalla y
+     no una ventana para que el botón atrás cierre la fila en vez de salir de la
+     actividad. -->
+<div class="detail__child" [style.--accent]="accent()" [style.--form-gradient]="gradient()">
+  <router-outlet (activate)="rowOpen.set(true)" (deactivate)="rowOpen.set(false)" />
+</div>

@@ -78,6 +78,42 @@ export class SyncComponent {
   }
 
   /** Descarga lo pendiente y vuelve a comparar. */
+  /**
+   * Vuelve a marcar todo como pendiente para este equipo, y descarga.
+   *
+   * Es lo que resuelve «sincronizo y no me baja nada». El servidor lleva por
+   * separado **qué le corresponde al usuario** y **qué le falta a cada
+   * equipo**; si lo segundo quedó desfasado —un dispositivo nuevo, una fila que
+   * se marcó como bajada sin llegar— la descarga no encuentra nada que traer
+   * aunque el usuario tenga todo asignado.
+   */
+  async resyncEverything(): Promise<void> {
+    this.feedback.set('Marcando tus datos para este equipo…');
+
+    try {
+      const result = await this.sync.resyncEverything();
+
+      if (!result) {
+        this.showFeedback('No hay una sesión activa.');
+        return;
+      }
+
+      // El número importa: si sale cero es que al usuario no le corresponde
+      // nada, que es un problema distinto y en otro sitio.
+      this.showFeedback(
+        result.pending > 0
+          ? `${result.pending} registros marcados. Descargando…`
+          : 'No hay nada asignado a tu usuario. Revisa «Configurar mis datos».',
+      );
+
+      if (result.pending > 0) await this.downloadAll();
+    } catch (error) {
+      this.showFeedback(
+        error instanceof Error ? error.message : 'No se pudo marcar los datos.',
+      );
+    }
+  }
+
   async downloadAll(): Promise<void> {
     const saved = await this.sync.download();
 

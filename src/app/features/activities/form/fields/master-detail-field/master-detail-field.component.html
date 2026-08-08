@@ -1,0 +1,281 @@
+<div
+  class="md"
+  [class.md--dropping]="dragging()"
+  (dragover)="onDragOver($event)"
+  (dragleave)="onDragLeave()"
+  (drop)="onDrop($event)"
+>
+  <!-- Encabezado: cuántas filas hay y el botón de agregar. El contador lleva el
+       tope cuando lo hay —«3 de 5»—, porque quien está llenando necesita saber
+       cuánto le queda antes de quedarse sin sitio, no al chocar contra él. -->
+  <div class="md__head">
+    <span class="md__count">
+      <vt-icon name="clipboard" [size]="15" />
+      {{ counter() }}
+    </span>
+
+    <!-- Cuánto lleva respondido el campo entero, sumando sus registros. Con
+         diez a medias, «ninguno completo» sería desalentador y falso; el
+         porcentaje dice lo que de verdad queda. -->
+    @if (progress(); as done) {
+      <span
+        class="md__ring"
+        [class.md__ring--done]="done.percent === 100"
+        [title]="done.filled + ' de ' + done.total + ' respuestas'"
+      >
+        <svg viewBox="0 0 44 44" aria-hidden="true">
+          <circle class="md__ring-track" cx="22" cy="22" r="18" />
+          <circle
+            class="md__ring-fill"
+            cx="22"
+            cy="22"
+            r="18"
+            [attr.stroke-dasharray]="ringLength()"
+            [attr.stroke-dashoffset]="ringOffset()"
+          />
+        </svg>
+        <span class="md__ring-value vt-figure">{{ done.percent }}</span>
+      </span>
+
+      <vt-hint label="Cómo se calcula este porcentaje">
+        <p>
+          Suma las respuestas de <em>todos los registros</em>, no cuántos
+          registros están completos.
+        </p>
+        <p>
+          Ahora mismo: <em>{{ done.filled }} de {{ done.total }}</em> preguntas
+          respondidas entre los {{ rows().length }} registros.
+        </p>
+        <p>
+          Es normal que no llegue al 100 % si no vas a diligenciar todas las
+          preguntas de cada registro. Lo que sí hay que completar antes de
+          guardar son las <em>obligatorias</em>: esas se avisan aparte.
+        </p>
+      </vt-hint>
+    }
+
+    <!-- Solo el signo, redondo: al lado del contador y con la tabla debajo, el
+         rótulo «Agregar registro» decía lo que el sitio ya dice. -->
+    @if (!readOnly() && !unavailable()) {
+      <button
+        type="button"
+        class="md__add"
+        [class.md__add--off]="!canAdd()"
+        [attr.aria-disabled]="!canAdd()"
+        [attr.aria-label]="'Agregar a ' + listName()"
+        [attr.title]="'Agregar a ' + listName()"
+        (click)="add()"
+      >
+        <vt-icon name="plus" [size]="18" />
+      </button>
+    }
+  </div>
+
+  <!-- Un botón apagado sin explicación se lee como un fallo. Se dice por qué:
+       el tope, o que el formulario no da permiso para agregar aquí. -->
+  @if (addBlocked()) {
+    <p class="md__note">
+      <vt-icon name="alert" [size]="14" />
+      {{ addBlocked() }}
+    </p>
+  }
+
+  @if (feedback()) {
+    <p class="md__note md__note--warn">{{ feedback() }}</p>
+  }
+
+  <!-- ── Fotos en bloque ────────────────────────────────────────────────────
+       Regla de las compañías que documentan con fotografías: cada registro es
+       una foto, y crearlos de uno en uno convierte veinte fotos en veinte
+       recorridos. Se sueltan todas y se crea un registro por cada una. -->
+  @if (acceptsBulkPhotos()) {
+    <div class="md__drop" [class.md__drop--active]="dragging()">
+      <vt-icon name="image" [size]="20" />
+
+      <p>
+        Arrastra aquí las fotos y se crea un registro por cada una.
+        <label>
+          <input type="file" accept="image/*" multiple (change)="onPhotosPicked($event)" />
+          <span>Elegir del equipo</span>
+        </label>
+      </p>
+    </div>
+  }
+
+  <!-- Guardar veinte fotos lleva su tiempo: si no se dice, parece que no pasó
+       nada y el usuario vuelve a soltarlas. -->
+  @if (importing() > 0) {
+    <p class="md__note">
+      <span class="md__spinner" aria-hidden="true"></span>
+      Guardando {{ importing() }} {{ importing() === 1 ? 'foto' : 'fotos' }}…
+    </p>
+  }
+
+  @if (unavailable()) {
+    <p class="md__note md__note--warn">
+      <vt-icon name="alert" [size]="14" />
+      {{ config()?.message || 'No se pueden cargar los registros de este campo.' }}
+    </p>
+  }
+
+  <!-- ── Filas ──────────────────────────────────────────────────────────────
+       En pantalla ancha, una tabla: con una columna por descriptivo se comparan
+       veinte equipos de un vistazo, que es justo lo que no permite una lista de
+       tarjetas. En un teléfono no caben las columnas y cada fila vuelve a ser
+       una tarjeta — lo dice la hoja de estilos, no dos plantillas distintas.
+
+       Solo se enseñan las primeras. Un campo con veinte registros convierte una
+       pregunta en media pantalla de desplazamiento y esconde las que vienen
+       detrás. -->
+  @if (rows().length > 0) {
+    <div class="md__table-wrap">
+      <table class="md__table" [class.md__table--more]="hiddenCount() > 0">
+        <thead>
+          <tr>
+            <th class="md__num">#</th>
+            <th>Registro</th>
+            @for (column of columns(); track column) {
+              <th>{{ column }}</th>
+            }
+            <th class="md__actions-head"><span class="vt-sr-only">Acciones</span></th>
+          </tr>
+        </thead>
+
+        <tbody>
+          @for (row of visibleRows(); track row.GUID; let i = $index) {
+            <tr [class.md__row--pending]="isIncomplete(row)">
+              <td class="md__num vt-figure" [attr.data-label]="'#'">{{ i + 1 }}</td>
+
+              <td class="md__name" data-label="Registro">
+                <button
+                  type="button"
+                  [disabled]="emptySchema() || unavailable()"
+                  [attr.title]="progressOf(row) || null"
+                  (click)="edit(row)"
+                >
+                  {{ row.Name }}
+                </button>
+              </td>
+
+              @for (cell of cellsOf(row); track $index) {
+                <td [attr.data-label]="columns()[$index]">{{ cell }}</td>
+              }
+
+              <td class="md__actions">
+                @if (!emptySchema() && !unavailable()) {
+                  <button
+                    type="button"
+                    (click)="edit(row)"
+                    [attr.aria-label]="'Abrir ' + row.Name"
+                  >
+                    <vt-icon name="pen" [size]="16" />
+                  </button>
+                }
+
+                @if (!readOnly()) {
+                  <button
+                    type="button"
+                    class="md__act--danger"
+                    (click)="askRemove(row)"
+                    [attr.aria-label]="'Eliminar ' + row.Name"
+                  >
+                    <vt-icon name="trash" [size]="16" />
+                  </button>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+
+      <!-- Lo que queda fuera se insinúa con el degradado y se dice con un
+           número: ocultarlo sin más haría creer que los registros se perdieron. -->
+      @if (hiddenCount() > 0) {
+        <div class="md__more">
+          <span>
+            Hay {{ hiddenCount() }}
+            {{ hiddenCount() === 1 ? 'registro más' : 'registros más' }}
+          </span>
+
+          <button type="button" class="md__see" (click)="showAll()">
+            {{ isNested() ? 'Ver los ' + rows().length : 'Ver todos' }}
+            <vt-icon name="chevron" [size]="15" />
+          </button>
+        </div>
+      }
+    </div>
+
+    <!-- Desplegada dentro de otra fila, la forma de volver a recogerla. -->
+    @if (canCollapse()) {
+      <button type="button" class="md__see md__see--quiet" (click)="collapse()">
+        Ver solo los primeros
+      </button>
+    }
+
+    <!-- Con pocos registros el enlace sigue estando, en discreto: es también la
+         forma de buscarlos y de verlos con espacio. -->
+    @if (!isNested() && hiddenCount() === 0 && rows().length > 1) {
+      <button type="button" class="md__see md__see--quiet" (click)="showAll()">
+        Ver todos en su pantalla
+        <vt-icon name="chevron" [size]="14" />
+      </button>
+    }
+  } @else if (!unavailable()) {
+    <!-- Vacío con la razón y el paso siguiente, no un «Sin datos» que deja al
+         usuario preguntándose si falta cargar algo. -->
+    <div class="md__empty" [class.md__empty--invalid]="invalid()">
+      <span class="md__empty-icon"><vt-icon name="clipboard" [size]="22" /></span>
+      <p>
+        @if (!ready()) {
+          Cargando la configuración de {{ field().lab }}…
+        } @else if (readOnly()) {
+          No se registró ningún dato.
+        } @else {
+          Aún no hay registros. Agrega el primero para empezar.
+        }
+      </p>
+    </div>
+  }
+
+  @if (field().hel) {
+    <small class="md__help">{{ field().hel }}</small>
+  }
+
+  @if (invalid()) {
+    <small class="md__error">Debes agregar al menos un registro.</small>
+  }
+</div>
+
+<!-- ── Elegir el ítem de la fila ───────────────────────────────────────────
+     Una fila no nace vacía salvo que su lista no represente nada: nace de un
+     ítem. En las listas de dos niveles esto se abre dos veces —la ubicación
+     primero, sus registros después— y el subtítulo dice en cuál se está. -->
+@if (overlay() === 'picker') {
+  <vt-list-picker
+    [title]="pickerTitle()"
+    [subtitle]="pickerSubtitle()"
+    [source]="items()"
+    [loading]="loadingItems()"
+    [usedNames]="usedNames()"
+    [listDefinition]="pickerDefinition()"
+    [parentGuid]="createContext().parent"
+    [locationId]="createContext().loc"
+    [assetId]="createContext().ass"
+    (search)="onSearch($event)"
+    (choose)="onItemChosen($event)"
+    (created)="onItemCreated($event)"
+    (cancel)="cancelPicker()"
+  />
+}
+
+<vt-confirm-dialog
+  [open]="overlay() === 'remove'"
+  tone="danger"
+  icon="trash"
+  title="¿Eliminar el registro?"
+  [message]="removalName()"
+  detail="Se perderá lo respondido en él."
+  confirmLabel="Eliminar"
+  (confirm)="confirmRemove()"
+  (cancel)="closeOverlay()"
+/>

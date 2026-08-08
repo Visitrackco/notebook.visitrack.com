@@ -32,3 +32,28 @@ export function resolveCatalogOwnerId(user: {
   if (user.CompanyID === SHARED_CATALOG_COMPANY) return SHARED_CATALOG_OWNER;
   return Number(user.UserID) || 0;
 }
+
+/**
+ * Compañías que cargan sus fotos en bloque.
+ *
+ * Su trabajo consiste en documentar con muchas fotografías: una tabla de
+ * detalle con veinte registros donde cada uno es una sola foto. Crearlos de uno
+ * en uno —agregar, entrar, tomar la foto, guardar, salir, repetir— convierte
+ * veinte fotos en veinte recorridos completos.
+ */
+const BULK_PHOTO_COMPANIES = new Set([1782, 2259]);
+
+/**
+ * ¿Este campo admite soltar varias fotos de golpe?
+ *
+ * Dos condiciones, las mismas que en la app: la compañía, y que el campo sea
+ * **de fotos** —lo dice su nombre—. La segunda evita que la carga masiva
+ * aparezca en tablas donde cada registro es un equipo con su cuestionario, y
+ * donde crear veinte filas de un tirón no tendría sentido.
+ */
+export function allowsBulkPhotos(companyId: number, fieldLabel: string): boolean {
+  return (
+    BULK_PHOTO_COMPANIES.has(Number(companyId)) &&
+    (fieldLabel ?? '').toUpperCase().includes('FOTOS')
+  );
+}

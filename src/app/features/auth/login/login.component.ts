@@ -1,6 +1,19 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+  viewChild,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import QRCode from 'qrcode';
+
+import { DeviceLinkService } from '../../../core/services/device-link.service';
+import { IconComponent } from '../../../shared/components/icon/icon.component';
 
 import { environment } from '../../../../environments/environment';
 import { User, fullName, initials } from '../../../core/models/user.model';
@@ -23,13 +36,41 @@ import { DatabaseService } from '../../../core/database/database.service';
 @Component({
   selector: 'vt-login',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, IconComponent],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss',
 })
 export class LoginComponent {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+
+  // ── Entrar desde el teléfono ───────────────────────────────────────────────
+
+  readonly link = inject(DeviceLinkService);
+
+  /** Se está enseñando el código en vez del formulario. */
+  readonly linking = signal(false);
+
+  readonly secondsLeft = signal(0);
+
+  private readonly qrCanvas = viewChild<ElementRef<HTMLCanvasElement>>('qr');
+  private ticker?: ReturnType<typeof setInterval>;
+
+  readonly countdown = computed(() => {
+    const total = this.secondsLeft();
+    return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+  });
+
+  /** Pide un código y lo enseña. */
+  async startLink(): Promise<void> {
+    this.linking.set(true);
+    await this.link.start();
+  }
+
+  cancelLink(): void {
+    this.link.stop();
+    this.linking.set(false);
+  }
   private readonly route = inject(ActivatedRoute);
   private readonly db = inject(DatabaseService);
   readonly connectivity = inject(ConnectivityService);
@@ -49,9 +90,6 @@ export class LoginComponent {
     () => this.login().trim().length > 0 && this.password().length > 0 && !this.isSubmitting(),
   );
 
-  constructor() {
-    void this.initialize();
-  }
 
   /**
    * Prepara la pantalla: abre la base, pide almacenamiento persistente y carga
@@ -113,8 +151,26 @@ export class LoginComponent {
       this.infoMessage.set('Entraste sin conexión. Se sincronizará cuando vuelva el internet.');
     }
 
+    /**
+     * Entrar pasa por la descarga, como en el teléfono.
+     *
+     * Una cuenta recién abierta aquí tiene la sesión y nada más: sin
+     * formularios ni ubicaciones no se puede diligenciar, y la aplicación se ve
+     * rota aunque esté perfecta. Antes había que ir a mano a Sincronización, y
+     * quien no lo sabía entraba a una aplicación vacía.
+     *
+     * Sin conexión la pantalla de carga lo detecta y entra directo: quien está
+     * en campo con sus datos en el equipo tiene derecho a trabajar con ellos.
+     */
     const redirect = this.route.snapshot.queryParamMap.get('redirect');
-    await this.router.navigateByUrl(redirect ?? '/inicio');
+
+    await this.router.navigate(['/cargando'], {
+      queryParams: redirect ? { redirect } : {},
+
+      // Fuera del historial: volver atrás desde la aplicación tiene que llevar
+      // a donde el usuario estaba, no a repetir una descarga ya hecha.
+      replaceUrl: true,
+    });
   }
 
   displayName(user: User): string {
@@ -123,5 +179,63 @@ export class LoginComponent {
 
   avatarInitials(user: User): string {
     return initials(user);
+  }
+
+  constructor() {
+    void this.initialize();
+
+    /**
+     * El código se dibuja cuando llega, no cuando se pide.
+     *
+     * El lienzo no existe hasta que la pantalla cambia a modo código, así que
+     * dibujarlo antes no pintaría nada — y tampoco daría error, que es el fallo
+     * más difícil de encontrar de los dos.
+     */
+    effect(() => {
+      const code = this.link.code();
+      const canvas = this.qrCanvas()?.nativeElement;
+
+      if (!code || !canvas) return;
+
+      untracked(() => {
+        void QRCode.toCanvas(canvas, code, {
+          width: 220,
+          margin: 1,
+          errorCorrectionLevel: 'M',
+        }).catch((error: unknown) => console.error('[Login] no se pudo dibujar el código', error));
+      });
+    });
+
+    // La cuenta atrás: un código sin caducar visible en una pantalla es una
+    // sesión al alcance de quien pase por detrás.
+    effect(() => {
+      const expires = this.link.expiresAt();
+
+      untracked(() => {
+        clearInterval(this.ticker);
+        if (!expires) return;
+
+        const tick = () => {
+          const left = Math.max(0, Math.round((expires.getTime() - Date.now()) / 1000));
+          this.secondsLeft.set(left);
+          if (left === 0) clearInterval(this.ticker);
+        };
+
+        tick();
+        this.ticker = setInterval(tick, 1000);
+      });
+    });
+
+    /**
+     * Terminado el traspaso, se entra.
+     *
+     * La sesión la creó el propio traspaso —ver `AuthService.adoptFromLink`—
+     * así que aquí solo queda llevar a la aplicación.
+     */
+    effect(() => {
+      if (this.link.state() !== 'listo') return;
+
+      untracked(() => void this.router.navigateByUrl('/inicio'));
+    });
   }
 }

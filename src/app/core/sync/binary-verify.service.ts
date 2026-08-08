@@ -4,6 +4,7 @@ import { BinaryResource, BinaryState } from '../models/sync.model';
 import { BinaryResourceRepository } from '../repositories/binary.repository';
 import { AuthService } from '../services/auth.service';
 import { BinaryUploadService } from './binary-upload.service';
+import { DataRevisionService } from './data-revision.service';
 import { BucketState, UploadApiService } from './upload-api.service';
 
 /** Resultado de una verificación. */
@@ -58,6 +59,7 @@ export class BinaryVerifyService {
   private readonly binaries = inject(BinaryResourceRepository);
   private readonly uploads = inject(BinaryUploadService);
   private readonly api = inject(UploadApiService);
+  private readonly revisions = inject(DataRevisionService);
   private readonly auth = inject(AuthService);
 
   readonly verifying = signal(false);
@@ -190,6 +192,11 @@ export class BinaryVerifyService {
           VerifiedOn: new Date().toISOString(),
         });
       }
+
+      // Un solo aviso para todo el lote: el servidor responde por todos a la
+      // vez, y notificar archivo por archivo dispararía una recarga de la
+      // pantalla por cada uno de los cincuenta.
+      if (report.results.length > 0) this.revisions.touchBinaries();
 
       const outcome: VerifyOutcome = {
         confirmed,

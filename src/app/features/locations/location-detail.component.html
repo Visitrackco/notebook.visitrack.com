@@ -1,0 +1,360 @@
+@if (found()) {
+  <section class="det">
+    <!-- ── Cabecera ────────────────────────────────────────────────────────
+         Lleva lo que se busca al abrir una ficha: qué es, dónde está y las dos
+         acciones que se ejercen sobre ella. -->
+    <header class="det__hero">
+      <div class="det__hero-top">
+        <a class="det__back" [routerLink]="backLink()" aria-label="Volver">
+          <vt-icon name="chevron" [size]="20" />
+        </a>
+
+        <span class="det__kind">{{ typeName() }}</span>
+
+        <span class="det__hero-actions">
+          @if (canEdit()) {
+            <a class="det__action" [routerLink]="editLink()" title="Editar">
+              <vt-icon name="pen" [size]="17" />
+              <span>Editar</span>
+            </a>
+          }
+
+          @if (canDelete()) {
+            <button
+              type="button"
+              class="det__action det__action--danger"
+              (click)="asking.set(true)"
+              title="Eliminar"
+            >
+              <vt-icon name="trash" [size]="17" />
+            </button>
+          }
+        </span>
+      </div>
+
+      <h1 class="det__name">{{ name() }}</h1>
+
+      <div class="det__meta">
+        @if (isAsset() && parentName()) {
+          <a class="det__chip" [routerLink]="['/ubicaciones', guid()]">
+            <vt-icon name="map-pin" [size]="14" />
+            {{ parentName() }}
+          </a>
+        }
+
+        <!-- Las coordenadas no son un dato para leer sino para ir: si las hay,
+             el chip abre el mapa. -->
+        @if (located()) {
+          <a class="det__chip det__chip--on" [href]="mapLink()" target="_blank" rel="noopener">
+            <vt-icon name="map-pin" [size]="14" />
+            {{ coordinates() }}
+          </a>
+        } @else {
+          <span class="det__chip det__chip--off">
+            <vt-icon name="map-pin" [size]="14" />
+            Sin coordenadas
+          </span>
+        }
+
+        @if (pending()) {
+          <span class="det__chip det__chip--warn">
+            <vt-icon name="cloud-upload" [size]="14" />
+            Pendiente de subir
+          </span>
+        }
+      </div>
+    </header>
+
+    <nav class="det__tabs">
+      <button type="button" [class.det__tab--on]="tab() === 'info'" (click)="show('info')">
+        Información
+      </button>
+
+      @if (!isAsset()) {
+        <button type="button" [class.det__tab--on]="tab() === 'assets'" (click)="show('assets')">
+          Activos
+          <span class="vt-figure">{{ assetList().length }}</span>
+        </button>
+      }
+
+      <button
+        type="button"
+        [class.det__tab--on]="tab() === 'activities'"
+        (click)="show('activities')"
+      >
+        Actividades
+        <span class="vt-figure">{{ activityList().length }}</span>
+      </button>
+    </nav>
+
+    <div class="det__body">
+      <!-- ── Información ──────────────────────────────────────────────────── -->
+      @if (tab() === 'info') {
+        @if (basics().length > 0) {
+          <section class="card">
+            <h2 class="card__title">
+              <vt-icon name="info" [size]="15" />
+              Datos generales
+            </h2>
+
+            <dl class="card__grid">
+              @for (item of basics(); track item.lab) {
+                <div class="field" [class.field--wide]="item.wide">
+                  <dt>{{ item.lab }}</dt>
+                  <dd>
+                    @if (actionOf(item)) {
+                      <a [href]="actionOf(item)" target="_blank" rel="noopener">
+                        {{ item.val }}
+                        <vt-icon name="chevron" [size]="12" />
+                      </a>
+                    } @else {
+                      {{ item.val }}
+                    }
+                  </dd>
+                </div>
+              }
+            </dl>
+          </section>
+        }
+
+        <!-- Los campos propios del tipo, agrupados como su formulario los
+             organiza: esa agrupación dice qué va con qué, y en una lista plana
+             de veinte datos se pierde. -->
+        @for (group of groups(); track $index) {
+          <section class="card">
+            <h2 class="card__title">
+              <vt-icon name="database" [size]="15" />
+              {{ group.title || 'Datos de ' + typeName() }}
+            </h2>
+
+            <dl class="card__grid">
+              @for (item of group.items; track item.lab) {
+                <div class="field" [class.field--wide]="item.wide">
+                  <dt>{{ item.lab }}</dt>
+
+                  <dd>
+                    @if (item.kind === 'image') {
+                      @if (imageOf(item)) {
+                        <img class="field__image" [src]="imageOf(item)" [alt]="item.lab" />
+                      } @else {
+                        <span class="field__muted">
+                          <vt-icon name="image" [size]="14" />
+                          Archivo no disponible en este dispositivo
+                        </span>
+                      }
+                    } @else if (item.kind === 'file') {
+                      <span class="field__muted">
+                        <vt-icon name="file" [size]="14" />
+                        Archivo adjunto
+                      </span>
+                    } @else if (actionOf(item)) {
+                      <a [href]="actionOf(item)" target="_blank" rel="noopener">
+                        {{ item.val }}
+                        <vt-icon name="chevron" [size]="12" />
+                      </a>
+                    } @else {
+                      {{ item.val }}
+                    }
+                  </dd>
+                </div>
+              }
+            </dl>
+          </section>
+        }
+
+        @if (basics().length === 0 && groups().length === 0) {
+          <p class="det__none">No hay más datos registrados.</p>
+        }
+      }
+
+      <!-- ── Activos ──────────────────────────────────────────────────────── -->
+      @if (tab() === 'assets') {
+        <!-- Buscador, filtro y el botón de crear se quedan a la vista al bajar:
+             con cien equipos, afinar la búsqueda obligaría a subir cada vez. -->
+        <div class="det__toolbar">
+          <label class="det__search">
+            <vt-icon name="clipboard" [size]="15" />
+            <input
+              type="search"
+              [value]="search()"
+              (input)="onSearch($event)"
+              placeholder="Buscar activo"
+              autocomplete="off"
+            />
+          </label>
+
+          @if (assetTypes().length > 1) {
+            <label class="det__filter">
+              <vt-icon name="box" [size]="15" />
+
+              <select [value]="assetType()" (change)="onTypePicked($event)">
+                <option value="">Todos los tipos ({{ assetList().length }})</option>
+
+                @for (entry of assetTypes(); track entry.name) {
+                  <option [value]="entry.name">{{ entry.name }} ({{ entry.count }})</option>
+                }
+              </select>
+            </label>
+          }
+
+          <a class="det__new" [routerLink]="['/ubicaciones', guid(), 'activo', 'nuevo']">
+            <vt-icon name="plus" [size]="16" />
+            Nuevo activo
+          </a>
+        </div>
+
+        @if (visibleAssets().length > 0) {
+          <ul class="det__list">
+            @for (item of visibleAssets(); track item.guid) {
+              <li>
+                <a class="row" [routerLink]="['/ubicaciones', guid(), 'activo', item.guid]">
+                  <span class="row__icon" [class.row__icon--on]="item.located">
+                    <vt-icon name="box" [size]="17" />
+                  </span>
+
+                  <span class="row__body">
+                    <span class="row__name">{{ item.name }}</span>
+                    <span class="row__sub">{{ item.typeName }}</span>
+
+                    @if (item.descriptors.length > 0) {
+                      <span class="row__desc">
+                        @for (entry of item.descriptors; track entry.id) {
+                          <span class="row__pair">
+                            <b>{{ entry.lab }}</b>
+                            <span>{{ entry.val }}</span>
+                          </span>
+                        }
+                      </span>
+                    }
+
+                    @if (item.pending) {
+                      <span class="row__pending">
+                        <vt-icon name="cloud-upload" [size]="12" />
+                        Pendiente de subir
+                      </span>
+                    }
+                  </span>
+
+                  <vt-icon name="chevron" [size]="17" class="row__go" />
+                </a>
+              </li>
+            }
+          </ul>
+
+          @if (hasMore()) {
+            <div class="det__more" vtNearEnd (reached)="showMore()">
+              <span class="det__spinner" aria-hidden="true"></span>
+              Cargando más…
+            </div>
+          }
+        } @else {
+          <p class="det__none">
+            @if (search() || assetType()) {
+              Ningún activo coincide con lo que buscas.
+            } @else {
+              Esta ubicación todavía no tiene activos.
+            }
+          </p>
+        }
+      }
+
+      <!-- ── Actividades ──────────────────────────────────────────────────── -->
+      @if (tab() === 'activities') {
+        @if (activityList().length > 0) {
+          <div class="det__toolbar">
+            <label class="det__search">
+              <vt-icon name="clipboard" [size]="15" />
+              <input
+                type="search"
+                [value]="search()"
+                (input)="onSearch($event)"
+                placeholder="Buscar actividad"
+                autocomplete="off"
+              />
+            </label>
+          </div>
+        }
+
+        @if (visibleActivities().length > 0) {
+          <ul class="det__list">
+            @for (item of visibleActivities(); track item.guid) {
+              <li>
+                <a
+                  class="row"
+                  [routerLink]="['/formularios', item.surveyId, 'actividad', item.guid]"
+                >
+                  <span class="row__icon" [class.row__icon--on]="item.synced">
+                    <vt-icon name="clipboard" [size]="17" />
+                  </span>
+
+                  <span class="row__body">
+                    <span class="row__name">{{ item.title }}</span>
+
+                    @if (when(item.when)) {
+                      <span class="row__sub">{{ when(item.when) }}</span>
+                    }
+
+                    @if (item.descriptors.length > 0) {
+                      <span class="row__desc">
+                        @for (entry of item.descriptors; track entry.id) {
+                          <span class="row__pair">
+                            <b>{{ entry.lab }}</b>
+                            <span>{{ entry.val }}</span>
+                          </span>
+                        }
+                      </span>
+                    }
+                  </span>
+
+                  @if (item.synced) {
+                    <span class="badge badge--ok">Sincronizada</span>
+                  } @else {
+                    <span class="badge">Pendiente</span>
+                  }
+                </a>
+              </li>
+            }
+          </ul>
+
+          @if (hasMore()) {
+            <div class="det__more" vtNearEnd (reached)="showMore()">
+              <span class="det__spinner" aria-hidden="true"></span>
+              Cargando más…
+            </div>
+          }
+        } @else if (search()) {
+          <p class="det__none">Ninguna actividad coincide con lo que buscas.</p>
+        } @else {
+          <p class="det__none">
+            @if (isAsset()) {
+              Todavía no se ha registrado ninguna actividad sobre este activo.
+            } @else {
+              Todavía no se ha registrado ninguna actividad aquí.
+            }
+          </p>
+        }
+      }
+    </div>
+  </section>
+} @else if (!loading()) {
+  <div class="det__missing">
+    <span class="det__missing-icon"><vt-icon name="alert" [size]="26" /></span>
+    <h2>{{ isAsset() ? 'Activo no encontrado' : 'Ubicación no encontrada' }}</h2>
+    <p>Puede que se haya eliminado o que todavía no se haya descargado.</p>
+    <a class="det__new" [routerLink]="backLink()">Volver</a>
+  </div>
+}
+
+<vt-to-top />
+
+<vt-confirm-dialog
+  [open]="asking()"
+  tone="danger"
+  icon="trash"
+  [title]="isAsset() ? '¿Eliminar este activo?' : '¿Eliminar esta ubicación?'"
+  [message]="name()"
+  detail="Se borrará de este dispositivo. Solo es posible porque todavía no se ha subido."
+  confirmLabel="Eliminar"
+  (confirm)="remove()"
+  (cancel)="asking.set(false)"
+/>

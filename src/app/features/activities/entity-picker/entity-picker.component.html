@@ -28,6 +28,19 @@
         <small>{{ totalCount() === 1 ? 'opción' : 'opciones' }}</small>
       </span>
     }
+
+    <!-- Crear lo que no está: aquí es donde aparece la necesidad, y salir a
+         otra pantalla obligaría a rehacer el camino al volver. -->
+    @if (createLabel()) {
+      <button type="button" class="picker__create" (click)="create.emit()">
+        <vt-icon name="plus" [size]="16" />
+        {{ createLabel() }}
+      </button>
+    } @else if (createBlocked()) {
+      <span class="picker__denied" [title]="createBlocked()">
+        <vt-icon name="shield" [size]="15" />
+      </span>
+    }
   </header>
 
   <div class="picker__search">

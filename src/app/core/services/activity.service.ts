@@ -11,6 +11,7 @@ import {
 } from '../repositories/entity.repositories';
 import { BinaryResourceRepository } from '../repositories/binary.repository';
 import { SurveyAnswerRepository } from '../repositories/survey-answer.repository';
+import { DataRevisionService } from '../sync/data-revision.service';
 import { AuthService } from './auth.service';
 import { BinaryStorageService } from './binary-storage.service';
 import { DraftPolicyService } from './draft-policy.service';
@@ -92,6 +93,80 @@ export function resolveNextStep(
 }
 
 /**
+ * Comprueba que el activo de la actividad pertenezca a su ubicación.
+ *
+ * ## Por qué hace falta
+ *
+ * En un formulario que pide **las dos** cosas, el activo no es independiente:
+ * es un equipo *de esa sede*. Cambiar la ubicación y dejar el activo anterior
+ * produce una actividad que dice haber inspeccionado la bomba de la planta
+ * norte estando en la planta sur — y eso llega a Visitrack como un dato válido
+ * que nadie va a poner en duda.
+ *
+ * Por eso el cambio de ubicación **obliga** a volver a elegir activo. No es una
+ * sugerencia: mientras no se resuelva, el formulario queda bloqueado.
+ *
+ * @returns `null` si todo cuadra, o el motivo de la inconsistencia.
+ */
+export function checkConsistency(
+  requirements: SurveyRequirements,
+  answer: Pick<SurveyAnswer, 'LocationID' | 'LocationGUID' | 'AssetID' | 'AssetName'>,
+  asset: Pick<Asset, 'LocationID' | 'LocationGUID'> | null,
+): ConsistencyIssue | null {
+  if (!requirements.requiresLocation || !requirements.requiresAsset) return null;
+  if (!answer.LocationID || !answer.AssetID) return null;
+
+  // El activo ya no está en el dispositivo: no se puede afirmar que pertenezca
+  // a esta ubicación, y dar por bueno lo que no se puede comprobar es
+  // exactamente lo que este control evita.
+  if (!asset) {
+    return {
+      kind: 'asset-missing',
+      message:
+        'El activo asociado ya no está en este dispositivo, así que no se puede ' +
+        'comprobar que pertenezca a la ubicación elegida.',
+    };
+  }
+
+  /**
+   * La pertenencia se comprueba por identificador **o** por GUID.
+   *
+   * Con solo el identificador, un activo creado en este dispositivo bajo una
+   * sede también creada aquí daba siempre «pertenece a otra ubicación»: el
+   * activo lleva `LocationID` en cero —lo asigna Visitrack al subir— y la
+   * actividad lleva el GUID de la sede en ese mismo sitio. Los dos son
+   * correctos y no se parecen en nada.
+   *
+   * El efecto era peor que un aviso: este control **detiene el envío** y exige
+   * que una persona decida, así que la actividad se quedaba retenida acusando
+   * de un descuadre que no existía.
+   */
+  const sameId =
+    Boolean(answer.LocationID) && String(asset.LocationID) === String(answer.LocationID);
+
+  const sameGuid =
+    Boolean(answer.LocationGUID) &&
+    String(asset.LocationGUID ?? '') === String(answer.LocationGUID);
+
+  if (!sameId && !sameGuid) {
+    return {
+      kind: 'asset-elsewhere',
+      message:
+        'El activo asociado pertenece a otra ubicación. Al cambiar la ubicación hay que ' +
+        'elegir de nuevo el activo, o la actividad quedaría registrada en el sitio equivocado.',
+    };
+  }
+
+  return null;
+}
+
+/** Qué está descuadrado entre la ubicación y el activo. */
+export interface ConsistencyIssue {
+  kind: 'asset-elsewhere' | 'asset-missing';
+  message: string;
+}
+
+/**
  * Actividades: creación, asociación de ubicación y activo, y mantenimiento.
  *
  * Es el equivalente del `FormProvider` del móvil en lo que respecta al ciclo de
@@ -110,20 +185,22 @@ export class ActivityService {
   private readonly binaries = inject(BinaryResourceRepository);
   private readonly binaryStorage = inject(BinaryStorageService);
   private readonly drafts = inject(DraftPolicyService);
+  private readonly revisions = inject(DataRevisionService);
   private readonly auth = inject(AuthService);
 
   /**
    * Contador que sube con cada cambio en las actividades.
    *
-   * Las pantallas lo leen en un `effect` para recargarse. Es un contador y no
-   * un booleano porque dos cambios seguidos deben producir dos recargas: con un
-   * booleano el segundo pasaría inadvertido si el primero no se ha consumido.
+   * Las pantallas lo leen en un `effect` para recargarse. Vive en
+   * [DataRevisionService] y no aquí para que los servicios de subida puedan
+   * avisar sin arrastrar este servicio entero; se expone desde aquí porque es
+   * donde lo buscan las pantallas que ya existían.
    */
-  readonly revision = signal(0);
+  readonly revision = this.revisions.activities;
 
   /** Avisa de que algo cambió. Lo llaman también los flujos externos. */
   notifyChanged(): void {
-    this.revision.update((value) => value + 1);
+    this.revisions.touchActivities();
   }
 
   private get userId(): string {
@@ -185,17 +262,23 @@ export class ActivityService {
     return this.locations.countByType(this.ownerId, typeGuid);
   }
 
-  /** Activos de un tipo dentro de una ubicación. */
+  /**
+   * Activos de un tipo dentro de una ubicación.
+   *
+   * La sede se identifica por su `LocationID` **y** por su GUID: si la sede se
+   * creó en este dispositivo todavía no tiene identificador de Visitrack, y los
+   * activos que cuelgan de ella solo se reconocen por el segundo.
+   */
   async listAssets(
     typeGuid: string,
     locationId: string,
-    options: { limit?: number; offset?: number } = {},
+    options: { limit?: number; offset?: number; locationGuid?: string } = {},
   ): Promise<Asset[]> {
     return this.assets.findByTypeAndLocation(this.ownerId, typeGuid, locationId, options);
   }
 
-  async countAssets(typeGuid: string, locationId: string): Promise<number> {
-    return this.assets.countByTypeAndLocation(this.ownerId, typeGuid, locationId);
+  async countAssets(typeGuid: string, locationId: string, locationGuid = ''): Promise<number> {
+    return this.assets.countByTypeAndLocation(this.ownerId, typeGuid, locationId, locationGuid);
   }
 
   /** Nombre del tipo de ubicación, para titular el selector. */
@@ -241,6 +324,36 @@ export class ActivityService {
     const updated = await this.answers.attachLocation(answer.ID, location);
     this.notifyChanged();
     return updated;
+  }
+
+  /**
+   * ¿La ubicación y el activo de esta actividad son coherentes?
+   *
+   * Lee el activo del dispositivo para comparar su ubicación con la de la
+   * actividad. Ver [checkConsistency].
+   */
+  async findConsistencyIssue(
+    survey: Survey,
+    answer: SurveyAnswer,
+  ): Promise<ConsistencyIssue | null> {
+    const requirements = readRequirements(survey);
+
+    if (!requirements.requiresLocation || !requirements.requiresAsset) return null;
+    if (!answer.AssetID) return null;
+
+    const asset = await this.assets.findByAssetId(this.ownerId, String(answer.AssetID));
+
+    return checkConsistency(requirements, answer, asset);
+  }
+
+  /**
+   * Lo mismo, pero cargando el formulario a partir de la actividad.
+   *
+   * Lo usa el envío, que recibe actividades sueltas sin su formulario al lado.
+   */
+  async findIssueOf(answer: SurveyAnswer): Promise<ConsistencyIssue | null> {
+    const survey = await this.findSurvey(answer.SurveyID);
+    return survey ? this.findConsistencyIssue(survey, answer) : null;
   }
 
   /** Asocia el activo elegido. */

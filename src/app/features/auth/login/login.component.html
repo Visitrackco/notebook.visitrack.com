@@ -132,6 +132,73 @@
         </button>
       </form>
 
+      <!-- ── Entrar desde el teléfono ────────────────────────────────────────
+           Quien ya tiene sesión en el teléfono no necesita escribir nada: su
+           cuenta ya está autenticada allí, y lo que viaja al escanear es esa
+           autenticación junto con su trabajo. Es la única vía que además trae
+           lo que todavía no ha subido a Visitrack. -->
+      <div class="login__link">
+        <span class="login__link-sep"><span>o</span></span>
+
+        @if (!linking()) {
+          <button type="button" class="login__link-go" (click)="startLink()">
+            <vt-icon name="send" [size]="17" />
+            Entrar con mi teléfono
+          </button>
+
+          <p class="login__link-hint">
+            Trae también tus actividades y fotos sin subir.
+          </p>
+        } @else {
+          <div class="login__qr">
+            @if (link.state() === 'pendiente') {
+              <canvas #qr width="220" height="220" aria-label="Código para escanear"></canvas>
+
+              <p class="login__qr-steps">
+                Abre Visitrack en tu teléfono →
+                <strong>Vincular dispositivo</strong> y escanea.
+              </p>
+
+              <p class="login__qr-timer" [class.login__qr-timer--soon]="secondsLeft() < 60">
+                Caduca en {{ countdown() }}
+              </p>
+            } @else if (link.state() === 'sincronizando') {
+              <span class="login__spinner login__spinner--dark" aria-hidden="true"></span>
+
+              <p class="login__qr-state">Descargando tus datos…</p>
+
+              <p class="login__qr-steps">
+                Tus formularios, ubicaciones y listas. Sin esto la cuenta no
+                tendría con qué trabajar.
+              </p>
+            } @else if (link.state() === 'listo') {
+              <p class="login__qr-state">Listo. Entrando…</p>
+            } @else if (link.state() === 'caducado' || link.state() === 'error') {
+              <p class="login__qr-error">{{ link.error() || 'El código caducó.' }}</p>
+            } @else {
+              <span class="login__spinner login__spinner--dark" aria-hidden="true"></span>
+
+              <p class="login__qr-state">
+                {{ link.savedRecords() }} registros
+                @if (link.totalFiles() > 0) {
+                  · {{ link.savedFiles() }} de {{ link.totalFiles() }} archivos
+                }
+              </p>
+
+              <div class="login__qr-bar">
+                <span [style.width.%]="link.progress() * 100"></span>
+              </div>
+
+              <p class="login__qr-steps">No cierres esta pestaña.</p>
+            }
+
+            <button type="button" class="login__link-cancel" (click)="cancelLink()">
+              Volver a entrar con usuario
+            </button>
+          </div>
+        }
+      </div>
+
       <p class="login__version vt-figure">v{{ appVersion }}</p>
     </div>
   </main>

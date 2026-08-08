@@ -4,12 +4,14 @@ import { ANSWER_STATE } from '../models/activity.model';
 import { SurveyAnswer } from '../models/entities.model';
 import { BinaryResourceRepository } from '../repositories/binary.repository';
 import { SurveyAnswerRepository } from '../repositories/survey-answer.repository';
-import { ActivityService } from '../services/activity.service';
+import { ActivityService, ConsistencyIssue } from '../services/activity.service';
 import { AuthService } from '../services/auth.service';
 import { ConnectivityService } from '../services/connectivity.service';
 import { AnswerSubmitService } from './answer-submit.service';
 import { BinaryUploadService } from './binary-upload.service';
+import { EntityUploadService } from './entity-upload.service';
 import { BinaryVerifyService } from './binary-verify.service';
+import { DataRevisionService } from './data-revision.service';
 
 /** Una actividad esperando salir, con el detalle de por qué. */
 export interface PendingActivity {
@@ -18,10 +20,32 @@ export interface PendingActivity {
   blockingFiles: number;
   /** Archivos que tiene en total. */
   totalFiles: number;
+
+  /**
+   * Descuadre en sus datos, si lo hay.
+   *
+   * Con valor, la actividad **no se envía sola**: hace falta que una persona la
+   * abra y elija. Reintentarla cada minuto no la arreglaría y solo llenaría la
+   * bitácora de fallos idénticos.
+   */
+  issue: ConsistencyIssue | null;
+
+  /**
+   * Espera a una entidad creada en este dispositivo.
+   *
+   * A diferencia de [issue], esto **sí** se resuelve solo: la ubicación, el
+   * activo o el ítem de lista suben en la corrida siguiente y la actividad sale
+   * detrás. Está aquí para poder decirlo en pantalla — una actividad detenida
+   * sin explicación se lee como un fallo.
+   */
+  waitingEntities: string;
 }
 
 /** Resumen de una corrida. */
 export interface RunSummary {
+  /** Ubicaciones, activos e ítems de lista creados aquí que llegaron al servidor. */
+  uploadedEntities: number;
+
   uploadedFiles: number;
   confirmedFiles: number;
   sentActivities: number;
@@ -35,8 +59,13 @@ const INTERVAL_MS = 60_000;
 /**
  * El proceso que vacía la cola de pendientes.
  *
- * Corre cada minuto y hace las tres cosas en el único orden que funciona:
+ * Corre cada minuto y hace las cuatro cosas en el único orden que funciona:
  *
+ * 0. **Crear** en Visitrack las ubicaciones, activos e ítems de lista dados de
+ *    alta en este dispositivo. Una actividad que los referencia lleva sus GUID
+ *    donde van los identificadores del servidor, así que salir antes que ellos
+ *    la dejaría apuntando a nada — y eso, a diferencia de un archivo que llega
+ *    tarde, ya no se arregla.
  * 1. **Subir** los archivos que solo están en el navegador.
  * 2. **Confirmar** contra el servidor cuáles llegaron ya al bucket.
  * 3. **Enviar** las actividades cuyos archivos estén todos confirmados.
@@ -61,9 +90,11 @@ export class PendingUploadService {
   private readonly answers = inject(SurveyAnswerRepository);
   private readonly binaries = inject(BinaryResourceRepository);
   private readonly uploads = inject(BinaryUploadService);
+  private readonly entities = inject(EntityUploadService);
   private readonly verify = inject(BinaryVerifyService);
   private readonly submit = inject(AnswerSubmitService);
   private readonly activities = inject(ActivityService);
+  private readonly revisions = inject(DataRevisionService);
   private readonly connectivity = inject(ConnectivityService);
   private readonly auth = inject(AuthService);
 
@@ -138,6 +169,16 @@ export class PendingUploadService {
     this.running.set(true);
 
     try {
+      /**
+       * Las entidades, primero.
+       *
+       * Una actividad creada contra una sede dada de alta aquí lleva su GUID
+       * donde debería ir el identificador de Visitrack. Si sale antes que la
+       * sede, queda allí apuntando a nada — y nadie lo corrige, porque el
+       * registro ya existe y parece completo. Ver [EntityUploadService].
+       */
+      const entities = await this.entities.run();
+
       const uploadedFiles = await this.uploads.uploadPending(answerGuid);
 
       // Confirmar en bloque y no actividad por actividad: una sola llamada
@@ -145,7 +186,12 @@ export class PendingUploadService {
       // para uno que para cincuenta.
       const report = await this.verify.verifyAll(false);
 
-      const targets = await this.collectPending(answerGuid);
+      // Las que necesitan una decisión del usuario no entran: reintentarlas
+      // cada minuto no las arregla y solo llena la bitácora de fallos iguales.
+      const targets = (await this.collectPending(answerGuid)).filter(
+        (entry) => !entry.issue && !entry.waitingEntities,
+      );
+
       let sent = 0;
 
       for (const entry of targets) {
@@ -156,14 +202,25 @@ export class PendingUploadService {
       }
 
       await this.refresh();
-      this.activities.notifyChanged();
+
+      // Un último aviso a las dos familias de pantallas. Los servicios ya
+      // notificaron lo suyo sobre la marcha; esto cierra la corrida para lo que
+      // dependa del conjunto —contadores, resúmenes— y no de un registro.
+      this.revisions.touchAll();
 
       const summary: RunSummary = {
+        uploadedEntities: entities.locations + entities.assets + entities.items,
         uploadedFiles,
         confirmedFiles: report.confirmed,
         sentActivities: sent,
         stillWaiting: this.pendingCount(),
-        message: describe(uploadedFiles, report.confirmed, sent, this.pendingCount()),
+        message: describe(
+          entities.locations + entities.assets + entities.items,
+          uploadedFiles,
+          report.confirmed,
+          sent,
+          this.pendingCount(),
+        ),
       };
 
       this.lastRun.set(new Date());
@@ -179,7 +236,7 @@ export class PendingUploadService {
     const result = await this.submit.submit(answer, 2);
 
     await this.refresh();
-    this.activities.notifyChanged();
+    this.revisions.touchAll();
 
     return result.message;
   }
@@ -213,6 +270,10 @@ export class PendingUploadService {
 
     const result: PendingActivity[] = [];
 
+    // Una sola lectura de lo pendiente para toda la cola: preguntarlo por
+    // actividad recorrería las tres tablas de entidades una vez por cada una.
+    const entities = await this.entities.snapshot();
+
     for (const answer of candidates) {
       const files = await this.binaries.findByAnswer(answer.GUID);
 
@@ -220,16 +281,25 @@ export class PendingUploadService {
         answer,
         totalFiles: files.length,
         blockingFiles: await this.binaries.countBlockingByAnswer(answer.GUID),
+        issue: await this.activities.findIssueOf(answer),
+        waitingEntities: await this.entities.blockersOf(answer, entities),
       });
     }
 
     // Primero las que ya pueden salir: son las que se van a resolver en la
     // siguiente corrida, y verlas arriba explica el orden en que desaparecen.
-    return result.sort((a, b) => a.blockingFiles - b.blockingFiles);
+    // Las que necesitan una decisión van al final, porque ninguna corrida las
+    // va a mover.
+    return result.sort(
+      (a, b) =>
+        Number(Boolean(a.issue)) - Number(Boolean(b.issue)) ||
+        a.blockingFiles - b.blockingFiles,
+    );
   }
 }
 
 function describe(
+  entities: number,
   uploaded: number,
   confirmed: number,
   sent: number,
@@ -237,6 +307,7 @@ function describe(
 ): string {
   const parts: string[] = [];
 
+  if (entities > 0) parts.push(`${entities} entidad(es) creadas`);
   if (uploaded > 0) parts.push(`${uploaded} archivo(s) subidos`);
   if (confirmed > 0) parts.push(`${confirmed} confirmado(s)`);
   if (sent > 0) parts.push(`${sent} actividad(es) enviadas`);
@@ -252,6 +323,7 @@ function describe(
 
 function emptySummary(message: string): RunSummary {
   return {
+    uploadedEntities: 0,
     uploadedFiles: 0,
     confirmedFiles: 0,
     sentActivities: 0,

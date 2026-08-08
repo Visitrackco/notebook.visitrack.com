@@ -6,17 +6,35 @@ import {
   FieldValue,
   FormField,
   FormPage,
+  ResolvedDescriptor,
   asFile,
   asGeo,
   asOption,
+  asOptions,
   fileValueOf,
   findMissingRequired,
+  isDisplayOnly,
   isEmptyValue,
   isFieldVisible,
   parseAnswerFields,
   parseQuestions,
   splitFileValue,
 } from './form-schema';
+import { ValueReader, computeDerived, derivedFieldsOf } from './derived-fields';
+import {
+  InheritedSource,
+  inheritsDefault,
+  resolveInheritedDefault,
+} from './inherited-defaults';
+
+/**
+ * Cuántas veces se rehacen los campos calculados antes de rendirse.
+ *
+ * Cada pasada resuelve un nivel de dependencia —el total, y encima el
+ * impuesto—. Cinco cubren de sobra cualquier formulario real y ponen freno a
+ * una fórmula que se alimente de sí misma.
+ */
+const DERIVED_PASSES = 5;
 
 /** Lo que hace falta para arrancar el motor. */
 export interface FormEngineInput {
@@ -24,6 +42,16 @@ export interface FormEngineInput {
   questions: unknown;
   /** `SurveyAnswers.Fields`, sin parsear. */
   answers: unknown;
+
+  /**
+   * El registro del que este formulario hereda datos.
+   *
+   * En una actividad, su ubicación y su activo; en una fila de tabla de
+   * detalle, el ítem del que nació. De ahí salen los valores por defecto que el
+   * esquema marca con `defaultIsLocationField` y compañía — la dirección de la
+   * sede, el código del equipo— para no volver a preguntar lo que ya se sabe.
+   */
+  inherits?: InheritedSource;
 }
 
 /**
@@ -82,15 +110,30 @@ export class FormEngine {
    */
   readonly appliedDefaults: boolean;
 
+  /** Algún campo calculado dio un resultado distinto al guardado. */
+  private recalculated = false;
+
+  /** El registro del que se heredan valores. Vacío si no cuelga de ninguno. */
+  private readonly inherits: InheritedSource;
+
+  /** Campos que se calculan solos, localizados una vez. */
+  private readonly derived: FormField[];
+
   constructor(input: FormEngineInput) {
     this.pages = parseQuestions(input.questions);
+    this.inherits = input.inherits ?? {};
+    this.derived = derivedFieldsOf(this.pages);
 
     const stored = parseAnswerFields(input.answers);
     const initial = this.buildInitialValues(stored);
 
-    this.appliedDefaults = initial.size > stored.length;
+    this.appliedDefaults = initial.size > stored.length || this.recalculated;
     this.values.set(initial);
-    this.sections.set(this.deriveSections(stored));
+
+    // Con `initial` y no con `stored`: hace falta contar también los valores por
+    // defecto, o una rama que abre un `def` no aparece hasta la segunda vez que
+    // se abre la actividad. Ver [deriveSections].
+    this.sections.set(this.deriveSections(initial));
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -189,11 +232,97 @@ export class FormEngine {
     this.values.update((current) => {
       const next = new Map(current);
       next.set(field.id, value);
+
+      // Los campos calculados se rehacen aquí y no en un cálculo derivado: su
+      // resultado **se guarda** en la respuesta, y un `computed` que además
+      // escribe no tendría un orden de evaluación definido.
+      this.applyDerived(next);
       return next;
     });
 
     this.touched.update((current) => new Set(current).add(field.id));
     this.updateSections(field, value);
+  }
+
+  /**
+   * Rehace los campos que se calculan solos.
+   *
+   * ## Por qué en varias pasadas
+   *
+   * Un campo calculado puede alimentarse de otro: lo habitual es un total que
+   * suma una tabla de detalle y, encima, otro que le aplica el impuesto.
+   * Calcularlos en el orden en que aparecen dejaría al segundo una vuelta por
+   * detrás — enseñando el impuesto del total anterior—. Se repite hasta que
+   * nada cambia, con un tope por si alguien configura una fórmula que se
+   * alimenta de sí misma: sin él, esto no terminaría nunca.
+   *
+   * ## Por qué no un provider de dependencias
+   *
+   * La app suscribe cada campo calculado a los que lo alimentan porque su
+   * árbol de widgets no tiene otra forma de saber qué cambió. Aquí los valores
+   * viven en un solo sitio y son cuatro operaciones sobre un mapa en memoria:
+   * declarar dependencias sería mantener un grafo para ahorrar un trabajo que
+   * no se nota.
+   */
+  private applyDerived(values: Map<string, FieldValue>): void {
+    if (this.derived.length === 0) return;
+
+    const read: ValueReader = (id) => values.get(id) ?? null;
+
+    for (let pass = 0; pass < DERIVED_PASSES; pass++) {
+      let changed = false;
+
+      for (const field of this.derived) {
+        const result = computeDerived(field, read);
+
+        if (values.get(field.id) !== result) {
+          values.set(field.id, result);
+          changed = true;
+        }
+      }
+
+      if (!changed) return;
+    }
+  }
+
+  /**
+   * Descriptivos del ítem elegido en un campo de lista.
+   *
+   * Van aparte de los valores porque no son una respuesta: son el retrato del
+   * ítem en el momento de elegirlo. Se guardan en `des` del campo, junto a su
+   * valor, y se recuperan al reabrir la actividad.
+   *
+   * Es una señal y no un mapa suelto porque la plantilla los lee: sin
+   * reactividad, el detalle del ítem recién elegido solo aparecería cuando
+   * algo más forzara un repintado.
+   */
+  private readonly descriptors = signal(new Map<string, ResolvedDescriptor[]>());
+
+  setDescriptors(fieldId: string, values: readonly ResolvedDescriptor[]): void {
+    this.descriptors.update((current) => {
+      const next = new Map(current);
+
+      if (values.length === 0) next.delete(fieldId);
+      else next.set(fieldId, [...values]);
+
+      return next;
+    });
+  }
+
+  descriptorsOf(fieldId: string): ResolvedDescriptor[] {
+    return this.descriptors().get(fieldId) ?? EMPTY_DESCRIPTORS;
+  }
+
+  /**
+   * Lo elegido en el campo del que depende otro.
+   *
+   * Devuelve el GUID, que es lo que el ítem hijo lleva en `ParentGUID`. Cadena
+   * vacía si el padre no se ha respondido: eso deja la lista hija sin ofrecer
+   * nada, en vez de ofrecer el catálogo entero.
+   */
+  parentValueOf(field: FormField): string {
+    if (!field.parentId) return '';
+    return asOption(this.valueOf(field.parentId))?.id ?? '';
   }
 
   /**
@@ -288,11 +417,17 @@ export class FormEngine {
           continue;
         }
 
+        // Los descriptivos del ítem elegido viajan con la respuesta, no se
+        // recalculan al leerla: el ítem puede cambiar en Visitrack después, y
+        // lo que la actividad documenta es lo que decía al responderse.
+        const des = this.descriptorsOf(field.id);
+
         result.push({
           id: field.id,
           val: value,
           fty: field.fty,
           hid: hidden,
+          ...(des.length > 0 ? { des } : {}),
         });
       }
     }
@@ -334,9 +469,15 @@ export class FormEngine {
   // Interno
   // ───────────────────────────────────────────────────────────────────────────
 
-  /** ¿Este tipo de campo guarda un valor? Los títulos y párrafos no. */
+  /**
+   * ¿Este tipo de campo guarda un valor?
+   *
+   * Los que solo muestran algo no: títulos, párrafos, enlaces, la imagen de
+   * referencia y el formulario vinculado. Contarlos en el progreso daría un
+   * porcentaje que nunca llega al cien por cien.
+   */
   private acceptsValue(fty: string): boolean {
-    return fty !== 'title' && fty !== 'paragraph' && fty !== 'hyperlink';
+    return !isDisplayOnly(fty);
   }
 
   /**
@@ -350,12 +491,20 @@ export class FormEngine {
   private buildInitialValues(stored: readonly AnswerField[]): Map<string, FieldValue> {
     const values = new Map<string, FieldValue>();
 
+    // Se acumulan aparte y se publican de una vez: escribir la señal dentro del
+    // bucle dispararía un repintado por cada campo restaurado.
+    const restored = new Map<string, ResolvedDescriptor[]>();
+
     for (const entry of stored) {
       // Un archivo se reconstruye desde donde esté: `val1` en los tipos que lo
       // desdoblan, `val` en los que no. Leer `val` a secas devolvía el GUID
       // suelto y el campo se dibujaba vacío al reabrir la actividad.
       const file = fileValueOf(entry);
       values.set(entry.id, file ?? entry.val);
+
+      // Los descriptivos guardados vuelven tal cual: son el retrato del ítem
+      // cuando se eligió, no lo que diga hoy el catálogo.
+      if (entry.des?.length) restored.set(entry.id, entry.des);
     }
 
     for (const page of this.pages) {
@@ -363,7 +512,18 @@ export class FormEngine {
         if (values.has(field.id)) continue;
         if (!this.acceptsValue(field.fty)) continue;
 
-        const def = (field.def ?? '').toString();
+        /**
+         * Un valor heredado no es un `def` que se copia: es un dato que se lee
+         * del registro del que cuelga el formulario. Se resuelve antes que
+         * nada, porque su `def` no es texto sino la referencia a ese dato.
+         */
+        if (inheritsDefault(field)) {
+          const inherited = resolveInheritedDefault(field, this.inherits);
+          if (inherited) values.set(field.id, inherited);
+          continue;
+        }
+
+        const def = typeof field.def === 'string' ? field.def : '';
 
         // Fecha y hora arrancan en el momento actual aunque el formulario no
         // traiga `def`. Es lo que se espera de un formato de campo: la visita
@@ -379,6 +539,23 @@ export class FormEngine {
         values.set(field.id, this.defaultFor(field, def));
       }
     }
+
+    if (restored.size > 0) this.descriptors.set(restored);
+
+    /**
+     * Al abrir, los calculados se rehacen sobre lo que hay guardado: un campo
+     * que alimentaba la fórmula pudo cambiar en otra sesión, y enseñar el
+     * resultado viejo es peor que no enseñar ninguno.
+     *
+     * Si alguno cambió, se marca como si se hubieran aplicado valores de
+     * fábrica: quien monta el motor persiste en ese caso, y el número corregido
+     * tiene que quedar escrito aunque el usuario no toque nada más.
+     */
+    const before = this.derived.map((field) => values.get(field.id));
+    this.applyDerived(values);
+    this.recalculated = this.derived.some(
+      (field, index) => values.get(field.id) !== before[index],
+    );
 
     return values;
   }
@@ -415,15 +592,27 @@ export class FormEngine {
   }
 
   /**
-   * Reconstruye qué secciones estaban activas al reabrir la actividad.
+   * Qué secciones quedan abiertas al arrancar.
    *
-   * Sin esto, una actividad guardada con una rama abierta se reabriría con esa
-   * rama cerrada: los campos respondidos desaparecerían de la vista y la
-   * validación los daría por ocultos. El estado se deduce de las respuestas
-   * guardadas, que es la única fuente fiable — `fieldGroup` no se persiste.
+   * ## Recibe los valores iniciales, no las respuestas guardadas
+   *
+   * Y la diferencia es todo el asunto: los valores iniciales incluyen los `def`
+   * del esquema, y las respuestas guardadas no existen la primera vez que se
+   * abre la actividad.
+   *
+   * Leyendo solo lo guardado, un formulario recién abierto cuyo radio trae una
+   * opción por defecto que abre una rama la mostraba **cerrada**. Al guardar y
+   * reabrir aparecía —el valor ya estaba escrito— y eso hacía parecer que la
+   * visibilidad «tardaba un ciclo en aplicarse».
+   *
+   * ## Un radio sin responder no abre nada
+   *
+   * Si el campo que condiciona está vacío —sin `def` y sin respuesta— no se
+   * activa ninguna sección, y todos los campos que dependen de él quedan
+   * ocultos. Es lo que hace [isFieldVisible] con la lista vacía, y es la
+   * respuesta correcta: nadie ha elegido todavía por qué rama va el formulario.
    */
-  private deriveSections(stored: readonly AnswerField[]): ActiveSection[] {
-    const byId = new Map(stored.map((entry) => [entry.id, entry.val]));
+  private deriveSections(values: ReadonlyMap<string, FieldValue>): ActiveSection[] {
     const active: ActiveSection[] = [];
 
     for (const page of this.pages) {
@@ -431,7 +620,7 @@ export class FormEngine {
         const options = field.opt ?? [];
         if (options.length === 0) continue;
 
-        const chosenId = asOption(byId.get(field.id) ?? null)?.id;
+        const chosenId = asOption(values.get(field.id) ?? null)?.id;
         if (!chosenId) continue;
 
         const chosen = options.find((option) => option.id === chosenId);
@@ -456,7 +645,23 @@ function isTemporalField(fty: string): boolean {
  * idiomas; rechazar `hoy` por esperar `now` deja el campo vacío sin decir por
  * qué.
  */
-const NOW_KEYWORDS = new Set(['now', 'today', 'hoy', 'ahora', 'actual', 'current']);
+const NOW_KEYWORDS = new Set([
+  // Las que escribe el diseñador de formularios de Visitrack, y las únicas que
+  // llegan de verdad en los esquemas. Faltaban: un campo con `CURRENTDATE` no
+  // se reconocía como palabra clave ni como fecha, así que se guardaba el
+  // literal «CURRENTDATE» y el selector se quedaba en blanco.
+  'currentdate',
+  'currenttime',
+  'currentdatetime',
+
+  // Las demás son tolerancia para esquemas escritos a mano.
+  'now',
+  'today',
+  'hoy',
+  'ahora',
+  'actual',
+  'current',
+]);
 
 /**
  * Valor por defecto de un campo temporal.
@@ -541,7 +746,11 @@ function parseFlexibleDate(text: string): Date | null {
 function textOf(value: FieldValue): string {
   if (value === null) return '';
   if (typeof value === 'string') return value;
-  if (Array.isArray(value)) return value.map((option) => option.txt).join(', ');
+  if (Array.isArray(value)) {
+    return asOptions(value)
+      .map((option) => option.txt)
+      .join(', ');
+  }
 
   const option = asOption(value);
   if (option) return option.txt;
@@ -549,3 +758,12 @@ function textOf(value: FieldValue): string {
   const geo = asGeo(value);
   return geo ? `${geo.lat.toFixed(6)}, ${geo.lng.toFixed(6)}` : '';
 }
+
+/**
+ * Lista vacía compartida.
+ *
+ * Devolver `[]` nuevo en cada lectura haría que la entrada del componente
+ * cambiara de referencia en cada ciclo, y con ella el valor recompuesto del
+ * campo: un repintado continuo de algo que no cambió.
+ */
+const EMPTY_DESCRIPTORS: ResolvedDescriptor[] = [];

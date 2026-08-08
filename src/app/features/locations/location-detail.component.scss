@@ -1,0 +1,630 @@
+/**
+ * La ficha de una ubicación o de un activo.
+ *
+ * ## Por qué una cabecera con peso
+ *
+ * Lo primero que se pregunta al abrir una ficha es qué es esto, dónde está y si
+ * hay algo raro con ella. Antes eso estaba repartido en una barra estrecha y
+ * tres líneas de texto suelto; ahora la cabecera lo reúne: el tipo, el nombre
+ * en grande, y las señales —coordenadas, pendiente de subir— como fichas que se
+ * leen de un vistazo. Las coordenadas además llevan al mapa: son un dato para
+ * ir, no para leer.
+ *
+ * ## Por qué los datos van en tarjetas
+ *
+ * Agrupados como el tipo los organiza, cada bloque con su título. Una lista
+ * plana de veinte datos obliga a recorrerla entera para encontrar uno; en
+ * bloques se salta directo al que interesa.
+ */
+
+:host {
+  display: block;
+  width: 100%;
+  min-height: 100%;
+  background: var(--vt-surface-2);
+}
+
+.det {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+/* ── Cabecera ─────────────────────────────────────────────────────────────── */
+
+.det__hero {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vt-space-3);
+  padding: var(--vt-space-4) var(--vt-space-4) var(--vt-space-5);
+  color: #fff;
+  background: linear-gradient(135deg, var(--vt-brand), var(--vt-brand-dark));
+}
+
+.det__hero-top {
+  display: flex;
+  gap: var(--vt-space-3);
+  align-items: center;
+}
+
+.det__back,
+.det__action {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 7px;
+  align-items: center;
+  justify-content: center;
+  min-width: 38px;
+  height: 38px;
+  padding: 0 12px;
+  font-family: var(--vt-font);
+  font-size: var(--vt-text-sm);
+  font-weight: 650;
+  color: inherit;
+  text-decoration: none;
+  background: rgb(255 255 255 / 15%);
+  border: 0;
+  border-radius: var(--vt-radius);
+
+  &:hover {
+    background: rgb(255 255 255 / 28%);
+  }
+}
+
+.det__back {
+  padding: 0;
+  transform: rotate(180deg);
+}
+
+.det__action--danger {
+  padding: 0;
+
+  &:hover {
+    background: color-mix(in srgb, var(--vt-danger) 75%, transparent);
+  }
+}
+
+.det__hero-actions {
+  display: inline-flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* El tipo antes que el nombre: dice qué se está mirando antes de leer cuál. */
+.det__kind {
+  padding: 4px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: rgb(255 255 255 / 18%);
+  border-radius: var(--vt-radius-full);
+}
+
+.det__name {
+  margin: 0;
+  font-size: var(--vt-text-2xl);
+  font-weight: 700;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.det__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/**
+ * Las señales de la cabecera.
+ *
+ * Tres estados con lectura propia: con coordenadas (lleva al mapa), sin ellas
+ * (apagado, porque es una carencia y no un error) y pendiente de subir (ámbar,
+ * lo único que pide una acción).
+ */
+.det__chip {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding: 5px 12px;
+  font-size: var(--vt-text-xs);
+  font-weight: 650;
+  color: #fff;
+  text-decoration: none;
+  background: rgb(255 255 255 / 15%);
+  border-radius: var(--vt-radius-full);
+
+  &:hover {
+    background: rgb(255 255 255 / 26%);
+  }
+}
+
+.det__chip--on {
+  color: var(--vt-brand-dark);
+  background: #fff;
+}
+
+.det__chip--off {
+  color: rgb(255 255 255 / 70%);
+  background: rgb(255 255 255 / 10%);
+}
+
+.det__chip--warn {
+  color: #7a4c00;
+  background: #ffd28a;
+}
+
+/* ── Pestañas ─────────────────────────────────────────────────────────────── */
+
+.det__tabs {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  gap: 4px;
+  padding: 0 var(--vt-space-4);
+  overflow-x: auto;
+  background: var(--vt-surface);
+  border-bottom: 1px solid var(--vt-rule);
+
+  button {
+    display: inline-flex;
+    flex-shrink: 0;
+    gap: 7px;
+    align-items: center;
+    padding: 13px 16px;
+    font-family: var(--vt-font);
+    font-size: var(--vt-text-sm);
+    font-weight: 650;
+    color: var(--vt-text-muted);
+    white-space: nowrap;
+    background: none;
+    border: 0;
+    border-bottom: 2px solid transparent;
+
+    span {
+      padding: 1px 7px;
+      font-size: 11px;
+      background: var(--vt-surface-2);
+      border-radius: var(--vt-radius-full);
+    }
+  }
+}
+
+.det__tab--on {
+  color: var(--vt-brand) !important;
+  border-bottom-color: var(--vt-brand) !important;
+
+  span {
+    color: var(--vt-brand);
+    background: var(--vt-brand-tint) !important;
+  }
+}
+
+/* ── Cuerpo ───────────────────────────────────────────────────────────────── */
+
+.det__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--vt-space-3);
+  width: min(900px, 100%);
+  padding: var(--vt-space-4);
+  margin: 0 auto;
+}
+
+.card {
+  padding: var(--vt-space-4);
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-rule);
+  border-radius: var(--vt-radius-lg);
+}
+
+.card__title {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0 0 var(--vt-space-3);
+  font-size: var(--vt-text-xs);
+  font-weight: 700;
+  color: var(--vt-brand);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/**
+ * Los datos en celdas, con la etiqueta encima.
+ *
+ * En dos columnas, un valor largo empuja y desalinea toda la tabla, y las
+ * etiquetas quedan apretadas contra su texto. En celdas cada dato es una unidad
+ * legible, y los que necesitan sitio —una dirección, una foto— ocupan la fila
+ * entera.
+ */
+.card__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr));
+  gap: var(--vt-space-3);
+  margin: 0;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  padding-left: 11px;
+  border-left: 2px solid var(--vt-rule);
+
+  dt {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--vt-text-subtle);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+    font-size: var(--vt-text-sm);
+    font-weight: 500;
+    line-height: 1.45;
+    color: var(--vt-text);
+  }
+
+  /* Un correo, un teléfono o una dirección se pueden usar, no solo leer. */
+  a {
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+    font-weight: 600;
+    color: var(--vt-brand);
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+.field--wide {
+  grid-column: 1 / -1;
+}
+
+.field__image {
+  max-width: min(320px, 100%);
+  margin-top: 4px;
+  border: 1px solid var(--vt-rule);
+  border-radius: var(--vt-radius);
+}
+
+.field__muted {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-subtle);
+}
+
+.det__none {
+  padding: var(--vt-space-6) 0;
+  margin: 0;
+  font-size: var(--vt-text-sm);
+  color: var(--vt-text-muted);
+  text-align: center;
+}
+
+/* ── Listas ───────────────────────────────────────────────────────────────── */
+
+/**
+ * La barra de la pestaña: buscar, filtrar y crear.
+ *
+ * Se queda a la vista al desplazar. Con cien equipos, afinar la búsqueda
+ * obligaría a subir la pantalla entera cada vez. Va por debajo de las pestañas
+ * en la pila —ellas mandan— pero por encima de la lista.
+ */
+.det__toolbar {
+  position: sticky;
+  top: 47px;
+  z-index: 4;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vt-space-3);
+  align-items: center;
+  padding: var(--vt-space-3) 0;
+  margin: 0 calc(-1 * var(--vt-space-4));
+  padding-right: var(--vt-space-4);
+  padding-left: var(--vt-space-4);
+  background: var(--vt-surface-2);
+}
+
+.det__search,
+.det__filter {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 9px 14px;
+  color: var(--vt-text-subtle);
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-rule);
+  border-radius: var(--vt-radius-full);
+
+  input,
+  select {
+    flex: 1;
+    min-width: 0;
+    font-family: var(--vt-font);
+    font-size: var(--vt-text-sm);
+    color: var(--vt-text);
+    background: none;
+    border: 0;
+    outline: none;
+  }
+}
+
+.det__search {
+  flex: 1;
+  min-width: 180px;
+}
+
+/* Los tipos en un desplegable y no en píldoras: con varios, las píldoras
+   ocupan filas que la lista necesita. */
+.det__filter {
+  min-width: 190px;
+
+  select {
+    font-weight: 600;
+  }
+}
+
+/* Lo que el rol no permite, dicho donde estaría el botón. */
+.det__denied {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  padding: 7px 12px;
+  font-size: var(--vt-text-xs);
+  font-weight: 600;
+  color: var(--vt-text-muted);
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-rule);
+  border-radius: var(--vt-radius-full);
+}
+
+.det__new {
+  margin-left: auto;
+}
+
+/* Trae la siguiente tanda al asomarse. Ocupa sitio para que el observador tenga
+   qué observar, y dice que la lista sigue en vez de parecer que se acabó. */
+.det__more {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  padding: var(--vt-space-4);
+  font-size: var(--vt-text-xs);
+  font-weight: 600;
+  color: var(--vt-text-subtle);
+}
+
+.det__spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid color-mix(in srgb, var(--vt-brand) 30%, transparent);
+  border-top-color: var(--vt-brand);
+  border-radius: 50%;
+  animation: det-spin 0.7s linear infinite;
+}
+
+@keyframes det-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Lo que el rol no permite, dicho donde estaría el botón. */
+.det__denied {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  padding: 7px 12px;
+  font-size: var(--vt-text-xs);
+  font-weight: 600;
+  color: var(--vt-text-muted);
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-rule);
+  border-radius: var(--vt-radius-full);
+}
+
+.det__new {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  padding: 9px 16px;
+  font-size: var(--vt-text-sm);
+  font-weight: 650;
+  color: var(--vt-on-brand);
+  text-decoration: none;
+  background: var(--vt-brand);
+  border-radius: var(--vt-radius-full);
+
+  &:hover {
+    background: var(--vt-brand-dark);
+  }
+}
+
+.det__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  gap: var(--vt-space-3);
+  align-items: flex-start;
+  padding: var(--vt-space-3) var(--vt-space-4);
+  text-decoration: none;
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-rule);
+  border-radius: var(--vt-radius);
+  transition:
+    border-color var(--vt-transition),
+    box-shadow var(--vt-transition);
+
+  &:hover {
+    border-color: var(--vt-brand);
+    box-shadow: 0 3px 12px rgb(0 0 0 / 5%);
+  }
+}
+
+.row__icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  color: var(--vt-text-subtle);
+  background: var(--vt-surface-2);
+  border-radius: var(--vt-radius);
+}
+
+.row__icon--on {
+  color: #fff;
+  background: var(--vt-brand);
+}
+
+.row__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.row__name {
+  font-size: var(--vt-text-sm);
+  font-weight: 650;
+  color: var(--vt-text);
+}
+
+.row__sub {
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-muted);
+}
+
+.row__desc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 12px;
+  margin-top: 3px;
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-muted);
+}
+
+.row__pair {
+  display: inline-flex;
+  gap: 5px;
+
+  b {
+    font-weight: 650;
+    color: var(--vt-text-subtle);
+  }
+}
+
+.row__pending {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  align-self: flex-start;
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--vt-warning);
+}
+
+.row__go {
+  flex-shrink: 0;
+  align-self: center;
+  color: var(--vt-text-subtle);
+}
+
+.badge {
+  flex-shrink: 0;
+  align-self: center;
+  padding: 3px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--vt-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  background: var(--vt-surface-2);
+  border-radius: var(--vt-radius-full);
+}
+
+.badge--ok {
+  color: var(--vt-success);
+  background: color-mix(in srgb, var(--vt-success) 12%, transparent);
+}
+
+/* ── No encontrada ────────────────────────────────────────────────────────── */
+
+.det__missing {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  padding: var(--vt-space-6) var(--vt-space-4);
+  text-align: center;
+
+  h2 {
+    margin: 0;
+    font-size: var(--vt-text-lg);
+    color: var(--vt-text);
+  }
+
+  p {
+    max-width: 40ch;
+    margin: 0;
+    font-size: var(--vt-text-sm);
+    color: var(--vt-text-muted);
+  }
+}
+
+.det__missing-icon {
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  color: var(--vt-warning);
+  background: color-mix(in srgb, var(--vt-warning) 12%, transparent);
+  border-radius: var(--vt-radius-full);
+}
+
+@media (max-width: 640px) {
+  .det__hero {
+    padding: var(--vt-space-3) var(--vt-space-3) var(--vt-space-4);
+  }
+
+  .det__name {
+    font-size: var(--vt-text-xl);
+  }
+
+  .det__body {
+    padding: 8px;
+  }
+
+  .card {
+    padding: var(--vt-space-3);
+  }
+
+  /* El rótulo del botón de editar sobra cuando el ancho escasea: el icono se
+     entiende y el nombre de la ficha necesita el sitio. */
+  .det__action span {
+    display: none;
+  }
+}

@@ -513,3 +513,156 @@
     font-size: var(--vt-text-sm);
   }
 }
+
+/* ── Entrar desde el teléfono ────────────────────────────────────────────────
+   Segunda vía de entrada, no una alternativa escondida: quien ya tiene sesión
+   en el teléfono no necesita escribir nada, y además trae consigo el trabajo
+   que no ha podido subir. */
+
+.login__link {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vt-space-3);
+  align-items: center;
+  margin-top: var(--vt-space-4);
+}
+
+/* La palabra «o» sobre la línea: separa sin cortar. */
+.login__link-sep {
+  position: relative;
+  width: 100%;
+  text-align: center;
+  border-top: 1px solid var(--vt-rule);
+
+  span {
+    position: relative;
+    top: -0.7em;
+    padding: 0 12px;
+    font-size: var(--vt-text-xs);
+    color: var(--vt-text-muted);
+    background: var(--vt-surface);
+  }
+}
+
+.login__link-go {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 12px;
+  font-family: var(--vt-font);
+  font-size: var(--vt-text-sm);
+  font-weight: 650;
+  color: var(--vt-brand);
+  background: transparent;
+  border: 1px solid var(--vt-rule-strong);
+  border-radius: var(--vt-radius);
+  transition:
+    background var(--vt-transition),
+    border-color var(--vt-transition);
+
+  &:hover {
+    background: var(--vt-brand-tint);
+    border-color: var(--vt-brand);
+  }
+}
+
+.login__link-hint {
+  margin: 0;
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-muted);
+}
+
+/* El código sobre blanco siempre: una cámara no lee un código sobre fondo
+   oscuro, y el tema puede estarlo. */
+.login__qr {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  padding: var(--vt-space-4);
+  background: #fff;
+  border: 1px solid var(--vt-rule);
+  border-radius: var(--vt-radius-lg);
+
+  canvas {
+    display: block;
+  }
+}
+
+.login__qr-steps {
+  max-width: 30ch;
+  margin: 0;
+  font-size: var(--vt-text-xs);
+  line-height: 1.5;
+  color: #4b5563;
+  text-align: center;
+
+  strong {
+    color: #111827;
+  }
+}
+
+.login__qr-timer {
+  margin: 0;
+  font-size: var(--vt-text-xs);
+  font-weight: 650;
+  color: #6b7280;
+}
+
+.login__qr-timer--soon {
+  color: #b45309;
+}
+
+.login__qr-state {
+  margin: 0;
+  font-size: var(--vt-text-sm);
+  font-weight: 600;
+  color: #111827;
+}
+
+.login__qr-error {
+  max-width: 32ch;
+  margin: 0;
+  font-size: var(--vt-text-sm);
+  line-height: 1.5;
+  color: #b91c1c;
+  text-align: center;
+}
+
+.login__qr-bar {
+  width: 100%;
+  max-width: 220px;
+  height: 5px;
+  overflow: hidden;
+  background: #e5e7eb;
+  border-radius: 999px;
+
+  span {
+    display: block;
+    height: 100%;
+    background: var(--vt-brand);
+    border-radius: inherit;
+    transition: width 300ms ease-out;
+  }
+}
+
+.login__spinner--dark {
+  border-color: #d1d5db;
+  border-top-color: var(--vt-brand);
+}
+
+.login__link-cancel {
+  padding: 6px 10px;
+  font-family: var(--vt-font);
+  font-size: var(--vt-text-xs);
+  color: #6b7280;
+  background: transparent;
+  border: 0;
+
+  &:hover {
+    color: #111827;
+  }
+}

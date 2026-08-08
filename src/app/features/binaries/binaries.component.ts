@@ -19,6 +19,7 @@ import { BinaryType } from '../../core/models/sync.model';
 import { BinaryStorageService } from '../../core/services/binary-storage.service';
 import { BinaryUploadService } from '../../core/sync/binary-upload.service';
 import { BinaryVerifyService } from '../../core/sync/binary-verify.service';
+import { DataRevisionService } from '../../core/sync/data-revision.service';
 import { PendingUploadService } from '../../core/sync/pending-upload.service';
 import { ConnectivityService } from '../../core/services/connectivity.service';
 import { IconComponent } from '../../shared/components/icon/icon.component';
@@ -59,6 +60,7 @@ const PAGE_SIZE = 12;
 export class BinariesComponent implements OnDestroy {
   private readonly audit = inject(BinaryAuditService);
   private readonly storage = inject(BinaryStorageService);
+  private readonly revisions = inject(DataRevisionService);
 
   readonly uploads = inject(BinaryUploadService);
   readonly verify = inject(BinaryVerifyService);
@@ -118,7 +120,18 @@ export class BinariesComponent implements OnDestroy {
   private readonly requested = new Set<string>();
 
   constructor() {
-    void this.reload();
+    /**
+     * La lista se recarga sola cuando cambia algo.
+     *
+     * Sube el contador cada vez que un archivo se captura, se sube o el
+     * servidor lo confirma —lo hagan esta pantalla, el formulario o el proceso
+     * automático—. Sin esto, la pantalla mostraba el estado del momento en que
+     * se abrió y había que recargar a mano para ver que la subida ya terminó.
+     */
+    effect(() => {
+      this.revisions.binaries();
+      untracked(() => void this.reload());
+    });
 
     // Las vistas previas se resuelven solo para lo que está en pantalla. Con
     // doscientos archivos, crear una URL de objeto por cada uno reservaría en

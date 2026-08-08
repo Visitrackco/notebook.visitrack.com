@@ -1,0 +1,166 @@
+<section class="lnk">
+  <header class="lnk__head">
+    <h1>Vincular teléfono</h1>
+    <p>{{ headline() }}</p>
+  </header>
+
+  <!-- Qué hace esto, antes de hacerlo. Traspasar el trabajo de un equipo a otro
+       no es una acción de la que se pueda deducir el alcance por el nombre. -->
+  @if (link.state() === 'inactivo') {
+    <div class="lnk__intro">
+      <span class="lnk__intro-icon"><vt-icon name="send" [size]="26" /></span>
+
+      <div>
+        <h2>Trae aquí lo que tienes en el teléfono</h2>
+        <p>
+          Tus actividades, las ubicaciones y activos que creaste, los ítems de
+          lista y tus fotos — <strong>incluido lo que todavía no ha subido a
+          Visitrack</strong>. Nada se borra del teléfono: es una copia.
+        </p>
+      </div>
+    </div>
+
+    <button type="button" class="lnk__go" (click)="start()">
+      <vt-icon name="send" [size]="17" />
+      Generar código
+    </button>
+
+    @if (lastLink(); as previous) {
+      <p class="lnk__previous">
+        <vt-icon name="info" [size]="15" />
+        <span>
+          La última vez fue desde <strong>{{ previous.phone.model || previous.phone.name || 'un teléfono' }}</strong>,
+          el {{ whenLinked(previous.at) }} · {{ previous.records }} registros
+          @if (previous.files > 0) {
+            y {{ previous.files }} archivos
+          }
+        </span>
+      </p>
+    }
+  }
+
+  @if (link.state() === 'pendiente') {
+    <div class="lnk__qr">
+      <canvas #qr width="260" height="260" aria-label="Código para escanear"></canvas>
+
+      <!-- La cuenta atrás a la vista: un código sin caducar en una pantalla es
+           una sesión al alcance de quien pase por detrás. -->
+      <p class="lnk__timer" [class.lnk__timer--soon]="secondsLeft() < 60">
+        Caduca en {{ countdown() }}
+      </p>
+    </div>
+
+    <ol class="lnk__steps">
+      <li>Abre Visitrack en tu teléfono, con tu sesión iniciada.</li>
+      <li>Entra a <strong>Vincular dispositivo</strong>.</li>
+      <li>Escanea este código y acepta.</li>
+    </ol>
+
+    <button type="button" class="lnk__cancel" (click)="cancel()">Cancelar</button>
+  }
+
+  @if (
+    link.state() === 'reclamado' ||
+    link.state() === 'transfiriendo' ||
+    link.state() === 'sincronizando'
+  ) {
+    <div class="lnk__working">
+      <span class="lnk__spinner" aria-hidden="true"></span>
+
+      @if (link.phone(); as phone) {
+        <p class="lnk__phone">
+          <vt-icon name="check" [size]="15" />
+          {{ phone.model || phone.name || 'Teléfono' }}
+          @if (phone.os) {
+            · {{ phone.os }}
+          }
+        </p>
+      }
+
+      <!-- Barra con valor real, no una animación: hay dos números de verdad
+           —lotes y archivos— y fingir un avance que no se sabe es peor que no
+           enseñar ninguno. -->
+      <div
+        class="lnk__bar"
+        role="progressbar"
+        [attr.aria-valuenow]="Math.round(link.progress() * 100)"
+        aria-valuemin="0"
+        aria-valuemax="100"
+      >
+        <span [style.width.%]="link.progress() * 100"></span>
+      </div>
+
+      <p class="lnk__counts">
+        {{ link.savedRecords() }} registros nuevos
+        @if (link.updated() > 0) {
+          · {{ link.updated() }} actualizados
+        }
+        @if (link.skipped() > 0) {
+          · {{ link.skipped() }} que ya tenías
+        }
+        @if (link.totalFiles() > 0) {
+          · {{ link.savedFiles() }} de {{ link.totalFiles() }} archivos
+        }
+      </p>
+
+      @if (link.state() === 'sincronizando') {
+        <p class="lnk__note">
+          Trayendo tus formularios, ubicaciones y listas. Es lo que la cuenta
+          necesita para poder trabajar aquí.
+        </p>
+      } @else {
+        <p class="lnk__note">
+          No cierres esta pestaña ni uses el teléfono hasta que termine.
+        </p>
+      }
+    </div>
+  }
+
+  @if (link.state() === 'listo') {
+    <div class="lnk__done">
+      <span class="lnk__done-icon"><vt-icon name="check" [size]="28" /></span>
+
+      <h2>Tu trabajo ya está aquí</h2>
+
+      <p>
+        Llegaron <strong>{{ link.savedRecords() }} registros nuevos</strong>
+        @if (link.updated() > 0) {
+          y se actualizaron <strong>{{ link.updated() }}</strong> que el teléfono
+          tenía más recientes
+        }
+        @if (link.savedFiles() > 0) {
+          · <strong>{{ link.savedFiles() }} archivos</strong>
+        }.
+        Lo que estaba pendiente de subir sigue pendiente, y se enviará solo.
+      </p>
+
+      <!-- Lo que no se trajo, y por qué. Sin decirlo, quien esperaba doscientas
+           actividades y ve que llegaron tres cree que algo falló. -->
+      @if (link.skipped() > 0) {
+        <p class="lnk__note">
+          {{ link.skipped() }} registros ya estaban en este equipo y se dejaron
+          como estaban: son los mismos, y los de aquí pueden tener cambios más
+          nuevos.
+        </p>
+      }
+
+      <p class="lnk__note">
+        El teléfono conserva su copia: si sube antes que este equipo, no pasa
+        nada — es el mismo registro.
+      </p>
+
+      <button type="button" class="lnk__go" (click)="start()">
+        Vincular otro teléfono
+      </button>
+    </div>
+  }
+
+  @if (expired() || link.state() === 'error') {
+    <div class="lnk__failed">
+      <span class="lnk__failed-icon"><vt-icon name="alert" [size]="24" /></span>
+      <p>{{ link.error() || 'El código caducó. Genera uno nuevo.' }}</p>
+
+      <button type="button" class="lnk__go" (click)="start()">Generar otro código</button>
+    </div>
+  }
+</section>

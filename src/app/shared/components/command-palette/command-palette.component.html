@@ -1,0 +1,65 @@
+@if (open()) {
+  <div class="pal" (click)="close()">
+    <div class="pal__panel" (click)="$event.stopPropagation()">
+      <label class="pal__search">
+        <vt-icon name="clipboard" [size]="18" />
+
+        <input
+          #field
+          type="text"
+          [value]="search()"
+          (input)="onSearch($event)"
+          (keydown)="onKey($event)"
+          placeholder="Busca un formulario, una ubicación o una actividad…"
+          autocomplete="off"
+          spellcheck="false"
+        />
+
+        <kbd>Esc</kbd>
+      </label>
+
+      <div class="pal__body">
+        @if (loading() && results().length === 0) {
+          <p class="pal__note">Cargando…</p>
+        } @else if (results().length === 0) {
+          <p class="pal__note">Nada coincide con «{{ search() }}».</p>
+        } @else {
+          @for (group of grouped(); track group.title) {
+            <p class="pal__group">{{ group.title }}</p>
+
+            <ul class="pal__list">
+              @for (entry of group.items; track entry.id) {
+                <li>
+                  <button
+                    type="button"
+                    class="pal__item"
+                    [class.pal__item--on]="indexOf(entry) === cursor()"
+                    (mouseenter)="cursor.set(indexOf(entry))"
+                    (click)="go(entry)"
+                  >
+                    <vt-icon [name]="entry.icon" [size]="17" />
+
+                    <span class="pal__text">
+                      <span class="pal__label">{{ entry.label }}</span>
+                      @if (entry.hint) {
+                        <span class="pal__hint">{{ entry.hint }}</span>
+                      }
+                    </span>
+
+                    <vt-icon name="chevron" [size]="15" class="pal__go" />
+                  </button>
+                </li>
+              }
+            </ul>
+          }
+        }
+      </div>
+
+      <footer class="pal__foot">
+        <span><kbd>↑</kbd><kbd>↓</kbd> moverse</span>
+        <span><kbd>Enter</kbd> abrir</span>
+        <span><kbd>?</kbd> ver todos los atajos</span>
+      </footer>
+    </div>
+  </div>
+}

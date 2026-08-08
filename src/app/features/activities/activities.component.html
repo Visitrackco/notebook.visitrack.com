@@ -317,6 +317,17 @@
 
                 <span class="acts__tags">
                   <span class="acts__state">{{ card.state.label }}</span>
+
+                  <!-- Cuánto le queda en el equipo. Solo sale cuando el
+                       formulario tiene regla de borrado y la actividad ya está
+                       en Visitrack: retirarla entonces no pierde nada, pero
+                       verla desaparecer sin aviso se vive como si sí. -->
+                  @if (card.retires) {
+                    <span class="acts__retires" matTooltip="Sigue en Visitrack: solo se libera el espacio de este equipo">
+                      <vt-icon name="trash" [size]="13" />
+                      {{ card.retires }}
+                    </span>
+                  }
                   @if (card.dispatchName) {
                     <span class="acts__dispatch" [style.--dispatch]="card.dispatchColor || null">
                       {{ card.dispatchName }}
@@ -426,3 +437,13 @@
     <a mat-flat-button class="acts__cta" routerLink="/formularios">Volver a formularios</a>
   </div>
 }
+
+<!-- Entregar la actividad a otra persona. Vive fuera del panel de acciones
+     porque tiene sus propios pasos: elegir, confirmar y esperar al servidor. -->
+<vt-reassign-dialog
+  [open]="reassigning() !== null"
+  [answer]="reassigning()?.answer ?? null"
+  [label]="reassignLabel()"
+  (done)="onReassigned($event)"
+  (cancel)="reassigning.set(null)"
+/>

@@ -1,0 +1,130 @@
+@if (current(); as panel) {
+  <section class="list">
+    <header class="list__bar">
+      <button type="button" class="list__back" (click)="close()" aria-label="Volver al formulario">
+        <vt-icon name="chevron" [size]="20" />
+      </button>
+
+      <div class="list__heading">
+        <p>Registros de</p>
+        <h1>{{ panel.title }}</h1>
+      </div>
+
+      @if (panel.canAdd()) {
+        <button type="button" class="list__add" (click)="add()">
+          <vt-icon name="plus" [size]="16" />
+          Agregar
+        </button>
+      }
+    </header>
+
+    <div class="list__tools">
+      <label class="list__search">
+        <vt-icon name="clipboard" [size]="16" />
+        <input
+          type="search"
+          [value]="search()"
+          (input)="onSearch($event)"
+          placeholder="Buscar por nombre o por sus datos"
+          autocomplete="off"
+        />
+      </label>
+
+      <span class="list__count">{{ counter() }}</span>
+    </div>
+
+    @if (rows().length > 0) {
+      <!-- Tabla con desplazamiento propio: con seis o siete descriptivos no
+           caben todas las columnas, y lo que no puede pasar es que la página
+           entera se desplace en horizontal. -->
+      <div class="list__scroll">
+        <table class="list__table">
+          <thead>
+            <tr>
+              <th class="list__num">#</th>
+              <th>Registro</th>
+              @for (column of columns(); track column) {
+                <th>{{ column }}</th>
+              }
+              <th class="list__actions-head"><span class="vt-sr-only">Acciones</span></th>
+            </tr>
+          </thead>
+
+          <tbody>
+            @for (row of rows(); track row.GUID; let i = $index) {
+              <tr [class.list__row--pending]="isIncomplete(row)">
+                <td class="list__num vt-figure">{{ i + 1 }}</td>
+
+                <td class="list__name" data-label="Registro">
+                  @if (panel.canOpen()) {
+                    <button
+                      type="button"
+                      [attr.title]="progressOf(row) || null"
+                      (click)="open(row)"
+                    >
+                      {{ row.Name }}
+                    </button>
+                  } @else {
+                    {{ row.Name }}
+                  }
+                </td>
+
+                @for (cell of cellsOf(row); track $index) {
+                  <td [attr.data-label]="columns()[$index]">{{ cell }}</td>
+                }
+
+                <td class="list__actions">
+                  @if (panel.canOpen()) {
+                    <button
+                      type="button"
+                      (click)="open(row)"
+                      [attr.aria-label]="'Abrir ' + row.Name"
+                    >
+                      <vt-icon name="pen" [size]="16" />
+                    </button>
+                  }
+
+                  @if (panel.canDelete()) {
+                    <button
+                      type="button"
+                      class="list__act--danger"
+                      (click)="askRemove(row)"
+                      [attr.aria-label]="'Eliminar ' + row.Name"
+                    >
+                      <vt-icon name="trash" [size]="16" />
+                    </button>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    } @else {
+      <div class="list__empty">
+        <span class="list__empty-icon"><vt-icon name="clipboard" [size]="24" /></span>
+        <p>
+          @if (search()) {
+            Ningún registro coincide con «{{ search() }}».
+          } @else {
+            Este campo todavía no tiene registros.
+          }
+        </p>
+      </div>
+    }
+  </section>
+}
+
+<vt-to-top />
+
+<vt-confirm-dialog
+  [open]="asking()"
+  tone="danger"
+  icon="trash"
+  title="¿Eliminar el registro?"
+  [message]="removalName()"
+  detail="Se perderá lo respondido en él."
+  confirmLabel="Eliminar"
+  (confirm)="confirmRemove()"
+  (cancel)="cancelRemove()"
+/>

@@ -1,0 +1,144 @@
+<section class="ent">
+  <header class="ent__head">
+    <div class="ent__title">
+      <h1>Entidades por subir</h1>
+      <p>
+        {{ counter() }}
+        @if (waitingCount() > 0) {
+          · <em>{{ waitingCount() }} en espera de otro registro</em>
+        }
+      </p>
+    </div>
+
+    @if (cards().length > 0) {
+      <button
+        type="button"
+        class="ent__run"
+        [disabled]="uploads.running()"
+        (click)="runNow()"
+      >
+        <vt-icon name="cloud-upload" [size]="16" />
+        {{ uploads.running() ? 'Subiendo…' : 'Subir ahora' }}
+      </button>
+    }
+  </header>
+
+  <!-- Qué son y por qué importan: el catálogo las muestra igual que a las
+       descargadas, así que nada delata que todavía no existen en Visitrack.
+
+       El texto va dentro de un <span> y no suelto en el <p>: el contenedor es
+       flex —para alinear el icono— y en flex cada <strong> se convierte en un
+       ítem propio que salta de línea, partiendo la frase por la mitad. Con un
+       solo hijo de texto, el párrafo vuelve a fluir como texto. -->
+  <p class="ent__note">
+    <vt-icon name="info" [size]="15" />
+    <span>
+      Ubicaciones, activos e ítems de lista
+      <strong>creados o modificados en este equipo</strong> que aún no están en
+      Visitrack. Suben solas cada minuto, siempre
+      <strong>antes que las actividades</strong> que las usan.
+    </span>
+  </p>
+
+  @if (uploads.notImplemented()) {
+    <p class="ent__blocked">
+      <vt-icon name="alert" [size]="15" />
+      <span>
+        El servidor todavía no acepta entidades creadas desde el dispositivo. Se
+        quedan aquí, sin perderse, hasta que se habilite.
+      </span>
+    </p>
+  } @else if (connectivity.isOffline()) {
+    <p class="ent__blocked">
+      <vt-icon name="alert" [size]="15" />
+      <span>Sin conexión. Subirán en cuanto vuelva la red.</span>
+    </p>
+  }
+
+  @if (loading()) {
+    <div class="ent__ghosts" aria-label="Cargando">
+      @for (row of [1, 2, 3]; track row) {
+        <div class="ent__ghost"></div>
+      }
+    </div>
+  } @else if (cards().length > 0) {
+    <ul class="ent__list">
+      @for (card of cards(); track card.key) {
+        <li class="ent__item" [class.ent__item--waiting]="card.waiting">
+          <!-- Con enlace cuando hay a dónde ir; si no, la misma tarjeta sin
+               pulsar. Un ítem de lista no tiene pantalla propia, y llevar a un
+               sitio aproximado es peor que no llevar a ninguno. -->
+          @if (card.link) {
+            <a class="ent__link" [routerLink]="card.link">
+              <ng-container [ngTemplateOutlet]="body" [ngTemplateOutletContext]="{ $implicit: card }" />
+            </a>
+          } @else {
+            <div class="ent__link ent__link--flat">
+              <ng-container [ngTemplateOutlet]="body" [ngTemplateOutletContext]="{ $implicit: card }" />
+            </div>
+          }
+        </li>
+      }
+    </ul>
+  } @else {
+    <div class="ent__empty">
+      <span class="ent__empty-icon"><vt-icon name="check" [size]="26" /></span>
+      <h2>No hay nada por subir</h2>
+      <p>
+        Todo lo que has creado o modificado en este equipo ya está en Visitrack.
+      </p>
+    </div>
+  }
+</section>
+
+<!-- El contenido de la tarjeta, una sola vez: cambia si se puede pulsar o no,
+     no lo que muestra. -->
+<ng-template #body let-card>
+  <span class="ent__icon" [attr.data-kind]="card.kind">
+    <vt-icon [name]="iconOf(card.kind)" [size]="17" />
+  </span>
+
+  <span class="ent__text">
+    <span class="ent__name">
+      {{ card.name }}
+
+      <!-- Nueva o modificada: cambia lo que pasa al subir, y quien mira quiere
+           saber si el registro ya existe allá o va a nacer ahora. -->
+      <em class="ent__tag" [class.ent__tag--new]="card.isNew">
+        {{ card.isNew ? 'nueva' : 'modificada' }}
+      </em>
+    </span>
+
+    <span class="ent__origin">
+      {{ labelOf(card.kind) }} · {{ card.origin }}
+      @if (card.updatedLabel) {
+        · {{ card.updatedLabel }}
+      }
+    </span>
+
+    @if (card.descriptors.length > 0) {
+      <span class="ent__desc">
+        @for (item of card.descriptors.slice(0, 3); track item.lab) {
+          <span class="ent__pair">
+            <b>{{ item.lab }}</b>
+            <span>{{ item.val }}</span>
+          </span>
+        }
+      </span>
+    }
+
+    <!-- Esperar a otro registro no es un fallo: decirlo evita que se lea así. -->
+    @if (card.waiting) {
+      <span class="ent__waiting">
+        <vt-icon name="info" [size]="13" />
+        {{ card.waiting }}
+      </span>
+    }
+  </span>
+
+  @if (card.link) {
+    <vt-icon name="chevron" [size]="16" class="ent__go" />
+  }
+</ng-template>
+
+<vt-to-top />

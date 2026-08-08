@@ -26,8 +26,15 @@ import { AuthService } from '../../core/services/auth.service';
 import { DraftPolicyService } from '../../core/services/draft-policy.service';
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 import { IconComponent } from '../../shared/components/icon/icon.component';
+import {
+  RetentionPolicyService,
+  timeLeft,
+} from '../../core/services/retention-policy.service';
 import { Descriptor, descriptorsMatch, parseAnswerTitles } from '../../shared/utils/descriptors';
 import { SeedPalette, seedGradient, seedPalette } from '../../shared/utils/seed-color';
+import { Colleague } from '../../core/services/reassign.service';
+import { ToastService } from '../../core/services/toast.service';
+import { ReassignDialogComponent } from './reassign-dialog/reassign-dialog.component';
 import {
   ActionItem,
   ActivityAction,
@@ -47,6 +54,15 @@ export interface ActivityCard {
   created: string;
   /** GUID recortado para mostrar sin ocupar toda la línea. */
   shortGuid: string;
+
+  /**
+   * Cuándo se retirará del equipo, si el formulario tiene regla de borrado.
+   *
+   * Vacío cuando no aplica. Se dice en la propia ficha y no solo en el panel de
+   * información: la regla general —«30 días»— no responde la pregunta que se
+   * hace quien mira una actividad concreta, que es cuánto le queda a **esta**.
+   */
+  retires: string;
 }
 
 /** Por qué campo se ordena el listado. */
@@ -78,6 +94,7 @@ type SortField = 'UpdatedOn' | 'CreatedOn';
     MatButtonModule,
     MatChipsModule,
     MatTooltipModule,
+    ReassignDialogComponent,
     RouterLink,
   ],
   templateUrl: './activities.component.html',
@@ -86,6 +103,7 @@ type SortField = 'UpdatedOn' | 'CreatedOn';
 export class ActivitiesComponent {
   private readonly router = inject(Router);
   private readonly activities = inject(ActivityService);
+  private readonly toasts = inject(ToastService);
   private readonly dispatch = inject(DispatchStatusRepository);
   private readonly auth = inject(AuthService);
 
@@ -302,6 +320,35 @@ export class ActivitiesComponent {
   });
 
   /** Por qué no se puede reasignar esta actividad. `undefined` si sí se puede. */
+  // ── Reasignar ──────────────────────────────────────────────────────────────
+
+  /** Actividad que se está entregando a otra persona. */
+  readonly reassigning = signal<ActivityCard | null>(null);
+
+  /** Con qué se reconoce en el diálogo. */
+  readonly reassignLabel = computed(() => {
+    const card = this.reassigning();
+    if (!card) return '';
+
+    return (
+      [card.answer.LocationName, card.answer.AssetName].filter(Boolean).join(' · ') ||
+      'Actividad'
+    );
+  });
+
+  /**
+   * La actividad ya es de otra persona.
+   *
+   * Se recarga el listado porque el servicio la quitó de este dispositivo: si
+   * siguiera en pantalla, abrirla llevaría a una actividad que ya no existe.
+   */
+  async onReassigned(person: Colleague): Promise<void> {
+    this.reassigning.set(null);
+
+    this.toasts.success('Actividad reasignada', `Ahora es de ${person.name}.`);
+    await this.load(this.surveyId());
+  }
+
   private reassignBlocker(card: ActivityCard): string | undefined {
     const answer = card.answer;
 
@@ -368,8 +415,14 @@ export class ActivitiesComponent {
     return new Map(statuses.map((status) => [String(status.DispatchID), status]));
   }
 
+  private readonly retention = inject(RetentionPolicyService);
+
   private toCard(answer: SurveyAnswer, statuses: Map<string, DispatchStatus>): ActivityCard {
     const dispatch = statuses.get(String(answer.Status));
+
+    // La regla es del formulario, así que sale de la actividad abierta: no hace
+    // falta consultarla por cada ficha.
+    const expires = this.retention.expiresAt(answer, this.retention.ruleOf(this.survey()));
 
     return {
       answer,
@@ -381,6 +434,7 @@ export class ActivitiesComponent {
       updated: formatDateTime(answer.UpdatedOn),
       created: formatDateTime(answer.CreatedOn),
       shortGuid: shortenGuid(answer.GUID),
+      retires: expires ? timeLeft(expires) : '',
     };
   }
 
@@ -457,9 +511,7 @@ export class ActivitiesComponent {
         await this.reprocessBinaries(card);
         break;
       case 'reassign':
-        this.feedback.set(
-          'La reasignación necesita el listado de usuarios, que llega con el módulo de equipo. Por ahora hazla desde la app móvil.',
-        );
+        this.reassigning.set(card);
         break;
       case 'copy':
         await this.copyGuid(card);

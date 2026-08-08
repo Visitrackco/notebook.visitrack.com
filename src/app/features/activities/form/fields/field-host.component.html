@@ -14,6 +14,26 @@
   </span>
 }
 
+<!-- La etiqueta de la pregunta, encima de su control y siempre en el mismo
+     sitio.
+
+     Antes cada tipo la resolvía a su manera: los de Material con una etiqueta
+     flotante dentro del recuadro, los grupos con la leyenda del `fieldset`, los
+     de archivo con un rótulo propio. Eso dejaba las preguntas desalineadas
+     entre sí — unas empezaban donde otras tenían el borde— y en un formulario
+     largo se nota más que cualquier detalle de estilo.
+
+     El asterisco va aparte y en rojo: pegado al texto se confunde con parte del
+     nombre del campo. -->
+@if (showsLabel()) {
+  <label class="fld__label" [attr.for]="'input-' + f.id">
+    {{ f.lab }}
+    @if (f.req) {
+      <em class="fld__req" title="Campo obligatorio">*</em>
+    }
+  </label>
+}
+
 @switch (f.fty) {
   <!-- ── Solo presentación ──────────────────────────────────────────────── -->
   @case ('title') {
@@ -23,43 +43,77 @@
     <p class="fld__paragraph">{{ f.txt || f.lab }}</p>
   }
   @case ('hyperlink') {
-    <a class="fld__link" [href]="f.url || f.txt" target="_blank" rel="noopener">
-      <vt-icon name="chevron" [size]="15" />
-      {{ f.lab || f.txt }}
-    </a>
+    <vt-link-field [field]="f" [answerGuid]="answerGuid()" />
   }
 
   <!-- ── Texto largo ────────────────────────────────────────────────────── -->
+  <!-- Área de texto con formato: es donde se escriben las observaciones, y ahí
+       hace falta enumerar hallazgos y resaltar lo que no puede pasar
+       desapercibido. -->
   @case ('textarea') {
-    <mat-form-field appearance="outline" class="fld__control">
-      <mat-label>{{ f.lab }}{{ f.req ? ' *' : '' }}</mat-label>
-      <textarea
-        matInput
-        rows="4"
+    <div class="fld__rich">
+      <vt-rich-text-field
         [value]="text()"
         [placeholder]="f.pho || ''"
-        [readonly]="readOnly()"
-        (input)="onText($event)"
-      ></textarea>
+        [readOnly]="readOnly()"
+        [invalid]="invalid()"
+        (valueChange)="valueChange.emit($event)"
+      />
+
       @if (f.hel) {
-        <mat-hint>{{ f.hel }}</mat-hint>
+        <small class="fld__rich-help">{{ f.hel }}</small>
       }
+
       @if (invalid()) {
-        <mat-error>Este campo es obligatorio.</mat-error>
+        <small class="fld__rich-error">Este campo es obligatorio.</small>
       }
-    </mat-form-field>
+    </div>
   }
 
   <!-- ── Selección única ────────────────────────────────────────────────── -->
   @case ('radio') {
-    <fieldset class="fld__group" [class.fld__group--invalid]="invalid()">
-      <legend>
-        {{ f.lab }}
-        @if (f.req) {
-          <span class="fld__required">*</span>
-        }
-      </legend>
+    <!-- Calificación por estrellas. Lo pide el propio formulario con `_star` en
+         el identificador del campo: para el esquema sigue siendo un `radio` con
+         sus opciones, y lo que cambia es cómo se responde. -->
+    @if (isRating()) {
+      <fieldset class="fld__group" [class.fld__group--invalid]="invalid()">
+        <div class="rating" role="radiogroup" [attr.aria-label]="f.lab">
+          @for (option of options(); track option.id; let i = $index) {
+            <button
+              type="button"
+              class="rating__star"
+              [class.rating__star--on]="i <= ratingIndex()"
+              [disabled]="readOnly()"
+              role="radio"
+              [attr.aria-checked]="selectedId() === option.id"
+              [attr.aria-label]="option.txt"
+              [title]="option.txt"
+              (click)="onSingle(option.id)"
+            >
+              <!-- El icono va aquí y no en el componente de iconos porque este
+                   necesita rellenarse: los demás son de trazo. -->
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M12 3.6l2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.6 9.7l5.8-.8z"
+                />
+              </svg>
+            </button>
+          }
+        </div>
 
+        @if (ratingLabel()) {
+          <p class="rating__label">{{ ratingLabel() }}</p>
+        }
+
+        @if (f.hel) {
+          <p class="fld__hint">{{ f.hel }}</p>
+        }
+        @if (invalid()) {
+          <p class="fld__error">Elige una calificación.</p>
+        }
+      </fieldset>
+    } @else {
+    <fieldset class="fld__group" [class.fld__group--invalid]="invalid()">
       <mat-radio-group
         class="fld__radios"
         [value]="selectedId()"
@@ -79,18 +133,12 @@
         <p class="fld__error">Elige una opción.</p>
       }
     </fieldset>
+    }
   }
 
   <!-- ── Selección múltiple ─────────────────────────────────────────────── -->
   @case ('checkbox') {
     <fieldset class="fld__group" [class.fld__group--invalid]="invalid()">
-      <legend>
-        {{ f.lab }}
-        @if (f.req) {
-          <span class="fld__required">*</span>
-        }
-      </legend>
-
       <div class="fld__checks">
         @for (option of options(); track option.id) {
           <mat-checkbox
@@ -115,7 +163,6 @@
   <!-- ── Fecha ──────────────────────────────────────────────────────────── -->
   @case ('date') {
     <mat-form-field appearance="outline" class="fld__control">
-      <mat-label>{{ f.lab }}{{ f.req ? ' *' : '' }}</mat-label>
       <input
         matInput
         [matDatepicker]="datePicker"
@@ -139,7 +186,6 @@
   <!-- ── Hora ───────────────────────────────────────────────────────────── -->
   @case ('time') {
     <mat-form-field appearance="outline" class="fld__control">
-      <mat-label>{{ f.lab }}{{ f.req ? ' *' : '' }}</mat-label>
       <input
         matInput
         [matTimepicker]="timePicker"
@@ -161,13 +207,6 @@
   <!-- ── Fecha y hora ───────────────────────────────────────────────────── -->
   @case ('datetime') {
     <fieldset class="fld__group" [class.fld__group--invalid]="invalid()">
-      <legend>
-        {{ f.lab }}
-        @if (f.req) {
-          <span class="fld__required">*</span>
-        }
-      </legend>
-
       <!-- Dos controles y no uno: el selector de fecha y el de hora son
            interacciones distintas, y un único campo obligaría a elegir cuál de
            los dos calendarios abrir. -->
@@ -218,25 +257,19 @@
   }
 
   <!-- ── Desplegable ────────────────────────────────────────────────────── -->
+  <!-- Las opciones pueden venir escritas en el formulario o de una lista de
+       Visitrack con miles de ítems; el componente resuelve las dos y muestra
+       los datos del ítem elegido. -->
   @case ('dropdownlist') {
-    <mat-form-field appearance="outline" class="fld__control">
-      <mat-label>{{ f.lab }}{{ f.req ? ' *' : '' }}</mat-label>
-      <mat-select
-        [value]="selectedId()"
-        [disabled]="readOnly()"
-        (selectionChange)="onSingle($event.value)"
-      >
-        @for (option of options(); track option.id) {
-          <mat-option [value]="option.id">{{ option.txt }}</mat-option>
-        }
-      </mat-select>
-      @if (f.hel) {
-        <mat-hint>{{ f.hel }}</mat-hint>
-      }
-      @if (invalid()) {
-        <mat-error>Elige una opción.</mat-error>
-      }
-    </mat-form-field>
+    <vt-list-field
+      [field]="f"
+      [readOnly]="readOnly()"
+      [invalid]="invalid()"
+      [value]="listValue()"
+      [parentValue]="parentValue()"
+      [answerGuid]="answerGuid()"
+      (valueChange)="onListChange($event)"
+    />
   }
 
   <!-- Fotografía de referencia que trae el propio formulario: un plano, un
@@ -281,26 +314,50 @@
       (readingChange)="valueChange.emit($event)"
     />
   }
+  <!-- ── Tabla de detalle ───────────────────────────────────────────────────
+       Filas repetibles, cada una con su propio formulario. Es el único campo
+       que vuelve a entrar aquí: dentro de cada fila se dibujan campos con este
+       mismo contenedor. -->
   @case ('masterdetail') {
-    <ng-container *ngTemplateOutlet="pendingTpl" />
+    <vt-master-detail-field
+      [field]="f"
+      [value]="value()"
+      [readOnly]="readOnly()"
+      [invalid]="invalid()"
+      [answerGuid]="answerGuid()"
+      [parentValue]="parentValue()"
+      [inheritedParent]="inheritedParent()"
+      (valueChange)="valueChange.emit($event)"
+    />
   }
+  <!-- ── Campos que se calculan solos ───────────────────────────────────────
+       El valor no se teclea: sale de otros campos y el motor lo rehace en
+       cuanto alguno cambia. Los tres comparten pantalla porque comparten
+       naturaleza — un número que viene dado. -->
   @case ('sumdetail') {
-    <ng-container *ngTemplateOutlet="pendingTpl" />
+    <vt-derived-field [field]="f" [value]="text()" [invalid]="invalid()" />
   }
   @case ('calculation') {
-    <ng-container *ngTemplateOutlet="pendingTpl" />
+    <vt-derived-field [field]="f" [value]="text()" [invalid]="invalid()" />
   }
   @case ('datediff') {
-    <ng-container *ngTemplateOutlet="pendingTpl" />
+    <vt-derived-field [field]="f" [value]="text()" [invalid]="invalid()" />
   }
-  @case ('form') {
-    <ng-container *ngTemplateOutlet="pendingTpl" />
-  }
+  <!-- Formulario vinculado: no se dibuja nada.
+
+       Abre otra actividad de otro formulario desde dentro de esta, y eso en la
+       web no tiene el sentido que tiene en el móvil —donde la navegación es
+       toda a pantalla completa—. Mostrar un aviso de «pendiente» solo añadiría
+       ruido a un campo que aquí no hace falta.
+
+       Se contemplan los dos nombres: la app lo llama `form` y el diseñador web
+       lo emite como `webform`. -->
+  @case ('form') {}
+  @case ('webform') {}
 
   <!-- ── Texto, número, fecha, hora, correo, teléfono, dirección ────────── -->
   @default {
     <mat-form-field appearance="outline" class="fld__control">
-      <mat-label>{{ f.lab }}{{ f.req ? ' *' : '' }}</mat-label>
       <input
         matInput
         [type]="inputType()"
@@ -324,8 +381,6 @@
      muestra después. -->
 <ng-template #binaryTpl>
   <div class="fld__binary">
-    <span class="fld__binary-label">{{ f.lab }}{{ f.req ? ' *' : '' }}</span>
-
     <vt-binary-field
       [fty]="f.fty"
       [label]="f.lab"
@@ -353,19 +408,3 @@
 <!-- Los tipos que faltan se anuncian con su nombre y el del campo. Un hueco en
      silencio haría creer que el formulario está completo cuando le falta justo
      la foto que se pedía. -->
-<ng-template #pendingTpl>
-  <div class="fld__pending" [class.fld__pending--required]="f.req">
-    <span class="fld__pending-icon">
-      <vt-icon name="alert" [size]="17" />
-    </span>
-    <div>
-      <strong>{{ f.lab || pending() }}</strong>
-      <span>
-        {{ pending() }} — este tipo de campo llega en la siguiente entrega.
-        @if (f.req) {
-          Es obligatorio, así que esta actividad hay que terminarla en la app móvil.
-        }
-      </span>
-    </div>
-  </div>
-</ng-template>

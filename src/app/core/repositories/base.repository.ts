@@ -178,6 +178,46 @@ export abstract class BaseRepository<T> {
   // Escritura
   // ───────────────────────────────────────────────────────────────────────────
 
+  /**
+   * Una llave para un registro creado aquí.
+   *
+   * ## Por qué hace falta
+   *
+   * Los catálogos —ubicaciones, activos, ítems de lista— llevan como llave el
+   * `ID` que asigna Visitrack, así que su store **no autoincrementa**: los
+   * registros que bajan del servidor traen el suyo y hay que respetarlo. Pero
+   * eso deja sin llave a lo que se crea en el navegador, y `put` falla con
+   * «Evaluating the object store's key path did not yield a value» — sin llave
+   * IndexedDB no sabe dónde ponerlo.
+   *
+   * Activar el autoincremento no es una opción: solo se puede fijar al crear el
+   * store, y rehacerlo significaría borrar todo lo descargado.
+   *
+   * ## Por qué negativa
+   *
+   * Los identificadores de Visitrack son positivos. Uno negativo no puede
+   * colisionar con ninguno hoy ni con ninguno que llegue mañana, y además se
+   * reconoce de un vistazo: si aparece un `ID` negativo, ese registro nació en
+   * este dispositivo y todavía no ha subido.
+   *
+   * Se toma el menor que haya y se resta uno, así que son consecutivos y el
+   * orden de creación se conserva.
+   */
+  async nextLocalKey(): Promise<number> {
+    return this.db.transaction(this.storeName, 'readonly', async (tx) => {
+      const store = tx.objectStore(this.storeName);
+
+      // El primero del recorrido ascendente es el menor: si es negativo, ese es
+      // el último que se creó aquí.
+      const cursor = await this.db.request<IDBCursorWithValue | null>(
+        store.openCursor(null, 'next'),
+      );
+
+      const lowest = Number(cursor?.key ?? 0);
+      return lowest < 0 ? lowest - 1 : -1;
+    });
+  }
+
   /** Inserta o reemplaza un registro. Devuelve su llave. */
   async put(item: T): Promise<IDBValidKey> {
     return this.db.transaction(this.storeName, 'readwrite', (tx) =>

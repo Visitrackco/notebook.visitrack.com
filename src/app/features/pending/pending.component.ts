@@ -1,9 +1,10 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { ANSWER_STATE } from '../../core/models/activity.model';
 import { SurveyAnswer } from '../../core/models/entities.model';
 import { ConnectivityService } from '../../core/services/connectivity.service';
+import { DataRevisionService } from '../../core/sync/data-revision.service';
 import { PendingActivity, PendingUploadService } from '../../core/sync/pending-upload.service';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 
@@ -30,6 +31,7 @@ import { IconComponent } from '../../shared/components/icon/icon.component';
 })
 export class PendingComponent {
   private readonly router = inject(Router);
+  private readonly revisions = inject(DataRevisionService);
 
   readonly uploads = inject(PendingUploadService);
   readonly connectivity = inject(ConnectivityService);
@@ -43,14 +45,32 @@ export class PendingComponent {
   readonly pending = this.uploads.pending;
   readonly running = this.uploads.running;
 
+  /**
+   * Necesitan que alguien decida.
+   *
+   * Van primero porque son las únicas que **no** avanzan solas: mientras nadie
+   * las abra, seguirán ahí por muchas corridas que pasen.
+   */
+  readonly blocked = computed(() => this.pending().filter((entry) => entry.issue));
+
   /** Listas para salir en cuanto haya conexión. */
   readonly ready = computed(() =>
-    this.pending().filter((entry) => entry.blockingFiles === 0),
+    this.pending().filter(
+      (entry) => !entry.issue && !entry.waitingEntities && entry.blockingFiles === 0,
+    ),
   );
 
-  /** Detenidas esperando a que sus archivos se publiquen. */
+  /**
+   * Detenidas esperando algo que sí llega solo.
+   *
+   * Sus archivos, o la ubicación, el activo o los ítems de lista que se crearon
+   * aquí y todavía no han subido. En los dos casos la espera se resuelve sola;
+   * lo que hace falta es que la pantalla diga por qué.
+   */
   readonly waiting = computed(() =>
-    this.pending().filter((entry) => entry.blockingFiles > 0),
+    this.pending().filter(
+      (entry) => !entry.issue && (entry.waitingEntities !== '' || entry.blockingFiles > 0),
+    ),
   );
 
   readonly lastRunLabel = computed(() => {
@@ -64,7 +84,17 @@ export class PendingComponent {
   });
 
   constructor() {
-    void this.reload();
+    /**
+     * La cola se rehace sola con cada cambio de estado.
+     *
+     * Es lo que hace que una actividad desaparezca de aquí en cuanto sale, sin
+     * que el usuario tenga que recargar para comprobar si el proceso automático
+     * hizo algo. También la trae de vuelta si el envío falló.
+     */
+    effect(() => {
+      this.revisions.activities();
+      untracked(() => void this.reload());
+    });
   }
 
   async reload(): Promise<void> {
@@ -132,6 +162,12 @@ export class PendingComponent {
 
   /** Por qué esta actividad sigue en la cola. */
   reason(entry: PendingActivity): string {
+    if (entry.issue) return entry.issue.message;
+
+    // Primero lo que bloquea de verdad: una actividad puede tener los archivos
+    // listos y seguir retenida porque su sede aún no existe en Visitrack.
+    if (entry.waitingEntities) return entry.waitingEntities;
+
     if (entry.blockingFiles === 0) {
       return this.connectivity.isOnline()
         ? 'Lista para enviarse. Saldrá en la próxima revisión.'

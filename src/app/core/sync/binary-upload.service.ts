@@ -5,6 +5,7 @@ import { BinaryResourceRepository } from '../repositories/binary.repository';
 import { AuthService } from '../services/auth.service';
 import { BinaryStorageService } from '../services/binary-storage.service';
 import { ConnectivityService } from '../services/connectivity.service';
+import { DataRevisionService } from './data-revision.service';
 import { UploadApiService } from './upload-api.service';
 
 /** En qué va la subida. */
@@ -46,6 +47,7 @@ export class BinaryUploadService {
   private readonly binaries = inject(BinaryResourceRepository);
   private readonly storage = inject(BinaryStorageService);
   private readonly api = inject(UploadApiService);
+  private readonly revisions = inject(DataRevisionService);
   private readonly auth = inject(AuthService);
   private readonly connectivity = inject(ConnectivityService);
 
@@ -208,11 +210,16 @@ export class BinaryUploadService {
       Uploaded: 1,
     });
 
+    // Archivo a archivo, no al terminar el lote: en una subida de cincuenta
+    // fotos la pantalla los va tachando conforme salen, en vez de quedarse
+    // quieta hasta el final.
+    this.revisions.touchBinaries();
     return true;
   }
 
   private async setState(resource: BinaryResource, state: BinaryState): Promise<void> {
     await this.binaries.put({ ...resource, BinaryState: state });
+    this.revisions.touchBinaries();
   }
 
   /** Archivos que todavía no llegaron al servidor. */

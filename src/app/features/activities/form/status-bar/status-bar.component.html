@@ -20,8 +20,21 @@
       </button>
     </header>
 
+    @if (searchable()) {
+      <label class="statuspick__search">
+        <vt-icon name="clipboard" [size]="16" />
+        <input
+          type="search"
+          [value]="term()"
+          (input)="onSearch($event)"
+          placeholder="Buscar estado"
+          autocomplete="off"
+        />
+      </label>
+    }
+
     <ul class="statuspick__list">
-      @for (status of statuses(); track status.ID) {
+      @for (status of visible(); track status.ID) {
         <li>
           <button
             type="button"
@@ -42,6 +55,12 @@
         </li>
       }
 
+      @if (visible().length === 0) {
+        <li class="statuspick__empty">Ningún estado coincide con «{{ term() }}».</li>
+      }
+
+      <!-- «Sin estado» no se filtra: es la forma de deshacer una elección, y
+           tener que borrar la búsqueda para llegar a ella sería absurdo. -->
       <li>
         <button
           type="button"

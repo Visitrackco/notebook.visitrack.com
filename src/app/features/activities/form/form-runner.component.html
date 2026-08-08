@@ -64,11 +64,11 @@
             </dd>
           </div>
 
-          @if (eng.missing().length > 0) {
+          @if (missing().length > 0) {
             <div class="runner__stat--alert">
               <dt>Obligatorios</dt>
               <dd>
-                <span class="vt-figure">{{ eng.missing().length }}</span>
+                <span class="vt-figure">{{ missing().length }}</span>
                 <small>sin responder</small>
               </dd>
             </div>
@@ -104,7 +104,13 @@
               <li>
                 <button type="button" (click)="goToMissing(entry)">
                   {{ entry.field.lab }}
-                  <small>página {{ entry.page + 1 }}</small>
+                  <small>
+                    @if (entry.note) {
+                      {{ entry.note }}
+                    } @else {
+                      página {{ entry.page + 1 }}
+                    }
+                  </small>
                 </button>
               </li>
             }
@@ -120,13 +126,21 @@
     <!-- ── Campos ──────────────────────────────────────────────────────────── -->
     <div class="runner__fields" #fields>
       @for (field of eng.visibleFields(); track field.id) {
-        <div class="runner__field" [id]="'field-' + field.id">
+        <div
+          class="runner__field"
+          [class.runner__field--invalid]="eng.showsError(field)"
+          [class.runner__field--title]="isHeading(field)"
+          [id]="'field-' + field.id"
+        >
           <vt-field-host
             [field]="field"
             [value]="eng.valueOf(field.id)"
             [invalid]="eng.showsError(field)"
             [answerGuid]="answer().GUID"
+            [parentValue]="eng.parentValueOf(field)"
+            [descriptors]="eng.descriptorsOf(field.id)"
             (valueChange)="onValueChange(field, $event)"
+            (descriptorsChange)="onDescriptorsChange(field, $event)"
           />
         </div>
       } @empty {
@@ -146,9 +160,13 @@
       (leave)="requestLeave()"
     />
 
+    <!-- En un formulario de cuarenta campos, volver a las pestañas o al
+         principio es desplazar una pantalla entera. -->
+    <vt-to-top />
+
     <vt-required-dialog
       [open]="askingRequired()"
-      [missing]="eng.missing()"
+      [missing]="missing()"
       [pageLabels]="pageLabels()"
       (review)="onReviewRequired()"
       (saveAnyway)="onSaveAnyway()"

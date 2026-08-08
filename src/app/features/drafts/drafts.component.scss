@@ -1,0 +1,299 @@
+/**
+ * Borradores.
+ *
+ * Lo que domina cada fila es **cuánto le queda**: es la única decisión que hay
+ * que tomar aquí. Los que están por caducar se marcan en ámbar y suben arriba;
+ * el resto se lee como una lista corriente de trabajo a medias.
+ */
+
+:host {
+  display: block;
+  width: 100%;
+}
+
+.dft {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vt-space-4);
+  width: min(880px, 100%);
+  padding: var(--vt-space-5) var(--vt-space-4);
+  margin: 0 auto;
+}
+
+/* ── Cabecera ─────────────────────────────────────────────────────────────── */
+
+.dft__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vt-space-3);
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.dft__title {
+  h1 {
+    margin: 0;
+    font-size: var(--vt-text-2xl);
+    font-weight: 700;
+    color: var(--vt-text);
+  }
+
+  p {
+    margin: 4px 0 0;
+    font-size: var(--vt-text-sm);
+    color: var(--vt-text-muted);
+  }
+
+  em {
+    font-style: normal;
+    font-weight: 650;
+    color: var(--vt-warning);
+  }
+}
+
+.dft__purge {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  padding: 9px 16px;
+  font-family: var(--vt-font);
+  font-size: var(--vt-text-sm);
+  font-weight: 650;
+  color: var(--vt-text-muted);
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-rule-strong);
+  border-radius: var(--vt-radius-full);
+
+  &:hover {
+    color: var(--vt-danger);
+    border-color: var(--vt-danger);
+  }
+}
+
+/**
+ * La explicación, arriba y siempre.
+ *
+ * No es un aviso que se cierra: es lo que evita que un borrado programado se
+ * viva como una pérdida. Quien entra aquí por primera vez necesita saber que
+ * esto caduca, cuánto dura y cómo conservarlo.
+ */
+.dft__note {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  margin: 0;
+  font-size: var(--vt-text-xs);
+  line-height: 1.55;
+  color: var(--vt-text-muted);
+  background: var(--vt-surface-2);
+  border-left: 3px solid var(--vt-brand);
+  border-radius: var(--vt-radius);
+
+  /* El texto, envuelto: en flex cada `<strong>` suelto sería un ítem propio y
+     saltaría de línea partiendo la frase. */
+  > span {
+    flex: 1;
+    min-width: 0;
+  }
+
+  strong {
+    color: var(--vt-text);
+  }
+}
+
+/* ── La lista ─────────────────────────────────────────────────────────────── */
+
+.dft__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.dft__item {
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-rule);
+  border-left: 3px solid var(--vt-rule-strong);
+  border-radius: var(--vt-radius);
+  transition: border-color var(--vt-transition);
+
+  &:hover {
+    border-color: var(--vt-brand);
+  }
+}
+
+/* Por caducar: el costado en ámbar. No es un error —el borrador está bien— pero
+   es lo que hay que atender antes de que deje de estar. */
+.dft__item--urgent {
+  border-left-color: var(--vt-warning);
+}
+
+.dft__link {
+  display: flex;
+  flex: 1;
+  gap: var(--vt-space-3);
+  align-items: flex-start;
+  min-width: 0;
+  padding: var(--vt-space-4);
+  text-decoration: none;
+}
+
+.dft__icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  color: var(--vt-text-subtle);
+  background: var(--vt-surface-2);
+  border-radius: var(--vt-radius);
+}
+
+.dft__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.dft__form {
+  font-size: var(--vt-text-base);
+  font-weight: 650;
+  color: var(--vt-text);
+}
+
+.dft__place {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  font-size: var(--vt-text-sm);
+  color: var(--vt-text-muted);
+}
+
+.dft__desc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 12px;
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-muted);
+}
+
+.dft__pair {
+  display: inline-flex;
+  gap: 5px;
+
+  b {
+    font-weight: 650;
+    color: var(--vt-text-subtle);
+  }
+}
+
+.dft__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: 5px;
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-subtle);
+}
+
+.dft__expires {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  font-weight: 650;
+}
+
+.dft__expires--urgent {
+  color: var(--vt-warning);
+}
+
+.dft__go {
+  flex-shrink: 0;
+  align-self: center;
+  color: var(--vt-text-subtle);
+}
+
+/* Eliminar ahora, fuera del enlace: abrir un borrador y descartarlo son dos
+   intenciones opuestas y no pueden compartir zona de pulsación. */
+.dft__drop {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 52px;
+  color: var(--vt-text-subtle);
+  background: none;
+  border: 0;
+  border-left: 1px solid var(--vt-rule);
+
+  &:hover {
+    color: var(--vt-danger);
+    background: color-mix(in srgb, var(--vt-danger) 8%, transparent);
+  }
+}
+
+/* ── Cargando y vacío ─────────────────────────────────────────────────────── */
+
+.dft__ghosts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dft__ghost {
+  height: 100px;
+  background: linear-gradient(
+    90deg,
+    var(--vt-surface-2) 25%,
+    var(--vt-surface) 50%,
+    var(--vt-surface-2) 75%
+  );
+  background-size: 200% 100%;
+  border-radius: var(--vt-radius);
+  animation: dft-shine 1.3s linear infinite;
+}
+
+@keyframes dft-shine {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.dft__empty {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  padding: var(--vt-space-6) var(--vt-space-4);
+  text-align: center;
+
+  p {
+    max-width: 40ch;
+    margin: 0;
+    font-size: var(--vt-text-sm);
+    color: var(--vt-text-muted);
+  }
+}
+
+.dft__empty-icon {
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  color: var(--vt-success);
+  background: color-mix(in srgb, var(--vt-success) 12%, transparent);
+  border-radius: var(--vt-radius-full);
+}
+
+@media (max-width: 640px) {
+  .dft {
+    padding: var(--vt-space-4) 8px;
+  }
+}

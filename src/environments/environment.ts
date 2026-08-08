@@ -22,6 +22,24 @@ export const environment = {
    */
   useLocalApi: false,
 
+  /**
+   * De dónde se leen los archivos que ya están en el servidor.
+   *
+   * Es el mismo recurso que usa la plataforma para enseñar una foto:
+   * `?e=PICTURE&id=<guid>`. Se pide por identificador y no por su ruta en el
+   * bucket porque una consigna no trae la extensión del archivo, y sin ella no
+   * se puede construir la clave de S3.
+   */
+  /**
+   * Servidor de archivos de la plataforma. Hoy solo como **respaldo**.
+   *
+   * Los archivos se leen por `GET /dispatchFile` de la API, que es lo unico
+   * que el navegador puede leer de verdad: este dominio no autoriza la lectura
+   * desde otro origen. Esta direccion se sigue usando para abrir un archivo en
+   * una pestana cuando el puente no lo tiene.
+   */
+  binariesUrl: 'https://and.visitrack.com/WebResource.aspx',
+
   /** Segundos antes de dar por perdida una petición. */
   requestTimeout: 30,
 

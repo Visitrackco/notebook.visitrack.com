@@ -21,6 +21,22 @@ export interface FieldOption {
   act_data?: string;
 }
 
+/** Qué dato del ítem elegido se muestra bajo el desplegable. */
+export interface DescriptorConfig {
+  /** Campo del formulario de la lista del que sale el valor. */
+  id: string;
+  lab: string;
+  /** Solo se muestran los marcados. */
+  isSelected?: boolean;
+}
+
+/** Un dato del ítem elegido, ya resuelto. */
+export interface ResolvedDescriptor {
+  id: string;
+  lab: string;
+  val: string;
+}
+
 /** Un campo del formulario. */
 export interface FormField {
   id: string;
@@ -36,8 +52,28 @@ export interface FormField {
   /** Obligatorio. */
   req?: boolean;
 
-  /** Valor por defecto. */
-  def?: string;
+  /**
+   * Valor por defecto.
+   *
+   * Puede ser un texto —lo que se escribe en el campo—, una palabra clave
+   * temporal (`CURRENTDATE`), o una **referencia** a un dato del registro del
+   * que cuelga el formulario. Ese último caso se reconoce por las banderas
+   * `defaultIs*` y lo resuelve `inherited-defaults`.
+   */
+  def?: string | DefaultRef;
+
+  /**
+   * El valor por defecto se lee de otro registro.
+   *
+   * De la ubicación, del activo, del ítem de la lista o del de inventario. En
+   * una tabla de detalle ese registro es el ítem del que nació la fila, y es lo
+   * que permite que el sub-formulario llegue con la dirección de la sede o el
+   * código del equipo ya escritos.
+   */
+  defaultIsLocationField?: boolean;
+  defaultIsAssetField?: boolean;
+  defaultIsListField?: boolean;
+  defaultIsItemField?: boolean;
   /** Texto del párrafo o del título, según el tipo. */
   txt?: string;
   tit?: string;
@@ -46,8 +82,24 @@ export interface FormField {
   /** Texto de ayuda bajo el campo. */
   hel?: string;
 
+  /**
+   * Identificador del campo en la plataforma.
+   *
+   * Casi nunca importa, con una excepción: si contiene `_star`, un campo de
+   * selección única se dibuja como una **calificación por estrellas** en vez de
+   * como una lista de opciones. Es una convención del diseñador de formularios
+   * —el tipo sigue siendo `radio`— y así lo interpreta la app.
+   */
+  apiId?: string;
+
   /** Configuración propia del tipo: mínimos, máximos, formato. */
   key?: string;
+
+  /**
+   * Campos de fecha inicial y final de un `datediff`.
+   *
+   * El resultado es `dat2 - dat1` en días, con las horas descartadas.
+   */
   dat1?: string;
   dat2?: string;
 
@@ -62,6 +114,37 @@ export interface FormField {
   /** Opciones, en los campos de selección. */
   opt?: FieldOption[];
 
+  /**
+   * Lista de la que salen las opciones, cuando no vienen en `opt`.
+   *
+   * Es el `ListID` de la tabla de listas. Un desplegable puede tener sus
+   * opciones escritas en el propio formulario —eso es `opt`— o apuntar a una
+   * lista mantenida en Visitrack con miles de ítems.
+   */
+  lst?: string | number;
+
+  /**
+   * Entidad de la que salen los ítems.
+   *
+   * `0` es una lista normal. Otros valores apuntan a ubicaciones, activos,
+   * usuarios o ítems de inventario, que esta versión todavía no resuelve.
+   */
+  ent?: string | number;
+
+  /**
+   * Campo del que depende: solo se muestran los ítems cuyo padre sea el
+   * elegido allí. Es lo que encadena «departamento → ciudad».
+   */
+  parentId?: string;
+
+  /**
+   * Qué datos del ítem se enseñan al elegirlo.
+   *
+   * Cada entrada trae `id`, `lab` e `isSelected`; solo las marcadas se
+   * muestran. Los valores salen del `jsonValues` del propio ítem.
+   */
+  des?: DescriptorConfig[];
+
   /** Distinto de 0 si el campo es descriptivo del listado. */
   pri?: number | boolean;
 
@@ -74,6 +157,15 @@ export interface FormField {
   url?: string;
 
   /**
+   * Valor fijo que trae el propio esquema.
+   *
+   * En un hipervínculo es la **plantilla de la dirección**, con sus marcadores
+   * sin resolver. Es donde la guarda el diseñador de formularios, y por eso se
+   * lee antes que `url`.
+   */
+  val?: string;
+
+  /**
    * Impide elegir la fotografía de la galería.
    *
    * Con esto activado solo vale la cámara: es para las inspecciones donde la
@@ -84,6 +176,78 @@ export interface FormField {
    * haya guardado el diseñador del formulario.
    */
   blockGallery?: boolean | string | number;
+
+  /**
+   * Permisos sobre las filas de una tabla de detalle.
+   *
+   * `mobAdd` para agregar, `mobUpd` para abrir y editar, `mobDel` para
+   * eliminar. Los valores por omisión son los de la app y no coinciden entre
+   * sí: **agregar está cerrado salvo que el formulario lo abra**, mientras que
+   * editar y eliminar están abiertos salvo que lo cierre.
+   */
+  mobAdd?: boolean;
+  mobDel?: boolean;
+
+  /**
+   * ¿Las filas de la tabla de detalle viajan como novedad?
+   *
+   * Ausente es `true`, igual que en la app: lo normal es que una fila creada en
+   * el dispositivo sea algo que el servidor todavía no tiene.
+   */
+  mobUpd?: boolean;
+
+  /**
+   * Fórmula de un campo calculado.
+   *
+   * Cada entrada es un operando con su operación. La interpreta
+   * `derived-fields`, que documenta el orden en que se aplican — que no es el
+   * de escritura.
+   */
+  ele?: CalculationElement[];
+
+  /** Campo de tabla de detalle sobre el que suma un `sumdetail`. */
+  mde?: string;
+
+  /** Campo de cada fila que acumula un `sumdetail`. */
+  fid?: string;
+
+  /**
+   * Tope de filas de una tabla de detalle.
+   *
+   * `0` o ausente es sin límite. Se lee con [rowLimit], que normaliza lo que
+   * venga: el diseñador lo guarda unas veces como número y otras como texto.
+   */
+  limitRows?: number | string;
+}
+
+/**
+ * Referencia a un dato del registro del que cuelga el formulario.
+ *
+ * `id` es una clave conocida (`LOC_NAME`, `ITE_PRICE`…) o el identificador de
+ * un campo del `jsonValues` de ese registro. `lab` es lo que ve el diseñador
+ * del formulario y aquí no se usa.
+ */
+export interface DefaultRef {
+  id: string;
+  lab?: string;
+}
+
+/**
+ * Un operando de la fórmula de un campo calculado.
+ *
+ * Se declara aquí, con el resto del esquema, y lo interpreta `derived-fields`.
+ */
+export interface CalculationElement {
+  /** Es el valor base sobre el que se aplica todo lo demás. */
+  isFirst?: boolean;
+  /** «Is konstante»: usa `val` en vez del valor de otro campo. */
+  isk?: boolean;
+  /** Campo del que se toma el valor. */
+  fie?: string;
+  /** Constante literal. */
+  val?: string | number;
+  /** 1 sumar · 2 restar · 3 multiplicar · 4 dividir. */
+  ope?: number | string;
 }
 
 /** Una página del formulario. */
@@ -127,6 +291,20 @@ export interface FileValue {
   tph: number;
 }
 
+/**
+ * Una fila de una tabla de detalle.
+ *
+ * Aquí solo se declara lo justo para distinguirla de las demás formas que puede
+ * tomar un valor. La forma completa —con todo lo que el backend espera de una
+ * fila— vive en `master-detail.ts`, que es quien las crea y las lee; ponerla
+ * entera aquí obligaría al esquema a saber de un tipo de campo concreto.
+ */
+export interface DetailRowValue {
+  GUID: string;
+  Name: string;
+  JSONValues: AnswerField[];
+}
+
 /** Valor de un campo, según su tipo. */
 export type FieldValue =
   /** Texto, número, fecha, hora: todos se guardan como cadena. */
@@ -139,6 +317,8 @@ export type FieldValue =
   | GeoValue
   /** Fotografía, firma, audio, video o documento. */
   | FileValue
+  /** Tabla de detalle: sus filas, cada una con su sub-formulario. */
+  | DetailRowValue[]
   | null;
 
 /** Una respuesta guardada, tal como vive en `SurveyAnswers.Fields`. */
@@ -148,8 +328,14 @@ export interface AnswerField {
   fty: string;
   /** Visibilidad en el momento de guardar. La usa la validación. */
   hid: boolean;
-  /** Descriptivos resueltos, en los campos que los traen. */
-  des?: unknown;
+  /**
+   * Descriptivos del ítem elegido, ya resueltos.
+   *
+   * Se guardan **con la respuesta** y no se recalculan al abrirla: el ítem
+   * puede cambiar en Visitrack después, y lo que documenta la actividad es lo
+   * que decía cuando se respondió.
+   */
+  des?: ResolvedDescriptor[];
 
   /**
    * Ficha completa del archivo, en los tipos que la desdoblan.
@@ -230,6 +416,23 @@ export function asOption(value: FieldValue): { id: string; txt: string } | null 
 }
 
 /**
+ * Las opciones marcadas, en un valor de selección múltiple.
+ *
+ * Un valor en arreglo ya no es necesariamente una lista de opciones: una tabla
+ * de detalle guarda así sus filas. Se filtra por forma en vez de dar por hecho
+ * que todo arreglo es de opciones, que es lo que dejaba a un `map` leyendo
+ * `txt` en una fila y devolviendo huecos.
+ */
+export function asOptions(value: FieldValue): { id: string; txt: string }[] {
+  if (!Array.isArray(value)) return [];
+
+  return value.filter(
+    (entry): entry is { id: string; txt: string } =>
+      typeof (entry as { txt?: unknown }).txt === 'string',
+  );
+}
+
+/**
  * ¿Es este valor una lectura de GPS?
  *
  * Se pide que `lat` y `lng` sean **números**, no solo que existan: un archivo
@@ -298,20 +501,38 @@ export function parseQuestions(raw: unknown): FormPage[] {
     }));
 }
 
-/** Interpreta el `Fields` de una actividad. */
+/**
+ * Interpreta las respuestas de un formulario.
+ *
+ * Llegan de dos sitios y en dos formas: de una actividad, como el texto JSON
+ * que guarda `SurveyAnswers.Fields`; y de una fila de tabla de detalle, como el
+ * arreglo que ya vive dentro de esa actividad, sin volver a serializar.
+ *
+ * Contemplar las dos no es una concesión: convertir el arreglo a texto para
+ * volver a leerlo sería trabajo inventado, y hacerlo con `String()` lo dejaba
+ * en `"[object Object]"` — que es exactamente lo que se veía como «Fields
+ * ilegible» al abrir cualquier fila.
+ */
 export function parseAnswerFields(raw: unknown): AnswerField[] {
   if (!raw) return [];
 
-  const text = String(raw).trim();
+  if (Array.isArray(raw)) return raw.filter(isAnswerField);
+
+  const text = typeof raw === 'string' ? raw.trim() : '';
   if (!text) return [];
 
   try {
-    const decoded = JSON.parse(text);
-    return Array.isArray(decoded) ? decoded : [];
+    const decoded: unknown = JSON.parse(text);
+    return Array.isArray(decoded) ? decoded.filter(isAnswerField) : [];
   } catch {
     console.error('[Forms] Fields ilegible');
     return [];
   }
+}
+
+/** Una respuesta con forma reconocible. Descarta huecos y restos de versiones viejas. */
+function isAnswerField(entry: unknown): entry is AnswerField {
+  return Boolean(entry) && typeof entry === 'object' && 'id' in (entry as object);
 }
 
 // ─── Reglas ──────────────────────────────────────────────────────────────────
@@ -376,8 +597,14 @@ export function findMissingRequired(
     for (const field of page.fie) {
       if (!field.req) continue;
 
-      // Un campo oculto no se exige: su control no llega a dibujarse, así que
-      // el usuario no tendría forma de responderlo. Exigirlo dejaba el
+      // Un campo que solo muestra algo no puede exigirse: no tiene dónde
+      // responder. Pasa con los formularios vinculados, que en la web no se
+      // dibujan — marcados como obligatorios dejarían la actividad imposible
+      // de guardar.
+      if (isDisplayOnly(field.fty)) continue;
+
+      // Un campo oculto tampoco se exige: su control no llega a dibujarse, así
+      // que el usuario no tendría forma de responderlo. Exigirlo dejaba el
       // formulario bloqueado sin nada que hacer al respecto.
       if (!isFieldVisible(field, activeSections)) continue;
 
@@ -399,7 +626,16 @@ export function findMissingRequired(
  * que hay que buscar—, no un sitio donde subir una. La que se toma en campo es
  * `picture`.
  */
-const DISPLAY_ONLY = new Set(['title', 'paragraph', 'hyperlink', 'image']);
+const DISPLAY_ONLY = new Set([
+  'title',
+  'paragraph',
+  'hyperlink',
+  'image',
+  // El formulario vinculado no se dibuja en la web. Van los dos nombres: la
+  // app lo llama `form` y el diseñador web lo emite como `webform`.
+  'form',
+  'webform',
+]);
 
 /**
  * ¿Este campo de fotografía prohíbe la galería?
@@ -431,17 +667,12 @@ export function isDisplayOnly(fty: string): boolean {
 /**
  * Tipos que este motor todavía no dibuja.
  *
- * Se declaran para poder avisar al usuario en su sitio, con el nombre del
- * campo. Un hueco silencioso haría creer que el formulario está completo
- * cuando le falta justo la foto que se pedía.
+ * Vacío: ya se dibujan todos. Se conserva el mecanismo porque el día que
+ * Visitrack añada un tipo de campo, un hueco silencioso haría creer que el
+ * formulario está completo cuando le falta justo lo que se pedía — y este es el
+ * sitio donde declararlo para avisarlo con el nombre del campo.
  */
-const PENDING_TYPES: Record<string, string> = {
-  masterdetail: 'Tabla de detalle',
-  sumdetail: 'Suma de detalle',
-  calculation: 'Campo calculado',
-  datediff: 'Diferencia de fechas',
-  form: 'Formulario vinculado',
-};
+const PENDING_TYPES: Record<string, string> = {};
 
 /** Nombre legible de un tipo aún no implementado. Vacío si sí lo está. */
 export function pendingTypeName(fty: string): string {
@@ -454,7 +685,21 @@ export function valueToText(value: FieldValue): string {
   if (typeof value === 'string') return value;
 
   if (Array.isArray(value)) {
-    return value.map((option) => option.txt).filter(Boolean).join(', ');
+    const options = asOptions(value);
+
+    // Un arreglo sin opciones dentro son las filas de una tabla de detalle.
+    // Enumerarlas no diría nada útil —son formularios enteros—, así que se
+    // resume con cuántas hay, que es lo que se quiere saber de un vistazo.
+    if (options.length === 0) {
+      return value.length === 0
+        ? ''
+        : `${value.length} ${value.length === 1 ? 'registro' : 'registros'}`;
+    }
+
+    return options
+      .map((option) => option.txt)
+      .filter(Boolean)
+      .join(', ');
   }
 
   const option = asOption(value);

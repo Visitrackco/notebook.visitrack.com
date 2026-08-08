@@ -7,6 +7,16 @@ export const environment = {
   localApiUrl: '',
   useLocalApi: false,
 
+  /**
+   * Servidor de archivos de la plataforma. Solo como respaldo.
+   *
+   * Los archivos se leen por `GET /dispatchFile` de la API: este dominio no
+   * autoriza la lectura desde otro origen, así que el navegador no puede
+   * guardarlos. Esta dirección sirve para abrir un archivo en una pestaña
+   * cuando el puente no lo tiene.
+   */
+  binariesUrl: 'https://and.visitrack.com/WebResource.aspx',
+
   requestTimeout: 30,
   syncIntervalMinutes: 15,
 

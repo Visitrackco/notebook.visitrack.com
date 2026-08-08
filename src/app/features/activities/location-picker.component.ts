@@ -13,6 +13,7 @@ import {
   descriptorsMatch,
   parseEntityDescriptors,
 } from '../../shared/utils/descriptors';
+import { PermissionsService } from '../../core/services/permissions.service';
 import { EntityPickerComponent, PickerItem } from './entity-picker/entity-picker.component';
 
 /** Cuántas ubicaciones se traen por página. */
@@ -50,7 +51,10 @@ const SEARCH_DELAY_MS = 300;
       emptyMessage="Este tipo de ubicación no tiene registros en este equipo. Sincroniza tus datos e inténtalo de nuevo."
       (search)="onSearch($event)"
       (loadMore)="loadMore()"
+      [createLabel]="canCreate() ? 'Nueva ubicación' : ''"
+      [createBlocked]="permissions.entitiesReason()"
       (choose)="choose($event)"
+      (create)="createNew()"
       (back)="goBack()"
     />
   `,
@@ -58,12 +62,22 @@ const SEARCH_DELAY_MS = 300;
 export class LocationPickerComponent {
   private readonly router = inject(Router);
   private readonly activities = inject(ActivityService);
+  readonly permissions = inject(PermissionsService);
 
   /** Formulario, del segmento de la ruta. */
   readonly surveyId = input.required<string>();
 
   /** GUID de la actividad en curso, del parámetro de consulta. */
   readonly actividad = input('');
+
+  /**
+   * Ubicación recién dada de alta, de vuelta del editor.
+   *
+   * Quien salió a crearla lo hizo porque era la que necesitaba: se asocia sola
+   * y se sigue al paso siguiente, en vez de devolver a una lista donde habría
+   * que buscarla.
+   */
+  readonly creado = input('');
 
   private readonly survey = signal<Survey | null>(null);
   private readonly answer = signal<SurveyAnswer | null>(null);
@@ -137,11 +151,31 @@ export class LocationPickerComponent {
       this.typeName.set(name);
       this.total.set(total);
       this.page.set(first);
+
+      // Antes de que el usuario toque nada: viene de crearla, no de mirar.
+      if (this.creado()) await this.attachCreated(this.creado(), requirements);
     } catch (error) {
       console.error('[LocationPicker] no se pudieron cargar las ubicaciones', error);
     } finally {
       this.loading.set(false);
     }
+  }
+
+  /**
+   * Asocia la ubicación recién creada y sigue.
+   *
+   * Se busca sobre todas las del tipo y no sobre la primera página: acaba de
+   * nacer y puede estar en cualquier posición del orden.
+   */
+  private async attachCreated(guid: string, requirements: SurveyRequirements): Promise<void> {
+    const all = await this.activities.listLocations(requirements.locationTypeGuid);
+    const created = all.find((location) => location.GUID === guid);
+
+    // Si no está —se canceló el alta, o se creó de otro tipo—, no se hace nada:
+    // el selector se queda como estaba y el usuario elige.
+    if (!created) return;
+
+    await this.attach(created);
   }
 
   /** Trae la siguiente página y la añade a lo que ya se está mostrando. */
@@ -210,14 +244,24 @@ export class LocationPickerComponent {
    * formulario también pide activo, toca el otro selector; si no, el formulario.
    */
   async choose(item: PickerItem): Promise<void> {
+    const source = this.matches() ?? this.page();
+    const location = source.find((candidate) => candidate.GUID === item.id);
+
+    if (location) await this.attach(location);
+  }
+
+  /**
+   * Asocia la ubicación y avanza.
+   *
+   * Recibe el registro y no su identificador porque quien acaba de crear una
+   * sede la tiene en la mano: buscarla en la lista visible fallaría en silencio
+   * si por orden alfabético cayó más allá de la primera página.
+   */
+  private async attach(location: LocationForm): Promise<void> {
     const answer = this.answer();
     const requirements = this.requirements();
     const surveyId = this.survey()?.SurveyID;
     if (!answer || !requirements || !surveyId) return;
-
-    const source = this.matches() ?? this.page();
-    const location = source.find((candidate) => candidate.GUID === item.id);
-    if (!location) return;
 
     const updated = await this.activities.attachLocation(answer, location);
     if (!updated) return;
@@ -235,7 +279,33 @@ export class LocationPickerComponent {
       return;
     }
 
-    await this.router.navigate(['/formularios', surveyId, 'actividad', updated.GUID]);
+    // Fuera del historial: la ubicación ya quedó guardada, y volver atrás desde
+    // el formulario debe llevar al listado en vez de repetir la elección.
+    await this.router.navigate(['/formularios', surveyId, 'actividad', updated.GUID], {
+      replaceUrl: true,
+    });
+  }
+
+  /** El rol permite dar de alta lo que no aparece en la lista. */
+  readonly canCreate = computed(() => this.permissions.canCreateLocations());
+
+  /**
+   * Sale a crear la entidad y vuelve aquí.
+   *
+   * La actividad a medias sigue en la dirección, así que al volver el selector
+   * se retoma en el mismo punto — con la recién creada ya en la lista. Es lo
+   * que evita que dar de alta una sede obligue a empezar la actividad de nuevo.
+   */
+  async createNew(): Promise<void> {
+    await this.router.navigate(['/ubicaciones', 'nueva'], {
+      queryParams: {
+        volver: this.router.url,
+
+        // Del tipo que exige el formulario: creada de otro, no aparecería en
+        // este mismo selector al volver.
+        tipo: this.requirements()?.locationTypeGuid ?? '',
+      },
+    });
   }
 
   /** Vuelve al listado de actividades del formulario. */

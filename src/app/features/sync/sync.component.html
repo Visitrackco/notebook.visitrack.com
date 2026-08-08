@@ -18,6 +18,20 @@
           <vt-icon name="check" [size]="17" />
           {{ status.checking() ? 'Comparando…' : 'Comparar' }}
         </button>
+        <!-- La salida cuando se sincroniza y no baja nada. No toca los datos:
+             solo le dice al servidor que este equipo se lo tiene que volver a
+             mandar entero. -->
+        <button
+          type="button"
+          class="vt-btn vt-btn-ghost"
+          [disabled]="connectivity.isOffline()"
+          (click)="resyncEverything()"
+          title="Vuelve a marcar todos tus datos como pendientes para este equipo"
+        >
+          <vt-icon name="cloud-upload" [size]="17" />
+          Volver a pedirlo todo
+        </button>
+
         <button
           type="button"
           class="vt-btn vt-btn-primary"
@@ -33,7 +47,7 @@
 
   @if (connectivity.isOffline()) {
     <div class="sync__note sync__note--warning">
-      <vt-icon name="wifi-off" [size]="19" />
+      <vt-icon name="connection-off" [size]="19" />
       <div>
         <strong>Sin conexión</strong>
         <span>

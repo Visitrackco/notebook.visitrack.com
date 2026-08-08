@@ -251,73 +251,164 @@
 
 /* ── Contexto ──────────────────────────────────────────────────────────────── */
 
+/**
+ * Ubicación y activo de la actividad.
+ *
+ * Dos tarjetas de verdad, no dos píldoras. Son el **sujeto** de lo que se está
+ * inspeccionando —en qué sede y sobre qué equipo— y como etiquetas pequeñas se
+ * leían como un detalle secundario, cuando en realidad son lo primero que hay
+ * que confirmar antes de responder nada.
+ *
+ * Se reparten el ancho a partes iguales y bajan a una columna cuando no caben.
+ */
 .detail__context {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: var(--vt-space-2);
+  align-items: stretch;
 }
 
-.detail__chip {
-  display: inline-flex;
-  gap: 9px;
+.detail__entity {
+  display: flex;
+  gap: var(--vt-space-3);
   align-items: center;
-  max-width: 100%;
-  padding: 7px var(--vt-space-3);
-  text-align: left;
+  height: 100%;
+  padding: var(--vt-space-3) var(--vt-space-4);
   background: var(--vt-surface);
   border: 1px solid var(--vt-rule);
-  border-radius: var(--vt-radius-full);
-  transition:
-    border-color var(--vt-transition),
-    background var(--vt-transition);
-
-  > vt-icon {
-    flex-shrink: 0;
-    color: var(--accent);
-  }
-
-  &:hover {
-    background: var(--vt-surface-2);
-    border-color: color-mix(in srgb, var(--accent) 40%, transparent);
-
-    .detail__chip-action {
-      color: var(--accent);
-    }
-  }
+  border-radius: var(--vt-radius-lg);
 }
 
-.detail__chip-text {
+/* El disco toma el color de la familia: azul para el sitio, ámbar para el
+   equipo. Distinguirlos por color deja identificar cada ficha sin leerla. */
+.detail__entity-icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: var(--vt-radius);
+}
+
+.detail__entity--location .detail__entity-icon {
+  color: var(--vt-icon-blue-fg);
+  background: var(--vt-icon-blue-bg);
+}
+
+.detail__entity--asset .detail__entity-icon {
+  color: var(--vt-icon-amber-fg);
+  background: var(--vt-icon-amber-bg);
+}
+
+.detail__entity-text {
   display: flex;
   flex-direction: column;
-  min-width: 0;
-  line-height: 1.25;
+  gap: 1px;
 
-  em {
-    font-size: 9px;
-    font-style: normal;
-    font-weight: 600;
+  /* Sin esto, un nombre largo ensancha su columna y rompe el reparto a partes
+     iguales en vez de recortarse dentro de su ficha. */
+  min-width: 0;
+
+  small {
+    font-size: 10px;
+    font-weight: 650;
     color: var(--vt-text-subtle);
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
 
-  b {
+  strong {
+    overflow: hidden;
+    font-size: var(--vt-text-base);
+    font-weight: 650;
+    line-height: 1.3;
+    color: var(--vt-text);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* La dirección o la etiqueta del equipo: el dato que confirma que es el
+     correcto cuando dos se llaman parecido. */
+  span {
     overflow: hidden;
     font-size: var(--vt-text-xs);
-    font-weight: 600;
+    color: var(--vt-text-muted);
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 }
 
-.detail__chip-action {
-  flex-shrink: 0;
-  padding-left: var(--vt-space-2);
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--vt-text-subtle);
-  border-left: 1px solid var(--vt-rule);
-  transition: color var(--vt-transition);
+@media (max-width: 640px) {
+  .detail__entity {
+    padding: var(--vt-space-3);
+  }
+
+  .detail__entity-icon {
+    width: 38px;
+    height: 38px;
+  }
+}
+
+/**
+ * Formulario bloqueado por incoherencia entre ubicación y activo.
+ *
+ * Ocupa el sitio del formulario en vez de aparecer como aviso encima: no es una
+ * advertencia que se pueda ignorar, es que aquí no hay nada que responder hasta
+ * resolverlo. Y las dos salidas están a mano, porque cualquiera de las dos vale.
+ */
+.detail__blocked {
+  display: grid;
+  gap: var(--vt-space-3);
+  justify-items: center;
+  padding: var(--vt-space-6) var(--vt-space-4);
+  text-align: center;
+}
+
+.detail__blocked-icon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  color: var(--vt-icon-amber-fg);
+  background: var(--vt-icon-amber-bg);
+  border-radius: 50%;
+}
+
+.detail__blocked-text {
+  max-width: 460px;
+
+  strong {
+    display: block;
+    margin-bottom: 5px;
+    font-size: var(--vt-text-lg);
+    font-weight: 650;
+  }
+
+  p {
+    margin: 0;
+    font-size: var(--vt-text-sm);
+    line-height: 1.55;
+    color: var(--vt-text-muted);
+  }
+}
+
+.detail__blocked-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vt-space-2);
+  justify-content: center;
+  margin-top: var(--vt-space-2);
+}
+
+@media (max-width: 560px) {
+  .detail__blocked-actions {
+    flex-direction: column;
+    width: 100%;
+
+    .vt-btn {
+      width: 100%;
+    }
+  }
 }
 
 /* ── Paneles ───────────────────────────────────────────────────────────────── */
@@ -343,6 +434,25 @@
   scroll-margin-top: calc(var(--vt-sticky-offset) + 16px);
 }
 
+/**
+ * El panel del formulario se borra.
+ *
+ * Cada pregunta trae ya su propia tarjeta, y una tarjeta blanca dentro de otra
+ * tarjeta blanca no se distingue: el relieve desaparece y vuelve a leerse como
+ * un bloque continuo. Sin panel, lo que queda detrás es el papel de la página
+ * y las preguntas se despegan de él.
+ *
+ * Va **después** de `.detail__panel` a propósito: las dos reglas tienen la
+ * misma especificidad —una clase cada una—, así que gana la última escrita.
+ * Puesta antes, el panel volvía a pintarse encima.
+ */
+.detail__panel--sheet {
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
 /* ── Detalles ──────────────────────────────────────────────────────────────── */
 
 /**
@@ -353,36 +463,83 @@
  * bloque que se lea entero. Sin el marco del panel dejan de competir con el
  * formulario, que es lo que de verdad ocupa la pantalla.
  */
+/**
+ * Datos de control de la actividad.
+ *
+ * Tres o cuatro fichas iguales en una fila. `1fr` a secas y no `auto-fit` con
+ * mínimo: con el mínimo, la última ficha se estiraba para ocupar el hueco
+ * sobrante y quedaba visiblemente más ancha que las otras. Repartir el ancho a
+ * partes iguales es lo que hace que la fila se lea como una unidad.
+ */
 .detail__facts {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: var(--vt-space-2);
+  align-items: stretch;
 }
 
 .detail__fact {
   display: flex;
-  gap: 10px;
+  gap: var(--vt-space-3);
   align-items: center;
-  padding: 10px var(--vt-space-3);
+  width: 100%;
+
+  /* Alto uniforme aunque un valor ocupe dos líneas: fichas de distinta altura
+     en la misma fila es lo que más delata un bloque mal ajustado. */
+  height: 100%;
+  padding: var(--vt-space-3);
+  font-family: var(--vt-font);
   text-align: left;
   background: var(--vt-surface);
   border: 1px solid var(--vt-rule);
   border-radius: var(--vt-radius);
+}
 
-  dt {
+/**
+ * Etiqueta y valor, en columna y alineados al mismo borde.
+ *
+ * `min-width: 0` es lo que permite que el texto se recorte dentro de la ficha:
+ * sin él, un elemento de rejilla no baja de su contenido y un identificador
+ * largo ensancharía su columna estropeando la simetría de toda la fila.
+ */
+.detail__fact-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+
+  small {
     font-size: 10px;
-    font-weight: 600;
+    font-weight: 650;
     color: var(--vt-text-subtle);
     text-transform: uppercase;
     letter-spacing: 0.04em;
   }
 
-  dd {
-    margin-top: 1px;
+  strong {
+    overflow: hidden;
     font-size: var(--vt-text-sm);
     font-weight: 600;
-    overflow-wrap: anywhere;
+    line-height: 1.35;
+    color: var(--vt-text);
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
+}
+
+.detail__fact-icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  color: var(--vt-text-subtle);
+  background: var(--vt-surface-2);
+  border-radius: var(--vt-radius-sm);
+  transition:
+    color var(--vt-transition),
+    background var(--vt-transition);
 }
 
 .detail__fact--copy {
@@ -396,28 +553,38 @@
     border-color: var(--accent);
 
     .detail__fact-icon {
-      color: var(--accent);
+      color: var(--vt-on-brand);
+      background: var(--accent);
+    }
+
+    .detail__fact-hint {
+      opacity: 1;
     }
   }
 }
 
-.detail__fact-icon {
-  display: grid;
+/* Pista de que la ficha se puede pulsar. Aparece al pasar por encima: fija
+   sería un icono repetido al lado del que ya está a la izquierda. */
+.detail__fact-hint {
   flex-shrink: 0;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  color: var(--vt-text-subtle);
-  background: var(--vt-surface-2);
-  border-radius: var(--vt-radius-sm);
-  transition: color var(--vt-transition);
+  color: var(--accent);
+  opacity: 0;
+  transition: opacity var(--vt-transition);
 }
 
 .detail__guid {
   font-family: var(--vt-font-mono);
-  font-size: var(--vt-text-xs) !important;
-  font-weight: 500 !important;
+  font-size: var(--vt-text-xs);
+  font-weight: 500;
   color: var(--vt-text-muted);
+}
+
+/* En el teléfono, una ficha por fila: a dos columnas, «06 ago 2026, 06:34» no
+   cabe y se recortaría justo la hora. */
+@media (max-width: 640px) {
+  .detail__facts {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Avisos de la política de borrado. Van fuera de las fichas porque son una
@@ -555,4 +722,26 @@
   .detail__panel {
     padding: var(--vt-space-3) var(--vt-space-2);
   }
+}
+
+/**
+ * La actividad, detrás de una fila abierta.
+ *
+ * Oculta pero montada: dentro está el campo que abrió la fila esperando lo que
+ * se responda. `display: none` y no una opacidad porque no tiene que ocupar
+ * sitio ni recibir el foco mientras tanto.
+ */
+.detail--behind {
+  display: none;
+}
+
+/**
+ * Las pantallas que cuelgan de la actividad.
+ *
+ * Solo están para llevarles el color: una fila de tabla de detalle es parte de
+ * la misma actividad, y verla con el azul de la aplicación en vez del color del
+ * formulario la haría parecer otra cosa.
+ */
+.detail__child {
+  display: contents;
 }

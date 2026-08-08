@@ -244,6 +244,67 @@ export class AuthService {
     return this.users.upsertAndActivate(user);
   }
 
+  /**
+   * Entra a una cuenta con la sesión que entrega un teléfono vinculado.
+   *
+   * Es el único camino que crea sesión sin contraseña, y existe porque **la
+   * cuenta ya está autenticada en el teléfono**: lo que viaja es esa
+   * autenticación, no una credencial nueva. Quien la entrega tuvo que escanear
+   * un código de un solo uso y aceptar viendo a qué equipo se la daba.
+   *
+   * Se toman los campos con los mismos valores por omisión que el login normal:
+   * lo que el teléfono no traiga no puede quedar en `undefined`, o la cuenta
+   * quedaría a medias y fallaría más adelante sin decir por qué.
+   */
+  async adoptFromLink(record: Record<string, unknown>): Promise<User> {
+    const text = (value: unknown, fallback = '') =>
+      value === undefined || value === null ? fallback : String(value);
+
+    const user: User = {
+      UserID: text(record['UserID']),
+      GUID: text(record['GUID']),
+      Login: text(record['Login']).trim().toLowerCase(),
+      // El teléfono guarda el nombre en `Name`; aquí la columna es `FirstName`.
+      FirstName: text(record['FirstName'], text(record['Name'])),
+      LastName: text(record['LastName']),
+
+      /**
+       * La contraseña no viaja.
+       *
+       * El teléfono no la guarda en claro y aquí no hace ninguna falta: la
+       * sesión ya está creada. Queda vacía a propósito — al cerrar sesión habrá
+       * que entrar como siempre.
+       */
+      Password: '',
+      UTCCode: text(record['UTCCode']),
+      Email: text(record['Email']),
+      CompanyID: Number(record['CompanyID'] ?? 0),
+      Token: text(record['Token']),
+      DefaultLanguage: text(record['DefaultLanguage'], 'es'),
+      GroupID: Number(record['GroupID'] ?? 0),
+      DivisionID: Number(record['DivisionID'] ?? 0),
+      Active: this.normalizeActive(record['Active']),
+      WorkZoneID: record['WorkZoneID'] === undefined ? null : Number(record['WorkZoneID']),
+      apiref1: '',
+      Session: '1',
+      StatusID: text(record['StatusID']),
+      Phone: text(record['Phone']),
+
+      // El identificador es **el de este navegador**, no el del teléfono: son
+      // dos equipos distintos y la sincronización los distingue por aquí.
+      DeviceID: this.device.getDeviceId(),
+    };
+
+    if (!user.UserID || !user.Login) {
+      throw new Error('La sesión que llegó del teléfono está incompleta.');
+    }
+
+    const saved = await this.users.upsertAndActivate(user);
+    this.currentUser.set(saved);
+
+    return saved;
+  }
+
   /** Convierte el `Active` del backend a '1' / '0'. */
   private normalizeActive(value: unknown): string {
     if (value === true || value === 1 || value === '1') return '1';

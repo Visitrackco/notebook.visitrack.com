@@ -18,19 +18,18 @@
     </button>
   </header>
 
-  <div
-    #stage
-    class="viewer__stage"
-    [class.viewer__stage--white]="onWhite()"
-    [class.viewer__stage--grab]="isImage()"
-    (wheel)="onWheel($event)"
-    (dblclick)="onDoubleClick($event)"
-    (pointerdown)="onPointerDown($event)"
-    (pointermove)="onPointerMove($event)"
-    (pointerup)="onPointerUp($event)"
-    (pointercancel)="onPointerUp($event)"
-  >
-    @if (isImage()) {
+  @if (isImage()) {
+    <div
+      #stage
+      class="viewer__stage viewer__stage--grab"
+      [class.viewer__stage--white]="onWhite()"
+      (wheel)="onWheel($event)"
+      (dblclick)="onDoubleClick($event)"
+      (pointerdown)="onPointerDown($event)"
+      (pointermove)="onPointerMove($event)"
+      (pointerup)="onPointerUp($event)"
+      (pointercancel)="onPointerUp($event)"
+    >
       <img
         #media
         class="viewer__media"
@@ -39,10 +38,27 @@
         [style.transform]="transform()"
         draggable="false"
       />
-    } @else {
-      <video class="viewer__media viewer__media--video" [src]="src()" controls playsinline></video>
-    }
-  </div>
+    </div>
+  } @else {
+    <!--
+      El video va en su propio contenedor, sin los manejadores del zoom.
+
+      Compartiendo el de la imagen heredaba `touch-action: none` —que deja los
+      controles nativos sin responder al tacto— y sus escuchas de puntero, que
+      se quedaban con los gestos antes de que llegaran a la barra de
+      reproducción. El reproductor estaba, pero no había forma de usarlo.
+    -->
+    <div class="viewer__stage viewer__stage--video">
+      <video
+        class="viewer__player"
+        [src]="src()"
+        controls
+        controlsList="nodownload"
+        preload="metadata"
+        playsinline
+      ></video>
+    </div>
+  }
 
   @if (isImage()) {
     <footer class="viewer__foot">

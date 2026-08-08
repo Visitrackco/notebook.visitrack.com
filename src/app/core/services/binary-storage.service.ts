@@ -4,6 +4,7 @@ import { DatabaseService } from '../database/database.service';
 import { FileValue } from '../forms/form-schema';
 import { BinaryData, BinaryResource, BinaryState, BinaryType } from '../models/sync.model';
 import { BinaryResourceRepository } from '../repositories/binary.repository';
+import { DataRevisionService } from '../sync/data-revision.service';
 import { AuthService } from './auth.service';
 
 /**
@@ -55,6 +56,7 @@ export interface SaveBinaryInput {
 export class BinaryStorageService {
   private readonly db = inject(DatabaseService);
   private readonly binaries = inject(BinaryResourceRepository);
+  private readonly revisions = inject(DataRevisionService);
   private readonly auth = inject(AuthService);
 
   /**
@@ -116,6 +118,7 @@ export class BinaryStorageService {
     };
 
     await this.binaries.put(resource);
+    this.revisions.touchBinaries();
 
     return {
       bin: guid,
@@ -192,6 +195,8 @@ export class BinaryStorageService {
     await this.db.transaction('BinariesData', 'readwrite', (tx) =>
       this.db.request(tx.objectStore('BinariesData').delete(guid)),
     );
+
+    this.revisions.touchBinaries();
   }
 
   /**

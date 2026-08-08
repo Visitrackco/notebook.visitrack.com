@@ -58,6 +58,14 @@
             <!-- Cuántas actividades esperan salir. Va en el menú porque es la
                  única señal de que queda trabajo sin enviar cuando el usuario
                  no está mirando esa pantalla. -->
+            <!-- Cuántas consignas quedan: es el número que decide si hay que
+                 entrar. Sin él habría que abrir la pantalla para saberlo. -->
+            @if (item.key === 'dispatches' && dispatchCount() > 0) {
+              <span class="shell__nav-badge" [title]="dispatchCount() + ' por hacer'">
+                {{ dispatchCount() }}
+              </span>
+            }
+
             @if (item.key === 'pending' && pendingCount() > 0) {
               <span class="shell__nav-badge" [title]="pendingCount() + ' por subir'">
                 {{ pendingCount() }}
@@ -115,6 +123,16 @@
         <vt-icon name="menu" [size]="22" />
       </button>
 
+      <!-- La paleta también tiene botón: un atajo que nadie descubre no existe.
+           Solo donde hay teclado — en una tableta no lleva a ninguna parte. -->
+      @if (hasKeyboard()) {
+        <button type="button" class="shell__palette" (click)="openPalette()">
+          <vt-icon name="clipboard" [size]="16" />
+          <span>Buscar…</span>
+          <kbd>Ctrl</kbd><kbd>K</kbd>
+        </button>
+      }
+
       <div class="shell__topbar-spacer"></div>
 
       <!-- Estado de conexión: siempre visible, porque determina si lo que el
@@ -128,7 +146,7 @@
             : 'Sin conexión. Los cambios se guardan en este equipo y se sincronizarán después.'
         "
       >
-        <vt-icon [name]="connectivity.isOnline() ? 'wifi' : 'wifi-off'" [size]="17" />
+        <vt-icon [name]="connectivity.isOnline() ? 'connection' : 'connection-off'" [size]="17" />
         <span>{{ connectivity.isOnline() ? 'En línea' : 'Sin conexión' }}</span>
       </div>
 
@@ -176,3 +194,12 @@
     </main>
   </div>
 </div>
+
+<!-- Saltar a cualquier sitio y consultar los atajos. Viven en el armazón porque
+     valen en todas las pantallas. -->
+<vt-command-palette />
+<vt-shortcuts-help />
+
+<!-- Lo que pasó fuera de la pantalla que se está mirando: consignas que
+     llegaron, archivos que se descargaron. -->
+<vt-toasts />

@@ -806,3 +806,21 @@
     margin-left: 0;
   }
 }
+
+/**
+ * Cuánto le queda a la actividad en este equipo.
+ *
+ * En gris y no en rojo: no es una alerta. La actividad ya está en Visitrack y
+ * lo único que se retira es la copia local; pintarlo de aviso haría que la
+ * gente creyera que va a perder algo.
+ */
+.acts__retires {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  padding: 2px 9px;
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-muted);
+  background: var(--vt-surface-2);
+  border-radius: var(--vt-radius-full);
+}

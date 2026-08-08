@@ -1,0 +1,48 @@
+@if (hasLink()) {
+  <div class="lnk">
+    <button type="button" class="lnk__open" (click)="open()">
+      <span class="lnk__icon"><vt-icon name="send" [size]="19" /></span>
+
+      <span class="lnk__text">
+        <strong>{{ label() }}</strong>
+        <!-- El destino, sin el token: una credencial en pantalla es una
+             credencial a la vista de quien mire por encima del hombro. -->
+        <small>{{ preview() }}</small>
+      </span>
+
+      <vt-icon name="chevron" [size]="17" class="lnk__caret" />
+    </button>
+
+    <div class="lnk__tools">
+      <button type="button" class="lnk__tool" (click)="copy()">
+        <vt-icon name="copy" [size]="15" />
+        Copiar
+      </button>
+
+      @if (canShare) {
+        <button type="button" class="lnk__tool" (click)="share()">
+          <vt-icon name="send" [size]="15" />
+          Compartir
+        </button>
+      }
+
+      <!-- Se avisa de que el enlace lleva datos de la sesión: quien lo copie
+           para pegarlo en un chat debe saber que va firmado con su token. -->
+      @if (isDynamic()) {
+        <span class="lnk__note">
+          <vt-icon name="shield" [size]="13" />
+          Incluye tus datos de sesión
+        </span>
+      }
+    </div>
+
+    @if (feedback()) {
+      <p class="lnk__feedback">{{ feedback() }}</p>
+    }
+  </div>
+} @else {
+  <p class="lnk__empty">
+    <vt-icon name="alert" [size]="15" />
+    Este enlace no tiene una dirección configurada.
+  </p>
+}

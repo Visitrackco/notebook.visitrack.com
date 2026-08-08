@@ -1,7 +1,7 @@
-import { Component, computed, effect, inject, input, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { Router, RouterLink } from '@angular/router';
+import { Router, RouterLink, RouterOutlet } from '@angular/router';
 
 import { resolveCatalogOwnerId } from '../../core/config/company-rules';
 import {
@@ -13,7 +13,8 @@ import {
 import { Asset, DispatchStatus, LocationForm, Survey, SurveyAnswer } from '../../core/models/entities.model';
 import { DispatchStatusRepository } from '../../core/repositories/entity.repositories';
 import { SurveyAnswerRepository } from '../../core/repositories/survey-answer.repository';
-import { ActivityService } from '../../core/services/activity.service';
+import { ActivityService, ConsistencyIssue } from '../../core/services/activity.service';
+import { DataRevisionService } from '../../core/sync/data-revision.service';
 import { AuthService } from '../../core/services/auth.service';
 import { AutosaveService } from '../../core/services/autosave.service';
 import { DraftPolicyService } from '../../core/services/draft-policy.service';
@@ -22,6 +23,7 @@ import { IconComponent } from '../../shared/components/icon/icon.component';
 import { Descriptor, parseAnswerTitles } from '../../shared/utils/descriptors';
 import { seedGradient, seedPalette } from '../../shared/utils/seed-color';
 import { FormRunnerComponent } from './form/form-runner.component';
+import { MasterDetailStackService } from './form/master-detail-row/master-detail-stack.service';
 import { StatusBarComponent } from './form/status-bar/status-bar.component';
 
 /**
@@ -53,6 +55,7 @@ import { StatusBarComponent } from './form/status-bar/status-bar.component';
     MatButtonModule,
     MatTooltipModule,
     RouterLink,
+    RouterOutlet,
     StatusBarComponent,
   ],
   templateUrl: './activity-detail.component.html',
@@ -61,12 +64,23 @@ import { StatusBarComponent } from './form/status-bar/status-bar.component';
 export class ActivityDetailComponent {
   private readonly router = inject(Router);
   private readonly activities = inject(ActivityService);
+  private readonly revisions = inject(DataRevisionService);
   private readonly answers = inject(SurveyAnswerRepository);
   private readonly dispatch = inject(DispatchStatusRepository);
   private readonly drafts = inject(DraftPolicyService);
   private readonly auth = inject(AuthService);
 
   readonly autosave = inject(AutosaveService);
+
+  private readonly rowStack = inject(MasterDetailStackService);
+
+  /**
+   * Hay una fila de tabla de detalle abierta.
+   *
+   * La actividad se oculta pero **no se desmonta**: dentro vive el campo que
+   * abrió la fila, y es quien tiene que recibir lo que se responda en ella.
+   */
+  readonly rowOpen = signal(false);
 
   readonly surveyId = input.required<string>();
   readonly guid = input.required<string>();
@@ -79,6 +93,15 @@ export class ActivityDetailComponent {
   readonly statuses = signal<DispatchStatus[]>([]);
   readonly expiresAt = signal<Date | null>(null);
   readonly feedback = signal('');
+
+  /**
+   * Descuadre entre la ubicación y el activo.
+   *
+   * Con valor, el formulario no se dibuja: responder sobre una pareja
+   * imposible produce una actividad que dice haber inspeccionado un equipo en
+   * una sede donde no está, y eso llega a Visitrack como un dato válido.
+   */
+  readonly issue = signal<ConsistencyIssue | null>(null);
 
   /**
    * Qué diálogo está abierto.
@@ -163,8 +186,38 @@ export class ActivityDetailComponent {
     effect(() => {
       const surveyId = this.surveyId();
       const guid = this.guid();
+
+      // De aquí cuelgan las filas de las tablas de detalle, que son rutas
+      // hijas: necesitan saber a dónde volver.
+      this.rowStack.setBase(['/formularios', surveyId, 'actividad', guid]);
+
       void this.load(surveyId, guid);
     });
+
+    /**
+     * Refresca el encabezado cuando la actividad cambia por fuera.
+     *
+     * Una actividad abierta y en espera de sus archivos puede salir sola en
+     * cualquier momento: la sube el proceso automático mientras el usuario la
+     * tiene delante. Sin esto, la barra seguiría diciendo «esperando archivos»
+     * sobre una actividad que ya llegó a Visitrack.
+     *
+     * Solo se relee la fila, no el formulario entero: recargar el motor
+     * borraría lo que se esté escribiendo en ese momento.
+     */
+    effect(() => {
+      this.revisions.activities();
+      untracked(() => void this.refreshAnswer());
+    });
+  }
+
+  /** Vuelve a leer la fila de la actividad, sin tocar el formulario. */
+  private async refreshAnswer(): Promise<void> {
+    const guid = this.guid();
+    if (!guid || this.loading()) return;
+
+    const updated = await this.activities.findByGuid(guid);
+    if (updated) this.answer.set(updated);
   }
 
   private async load(surveyId: string, guid: string): Promise<void> {
@@ -190,6 +243,11 @@ export class ActivityDetailComponent {
       this.location.set(location);
       this.asset.set(asset);
       this.expiresAt.set(expiry);
+
+      // Se comprueba que ubicación y activo cuadren. Mientras no cuadren, el
+      // formulario no se dibuja: lo que se responda quedaría atado a una pareja
+      // imposible.
+      this.issue.set(survey ? await this.activities.findConsistencyIssue(survey, answer) : null);
 
       if (survey && Number(survey.StatusEnabled) === 1) {
         this.statuses.set(await this.loadStatuses(survey));
@@ -294,11 +352,23 @@ export class ActivityDetailComponent {
    * de dejar de ser un borrador y de tener cambios sin guardar, y ambas cosas
    * se muestran arriba.
    */
+  /**
+   * La actividad se guardó: vuelta al listado del formulario.
+   *
+   * Guardar es el final del trabajo, no una pausa. Quedarse en el formulario
+   * ya diligenciado obligaba a buscar el botón de volver, y lo que casi todo el
+   * mundo quiere después de guardar es empezar la siguiente.
+   *
+   * Antes de salir se refresca la actividad en memoria: la salida puede
+   * cancelarse —el diálogo de borrador— y en ese caso la pantalla tiene que
+   * mostrar el estado nuevo, no el de antes de guardar.
+   */
   async onFormSaved(): Promise<void> {
     const updated = await this.activities.findByGuid(this.guid());
     if (updated) this.answer.set(updated);
 
     this.expiresAt.set(null);
+    await this.exit();
   }
 
   /**
@@ -350,6 +420,30 @@ export class ActivityDetailComponent {
   }
 
   /** Vuelve al selector de ubicación para cambiarla. */
+  /**
+   * Segunda línea de la ficha del activo.
+   *
+   * Se prefiere la etiqueta física —es la que se lee en el equipo— y si no la
+   * hay, la serie o el modelo. Cualquiera de las tres sirve para confirmar que
+   * el activo es el que se tiene delante, que es para lo que se mira la ficha.
+   */
+  assetDetail(asset: Asset): string {
+    const parts = [asset.TagUID, asset.SerialNumber, [asset.Make, asset.Model].filter(Boolean).join(' ')];
+    return parts.find((part) => part?.trim()) ?? '';
+  }
+
+  /**
+   * Vuelve al selector de ubicación. **Solo para reparar.**
+   *
+   * No hay ningún acceso a esto en el uso normal: la ubicación se elige al
+   * abrir la actividad y ahí queda. Cambiarla con el formulario ya
+   * diligenciado dejaría las respuestas atadas a una sede que no es la que se
+   * inspeccionó, y eso llega a Visitrack como un registro válido.
+   *
+   * El único camino hasta aquí es el aviso de datos descuadrados —una actividad
+   * que llegó así del móvil, o cuyo activo desapareció del dispositivo—. Sin
+   * esa salida, quedaría bloqueada para siempre sin nada que hacer.
+   */
   async changeLocation(): Promise<void> {
     await this.autosave.flush(this.autosaveKey);
     await this.router.navigate(['/formularios', this.surveyId(), 'ubicaciones'], {
@@ -357,7 +451,7 @@ export class ActivityDetailComponent {
     });
   }
 
-  /** Vuelve al selector de activo. */
+  /** Vuelve al selector de activo. **Solo para reparar**, como [changeLocation]. */
   async changeAsset(): Promise<void> {
     await this.autosave.flush(this.autosaveKey);
     await this.router.navigate(['/formularios', this.surveyId(), 'activos'], {

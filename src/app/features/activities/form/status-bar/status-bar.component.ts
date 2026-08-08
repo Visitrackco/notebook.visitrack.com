@@ -47,12 +47,41 @@ export class StatusBarComponent {
   /** Color del estado actual, o el neutro cuando no hay. */
   readonly color = computed(() => colorOf(this.selected()));
 
+  readonly term = signal('');
+
+  /**
+   * El buscador solo aparece cuando hace falta.
+   *
+   * Con seis estados sobra: se ven todos de un vistazo y una caja de texto solo
+   * añade un paso. Con treinta —que los hay— buscar es la única forma
+   * razonable de llegar al que se quiere.
+   */
+  readonly searchable = computed(() => this.statuses().length > 8);
+
+  readonly visible = computed(() => {
+    const needle = this.term().trim().toLowerCase();
+    if (!needle) return this.statuses();
+
+    return this.statuses().filter((status) =>
+      (status.Name ?? '').toLowerCase().includes(needle),
+    );
+  });
+
+  onSearch(event: Event): void {
+    this.term.set((event.target as HTMLInputElement).value);
+  }
+
   constructor() {
     effect(() => {
       const element = this.dialog()?.nativeElement;
       if (!element) return;
 
-      if (this.open() && !element.open) element.showModal();
+      if (this.open() && !element.open) {
+        // Limpio en cada apertura: un filtro que sobrevive de la vez anterior
+        // esconde estados sin que nadie recuerde por qué.
+        this.term.set('');
+        element.showModal();
+      }
       else if (!this.open() && element.open) element.close();
     });
   }

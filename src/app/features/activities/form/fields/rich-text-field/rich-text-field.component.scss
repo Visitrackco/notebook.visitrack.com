@@ -1,0 +1,192 @@
+/**
+ * Área de texto con formato.
+ *
+ * La barra arriba, el área de escritura en medio y el contador abajo — la misma
+ * disposición que la app, para que quien use las dos no tenga que reaprender
+ * dónde está cada cosa.
+ */
+
+:host {
+  display: block;
+  width: 100%;
+}
+
+.rte {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  overflow: hidden;
+  font-family: var(--vt-font);
+  background: var(--vt-surface);
+  border: 1.5px solid var(--vt-rule-strong);
+  border-radius: var(--vt-radius);
+  transition: border-color var(--vt-transition);
+}
+
+.rte--focus {
+  border-color: var(--vt-brand);
+}
+
+.rte--invalid {
+  border-color: var(--vt-danger);
+}
+
+/* ── Barra ─────────────────────────────────────────────────────────────────── */
+
+.rte__bar {
+  display: flex;
+  flex-shrink: 0;
+  gap: 2px;
+  align-items: center;
+  padding: 5px 6px;
+  overflow-x: auto;
+  background: var(--vt-surface-2);
+  border-bottom: 1px solid var(--vt-rule);
+
+  /* Se desplaza sin barra visible: en un teléfono, la barra de scroll sobre
+     unos botones de 30 px los corta. */
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.rte__btn {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  font-family: var(--vt-font);
+  font-size: var(--vt-text-sm);
+  color: var(--vt-text-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--vt-radius-sm);
+
+  &:hover {
+    color: var(--vt-text);
+    background: var(--vt-surface-3);
+  }
+}
+
+.rte__btn--on {
+  color: var(--vt-brand);
+  background: var(--vt-brand-tint);
+}
+
+.rte__ol {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.rte__flip {
+  transform: scaleX(-1);
+}
+
+.rte__sep {
+  flex-shrink: 0;
+  width: 1px;
+  height: 20px;
+  margin: 0 3px;
+  background: var(--vt-rule);
+}
+
+/* La «A» con una barra de color debajo: es como se reconoce el color de texto
+   en cualquier editor, sin necesidad de leer el rótulo. */
+.rte__swatch {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  border-bottom: 3px solid currentcolor;
+}
+
+.rte__swatch--text {
+  color: var(--vt-danger);
+}
+
+.rte__swatch--mark {
+  color: #eab308;
+}
+
+.rte__palette {
+  display: flex;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  gap: 6px;
+  padding: 8px 10px;
+  background: var(--vt-surface-2);
+  border-bottom: 1px solid var(--vt-rule);
+}
+
+.rte__color {
+  width: 26px;
+  height: 26px;
+  border: 1.5px solid var(--vt-rule-strong);
+  border-radius: 50%;
+
+  &:hover {
+    border-color: var(--vt-brand);
+    transform: scale(1.1);
+  }
+}
+
+/* ── Área de escritura ─────────────────────────────────────────────────────── */
+
+.rte__editor {
+  min-height: 130px;
+  max-height: 420px;
+  padding: var(--vt-space-3) var(--vt-space-4);
+  overflow-y: auto;
+  font-family: var(--vt-font);
+  font-size: var(--vt-text-sm);
+  line-height: 1.6;
+  color: var(--vt-text);
+  overflow-wrap: anywhere;
+
+  &:focus {
+    outline: none;
+  }
+
+  /* El marcador de posición: un `contenteditable` vacío no tiene `placeholder`,
+     así que se dibuja con el atributo de datos. */
+  &:empty::before {
+    color: var(--vt-text-subtle);
+    content: attr(data-placeholder);
+  }
+
+  p {
+    margin: 0 0 6px;
+  }
+
+  ul,
+  ol {
+    padding-left: 22px;
+    margin: 0 0 6px;
+  }
+
+  li {
+    margin-bottom: 2px;
+  }
+
+  /* Lo escrito hereda la familia del editor: pegar de otra aplicación no debe
+     traerse su tipografía, aunque el saneado ya quite el atributo. */
+  * {
+    font-family: inherit !important;
+  }
+}
+
+.rte__foot {
+  display: flex;
+  flex-shrink: 0;
+  justify-content: flex-end;
+  padding: 4px var(--vt-space-3);
+  font-size: 11px;
+  color: var(--vt-text-subtle);
+  border-top: 1px solid var(--vt-rule);
+}

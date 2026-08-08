@@ -1,0 +1,81 @@
+<div class="nuevo">
+  <header class="nuevo__head">
+    <button type="button" class="nuevo__back" (click)="cancel.emit()" aria-label="Volver">
+      <vt-icon name="chevron" [size]="18" />
+    </button>
+
+    <div class="nuevo__titles">
+      <small>Nuevo ítem</small>
+      <strong>{{ listName() }}</strong>
+    </div>
+  </header>
+
+  <div class="nuevo__body">
+    @if (error()) {
+      <p class="nuevo__error">
+        <vt-icon name="alert" [size]="15" />
+        {{ error() }}
+      </p>
+    }
+
+    <!-- El nombre es lo que se verá en la lista, así que va primero y aparte:
+         no es un campo del formulario de la lista sino su identidad. -->
+    <label class="nuevo__field">
+      <span class="nuevo__label">Nombre <em>*</em></span>
+
+      <input
+        type="text"
+        id="item-name"
+        class="nuevo__input"
+        [class.nuevo__input--invalid]="nameMissing()"
+        [value]="name()"
+        (input)="onName($event)"
+        placeholder="Con qué se reconocerá en la lista"
+        autocomplete="off"
+      />
+    </label>
+
+    @if (engine(); as eng) {
+      @for (field of eng.visibleFields(); track field.id) {
+        <div
+          class="nuevo__card"
+          [id]="'item-field-' + field.id"
+          [class.nuevo__card--invalid]="eng.showsError(field)"
+        >
+          <vt-field-host
+            [field]="field"
+            [value]="eng.valueOf(field.id)"
+            [invalid]="eng.showsError(field)"
+            [parentValue]="eng.parentValueOf(field)"
+            [descriptors]="eng.descriptorsOf(field.id)"
+            (valueChange)="onValue(field, $event)"
+            (descriptorsChange)="onDescriptors(field, $event)"
+          />
+        </div>
+      }
+    } @else {
+      <p class="nuevo__note">Esta lista solo pide el nombre.</p>
+    }
+  </div>
+
+  <footer class="nuevo__foot">
+    <button type="button" class="nuevo__cancel" (click)="cancel.emit()">Cancelar</button>
+
+    <button type="button" class="nuevo__save" [disabled]="saving()" (click)="save()">
+      <vt-icon name="check" [size]="16" />
+      {{ saving() ? 'Creando…' : 'Crear y elegir' }}
+    </button>
+  </footer>
+</div>
+
+<!-- Un ítem a medias lo hereda todo el que elija esa lista después, así que
+     aquí no se ofrece crearlo incompleto. -->
+<vt-required-dialog
+  [open]="askingRequired()"
+  [missing]="blocking()"
+  [pageLabels]="pageLabels()"
+  [canSaveAnyway]="false"
+  (review)="reviewRequired()"
+  (goToField)="goToMissing($event)"
+  (close)="askingRequired.set(false)"
+/>

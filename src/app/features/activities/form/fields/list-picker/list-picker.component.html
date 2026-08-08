@@ -1,0 +1,171 @@
+<div class="picker" (click)="close()">
+  <div class="picker__panel" (click)="$event.stopPropagation()">
+    <!-- Dar de alta un ítem sustituye a la lista mientras dura: es un paso del
+         mismo recorrido, no una capa encima. -->
+    @if (creating() && listDefinition(); as definition) {
+      <vt-list-item-form
+        [definition]="definition"
+        [parentGuid]="parentGuid()"
+        [locationId]="locationId()"
+        [locationGuid]="locationGuid()"
+        [assetId]="assetId()"
+        (created)="onCreated($event)"
+        (cancel)="cancelCreate()"
+      />
+    } @else {
+    <!-- El encabezado va en el color de marca y con el buscador dentro: es
+         la zona de mando del selector, y agruparla en un bloque de color la
+         separa de los resultados sin necesidad de líneas ni títulos. -->
+    <header class="picker__head">
+      <div class="picker__head-row">
+        <span class="picker__head-icon">
+          <vt-icon name="clipboard" [size]="19" />
+        </span>
+
+        <div class="picker__titles">
+          <strong>{{ title() }}</strong>
+          <small>
+            @if (subtitle()) {
+              {{ subtitle() }}
+            } @else if (hasChoices()) {
+              {{ choices().length }} {{ choices().length === 1 ? 'resultado' : 'resultados' }}
+            } @else {
+              Elige una opción
+            }
+            <!-- Una lista en línea se comporta distinto: hay que escribir
+                 para encontrar y sin conexión no habrá nada. -->
+            @if (isOnline()) {
+              · en línea
+            }
+          </small>
+        </div>
+
+        <button type="button" class="picker__close" (click)="close()" aria-label="Cerrar">
+          <vt-icon name="close" [size]="19" />
+        </button>
+      </div>
+
+      <label class="picker__search">
+        <vt-icon name="clipboard" [size]="16" />
+        <input
+          type="search"
+          [value]="term()"
+          (input)="onSearch($event)"
+          [placeholder]="
+            isOnline()
+              ? 'Escribe para buscar en el servidor'
+              : 'Buscar por nombre o por sus datos'
+          "
+          autocomplete="off"
+        />
+
+        @if (loading()) {
+          <span class="picker__spinner" aria-label="Buscando"></span>
+        }
+      </label>
+    </header>
+
+    <div class="picker__body" [class.picker__body--busy]="loading()">
+      <!-- Los resultados anteriores se quedan mientras se busca, apagados.
+           Vaciar la lista en cada pulsación la hacía parpadear justo cuando
+           el usuario está comparando lo que aparece con lo que escribe. El
+           aviso solo sale cuando no hay nada que conservar. -->
+      @if (loading() && !hasChoices()) {
+        <!-- Fantasmas en vez de un texto: dicen que va a aparecer una lista y
+             cuántas filas caben, así el panel no da un salto de alto cuando
+             llegan los datos. -->
+        <ul class="picker__ghosts" aria-label="Cargando opciones">
+          @for (row of ghosts; track row) {
+            <li>
+              <span class="picker__ghost-mark"></span>
+              <span class="picker__ghost-lines">
+                <span></span>
+                <span></span>
+              </span>
+            </li>
+          }
+        </ul>
+      } @else if (hasChoices()) {
+        <ul class="picker__list">
+          @for (choice of choices(); track choice.id) {
+            <li>
+              <button
+                type="button"
+                class="picker__item"
+                [class.picker__item--on]="selectedId() === choice.id"
+                [class.picker__item--used]="isUsed(choice)"
+                (click)="select(choice)"
+              >
+                <!-- La inicial ayuda a recorrer una lista larga con la vista:
+                     los nombres agrupados por letra se localizan antes. -->
+                <span class="picker__mark" aria-hidden="true">
+                  {{ initialOf(choice.txt) }}
+                </span>
+
+                <span class="picker__text">
+                  <span class="picker__name">
+                    {{ choice.txt }}
+
+                    <!-- Ya usado: se avisa, no se impide. Repetir un ítem puede
+                         ser legítimo —dos revisiones del mismo equipo— pero
+                         hacerlo sin darse cuenta casi nunca lo es. -->
+                    @if (isUsed(choice)) {
+                      <em class="picker__used">ya agregado</em>
+                    }
+                  </span>
+
+                  <!-- Los datos en una línea seguida, separados por puntos:
+                       con cuatro o cinco descriptivos, cada uno en su píldora
+                       convertía la fila en un mosaico ilegible. -->
+                  @if (choice.preview.length > 0) {
+                    <span class="picker__desc">
+                      @for (item of choice.preview; track item.id) {
+                        <span class="picker__pair">
+                          <b>{{ item.lab }}</b>
+                          <span>{{ item.val }}</span>
+                        </span>
+                      }
+                    </span>
+                  }
+                </span>
+
+                @if (selectedId() === choice.id) {
+                  <vt-icon name="check" [size]="17" class="picker__tick" />
+                }
+              </button>
+            </li>
+          }
+        </ul>
+
+        <!-- La búsqueda trae como mucho cincuenta: decirlo evita que alguien
+             concluya que su ítem no existe cuando solo está más abajo. -->
+        @if (truncated()) {
+          <p class="picker__note picker__note--hint">
+            Se muestran los primeros 50. Afina la búsqueda si no encuentras el que buscas.
+          </p>
+        }
+      } @else {
+        <div class="picker__empty">
+          <span class="picker__empty-icon"><vt-icon name="alert" [size]="24" /></span>
+          <p>{{ message() || 'Esta lista no tiene ítems para mostrar.' }}</p>
+        </div>
+      }
+    </div>
+
+    <!-- Crear lo que no está. Solo lo decide el permiso del rol: la
+         configuración de la lista dice de dónde salen los ítems, no quién puede
+         añadirlos. -->
+    @if (canCreate()) {
+      <button type="button" class="picker__new" (click)="startCreate()">
+        <vt-icon name="plus" [size]="16" />
+        Crear un ítem nuevo
+      </button>
+    } @else if (createBlocked()) {
+      <p class="picker__denied">
+        <vt-icon name="shield" [size]="14" />
+        {{ createBlocked() }}
+      </p>
+    }
+    }
+  </div>
+</div>

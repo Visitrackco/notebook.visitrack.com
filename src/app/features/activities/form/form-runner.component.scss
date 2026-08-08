@@ -341,14 +341,113 @@ vt-page-nav {
 
 /* ── Campos ────────────────────────────────────────────────────────────────── */
 
-/* Cada campo a todo el ancho, en una sola columna. Un formulario de campo se
-   responde de arriba abajo, y limitar la anchura dejaría media pantalla vacía
-   al lado de controles que ya son estrechos por dentro. */
+/**
+ * Una tarjeta por pregunta.
+ *
+ * Cada campo con su recuadro y aire alrededor, en vez de una lista corrida de
+ * controles. La diferencia no es estética: en un formulario largo, un bloque
+ * continuo obliga a averiguar dónde acaba una pregunta y empieza la siguiente
+ * —sobre todo cuando una tiene ayuda, otra tiene descriptivos y la de más allá
+ * una fotografía—. Con tarjetas, cada pregunta es una unidad que se responde y
+ * se deja atrás.
+ *
+ * Todas a todo el ancho y en una sola columna: un formulario de campo se
+ * recorre de arriba abajo, y dos columnas obligan a decidir en cada salto por
+ * dónde sigue la lectura.
+ */
 .runner__fields {
   display: flex;
   flex-direction: column;
   gap: var(--vt-space-3);
   width: 100%;
+}
+
+/* ── Tarjeta de pregunta ───────────────────────────────────────────────────── */
+
+.runner__field {
+  position: relative;
+  padding: var(--vt-space-4) var(--vt-space-5);
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-rule);
+  border-radius: var(--vt-radius-lg);
+  box-shadow: var(--vt-shadow-sm);
+  transition:
+    border-color var(--vt-transition),
+    box-shadow var(--vt-transition);
+
+  /**
+   * La franja lateral aparece al trabajar en la pregunta.
+   *
+   * Un pseudo-elemento y no un `border-left`: el borde desplazaría el contenido
+   * tres píxeles al aparecer, y ese salto se nota justo cuando se está
+   * escribiendo.
+   */
+  &::before {
+    position: absolute;
+    top: -1px;
+    bottom: -1px;
+    left: -1px;
+    width: 4px;
+    content: '';
+    background: var(--vt-brand);
+    border-radius: var(--vt-radius-lg) 0 0 var(--vt-radius-lg);
+    opacity: 0;
+    transition: opacity var(--vt-transition);
+  }
+
+  &:focus-within {
+    border-color: var(--vt-rule-strong);
+    box-shadow: var(--vt-card-shadow);
+
+    &::before {
+      opacity: 1;
+    }
+  }
+}
+
+/**
+ * Encabezado de sección: título o párrafo.
+ *
+ * No es una pregunta, es el rótulo de lo que viene debajo. Con el mismo aspecto
+ * que las demás tarjetas se leía como una pregunta que alguien olvidó
+ * responder; con el fondo teñido de marca y la franja fija a la izquierda se
+ * entiende de un vistazo que ahí no hay nada que contestar.
+ *
+ * El tinte sale de `color-mix` contra el color de marca, así que acompaña al
+ * tema —y a la marca de cada compañía— sin fijar ningún valor.
+ */
+.runner__field--title {
+  background: color-mix(in srgb, var(--vt-brand) 7%, var(--vt-surface));
+  border-color: color-mix(in srgb, var(--vt-brand) 22%, transparent);
+  box-shadow: none;
+
+  &::before {
+    opacity: 1;
+  }
+
+  /* Ya lo destaca su fondo: no necesita además el relieve del foco. */
+  &:focus-within {
+    border-color: color-mix(in srgb, var(--vt-brand) 22%, transparent);
+    box-shadow: none;
+  }
+}
+
+/* Obligatorio sin responder: la franja se queda puesta y en rojo, para que se
+   localice bajando por la página sin tener que leer cada pregunta. */
+.runner__field--invalid {
+  border-color: color-mix(in srgb, var(--vt-danger) 45%, transparent);
+
+  &::before {
+    background: var(--vt-danger);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 640px) {
+  .runner__sheet,
+  .runner__field {
+    padding: var(--vt-space-4) var(--vt-space-3);
+  }
 }
 
 /**

@@ -1,0 +1,170 @@
+/**
+ * La pantalla de carga que va entre entrar y trabajar.
+ *
+ * Centrada y sin nada más: no hay nada que decidir aquí, y ofrecer opciones
+ * durante una espera obligatoria solo invita a buscar cómo saltársela.
+ */
+
+.load {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vt-space-4);
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  padding: var(--vt-space-6) var(--vt-space-4);
+  text-align: center;
+  background: var(--vt-surface);
+}
+
+.load__brand {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vt-space-3);
+  align-items: center;
+
+  h1 {
+    margin: 0;
+    font-size: var(--vt-text-lg);
+    font-weight: 650;
+    color: var(--vt-text);
+  }
+}
+
+.load__mark {
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  color: var(--vt-on-brand);
+  background: var(--vt-brand);
+  border-radius: var(--vt-radius-lg);
+}
+
+.load__bar {
+  position: relative;
+  width: min(340px, 100%);
+  height: 6px;
+  overflow: hidden;
+  background: var(--vt-surface-2);
+  border-radius: var(--vt-radius-full);
+
+  span {
+    display: block;
+    height: 100%;
+    background: var(--vt-brand);
+    border-radius: inherit;
+    transition: width 300ms ease-out;
+  }
+}
+
+/* Mientras el servidor no ha dicho cuántos vienen no hay porcentaje que
+   enseñar: una barra que recorre es honesta, una que avanza es mentira. */
+.load__bar--waiting span {
+  position: absolute;
+  width: 40%;
+  animation: load-sweep 1.3s ease-in-out infinite;
+}
+
+@keyframes load-sweep {
+  from {
+    left: -40%;
+  }
+
+  to {
+    left: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .load__bar--waiting span {
+    left: 0;
+    width: 100%;
+    animation: none;
+    opacity: 0.4;
+  }
+}
+
+.load__message {
+  margin: 0;
+  font-size: var(--vt-text-sm);
+  font-weight: 600;
+  color: var(--vt-text);
+}
+
+.load__counter {
+  margin: 0;
+  font-size: var(--vt-text-sm);
+  color: var(--vt-text-subtle);
+}
+
+.load__detail {
+  max-width: 40ch;
+  margin: 0;
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-muted);
+}
+
+.load__note {
+  margin-top: var(--vt-space-3);
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-muted);
+}
+
+/* ── Si falla ─────────────────────────────────────────────────────────────── */
+
+.load__failed {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: center;
+
+  p {
+    max-width: 42ch;
+    margin: 0;
+    font-size: var(--vt-text-sm);
+    line-height: 1.55;
+    color: var(--vt-text-subtle);
+  }
+}
+
+.load__failed-icon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  color: var(--vt-warn-fg, #92400e);
+  background: var(--vt-warn-bg, #fef3c7);
+  border-radius: 50%;
+}
+
+.load__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+
+.load__retry {
+  padding: 11px var(--vt-space-5);
+  font-family: var(--vt-font);
+  font-size: var(--vt-text-sm);
+  font-weight: 650;
+  color: var(--vt-on-brand);
+  background: var(--vt-brand);
+  border: 0;
+  border-radius: var(--vt-radius-full);
+}
+
+.load__skip {
+  padding: 11px var(--vt-space-4);
+  font-family: var(--vt-font);
+  font-size: var(--vt-text-sm);
+  color: var(--vt-text-subtle);
+  background: transparent;
+  border: 0;
+
+  &:hover {
+    color: var(--vt-text);
+  }
+}

@@ -1,0 +1,120 @@
+<section class="dft">
+  <header class="dft__head">
+    <div class="dft__title">
+      <h1>Borradores</h1>
+      <p>
+        {{ counter() }}
+        @if (urgentCount() > 0) {
+          · <em>{{ urgentCount() }} por caducar</em>
+        }
+      </p>
+    </div>
+
+    @if (drafts().length > 0) {
+      <button type="button" class="dft__purge" (click)="purgeNow()">
+        <vt-icon name="trash" [size]="16" />
+        Limpiar caducados
+      </button>
+    }
+  </header>
+
+  <!-- Qué es esto y por qué desaparece: sin decirlo, un borrador que se borra
+       solo se vive como trabajo perdido. -->
+  <!-- El texto dentro de un <span>: el párrafo es flex para alinear el icono, y
+       en flex el <strong> se convierte en un ítem propio que salta de línea y
+       parte la frase. -->
+  <p class="dft__note">
+    <vt-icon name="info" [size]="15" />
+    <span>
+      Son actividades que abriste y nunca guardaste. Se conservan
+      <strong>{{ hours() }} horas</strong> desde que las creaste y luego se
+      eliminan solas. Ábrelas y guárdalas para conservarlas.
+    </span>
+  </p>
+
+  @if (loading()) {
+    <div class="dft__ghosts" aria-label="Cargando borradores">
+      @for (row of [1, 2, 3]; track row) {
+        <div class="dft__ghost"></div>
+      }
+    </div>
+  } @else if (drafts().length > 0) {
+    <ul class="dft__list">
+      @for (card of drafts(); track card.guid) {
+        <li class="dft__item" [class.dft__item--urgent]="card.urgent">
+          <a
+            class="dft__link"
+            [routerLink]="['/formularios', card.surveyId, 'actividad', card.guid]"
+          >
+            <span class="dft__icon">
+              <vt-icon name="pen" [size]="17" />
+            </span>
+
+            <span class="dft__body">
+              <!-- De qué formulario es: la pregunta que se hace al mirarlos. -->
+              <span class="dft__form">{{ card.surveyTitle }}</span>
+
+              @if (card.place) {
+                <span class="dft__place">
+                  <vt-icon name="map-pin" [size]="13" />
+                  {{ card.place }}
+                </span>
+              }
+
+              @if (card.descriptors.length > 0) {
+                <span class="dft__desc">
+                  @for (entry of card.descriptors; track entry.id) {
+                    <span class="dft__pair">
+                      <b>{{ entry.lab }}</b>
+                      <span>{{ entry.val }}</span>
+                    </span>
+                  }
+                </span>
+              }
+
+              <span class="dft__meta">
+                <span>Creado {{ card.createdLabel }}</span>
+
+                <span class="dft__expires" [class.dft__expires--urgent]="card.urgent">
+                  <vt-icon name="alert" [size]="12" />
+                  Se borra {{ card.expiresLabel }}
+                </span>
+              </span>
+            </span>
+
+            <vt-icon name="chevron" [size]="17" class="dft__go" />
+          </a>
+
+          <button
+            type="button"
+            class="dft__drop"
+            (click)="askRemove(card)"
+            [attr.aria-label]="'Eliminar el borrador de ' + card.surveyTitle"
+            title="Eliminar ahora"
+          >
+            <vt-icon name="trash" [size]="16" />
+          </button>
+        </li>
+      }
+    </ul>
+  } @else {
+    <div class="dft__empty">
+      <span class="dft__empty-icon"><vt-icon name="check" [size]="26" /></span>
+      <p>No tienes actividades a medias. Todo lo que abriste está guardado.</p>
+    </div>
+  }
+</section>
+
+<vt-to-top />
+
+<vt-confirm-dialog
+  [open]="asking()"
+  tone="danger"
+  icon="trash"
+  title="¿Eliminar este borrador?"
+  [message]="removalName()"
+  detail="Se perderá lo que llevabas respondido, incluidas sus fotos."
+  confirmLabel="Eliminar"
+  (confirm)="confirmRemove()"
+  (cancel)="cancelRemove()"
+/>

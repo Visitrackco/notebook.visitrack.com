@@ -884,6 +884,33 @@ a {
   --mat-sys-inverse-primary: var(--vt-brand-light);
 
   --mat-sys-scrim: rgb(0 0 0 / 45%);
+
+  /**
+   * La tipografía de Material, atada a la nuestra.
+   *
+   * `mat.theme()` ya se compila con Roboto, pero cada control resuelve su
+   * familia a través de uno de estos tokens y basta con que uno quede sin
+   * definir para que ese control caiga a la fuente por defecto del navegador
+   * —y aparezca un rótulo en Times en medio de la aplicación—.
+   *
+   * Apuntando todos a `--vt-font`, cambiar la tipografía de la aplicación sigue
+   * siendo tocar una sola línea.
+   */
+  --mat-sys-body-large-font: var(--vt-font);
+  --mat-sys-body-medium-font: var(--vt-font);
+  --mat-sys-body-small-font: var(--vt-font);
+  --mat-sys-label-large-font: var(--vt-font);
+  --mat-sys-label-medium-font: var(--vt-font);
+  --mat-sys-label-small-font: var(--vt-font);
+  --mat-sys-title-large-font: var(--vt-font);
+  --mat-sys-title-medium-font: var(--vt-font);
+  --mat-sys-title-small-font: var(--vt-font);
+  --mat-sys-headline-large-font: var(--vt-font-display);
+  --mat-sys-headline-medium-font: var(--vt-font-display);
+  --mat-sys-headline-small-font: var(--vt-font-display);
+  --mat-sys-display-large-font: var(--vt-font-display);
+  --mat-sys-display-medium-font: var(--vt-font-display);
+  --mat-sys-display-small-font: var(--vt-font-display);
 }
 
 /**

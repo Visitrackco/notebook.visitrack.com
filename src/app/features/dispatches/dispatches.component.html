@@ -1,0 +1,187 @@
+<section class="disp">
+  <header class="disp__head">
+    <div class="disp__title">
+      <h1>Mis consignas</h1>
+      <p>
+        {{ counter() }}
+        @if (pendingCount() > 0) {
+          · <em>{{ pendingCount() }} por hacer</em>
+        }
+      </p>
+    </div>
+  </header>
+
+  <!-- Buscador y filtros se quedan arriba: con veinte consignas, cambiar de
+       estado o de formulario obligaría a subir la pantalla cada vez. -->
+  <div class="disp__sticky">
+    <label class="disp__search">
+      <vt-icon name="clipboard" [size]="16" />
+      <input
+        type="search"
+        [value]="search()"
+        (input)="onSearch($event)"
+        placeholder="Buscar por formulario, sede o estado"
+        autocomplete="off"
+      />
+    </label>
+
+    @if (surveyOptions().length > 1) {
+      <label class="disp__filter">
+        <vt-icon name="clipboard" [size]="15" />
+
+        <select [value]="surveyFilter()" (change)="onSurveyPicked($event)">
+          <option value="">Todos los formularios</option>
+
+          @for (option of surveyOptions(); track option.name) {
+            <option [value]="option.name">{{ option.name }} ({{ option.count }})</option>
+          }
+        </select>
+      </label>
+    }
+
+  </div>
+
+  @if (loading()) {
+    <div class="disp__ghosts" aria-label="Cargando consignas">
+      @for (row of [1, 2, 3, 4]; track row) {
+        <div class="disp__ghost"></div>
+      }
+    </div>
+  } @else if (visible().length > 0) {
+    <ul class="disp__list">
+      @for (card of visible(); track card.guid) {
+        <li class="disp__row">
+          <a
+            class="disp__item"
+            [class.disp__item--done]="card.done"
+            [routerLink]="['/formularios', card.surveyId, 'actividad', card.guid]"
+          >
+            <!-- El color del estado es el lenguaje con el que cada cliente
+                 organiza su operación: va primero y ocupa el costado entero. -->
+            <span class="disp__state" [style.background]="card.statusColor"></span>
+
+            <span class="disp__body">
+              <span class="disp__top">
+                <span class="disp__status" [style.color]="card.statusColor">
+                  {{ card.statusName }}
+                </span>
+
+                @if (card.receivedLabel) {
+                  <span class="disp__when">Recibida {{ card.receivedLabel }}</span>
+                }
+              </span>
+
+              <span class="disp__name">{{ card.surveyTitle }}</span>
+
+              @if (card.place) {
+                <span class="disp__place">
+                  <vt-icon name="map-pin" [size]="13" />
+                  {{ card.place }}
+                </span>
+              }
+
+              @if (card.descriptors.length > 0) {
+                <span class="disp__desc">
+                  @for (entry of card.descriptors; track entry.id) {
+                    <span class="disp__pair">
+                      <b>{{ entry.lab }}</b>
+                      <span>{{ entry.val }}</span>
+                    </span>
+                  }
+                </span>
+              }
+            </span>
+
+            @if (card.done) {
+              <span class="disp__badge">
+                <vt-icon name="check" [size]="12" />
+                Terminada
+              </span>
+            }
+
+            <vt-icon name="chevron" [size]="18" class="disp__go" />
+          </a>
+
+          <!-- ── Lo que la plataforma adjuntó ──────────────────────────────
+               Planos, la foto del reporte, la orden firmada. Van fuera del
+               enlace de la consigna: son cosas que se abren y se guardan, no
+               un paso hacia el formulario. -->
+          @if (card.files.length > 0) {
+            <div class="files">
+              <button type="button" class="files__toggle" (click)="toggleFiles(card.guid)">
+                <vt-icon name="file" [size]="14" />
+                {{ card.files.length }}
+                {{ card.files.length === 1 ? 'archivo adjunto' : 'archivos adjuntos' }}
+                <vt-icon
+                  name="chevron"
+                  [size]="14"
+                  [class.files__caret--open]="openFiles() === card.guid"
+                />
+              </button>
+
+              @if (openFiles() === card.guid) {
+                <div class="files__list">
+                  @for (file of card.files; track file.guid) {
+                    <div class="files__item">
+                      <span class="files__icon">
+                        <vt-icon name="file" [size]="15" />
+                      </span>
+
+                      <span class="files__name">{{ file.guid }}</span>
+
+                      <a
+                        class="files__act"
+                        [href]="file.url"
+                        target="_blank"
+                        rel="noopener"
+                        title="Ver en el servidor"
+                      >
+                        <vt-icon name="image" [size]="15" />
+                      </a>
+
+                      <button
+                        type="button"
+                        class="files__act"
+                        (click)="download(file, card)"
+                        title="Guardar en el equipo"
+                      >
+                        <vt-icon name="download" [size]="15" />
+                      </button>
+                    </div>
+                  }
+
+                  @if (card.files.length > 1) {
+                    <button type="button" class="files__all" (click)="downloadAll(card)">
+                      <vt-icon name="download" [size]="14" />
+                      Guardar todos en el equipo
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </li>
+      }
+    </ul>
+
+    @if (hasMore()) {
+      <div class="disp__more" vtNearEnd (reached)="showMore()">
+        <span class="disp__spinner" aria-hidden="true"></span>
+        Cargando más consignas…
+      </div>
+    }
+  } @else {
+    <div class="disp__empty">
+      <span class="disp__empty-icon"><vt-icon name="check" [size]="26" /></span>
+      <p>
+        @if (search() || surveyFilter()) {
+          Ninguna consigna coincide con lo que buscas.
+        } @else {
+          No tienes consignas asignadas. Si esperas alguna, sincroniza.
+        }
+      </p>
+    </div>
+  }
+</section>
+
+<vt-to-top />

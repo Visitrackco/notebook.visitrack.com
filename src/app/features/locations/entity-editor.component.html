@@ -1,0 +1,161 @@
+<section class="edit">
+  <header class="edit__bar">
+    <button type="button" class="edit__back" (click)="leave()" aria-label="Volver">
+      <vt-icon name="chevron" [size]="20" />
+    </button>
+
+    <div class="edit__heading">
+      <p>{{ subject() === 'asset' ? 'Activo' : 'Ubicación' }}</p>
+      <h1>{{ title() }}</h1>
+    </div>
+  </header>
+
+  @if (!allowed()) {
+    <div class="edit__body">
+      <div class="edit__empty">
+        <span class="edit__empty-icon"><vt-icon name="shield" [size]="24" /></span>
+        <p>{{ noPermission() }}</p>
+      </div>
+    </div>
+  } @else if (loading()) {
+    <p class="edit__loading">Cargando…</p>
+  } @else {
+    <div class="edit__body">
+      @if (error()) {
+        <p class="edit__error">
+          <vt-icon name="alert" [size]="16" />
+          {{ error() }}
+        </p>
+      }
+
+      <!-- El tipo decide qué campos se piden, así que solo se elige al crear:
+           cambiarlo después dejaría las respuestas sin campo donde vivir. -->
+      @if (canChooseType()) {
+        <label class="edit__field edit__field--type">
+          <span class="edit__label">Tipo <em>*</em></span>
+
+          <select (change)="onTypePicked($event)">
+            <option value="">Elige un tipo…</option>
+            @for (option of types(); track option.ID) {
+              <option [value]="option.ID" [selected]="type()?.ID === option.ID">
+                {{ option.Name }}
+              </option>
+            }
+          </select>
+        </label>
+      } @else if (type()) {
+        <p class="edit__type">
+          <vt-icon name="box" [size]="15" />
+          {{ type()!.Name }}
+        </p>
+      }
+
+      @if (type()) {
+        <!-- El nombre no es un campo del tipo sino una columna del registro, y
+             es lo único obligatorio siempre. Va arriba y aparte, como en la
+             app. -->
+        <label class="edit__field">
+          <span class="edit__label">Nombre <em>*</em></span>
+
+          <input
+            type="text"
+            id="entity-name"
+            class="edit__input"
+            [class.edit__input--invalid]="nameMissing()"
+            [value]="name()"
+            (input)="onName($event)"
+            placeholder="Con qué se reconoce"
+            autocomplete="off"
+          />
+
+          @if (nameMissing()) {
+            <small class="edit__hint">El nombre es obligatorio.</small>
+          }
+        </label>
+
+        @if (engine(); as eng) {
+          @if (eng.totalPages() > 1) {
+            <nav class="edit__pages">
+              @for (page of eng.pages; track $index) {
+                <button
+                  type="button"
+                  [class.edit__page--on]="$index === eng.page()"
+                  (click)="eng.goTo($index)"
+                >
+                  {{ page.lab || 'Página ' + ($index + 1) }}
+                </button>
+              }
+            </nav>
+          }
+
+          <div class="edit__fields">
+            @for (field of eng.visibleFields(); track field.id) {
+              <div
+                class="edit__card"
+                [id]="'entity-field-' + field.id"
+                [class.edit__card--invalid]="eng.showsError(field)"
+              >
+                <vt-field-host
+                  [field]="field"
+                  [value]="eng.valueOf(field.id)"
+                  [invalid]="eng.showsError(field)"
+                  [answerGuid]="binaryOwner()"
+                  [parentValue]="eng.parentValueOf(field)"
+                  [descriptors]="eng.descriptorsOf(field.id)"
+                  (valueChange)="onValue(field, $event)"
+                  (descriptorsChange)="onDescriptors(field, $event)"
+                />
+              </div>
+            } @empty {
+              <p class="edit__none">Este tipo no pide más datos que el nombre.</p>
+            }
+          </div>
+        }
+      } @else if (!canChooseType()) {
+        <div class="edit__empty">
+          <span class="edit__empty-icon"><vt-icon name="alert" [size]="24" /></span>
+          <p>
+            No hay tipos descargados en este dispositivo, así que no se puede
+            crear. Sincroniza y vuelve a intentarlo.
+          </p>
+        </div>
+      }
+    </div>
+
+    @if (type()) {
+      <footer class="edit__foot">
+        @if (missing().length > 0) {
+          <span class="edit__pending">
+            <vt-icon name="alert" [size]="14" />
+            {{ missing().length }}
+            {{ missing().length === 1 ? 'campo obligatorio' : 'campos obligatorios' }}
+          </span>
+        }
+
+        <span class="edit__buttons">
+          <button type="button" class="edit__cancel" (click)="leave()">Cancelar</button>
+
+          <button type="button" class="edit__save" [disabled]="saving()" (click)="save()">
+            <vt-icon name="check" [size]="16" />
+            {{ saving() ? 'Guardando…' : isNew() ? 'Crear' : 'Guardar cambios' }}
+          </button>
+        </span>
+      </footer>
+    }
+  }
+</section>
+
+<vt-to-top />
+
+<!-- Un catálogo a medias envenena las respuestas de todo el que lo use después,
+     así que aquí no se ofrece guardar incompleto: la única salida es
+     completarlo. -->
+<vt-required-dialog
+  [open]="askingRequired()"
+  [missing]="blocking()"
+  [pageLabels]="pageLabels()"
+  [canSaveAnyway]="false"
+  (review)="reviewRequired()"
+  (goToField)="goToMissing($event)"
+  (close)="askingRequired.set(false)"
+/>

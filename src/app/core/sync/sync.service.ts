@@ -1,7 +1,10 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
+import { Router } from '@angular/router';
 
 import { environment } from '../../../environments/environment';
 import { DatabaseService } from '../database/database.service';
+import { UserConfig } from '../models/entities.model';
+import { UserConfigRepository } from '../repositories/entity.repositories';
 import { UserRepository } from '../repositories/user.repository';
 import { ConnectivityService } from '../services/connectivity.service';
 import {
@@ -10,6 +13,9 @@ import {
   SyncItem,
   isDeletedRecord,
 } from './entity-mappers';
+import { DispatchFilesService } from './dispatch-files.service';
+import { AlertSoundService } from '../services/alert-sound.service';
+import { ToastService } from '../services/toast.service';
 
 /** Fase en la que va la descarga. */
 export type SyncPhase = 'idle' | 'connecting' | 'downloading' | 'done' | 'error' | 'cancelled';
@@ -26,10 +32,25 @@ export interface SyncState {
   message: string;
 }
 
+/** Cómo quedó el alta de este equipo en el servidor. */
+export interface PrepareResult {
+  /** Filas nuevas: lo que le correspondía y este equipo no tenía. */
+  added: number;
+  /** Filas cuyo estado de borrado cambió. */
+  updated: number;
+  /** Filas que se volvieron a marcar por petición expresa. */
+  restored: number;
+  /** Lo que le queda por bajar en total. */
+  pending: number;
+}
+
 /** Cuántos registros se acumulan antes de escribir en la base. */
 const BATCH_SIZE = 200;
 
 /** Reintentos si el stream se corta a mitad. */
+/** Entidad de las actividades asignadas desde la plataforma. */
+const DISPATCH_ENTITY = 9;
+
 const MAX_RETRIES = 3;
 
 /**
@@ -64,7 +85,21 @@ const MAX_RETRIES = 3;
 export class SyncService {
   private readonly db = inject(DatabaseService);
   private readonly users = inject(UserRepository);
+  private readonly configs = inject(UserConfigRepository);
   private readonly connectivity = inject(ConnectivityService);
+  private readonly dispatchFiles = inject(DispatchFilesService);
+  private readonly toasts = inject(ToastService);
+  private readonly sound = inject(AlertSoundService);
+  private readonly router = inject(Router);
+
+  /**
+   * Cómo quedó la última preparación del equipo.
+   *
+   * A la vista en la pantalla de sincronización: cuando no baja nada, lo
+   * primero que hay que poder distinguir es si al usuario **no le corresponde
+   * nada** o si simplemente no se llegó a marcar para este dispositivo.
+   */
+  readonly lastPrepare = signal<PrepareResult | null>(null);
 
   readonly state = signal<SyncState>({
     phase: 'idle',
@@ -111,9 +146,81 @@ export class SyncService {
     const effectiveUserId =
       session.CompanyID === 3502 ? 771295 : Number(session.UserID) || 0;
 
+    /**
+     * Antes de bajar nada, este equipo tiene que estar dado de alta.
+     *
+     * Hay dos tablas del otro lado: una dice **qué le corresponde al usuario** y
+     * otra **qué le falta por bajar a cada equipo**. La descarga solo mira la
+     * segunda, y un equipo nuevo —un navegador recién estrenado— no tiene ni
+     * una fila ahí: se conecta, no encuentra nada y entra vacío, con la sesión
+     * perfectamente iniciada. Desde fuera parece que la sincronización no
+     * sirve.
+     *
+     * `prepareDevice` le copia lo que le toca. Es idempotente, así que se llama
+     * en cada descarga sin coste: lo que ya está no se vuelve a marcar.
+     *
+     * Si falla no se detiene la descarga — puede que el equipo ya estuviera
+     * preparado de antes, y quedarse sin sincronizar por esto sería peor.
+     */
+    try {
+      const ready = await this.prepareDevice(session.UserID, session.DeviceID);
+
+      // Se deja dicho en la consola: es la primera pregunta cuando alguien
+      // sincroniza y no baja nada, y sin esto hay que adivinar si el problema
+      // es que no le corresponde nada o que no llegó a marcarse.
+      console.info(
+        `[Sync] equipo ${session.DeviceID} preparado · ${ready.added} nuevos · ` +
+          `${ready.pending} por bajar`,
+      );
+
+      this.lastPrepare.set(ready);
+    } catch (error) {
+      console.warn('[Sync] no se pudo preparar el dispositivo', error);
+      this.lastPrepare.set(null);
+    }
+
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
         const saved = await this.runDownload(session.UserID, session.DeviceID, effectiveUserId, attempt);
+
+        /**
+         * Los archivos que traen las consignas se buscan al terminar.
+         *
+         * Después y no durante: la descarga de datos es lo que decide si la
+         * sincronización sirvió de algo, y un servidor de archivos lento no
+         * puede retrasarla. Si falla, no se toca el resultado — el trabajo ya
+         * está en el dispositivo y los archivos siguen alcanzables por su
+         * dirección.
+         */
+        let files = 0;
+
+        try {
+          files = await this.dispatchFiles.syncAll();
+        } catch (error) {
+          console.warn('[Sync] no se pudieron traer los archivos de las consignas', error);
+        }
+
+        /**
+         * La configuración por usuario, que decide qué módulos están activos.
+         *
+         * También al final y también sin poder tumbar la sincronización: si no
+         * llega, los permisos se resuelven como estaban — permitiendo, que es
+         * el criterio de la app cuando no sabe.
+         */
+        try {
+          await this.downloadUserConfig(session.UserID, session.CompanyID, effectiveUserId);
+        } catch (error) {
+          console.warn('[Sync] no se pudo traer la configuración del usuario', error);
+        }
+
+        // Los duplicados que dejó la versión anterior. Ver [dropLocalDuplicates].
+        try {
+          await this.dropLocalDuplicates();
+        } catch (error) {
+          console.warn('[Sync] no se pudieron limpiar los duplicados', error);
+        }
+
+        this.announceDispatches(files);
 
         this.state.update((s) => ({
           ...s,
@@ -340,16 +447,61 @@ export class SyncService {
   private async putRecords(store: string, records: Record<string, unknown>[]): Promise<number> {
     return this.db.transaction(store, 'readwrite', async (tx) => {
       const objectStore = tx.objectStore(store);
-      const needsLookup = objectStore.autoIncrement && objectStore.indexNames.contains('byGUID');
+
+      /**
+       * El GUID manda sobre la llave, en todos los almacenes que lo tengan.
+       *
+       * Antes esto solo se hacía en los que autoincrementan, y ahí estaba el
+       * fallo: los catálogos —ubicaciones, activos, ítems— **no**
+       * autoincrementan, porque su llave es el `ID` que asigna Visitrack. Un
+       * registro creado aquí lleva mientras tanto una llave local negativa; al
+       * bajar del servidor con su `ID` de verdad, se guardaba **al lado** del
+       * local en vez de sustituirlo, y la entidad aparecía dos veces.
+       *
+       * Lo que identifica a un registro entre los dos lados es su GUID, así que
+       * es por ahí por donde hay que buscarlo.
+       */
+      const hasGuidIndex = objectStore.indexNames.contains('byGUID');
 
       for (const record of records) {
-        if (needsLookup) {
+        if (hasGuidIndex) {
           const guid = String(record['GUID'] ?? '');
+
           if (guid) {
             const existing = await this.db.request<Record<string, unknown> | undefined>(
               objectStore.index('byGUID').get(guid),
             );
-            if (existing?.['ID'] !== undefined) record['ID'] = existing['ID'];
+
+            if (existing?.['ID'] !== undefined) {
+              const previous = existing['ID'] as IDBValidKey;
+              const incoming = record['ID'];
+
+              /**
+               * Lo que aún no ha subido no se pisa.
+               *
+               * Si el registro local tiene cambios sin mandar, el servidor
+               * todavía no los conoce: su versión es la de antes de editarlo.
+               * Sobrescribirlo con ella borraría el trabajo del usuario sin
+               * dejar rastro — y encima marcándolo como sincronizado.
+               *
+               * Se conserva el contenido local y se adopta solo la identidad
+               * que trae el servidor, que es lo único que faltaba.
+               */
+              if (isPendingLocal(existing)) {
+                const identity = incoming ?? previous;
+                for (const key of Object.keys(existing)) record[key] = existing[key];
+                record['ID'] = identity;
+              }
+
+              // En los que autoincrementan la llave la puso IndexedDB y hay que
+              // respetarla; en los demás manda la del servidor, y la fila vieja
+              // sobra.
+              if (incoming === undefined || objectStore.autoIncrement) {
+                record['ID'] = previous;
+              } else if (previous !== incoming) {
+                objectStore.delete(previous);
+              }
+            }
           }
         }
 
@@ -440,6 +592,174 @@ export class SyncService {
     }
   }
 
+  /**
+   * Avisa de las consignas que acaban de llegar.
+   *
+   * Con aviso en pantalla **y** sonido: quien sincroniza suele estar haciendo
+   * otra cosa mientras tanto —o mirando otra pestaña— y un cambio silencioso en
+   * el número del menú no se ve. El trabajo asignado es justo lo que no puede
+   * pasar desapercibido.
+   *
+   * Solo cuando llega algo: una sincronización que no trae consignas no tiene
+   * nada que contar, y avisar de eso enseñaría a ignorar el aviso.
+   */
+  private announceDispatches(files: number): void {
+    const received = this.state().byEntity[DISPATCH_ENTITY] ?? 0;
+    if (received === 0) return;
+
+    const detail = files > 0
+      ? `Se descargaron ${files} ${files === 1 ? 'archivo adjunto' : 'archivos adjuntos'}.`
+      : 'Revisa qué te asignaron y desde dónde empezar.';
+
+    this.toasts.show({
+      title:
+        received === 1
+          ? 'Llegó una consigna nueva'
+          : `Llegaron ${received} consignas nuevas`,
+      detail,
+      tone: 'info',
+      icon: 'send',
+      action: {
+        label: 'Ver',
+        run: () => void this.router.navigate(['/consignas']),
+      },
+    });
+
+    void this.sound.notify();
+  }
+
+  /**
+   * Retira las copias locales de entidades que ya bajaron del servidor.
+   *
+   * Un registro creado aquí lleva una llave negativa hasta que sube; cuando
+   * vuelve con su `ID` de Visitrack pasa a tener la suya, y la vieja sobra. La
+   * escritura ya se encarga de eso —ver [putRecords]— pero **no de las que
+   * quedaron duplicadas antes de arreglarlo**, y esas no desaparecen solas.
+   *
+   * Solo se recorren las llaves negativas: son las únicas que pueden ser una
+   * copia local, así que esto son unas pocas filas aunque el catálogo tenga
+   * decenas de miles.
+   *
+   * Lo que todavía no ha subido no se toca: es la única copia que existe de un
+   * trabajo que nadie más tiene.
+   */
+  private async dropLocalDuplicates(): Promise<void> {
+    for (const store of ['LocationsForms', 'Assets', 'ListsDet']) {
+      await this.db.transaction(store, 'readwrite', async (tx) => {
+        const objectStore = tx.objectStore(store);
+        if (!objectStore.indexNames.contains('byGUID')) return;
+
+        const locals = await this.db.request<Record<string, unknown>[]>(
+          objectStore.getAll(IDBKeyRange.upperBound(-1)),
+        );
+
+        for (const local of locals ?? []) {
+          if (isPendingLocal(local)) continue;
+
+          const guid = String(local['GUID'] ?? '');
+          if (!guid) continue;
+
+          // Se recorren todas las filas con ese GUID: si hay alguna con llave
+          // del servidor, esta copia ya no hace falta.
+          const twins = await this.db.request<Record<string, unknown>[]>(
+            objectStore.index('byGUID').getAll(guid),
+          );
+
+          const fromServer = (twins ?? []).some((twin) => Number(twin['ID']) > 0);
+          if (fromServer) objectStore.delete(local['ID'] as IDBValidKey);
+        }
+      });
+    }
+  }
+
+  /**
+   * Trae la configuración de módulos del usuario.
+   *
+   * Es lo que en la app decide, para algunas compañías, si se pueden crear
+   * ítems de lista desde un formulario. Se guarda como el JSON crudo: el
+   * catálogo de módulos lo define la plataforma.
+   */
+  private async downloadUserConfig(
+    userId: string,
+    companyId: number,
+    ownerId: number,
+  ): Promise<void> {
+    const base = environment.useLocalApi ? environment.localApiUrl : environment.apiUrl;
+
+    const url =
+      `${base}/getUsersModuleByUserIdAndCompanyId` +
+      `?userId=${encodeURIComponent(userId)}&companyId=${encodeURIComponent(String(companyId))}`;
+
+    const reply = await fetch(url);
+    if (!reply.ok) return;
+
+    const response = (await reply.json()) as { status?: boolean; response?: unknown };
+    if (response?.status !== true) return;
+
+    const existing = await this.configs.findByUser(ownerId);
+
+    const record: UserConfig = {
+      ...(existing ?? { UserID: ownerId }),
+      UserID: ownerId,
+      config: JSON.stringify(response.response ?? []),
+      lastDate: new Date().toISOString(),
+    };
+
+    if (!existing) delete (record as { ID?: number }).ID;
+
+    await this.configs.put(record);
+  }
+
+  /**
+   * Da de alta este equipo para que el servidor sepa qué mandarle.
+   *
+   * @param full vuelve a marcar como pendiente **todo**, incluso lo ya bajado.
+   *   Es la respuesta a «se me perdieron los datos».
+   */
+  async prepareDevice(
+    userId: string,
+    deviceId: string,
+    full = false,
+  ): Promise<PrepareResult> {
+    const base = environment.useLocalApi ? environment.localApiUrl : environment.apiUrl;
+
+    const reply = await fetch(`${base}/prepareDevice`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ UserID: userId, DeviceID: deviceId, reset: full }),
+    });
+
+    if (!reply.ok) throw new Error(`El servidor respondió ${reply.status}.`);
+
+    const result = (await reply.json()) as {
+      status?: boolean;
+      message?: string;
+      response?: PrepareResult;
+    };
+
+    if (result?.status !== true) {
+      throw new Error(result?.message ?? 'No se pudo preparar el dispositivo.');
+    }
+
+    return result.response ?? { added: 0, updated: 0, restored: 0, pending: 0 };
+  }
+
+  /**
+   * Vuelve a marcar **todo** como pendiente para este equipo.
+   *
+   * Es la respuesta a «sincronizo y no me baja nada»: no toca los datos, solo
+   * le dice al servidor que este dispositivo se lo tiene que volver a mandar.
+   */
+  async resyncEverything(): Promise<PrepareResult | null> {
+    const session = await this.users.getActiveSession();
+    if (!session) return null;
+
+    const result = await this.prepareDevice(session.UserID, session.DeviceID, true);
+    this.lastPrepare.set(result);
+
+    return result;
+  }
+
   private async markLastSync(userId: string): Promise<void> {
     try {
       const user = await this.users.getByIndex('byUserID', userId);
@@ -454,4 +774,15 @@ export class SyncService {
   private fail(message: string): void {
     this.state.update((s) => ({ ...s, phase: 'error', message }));
   }
+}
+
+/**
+ * ¿Este registro local tiene cambios que el servidor todavía no conoce?
+ *
+ * Solo los catálogos que se pueden crear o editar desde el cliente llevan estas
+ * marcas; en el resto la respuesta es que no, y el registro del servidor manda
+ * sin discusión.
+ */
+function isPendingLocal(record: Record<string, unknown>): boolean {
+  return record['CreateWithMovil'] === '1' && record['Upload'] !== '1';
 }

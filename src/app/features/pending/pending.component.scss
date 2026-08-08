@@ -151,6 +151,11 @@
   background: var(--vt-warning);
 }
 
+/* En rojo, no en ámbar: el ámbar es «espera», y esto no se resuelve esperando. */
+.pend__dot--blocked {
+  background: var(--vt-danger);
+}
+
 .pend__count {
   padding: 1px 9px;
   font-size: 11px;
@@ -195,6 +200,15 @@
 
 .act--waiting {
   border-left-color: var(--vt-warning);
+}
+
+.act--blocked {
+  border-left-color: var(--vt-danger);
+}
+
+.pend__note--blocked {
+  color: var(--vt-danger);
+  background: color-mix(in srgb, var(--vt-danger) 8%, transparent);
 }
 
 .act__body {

@@ -12,6 +12,7 @@ import {
   descriptorsMatch,
   parseEntityDescriptors,
 } from '../../shared/utils/descriptors';
+import { PermissionsService } from '../../core/services/permissions.service';
 import { EntityPickerComponent, PickerItem } from './entity-picker/entity-picker.component';
 
 /** Cuántos activos se traen por página. */
@@ -48,7 +49,10 @@ const SEARCH_DELAY_MS = 300;
       [emptyMessage]="emptyMessage()"
       (search)="onSearch($event)"
       (loadMore)="loadMore()"
+      [createLabel]="canCreate() ? 'Nuevo activo' : ''"
+      [createBlocked]="permissions.entitiesReason()"
       (choose)="choose($event)"
+      (create)="createNew()"
       (back)="goBack()"
     />
   `,
@@ -56,6 +60,7 @@ const SEARCH_DELAY_MS = 300;
 export class AssetPickerComponent {
   private readonly router = inject(Router);
   private readonly activities = inject(ActivityService);
+  readonly permissions = inject(PermissionsService);
 
   readonly surveyId = input.required<string>();
   readonly actividad = input('');
@@ -65,6 +70,9 @@ export class AssetPickerComponent {
    * siguiente del de ubicación; vacío cuando se entró directo desde el listado.
    */
   readonly desde = input('');
+
+  /** Activo recién dado de alta, de vuelta del editor. Se asocia solo. */
+  readonly creado = input('');
 
   private readonly survey = signal<Survey | null>(null);
   private readonly answer = signal<SurveyAnswer | null>(null);
@@ -117,6 +125,18 @@ export class AssetPickerComponent {
     return this.answer()?.LocationID ?? '';
   }
 
+  /**
+   * …y su GUID.
+   *
+   * Una sede creada en este dispositivo no tiene `LocationID` —lo asigna
+   * Visitrack al subir—, así que sus activos solo se reconocen por aquí. Sin
+   * esto, quien acababa de dar de alta una sede y un equipo dentro no veía el
+   * equipo en este selector.
+   */
+  private get locationGuid(): string {
+    return this.answer()?.LocationGUID ?? '';
+  }
+
   constructor() {
     effect(() => {
       const surveyId = this.surveyId();
@@ -141,16 +161,22 @@ export class AssetPickerComponent {
 
       const requirements = readRequirements(survey);
       const locationId = answer?.LocationID ?? '';
+      const locationGuid = answer?.LocationGUID ?? '';
 
       const [name, total, first] = await Promise.all([
         this.activities.assetTypeName(requirements.assetTypeGuid),
-        this.activities.countAssets(requirements.assetTypeGuid, locationId),
-        this.activities.listAssets(requirements.assetTypeGuid, locationId, { limit: PAGE_SIZE }),
+        this.activities.countAssets(requirements.assetTypeGuid, locationId, locationGuid),
+        this.activities.listAssets(requirements.assetTypeGuid, locationId, {
+          limit: PAGE_SIZE,
+          locationGuid,
+        }),
       ]);
 
       this.typeName.set(name);
       this.total.set(total);
       this.page.set(first);
+
+      if (this.creado()) await this.attachCreated(this.creado(), requirements, locationId);
     } catch (error) {
       console.error('[AssetPicker] no se pudieron cargar los activos', error);
     } finally {
@@ -165,6 +191,7 @@ export class AssetPickerComponent {
     const next = await this.activities.listAssets(requirements.assetTypeGuid, this.locationId, {
       limit: PAGE_SIZE,
       offset: this.page().length,
+      locationGuid: this.locationGuid,
     });
 
     this.page.update((current) => [...current, ...next]);
@@ -190,7 +217,9 @@ export class AssetPickerComponent {
     if (!requirements) return;
 
     try {
-      const all = await this.activities.listAssets(requirements.assetTypeGuid, this.locationId);
+      const all = await this.activities.listAssets(requirements.assetTypeGuid, this.locationId, {
+        locationGuid: this.locationGuid,
+      });
       const needle = term.trim().toLowerCase();
 
       this.matches.set(
@@ -212,18 +241,88 @@ export class AssetPickerComponent {
 
   /** Asocia el activo y abre el formulario. */
   async choose(item: PickerItem): Promise<void> {
+    const source = this.matches() ?? this.page();
+    const asset = source.find((candidate) => candidate.GUID === item.id);
+
+    if (asset) await this.attach(asset);
+  }
+
+  /**
+   * Asocia el activo y sigue al formulario.
+   *
+   * Recibe el registro y no su identificador: quien acaba de crearlo lo tiene
+   * en la mano, y buscarlo en la lista visible fallaría en silencio si por
+   * orden alfabético cayó más allá de la primera página.
+   */
+  private async attach(asset: Asset): Promise<void> {
     const answer = this.answer();
     const surveyId = this.survey()?.SurveyID;
     if (!answer || !surveyId) return;
 
-    const source = this.matches() ?? this.page();
-    const asset = source.find((candidate) => candidate.GUID === item.id);
-    if (!asset) return;
-
     const updated = await this.activities.attachAsset(answer, asset);
     if (!updated) return;
 
-    await this.router.navigate(['/formularios', surveyId, 'actividad', updated.GUID]);
+    /**
+     * `replaceUrl` saca el selector del historial.
+     *
+     * El activo ya está elegido y guardado en la actividad: volver atrás desde
+     * el formulario debe llevar al listado, no a repetir una elección hecha. Sin
+     * esto, el botón atrás del navegador devolvía al selector una y otra vez, y
+     * el usuario tenía que pulsarlo varias veces para salir.
+     *
+     * Cambiar de activo sigue siendo posible desde la propia actividad, que es
+     * donde tiene sentido: allí se ve qué se está cambiando.
+     */
+    await this.router.navigate(['/formularios', surveyId, 'actividad', updated.GUID], {
+      replaceUrl: true,
+    });
+  }
+
+  /**
+   * Asocia el activo recién creado y sigue al formulario.
+   *
+   * Se busca entre todos los de la sede: acaba de nacer y no tiene por qué
+   * caer en la primera página.
+   */
+  private async attachCreated(
+    guid: string,
+    requirements: SurveyRequirements,
+    locationId: string,
+  ): Promise<void> {
+    const all = await this.activities.listAssets(requirements.assetTypeGuid, locationId, {
+      locationGuid: this.locationGuid,
+    });
+
+    const created = all.find((asset) => asset.GUID === guid);
+
+    if (!created) return;
+
+    await this.attach(created);
+  }
+
+  /** El rol permite dar de alta lo que no aparece en la lista. */
+  readonly canCreate = computed(() => this.permissions.canCreateAssets());
+
+  /**
+   * Sale a crear el activo y vuelve aquí.
+   *
+   * Se crea **dentro de la ubicación de la actividad**: un activo cuelga de una
+   * sede, y la de esta actividad ya está elegida. Al volver, el selector se
+   * retoma con el recién creado en la lista.
+   */
+  async createNew(): Promise<void> {
+    const location = this.answer()?.LocationGUID;
+    if (!location) return;
+
+    await this.router.navigate(['/ubicaciones', location, 'activo', 'nuevo'], {
+      queryParams: {
+        volver: this.router.url,
+
+        // Del tipo que exige el formulario, por lo mismo que en las
+        // ubicaciones: de otro tipo no volvería a aparecer aquí.
+        tipo: this.requirements()?.assetTypeGuid ?? '',
+      },
+    });
   }
 
   /**

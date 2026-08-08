@@ -1,0 +1,317 @@
+/**
+ * Entidades creadas o modificadas en el equipo, esperando a subir.
+ *
+ * Sigue la forma de la pantalla de borradores: una lista de tarjetas
+ * pulsables, cada una con lo que hace falta para decidir si hay que mirarla.
+ */
+
+.ent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vt-space-4);
+  max-width: 900px;
+  padding: var(--vt-space-5) var(--vt-space-4) var(--vt-space-8);
+  margin: 0 auto;
+}
+
+.ent__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vt-space-3);
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.ent__title {
+  h1 {
+    margin: 0;
+    font-size: var(--vt-text-xl);
+    font-weight: 700;
+    color: var(--vt-text);
+  }
+
+  p {
+    margin: 4px 0 0;
+    font-size: var(--vt-text-sm);
+    color: var(--vt-text-subtle);
+
+    em {
+      font-style: normal;
+      font-weight: 650;
+      color: var(--vt-warn, #b45309);
+    }
+  }
+}
+
+.ent__run {
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+  align-items: center;
+  padding: 10px var(--vt-space-4);
+  font-family: var(--vt-font);
+  font-size: var(--vt-text-sm);
+  font-weight: 650;
+  color: var(--vt-on-brand);
+  background: var(--vt-brand);
+  border: 0;
+  border-radius: var(--vt-radius-full);
+  transition: opacity var(--vt-transition);
+
+  &:hover:not(:disabled) {
+    opacity: 0.9;
+  }
+
+  &:disabled {
+    opacity: 0.55;
+  }
+}
+
+/**
+ * Explicación permanente, no un aviso que se cierra: que estas entidades no
+ * existan todavía en Visitrack no es un evento, es su estado.
+ *
+ * El párrafo es flex solo para alinear el icono con la primera línea.
+ *
+ * Por eso el texto va envuelto en un `span`: en un contenedor flex, cada
+ * `<strong>` suelto se convierte en un ítem propio y salta de línea, partiendo
+ * la frase en trozos. Con un único hijo, el texto vuelve a fluir.
+ */
+.ent__note,
+.ent__blocked {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  margin: 0;
+  font-size: var(--vt-text-xs);
+  line-height: 1.55;
+  color: var(--vt-text-muted);
+  background: var(--vt-surface-2);
+  border-left: 3px solid var(--vt-brand);
+  border-radius: var(--vt-radius);
+
+  vt-icon {
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  /* El texto, ya como bloque de texto normal. */
+  > span {
+    flex: 1;
+    min-width: 0;
+  }
+
+  strong {
+    font-weight: 650;
+    color: var(--vt-text);
+  }
+}
+
+.ent__blocked {
+  color: var(--vt-warn-fg, #92400e);
+  background: var(--vt-warn-bg, #fef3c7);
+  border-left-color: var(--vt-warn, #b45309);
+}
+
+.ent__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.ent__link {
+  display: flex;
+  gap: var(--vt-space-3);
+  align-items: center;
+  padding: var(--vt-space-3) var(--vt-space-4);
+  text-decoration: none;
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-rule);
+  border-radius: var(--vt-radius-lg);
+  transition:
+    border-color var(--vt-transition),
+    background var(--vt-transition);
+
+  &:hover {
+    background: var(--vt-surface-2);
+    border-color: var(--vt-rule-strong);
+  }
+}
+
+/* Sin pantalla a la que ir: se quita el gesto de pulsable para no prometer un
+   destino que no existe. */
+.ent__link--flat {
+  cursor: default;
+
+  &:hover {
+    background: var(--vt-surface);
+    border-color: var(--vt-rule);
+  }
+}
+
+.ent__item--waiting .ent__link {
+  border-style: dashed;
+}
+
+.ent__icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  color: var(--vt-icon-brand-fg);
+  background: var(--vt-icon-brand-bg);
+  border-radius: var(--vt-radius);
+}
+
+.ent__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.ent__name {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  overflow: hidden;
+  font-size: var(--vt-text-sm);
+  font-weight: 650;
+  color: var(--vt-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Nueva o modificada. En dos tonos porque son dos cosas distintas: una va a
+   nacer en Visitrack, la otra ya está allá con datos viejos. */
+.ent__tag {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 700;
+  color: var(--vt-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  background: var(--vt-surface-2);
+  border-radius: var(--vt-radius-full);
+}
+
+.ent__tag--new {
+  color: var(--vt-on-brand);
+  background: var(--vt-brand);
+}
+
+.ent__origin {
+  overflow: hidden;
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-subtle);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Los descriptivos en una línea seguida: con cuatro o cinco, cada uno en su
+   píldora convierte la fila en un mosaico ilegible. */
+.ent__desc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 2px;
+  font-size: var(--vt-text-xs);
+}
+
+.ent__pair {
+  display: inline-flex;
+  gap: 5px;
+
+  b {
+    font-weight: 600;
+    color: var(--vt-text-muted);
+  }
+
+  span {
+    color: var(--vt-text);
+  }
+}
+
+.ent__waiting {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 3px;
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-subtle);
+}
+
+.ent__go {
+  flex-shrink: 0;
+  color: var(--vt-text-muted);
+}
+
+/* ── Vacío y carga ────────────────────────────────────────────────────────── */
+
+.ent__empty {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  padding: var(--vt-space-8) var(--vt-space-4);
+  text-align: center;
+
+  h2 {
+    margin: 0;
+    font-size: var(--vt-text-md);
+    font-weight: 650;
+    color: var(--vt-text);
+  }
+
+  p {
+    max-width: 44ch;
+    margin: 0;
+    font-size: var(--vt-text-sm);
+    color: var(--vt-text-subtle);
+  }
+}
+
+.ent__empty-icon {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  color: var(--vt-ok-fg, #15803d);
+  background: var(--vt-ok-bg, #dcfce7);
+  border-radius: 50%;
+}
+
+.ent__ghosts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Fantasmas en vez de un texto: dicen que va a aparecer una lista y cuántas
+   filas caben, así la pantalla no da un salto de alto al llegar los datos. */
+.ent__ghost {
+  height: 68px;
+  background: var(--vt-surface-2);
+  border-radius: var(--vt-radius-lg);
+  animation: ent-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes ent-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ent__ghost {
+    animation: none;
+  }
+}

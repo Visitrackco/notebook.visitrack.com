@@ -42,9 +42,40 @@
  * nunca: al pulsar «Revisar campos» no pasaba nada visible.
  */
 :host(.fld--invalid) {
-  padding: var(--vt-space-3);
-  background: color-mix(in srgb, var(--vt-danger) 9%, transparent);
-  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--vt-danger) 35%, transparent);
+  /**
+   * Un tinte muy leve, no un recuadro.
+   *
+   * Desde que cada pregunta vive en su propia tarjeta, el aviso fuerte lo dan
+   * la tarjeta —borde rojo y franja lateral— y la marca de la esquina. Repetir
+   * aquí el filo y el fondo saturado convertía la pregunta en tres alarmas
+   * apiladas diciendo lo mismo.
+   */
+  background: color-mix(in srgb, var(--vt-danger) 5%, transparent);
+}
+
+/**
+ * La etiqueta de la pregunta.
+ *
+ * Un peso por encima del texto del control y en el color fuerte: es lo que se
+ * lee al bajar por el formulario decidiendo qué responder, y el valor escrito
+ * se lee después, ya dentro de la pregunta.
+ */
+.fld__label {
+  display: block;
+  margin-bottom: 8px;
+  font-family: var(--vt-font);
+  font-size: var(--vt-text-base);
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--vt-text);
+}
+
+/* El asterisco, separado y en rojo: pegado al texto se confunde con parte del
+   nombre del campo. */
+.fld__req {
+  margin-left: 3px;
+  font-style: normal;
+  color: var(--vt-danger);
 }
 
 .fld__control {
@@ -54,16 +85,18 @@
 /**
  * Marca de obligatorio.
  *
- * Un punto en la esquina superior, fuera del control: un asterisco dentro de la
- * etiqueta se pierde cuando la etiqueta es larga o cuando Material la encoge al
- * enfocar. Aquí siempre está en el mismo sitio, y al fallar la validación se
- * enciende sin cambiar de posición — lo que se mueve distrae, lo que cambia de
- * color informa.
+ * Un punto en el borde de la tarjeta, fuera de la caja del campo. El asterisco
+ * de la etiqueta ya dice lo mismo, pero se pierde cuando el nombre del campo es
+ * largo; este punto está siempre en el mismo sitio y se localiza bajando por la
+ * página sin leer nada.
+ *
+ * Al fallar la validación cambia de color sin moverse: lo que se mueve
+ * distrae, lo que cambia de color informa.
  */
 .fld__flag {
   position: absolute;
-  top: 0;
-  left: 0;
+  top: -6px;
+  left: -14px;
   z-index: 2;
   display: grid;
   place-items: center;
@@ -155,9 +188,6 @@
   border-color: color-mix(in srgb, var(--vt-danger) 40%, transparent);
 }
 
-.fld__required {
-  color: var(--vt-danger);
-}
 
 /* Fecha y hora lado a lado cuando hay sitio; apiladas si no. La hora necesita
    menos ancho que la fecha, de ahí el reparto desigual. */
@@ -211,6 +241,31 @@
   color: var(--vt-danger);
 }
 
+/* ── Área de texto con formato ─────────────────────────────────────────────── */
+
+/* Etiqueta encima, como en los campos de archivo: el «control» es un editor
+   con su propia barra, y una etiqueta flotante de Material caería sobre ella. */
+.fld__rich {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  width: 100%;
+}
+
+
+.fld__rich-help {
+  font-family: var(--vt-font);
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-subtle);
+}
+
+.fld__rich-error {
+  font-family: var(--vt-font);
+  font-size: var(--vt-text-xs);
+  font-weight: 600;
+  color: var(--vt-danger);
+}
+
 /* ── Imagen de referencia ──────────────────────────────────────────────────── */
 
 .fld__figure {
@@ -250,11 +305,6 @@
   width: 100%;
 }
 
-.fld__binary-label {
-  font-size: var(--vt-text-sm);
-  font-weight: 600;
-  color: var(--vt-text-muted);
-}
 
 .fld__binary-help {
   font-size: var(--vt-text-xs);
@@ -306,4 +356,75 @@
   color: var(--vt-warning);
   background: color-mix(in srgb, var(--vt-warning) 15%, transparent);
   border-radius: var(--vt-radius-sm);
+}
+
+/* ── Calificación por estrellas ───────────────────────────────────────────── */
+
+/**
+ * Un `radio` que el formulario pidió como calificación.
+ *
+ * ## Ocupa el ancho y se reparte
+ *
+ * Las estrellas se estiran a lo ancho del campo y saltan de línea si son
+ * muchas: con diez opciones en una fila fija, o se salen del papel o quedan
+ * tan pequeñas que no se aciertan con el dedo. El `flex-wrap` es lo que hace
+ * que diez estrellas en un teléfono se conviertan en dos filas legibles en vez
+ * de una tira ilegible.
+ *
+ * ## Se encienden todas hasta la elegida
+ *
+ * Tres estrellas significa «tres», no «la tercera». Es la lectura de toda la
+ * vida y la que hace la app.
+ */
+.rating {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: center;
+  width: 100%;
+}
+
+.rating__star {
+  display: grid;
+  flex: 1 1 auto;
+  place-items: center;
+  min-width: 44px;
+  max-width: 64px;
+  padding: 4px 0;
+  color: var(--vt-rule-strong);
+  background: none;
+  border: 0;
+  transition:
+    color var(--vt-transition),
+    transform var(--vt-transition);
+
+  svg {
+    width: 100%;
+    max-width: 40px;
+    height: auto;
+    aspect-ratio: 1;
+    fill: currentColor;
+  }
+
+  &:hover:not(:disabled) {
+    transform: scale(1.08);
+  }
+
+  &:disabled {
+    cursor: default;
+  }
+}
+
+/* El ámbar es el color de una calificación en cualquier sitio: usarlo aquí
+   ahorra explicar qué significa que una estrella esté llena. */
+.rating__star--on {
+  color: #f5a623;
+}
+
+.rating__label {
+  margin: 6px 0 0;
+  font-size: var(--vt-text-sm);
+  font-weight: 650;
+  color: #c47f10;
+  text-align: center;
 }
