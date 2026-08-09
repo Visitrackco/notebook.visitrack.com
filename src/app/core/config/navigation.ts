@@ -104,6 +104,13 @@ export const NAVIGATION: NavSection[] = [
         description: 'Trae aquí lo que tienes en el teléfono',
       },
       {
+        key: 'history',
+        label: 'Historial',
+        route: '/historial',
+        icon: 'clipboard',
+        description: 'Qué se le ha hecho a una sede o a un equipo',
+      },
+      {
         key: 'entities',
         label: 'Entidades por subir',
         route: '/entidades',

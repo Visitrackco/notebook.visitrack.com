@@ -1,0 +1,169 @@
+<section class="hst" [class.hst--embedded]="embedded()">
+  @if (!embedded()) {
+    <header class="hst__head">
+      <div>
+        <h1>Historial</h1>
+        <p>Actividades hechas sobre una ubicación o un activo, venga del formulario que venga.</p>
+      </div>
+    </header>
+
+    <!-- Es la única pantalla que exige conexión: conviene decirlo antes de que
+         alguien la abra en campo y la vea vacía. -->
+    <p class="hst__note">
+      <vt-icon name="info" [size]="15" />
+      <span>
+        Esta consulta se hace <strong>en línea</strong>. Descarga las actividades que
+        necesites tener a mano para poder verlas después sin señal.
+      </span>
+    </p>
+
+    @if (!target()) {
+      <div class="hst__picker">
+        <label for="hst-search">¿Sobre qué quieres consultar?</label>
+
+        <div class="hst__searchbox">
+          <input
+            id="hst-search"
+            type="search"
+            placeholder="Nombre de la sede o del equipo"
+            [ngModel]="search()"
+            (ngModelChange)="search.set($event); suggest()"
+            autocomplete="off"
+          />
+        </div>
+
+        @if (suggestions().length > 0) {
+          <ul class="hst__suggestions">
+            @for (option of suggestions(); track option.kind + option.id) {
+              <li>
+                <button type="button" (click)="choose(option)">
+                  <vt-icon [name]="option.kind === 'activo' ? 'box' : 'map-pin'" [size]="15" />
+                  <span class="hst__suggestion-name">{{ option.name }}</span>
+                  <span class="hst__suggestion-kind">{{ option.kind }}</span>
+                </button>
+              </li>
+            }
+          </ul>
+        } @else if (search().trim().length >= 2) {
+          <p class="hst__empty">Nada con ese nombre entre lo que tienes descargado.</p>
+        }
+      </div>
+    } @else if (!assetId() && !locationId()) {
+      <p class="hst__target">
+        <vt-icon [name]="target()!.kind === 'activo' ? 'box' : 'map-pin'" [size]="16" />
+        <strong>{{ target()!.name }}</strong>
+        <span>{{ target()!.kind }}</span>
+        <button type="button" class="hst__change" (click)="clearTarget()">Cambiar</button>
+      </p>
+    }
+  }
+
+  @if (target()) {
+    <form class="hst__filters" (ngSubmit)="apply()">
+      <label>
+        Desde
+        <input type="date" [ngModel]="from()" (ngModelChange)="from.set($event)" name="from" />
+      </label>
+
+      <label>
+        Hasta
+        <input type="date" [ngModel]="to()" (ngModelChange)="to.set($event)" name="to" />
+      </label>
+
+      <label>
+        Fecha de
+        <select [ngModel]="dateField()" (ngModelChange)="dateField.set($event)" name="dateField">
+          <option value="CreatedOn">Creación</option>
+          <option value="CompletedOn">Cierre</option>
+          <option value="DueDate">Programación</option>
+          <option value="UpdatedOn">Última modificación</option>
+        </select>
+      </label>
+
+      <label class="hst__term">
+        Formulario o consecutivo
+        <input
+          type="search"
+          placeholder="Opcional"
+          [ngModel]="term()"
+          (ngModelChange)="term.set($event)"
+          name="term"
+        />
+      </label>
+
+      <button type="submit" class="hst__apply" [disabled]="loading()">
+        <vt-icon name="clipboard" [size]="15" />
+        Consultar
+      </button>
+    </form>
+
+    @if (loading()) {
+      <p class="hst__state">Consultando…</p>
+    } @else if (error()) {
+      <p class="hst__state hst__state--error">
+        <vt-icon name="alert" [size]="16" />
+        {{ error() }}
+      </p>
+    } @else if (result()) {
+      <p class="hst__counter">{{ counter() }}</p>
+
+      <ul class="hst__list">
+        @for (item of items(); track item.GUID) {
+          <li class="hst__item">
+            <!-- Se guarda la consulta antes de salir, para que volver no
+                 obligue a rehacerla. -->
+            <a [routerLink]="['/historial', item.GUID]" class="hst__link" (click)="keep()">
+              <div class="hst__item-head">
+                <span class="hst__survey">{{ item.SurveyName || 'Formulario ' + item.SurveyID }}</span>
+
+                @if (item.isMine) {
+                  <span class="hst__badge hst__badge--mine">Mía</span>
+                }
+
+                @if (item.StatusName) {
+                  <span class="hst__badge">{{ item.StatusName }}</span>
+                }
+              </div>
+
+              <div class="hst__item-meta">
+                <span>{{ dateOf(item) }}</span>
+
+                @if (placeOf(item)) {
+                  <span>· {{ placeOf(item) }}</span>
+                }
+
+                @if (item.AssignedToName) {
+                  <span>· {{ item.AssignedToName }}</span>
+                }
+
+                @if (item.Consecutive) {
+                  <span>· #{{ item.Consecutive }}</span>
+                }
+              </div>
+            </a>
+          </li>
+        } @empty {
+          <li class="hst__empty">No hay actividades en ese rango de fechas.</li>
+        }
+      </ul>
+
+      @if (pages() > 1) {
+        <nav class="hst__pager">
+          <button type="button" (click)="go(page() - 1)" [disabled]="page() === 1">
+Anterior
+          </button>
+
+          <span>Página {{ page() }} de {{ pages() }}</span>
+
+          <button type="button" (click)="go(page() + 1)" [disabled]="page() === pages()">
+Siguiente
+          </button>
+        </nav>
+      }
+    }
+  }
+
+  @if (!embedded()) {
+    <vt-to-top />
+  }
+</section>

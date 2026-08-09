@@ -79,6 +79,33 @@ export class AlertSoundService {
     }
   }
 
+  /**
+   * Suena el aviso de que algo salió bien.
+   *
+   * Un acorde ascendente de tres notas, y no dos como los otros dos avisos: el
+   * número de notas es lo que lo separa de «llegó trabajo nuevo» sin tener que
+   * mirar la pantalla. Que una actividad haya salido del dispositivo es la
+   * confirmación que más se espera en campo —significa que ya no depende del
+   * teléfono— y merece un sonido propio.
+   */
+  async success(): Promise<void> {
+    if (this.muted) return;
+
+    try {
+      const context = this.ensureContext();
+      if (context.state === 'suspended') await context.resume();
+
+      // Do, mi, sol: una tríada mayor, que es lo que suena a cosa resuelta.
+      this.play(context, [
+        { freq: 523, at: 0 },
+        { freq: 659, at: 0.1 },
+        { freq: 784, at: 0.2 },
+      ]);
+    } catch (error) {
+      console.warn('[Sonido] no se pudo reproducir la confirmación', error);
+    }
+  }
+
   /** Suena el aviso de obligatorios sin responder. */
   async warn(): Promise<void> {
     if (this.muted) return;

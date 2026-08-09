@@ -52,6 +52,17 @@ export interface FormEngineInput {
    * sede, el código del equipo— para no volver a preguntar lo que ya se sabe.
    */
   inherits?: InheritedSource;
+
+  /**
+   * El formulario solo se consulta: no se va a diligenciar ni a guardar.
+   *
+   * Cambia una cosa, y es importante: **no se aplican valores por defecto**. En
+   * una actividad que se está llenando, un `def` es una ayuda que el usuario
+   * puede cambiar y que se acabará guardando. En una que se consulta meses
+   * después sería una respuesta que nadie dio, indistinguible de las de verdad.
+   * Lo que no se respondió tiene que verse vacío.
+   */
+  readOnly?: boolean;
 }
 
 /**
@@ -119,10 +130,14 @@ export class FormEngine {
   /** Campos que se calculan solos, localizados una vez. */
   private readonly derived: FormField[];
 
+  /** Solo consulta: ver [FormEngineInput.readOnly]. */
+  private readonly readOnly: boolean;
+
   constructor(input: FormEngineInput) {
     this.pages = parseQuestions(input.questions);
     this.inherits = input.inherits ?? {};
     this.derived = derivedFieldsOf(this.pages);
+    this.readOnly = input.readOnly ?? false;
 
     const stored = parseAnswerFields(input.answers);
     const initial = this.buildInitialValues(stored);
@@ -505,6 +520,18 @@ export class FormEngine {
       // Los descriptivos guardados vuelven tal cual: son el retrato del ítem
       // cuando se eligió, no lo que diga hoy el catálogo.
       if (entry.des?.length) restored.set(entry.id, entry.des);
+    }
+
+    /**
+     * En consulta se para aquí: lo guardado y nada más.
+     *
+     * Los descriptivos sí se publican igual —son parte de lo que se respondió—,
+     * pero ni valores por defecto, ni heredados, ni recálculo de los campos
+     * calculados. Ver [FormEngineInput.readOnly].
+     */
+    if (this.readOnly) {
+      if (restored.size > 0) this.descriptors.set(restored);
+      return values;
     }
 
     for (const page of this.pages) {

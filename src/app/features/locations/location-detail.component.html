@@ -85,6 +85,10 @@
         Actividades
         <span class="vt-figure">{{ activityList().length }}</span>
       </button>
+
+      <button type="button" [class.det__tab--on]="tab() === 'history'" (click)="show('history')">
+        Historial
+      </button>
     </nav>
 
     <div class="det__body">
@@ -330,6 +334,31 @@
               Todavía no se ha registrado ninguna actividad sobre este activo.
             } @else {
               Todavía no se ha registrado ninguna actividad aquí.
+            }
+          </p>
+        }
+      }
+
+      <!-- ── Historial ────────────────────────────────────────────────────── -->
+      <!-- La pestaña anterior son *mis* actividades, que están en este
+           dispositivo. Esta es la historia completa, la haya levantado quien
+           sea, y por eso se consulta al servidor. -->
+      @if (tab() === 'history') {
+        @if (hasHistory()) {
+          <vt-activity-history
+            [locationId]="historyLocationId()"
+            [assetId]="historyAssetId()"
+            [entityName]="name()"
+            [embedded]="true"
+          />
+        } @else {
+          <p class="det__empty">
+            @if (isAsset()) {
+              Este activo se creó aquí y todavía no está en Visitrack, así que no tiene
+              historial que consultar.
+            } @else {
+              Esta ubicación se creó aquí y todavía no está en Visitrack, así que no tiene
+              historial que consultar.
             }
           </p>
         }

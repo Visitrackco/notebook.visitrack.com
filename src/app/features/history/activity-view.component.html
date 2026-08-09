@@ -1,0 +1,188 @@
+<section class="act">
+  @if (loading()) {
+    <p class="act__state">Abriendo la actividad…</p>
+  } @else if (error()) {
+    <p class="act__state act__state--error">
+      <vt-icon name="alert" [size]="16" />
+      {{ error() }}
+    </p>
+  } @else if (activity(); as data) {
+    <header class="act__head">
+      <div class="act__head-main">
+        <!-- Vuelve por donde se entró y conserva la consulta: ver el
+             comentario de `back()`. -->
+        <button type="button" class="act__back" (click)="back()" aria-label="Volver">
+          <vt-icon name="chevron" [size]="18" />
+        </button>
+
+        <div>
+          <h1>{{ title() }}</h1>
+          <p class="act__subtitle">{{ subtitle() }}</p>
+        </div>
+      </div>
+
+      <div class="act__actions">
+        @if (downloaded()) {
+          <span class="act__done">
+            <vt-icon name="check" [size]="15" />
+            En este dispositivo
+          </span>
+
+          <button type="button" class="act__ghost" (click)="exportFiles()" [disabled]="exporting()">
+            <vt-icon name="download" [size]="15" />
+            {{ exporting() ? 'Exportando…' : 'Archivos al computador' }}
+          </button>
+
+          <button type="button" class="act__ghost" (click)="ask()" [disabled]="downloading()">
+            <vt-icon name="refresh" [size]="15" />
+            {{ downloading() ? 'Actualizando…' : 'Traer de nuevo' }}
+          </button>
+        } @else {
+          <button type="button" class="act__download" (click)="ask()" [disabled]="downloading()">
+            <vt-icon name="download" [size]="15" />
+            {{ downloading() ? 'Descargando…' : 'Descargar actividad' }}
+          </button>
+        }
+      </div>
+    </header>
+
+    <!-- Solo lectura, dicho una vez y arriba. Los controles ya vienen
+         bloqueados, pero un formulario que se ve igual que el editable tiene
+         que decir por qué no responde. -->
+    <p class="act__note">
+      <vt-icon name="info" [size]="15" />
+      <span>
+        Estás viendo esta actividad <strong>en modo lectura</strong>.
+        @if (data.isMine) {
+          Es tuya: al descargarla queda en el dispositivo con sus archivos y la puedes abrir
+          y modificar como cualquier otra.
+        } @else {
+          Es de {{ data.AssignedToName || 'otro usuario' }}: al descargarla queda con sus
+          archivos para consultarla sin conexión, pero no se puede modificar ni reenviar.
+        }
+      </span>
+    </p>
+
+    <dl class="act__facts">
+      <div><dt>Creada</dt><dd>{{ dateOf(data.CreatedOn) }}</dd></div>
+      <div><dt>Cerrada</dt><dd>{{ dateOf(data.CompletedOn) }}</dd></div>
+      <div><dt>Estado</dt><dd>{{ data.StatusName || '—' }}</dd></div>
+    </dl>
+
+    <!-- Las páginas del formulario, con la misma navegación que al
+         diligenciarlo: un formulario largo se recorre por páginas y verlo de
+         corrido rompe la referencia de dónde estaba cada cosa. -->
+    @if (pageLabels().length > 1) {
+      <nav class="act__pages">
+        <button
+          type="button"
+          class="act__step"
+          (click)="previousPage()"
+          [disabled]="page() === 0"
+          aria-label="Página anterior"
+        >
+          <vt-icon name="chevron" [size]="16" />
+        </button>
+
+        @for (label of pageLabels(); track $index) {
+          <button
+            type="button"
+            [class.act__page--on]="page() === $index"
+            (click)="goToPage($index)"
+          >
+            {{ label }}
+          </button>
+        }
+
+        <button
+          type="button"
+          class="act__step act__step--next"
+          (click)="nextPage()"
+          [disabled]="page() === pageLabels().length - 1"
+          aria-label="Página siguiente"
+        >
+          <vt-icon name="chevron" [size]="16" />
+        </button>
+      </nav>
+    }
+
+    <div class="act__fields">
+      @for (field of fields(); track field.id) {
+        <div class="act__field">
+          @if (isBinary(field)) {
+              <!-- Los archivos van con las direcciones del servidor: el
+                   componente del formulario los busca en la base local, y una
+                   actividad que solo se consulta no los tiene ahí. -->
+              <span class="act__label">{{ field.lab }}</span>
+
+              @if (filesOfField(field).length > 0) {
+                <div class="act__files">
+                  @for (file of filesOfField(field); track file.guid) {
+                    @if (file.isImage) {
+                      <!-- Sin recorte: una firma es ancha y baja, y encajarla en
+                           un cuadrado le corta los extremos, que es justo donde
+                           está el trazo que la identifica. -->
+                      <a
+                        [href]="file.url"
+                        target="_blank"
+                        rel="noopener"
+                        class="act__thumb"
+                        [class.act__thumb--sign]="file.isSignature"
+                      >
+                        <img [src]="file.url" [alt]="field.lab" loading="lazy" />
+                      </a>
+                    } @else if (file.isVideo) {
+                      <video class="act__media" [src]="file.url" controls playsinline></video>
+                    } @else if (file.isAudio) {
+                      <audio class="act__audio" [src]="file.url" controls></audio>
+                    } @else {
+                      <a class="act__file" [href]="file.url" target="_blank" rel="noopener">
+                        <vt-icon name="file" [size]="15" />
+                        Abrir archivo
+                      </a>
+                    }
+                  }
+                </div>
+              } @else {
+                <!-- Sin archivo, pero la pregunta existía y se muestra. -->
+                <p class="act__blank">Sin archivo</p>
+              }
+            } @else {
+              <!-- El mismo componente que dibuja el formulario al
+                   diligenciarlo. Llega bloqueado desde el servidor (`rea`). -->
+            <vt-field-host
+              [field]="field"
+              [value]="valueOf(field)"
+              [parentValue]="parentValueOf(field)"
+              [answerGuid]="data.GUID"
+            />
+            }
+          </div>
+      } @empty {
+        <p class="act__state">Esta página no tiene campos visibles.</p>
+      }
+    </div>
+  }
+
+  <vt-to-top />
+
+  <!-- Descargar encima de lo que ya está aquí reemplaza la copia local. Si esa
+       copia tenía cambios sin enviar, eso es trabajo que no existe en ningún
+       otro sitio: el aviso cambia de tono y lo dice. -->
+  <vt-confirm-dialog
+    [open]="asking()"
+    [tone]="localPending() ? 'danger' : 'brand'"
+    [icon]="localPending() ? 'alert' : 'download'"
+    [title]="localPending() ? '¿Reemplazar tu versión?' : '¿Traerla de nuevo?'"
+    [message]="title()"
+    [detail]="
+      localPending()
+        ? 'Esta actividad ya está en este dispositivo y tiene cambios que todavía no se han enviado a Visitrack. Si la traes de nuevo, se reemplaza por la del servidor y esos cambios se pierden.'
+        : 'Ya la tienes en este dispositivo. Se reemplazará por la versión que hay en Visitrack.'
+    "
+    [confirmLabel]="localPending() ? 'Reemplazar' : 'Traer de nuevo'"
+    [busy]="downloading()"
+    (confirm)="download()"
+    (cancel)="asking.set(false)"
+  />
+</section>

@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { ANSWER_STATE } from '../../core/models/activity.model';
 import { SurveyAnswer } from '../../core/models/entities.model';
 import { ConnectivityService } from '../../core/services/connectivity.service';
+import { NotifyService } from '../../core/services/notify.service';
 import { DataRevisionService } from '../../core/sync/data-revision.service';
 import { PendingActivity, PendingUploadService } from '../../core/sync/pending-upload.service';
 import { IconComponent } from '../../shared/components/icon/icon.component';
@@ -32,6 +33,7 @@ import { IconComponent } from '../../shared/components/icon/icon.component';
 export class PendingComponent {
   private readonly router = inject(Router);
   private readonly revisions = inject(DataRevisionService);
+  private readonly notify = inject(NotifyService);
 
   readonly uploads = inject(PendingUploadService);
   readonly connectivity = inject(ConnectivityService);
@@ -109,6 +111,16 @@ export class PendingComponent {
 
   /** Fuerza una corrida completa. */
   async runNow(): Promise<void> {
+    /**
+     * Se aprovecha el gesto para pedir el permiso de notificaciones.
+     *
+     * Es el único momento en que la pregunta se explica sola: se acaba de pedir
+     * una subida, y lo que se pide permiso para avisar es cuando esa subida
+     * termine. Preguntarlo al arrancar la aplicación es la forma más rápida de
+     * que lo denieguen para siempre.
+     */
+    void this.notify.enable();
+
     this.feedback.set('');
     const summary = await this.uploads.run();
     this.feedback.set(summary.message);

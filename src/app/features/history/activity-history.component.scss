@@ -1,0 +1,328 @@
+/**
+ * Historial de una ubicación o un activo.
+ *
+ * La lista se lee de arriba abajo como una línea de tiempo: lo primero de cada
+ * fila es de qué formulario fue, y debajo cuándo y quién. Nada compite con eso
+ * — el resto son datos de apoyo y van en tono apagado.
+ *
+ * Embebida dentro del detalle de una entidad pierde su cabecera y su ancho
+ * propio: allí no es una pantalla, es una sección más.
+ */
+
+:host {
+  display: block;
+  width: 100%;
+}
+
+.hst {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vt-space-4);
+  width: min(880px, 100%);
+  padding: var(--vt-space-5) var(--vt-space-4);
+  margin: 0 auto;
+}
+
+.hst--embedded {
+  width: 100%;
+  padding: 0;
+}
+
+/* ── Cabecera y avisos ────────────────────────────────────────────────────── */
+
+.hst__head {
+  h1 {
+    margin: 0;
+    font-size: var(--vt-text-2xl);
+    font-weight: 700;
+    color: var(--vt-text);
+  }
+
+  p {
+    margin: 4px 0 0;
+    font-size: var(--vt-text-sm);
+    color: var(--vt-text-muted);
+  }
+}
+
+.hst__note {
+  display: flex;
+  gap: var(--vt-space-2);
+  align-items: flex-start;
+  margin: 0;
+  padding: var(--vt-space-3);
+  border: 1px solid var(--vt-border);
+  border-radius: var(--vt-radius);
+  background: var(--vt-info-bg);
+  font-size: var(--vt-text-sm);
+  color: var(--vt-text-muted);
+
+  vt-icon {
+    flex: none;
+    margin-top: 2px;
+    color: var(--vt-info);
+  }
+}
+
+/* ── Selector de entidad ──────────────────────────────────────────────────── */
+
+.hst__picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vt-space-2);
+
+  label {
+    font-size: var(--vt-text-sm);
+    font-weight: 600;
+    color: var(--vt-text);
+  }
+}
+
+.hst__searchbox input {
+  width: 100%;
+  padding: var(--vt-space-3);
+  border: 1px solid var(--vt-border);
+  border-radius: var(--vt-radius);
+  background: var(--vt-surface);
+  font: inherit;
+  color: var(--vt-text);
+}
+
+.hst__suggestions {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--vt-border);
+  border-radius: var(--vt-radius);
+  background: var(--vt-surface);
+  list-style: none;
+  overflow: hidden;
+
+  button {
+    display: flex;
+    gap: var(--vt-space-2);
+    align-items: center;
+    width: 100%;
+    padding: var(--vt-space-3);
+    border: 0;
+    background: none;
+    font: inherit;
+    color: var(--vt-text);
+    text-align: left;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--vt-surface-2);
+    }
+  }
+}
+
+.hst__suggestion-name {
+  flex: 1;
+}
+
+.hst__suggestion-kind {
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-muted);
+}
+
+.hst__target {
+  display: flex;
+  gap: var(--vt-space-2);
+  align-items: center;
+  margin: 0;
+  font-size: var(--vt-text-md);
+  color: var(--vt-text);
+
+  span {
+    font-size: var(--vt-text-xs);
+    color: var(--vt-text-muted);
+  }
+}
+
+.hst__change {
+  margin-left: auto;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--vt-text-sm);
+  color: var(--vt-primary);
+  cursor: pointer;
+}
+
+/* ── Filtros ──────────────────────────────────────────────────────────────── */
+
+.hst__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vt-space-3);
+  align-items: flex-end;
+  padding: var(--vt-space-3);
+  border: 1px solid var(--vt-border);
+  border-radius: var(--vt-radius);
+  background: var(--vt-surface);
+
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: var(--vt-text-xs);
+    color: var(--vt-text-muted);
+  }
+
+  input,
+  select {
+    padding: 8px;
+    border: 1px solid var(--vt-border);
+    border-radius: var(--vt-radius-sm);
+    background: var(--vt-bg);
+    font: inherit;
+    font-size: var(--vt-text-sm);
+    color: var(--vt-text);
+  }
+}
+
+.hst__term {
+  flex: 1;
+  min-width: 160px;
+}
+
+.hst__apply {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 9px var(--vt-space-4);
+  border: 0;
+  border-radius: var(--vt-radius-sm);
+  background: var(--vt-primary);
+  font: inherit;
+  font-size: var(--vt-text-sm);
+  font-weight: 600;
+  color: var(--vt-text-on-primary);
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+}
+
+/* ── Resultados ───────────────────────────────────────────────────────────── */
+
+.hst__state {
+  margin: 0;
+  display: flex;
+  gap: var(--vt-space-2);
+  align-items: center;
+  font-size: var(--vt-text-sm);
+  color: var(--vt-text-muted);
+}
+
+.hst__state--error {
+  color: var(--vt-danger);
+}
+
+.hst__counter {
+  margin: 0;
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-muted);
+}
+
+.hst__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vt-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hst__item {
+  border: 1px solid var(--vt-border);
+  border-radius: var(--vt-radius);
+  background: var(--vt-surface);
+  transition: var(--vt-transition);
+
+  &:hover {
+    border-color: var(--vt-border-strong);
+    box-shadow: var(--vt-card-shadow-hover);
+  }
+}
+
+.hst__link {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--vt-space-3);
+  color: inherit;
+  text-decoration: none;
+}
+
+.hst__item-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vt-space-2);
+  align-items: center;
+}
+
+.hst__survey {
+  font-weight: 600;
+  color: var(--vt-text);
+}
+
+.hst__badge {
+  padding: 2px 8px;
+  border-radius: var(--vt-radius-full);
+  background: var(--vt-surface-2);
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-muted);
+}
+
+/* Distingue de un vistazo lo que se podrá editar al descargarlo. */
+.hst__badge--mine {
+  background: var(--vt-icon-green-bg);
+  color: var(--vt-icon-green-fg);
+}
+
+.hst__item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: var(--vt-text-sm);
+  color: var(--vt-text-muted);
+}
+
+.hst__empty {
+  margin: 0;
+  padding: var(--vt-space-4);
+  font-size: var(--vt-text-sm);
+  color: var(--vt-text-muted);
+  text-align: center;
+}
+
+/* ── Paginación ───────────────────────────────────────────────────────────── */
+
+.hst__pager {
+  display: flex;
+  gap: var(--vt-space-3);
+  align-items: center;
+  justify-content: center;
+  font-size: var(--vt-text-sm);
+  color: var(--vt-text-muted);
+
+  button {
+    padding: 6px var(--vt-space-3);
+    border: 1px solid var(--vt-border);
+    border-radius: var(--vt-radius-sm);
+    background: var(--vt-surface);
+    font: inherit;
+    color: var(--vt-text);
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+  }
+}

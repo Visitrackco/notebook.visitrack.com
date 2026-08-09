@@ -16,6 +16,7 @@ import {
   describeBinaryType,
 } from '../../core/sync/binary-audit.service';
 import { BinaryType } from '../../core/models/sync.model';
+import { BinaryExportService } from '../../core/services/binary-export.service';
 import { BinaryStorageService } from '../../core/services/binary-storage.service';
 import { BinaryUploadService } from '../../core/sync/binary-upload.service';
 import { BinaryVerifyService } from '../../core/sync/binary-verify.service';
@@ -61,6 +62,7 @@ export class BinariesComponent implements OnDestroy {
   private readonly audit = inject(BinaryAuditService);
   private readonly storage = inject(BinaryStorageService);
   private readonly revisions = inject(DataRevisionService);
+  private readonly exporter = inject(BinaryExportService);
 
   readonly uploads = inject(BinaryUploadService);
   readonly verify = inject(BinaryVerifyService);
@@ -70,6 +72,10 @@ export class BinariesComponent implements OnDestroy {
   readonly all = signal<BinaryEntry[]>([]);
   readonly loading = signal(true);
   readonly feedback = signal('');
+
+  /** Exportación al computador en curso. */
+  readonly exporting = signal(false);
+  readonly exportProgress = signal<{ done: number; total: number } | null>(null);
 
   readonly state = signal<number>(ALL_STATES);
   readonly search = signal('');
@@ -238,6 +244,52 @@ export class BinariesComponent implements OnDestroy {
     const summary = await this.pendingUploads.run();
     await this.reload();
     this.feedback.set(summary.message);
+  }
+
+  /** Qué dice el botón de exportar según lo que esté pasando. */
+  readonly exportLabel = computed(() => {
+    const progress = this.exportProgress();
+
+    if (progress) return `Exportando ${progress.done} de ${progress.total}…`;
+
+    return this.exporter.canWriteFolder ? 'Guardar en una carpeta' : 'Descargar comprimido';
+  });
+
+  /**
+   * Saca al computador todos los archivos guardados aquí.
+   *
+   * En el navegador los archivos no existen como tales: son datos dentro de
+   * IndexedDB, invisibles para el explorador de archivos. Esta es la única
+   * forma de llegar a ellos.
+   *
+   * Se prefiere escribir en una carpeta cuando el navegador lo permite: con
+   * cientos de fotos, armar un único comprimido significa tenerlas todas en
+   * memoria a la vez.
+   */
+  async exportAll(): Promise<void> {
+    if (this.exporting()) return;
+
+    this.exporting.set(true);
+    this.feedback.set('');
+
+    const files = await this.exporter.collect();
+
+    if (files.length === 0) {
+      this.exporting.set(false);
+      this.feedback.set('No hay archivos con contenido guardado en este dispositivo.');
+      return;
+    }
+
+    const onProgress = (progress: { done: number; total: number }) =>
+      this.exportProgress.set({ done: progress.done, total: progress.total });
+
+    const result = this.exporter.canWriteFolder
+      ? await this.exporter.toFolder(files, onProgress)
+      : await this.exporter.toZip(files, onProgress);
+
+    this.exportProgress.set(null);
+    this.exporting.set(false);
+    this.feedback.set(result.message);
   }
 
   /** Descarga el archivo a la carpeta del usuario. */

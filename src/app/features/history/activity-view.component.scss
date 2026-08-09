@@ -1,0 +1,350 @@
+/**
+ * Una actividad del historial, en lectura.
+ *
+ * La disposición es **la misma del formulario al diligenciarlo**: una pregunta
+ * por tarjeta, una sola columna, navegación por páginas. Quien llenó ese
+ * formulario reconoce dónde estaba cada respuesta sin buscarla, y quien lo lee
+ * por primera vez lo lee en el orden en que fue pensado.
+ *
+ * Lo único que cambia es el tono: sin franja lateral de foco ni sombras de
+ * interacción, porque aquí no hay nada que responder.
+ */
+
+:host {
+  display: block;
+  width: 100%;
+}
+
+.act {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vt-space-4);
+  width: min(880px, 100%);
+  padding: var(--vt-space-5) var(--vt-space-4);
+  margin: 0 auto;
+}
+
+/* ── Cabecera ─────────────────────────────────────────────────────────────── */
+
+.act__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vt-space-3);
+  align-items: flex-start;
+  justify-content: space-between;
+
+  h1 {
+    margin: 0;
+    font-size: var(--vt-text-xl);
+    font-weight: 700;
+    color: var(--vt-text);
+  }
+}
+
+.act__head-main {
+  display: flex;
+  gap: var(--vt-space-3);
+  align-items: flex-start;
+  min-width: 0;
+}
+
+/* La flecha apunta a la izquierda: el icono base mira a la derecha. */
+.act__back {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  margin-top: 2px;
+  border: 1px solid var(--vt-border);
+  border-radius: var(--vt-radius-sm);
+  background: var(--vt-surface);
+  color: var(--vt-text);
+  cursor: pointer;
+
+  vt-icon {
+    transform: rotate(180deg);
+  }
+
+  &:hover {
+    border-color: var(--vt-border-strong);
+  }
+}
+
+.act__subtitle {
+  margin: 4px 0 0;
+  font-size: var(--vt-text-sm);
+  color: var(--vt-text-muted);
+}
+
+.act__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vt-space-2);
+  align-items: center;
+}
+
+.act__download,
+.act__ghost {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 8px var(--vt-space-3);
+  border-radius: var(--vt-radius-sm);
+  font: inherit;
+  font-size: var(--vt-text-sm);
+  font-weight: 600;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+}
+
+.act__download {
+  border: 0;
+  background: var(--vt-primary);
+  color: var(--vt-text-on-primary);
+}
+
+.act__ghost {
+  border: 1px solid var(--vt-border);
+  background: var(--vt-surface);
+  color: var(--vt-text);
+}
+
+.act__done {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: var(--vt-text-sm);
+  color: var(--vt-success);
+}
+
+.act__note {
+  display: flex;
+  gap: var(--vt-space-2);
+  align-items: flex-start;
+  margin: 0;
+  padding: var(--vt-space-3);
+  border: 1px solid var(--vt-border);
+  border-radius: var(--vt-radius);
+  background: var(--vt-info-bg);
+  font-size: var(--vt-text-sm);
+  color: var(--vt-text-muted);
+
+  vt-icon {
+    flex: none;
+    margin-top: 2px;
+    color: var(--vt-info);
+  }
+}
+
+.act__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vt-space-5);
+  margin: 0;
+
+  dt {
+    font-size: var(--vt-text-xs);
+    color: var(--vt-text-muted);
+  }
+
+  dd {
+    margin: 2px 0 0;
+    font-size: var(--vt-text-sm);
+    color: var(--vt-text);
+  }
+}
+
+/* ── Páginas ──────────────────────────────────────────────────────────────── */
+
+.act__pages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vt-space-2);
+
+  button {
+    padding: 6px var(--vt-space-3);
+    border: 1px solid var(--vt-border);
+    border-radius: var(--vt-radius-full);
+    background: var(--vt-surface);
+    font: inherit;
+    font-size: var(--vt-text-sm);
+    color: var(--vt-text-muted);
+    cursor: pointer;
+  }
+}
+
+.act__page--on {
+  border-color: var(--vt-primary) !important;
+  background: var(--vt-primary) !important;
+  color: var(--vt-text-on-primary) !important;
+}
+
+/* ── Campos ───────────────────────────────────────────────────────────────── */
+
+/* Mismas medidas que `.runner__fields` en el formulario. */
+.act__fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vt-space-3);
+  width: 100%;
+}
+
+/**
+ * La tarjeta de cada pregunta, igual que al diligenciar.
+ *
+ * Sin el pseudo-elemento de la franja lateral: ese marca la pregunta en la que
+ * se está trabajando, y aquí no se trabaja en ninguna.
+ */
+.act__field {
+  position: relative;
+  padding: var(--vt-space-4) var(--vt-space-5);
+  border: 1px solid var(--vt-rule);
+  border-radius: var(--vt-radius-lg);
+  background: var(--vt-surface);
+  box-shadow: var(--vt-shadow-sm);
+}
+
+/**
+ * Aquí no se estilan los controles, y es a propósito.
+ *
+ * El bloqueo lo hace la marca `rea` del propio campo, que cada tipo ya respeta
+ * —`readonly` en los de texto, `disabled` en opciones y selectores—. Y afinar
+ * su aspecto desde fuera no funcionaría: con la encapsulación emulada, una
+ * regla escrita aquí no alcanza a los elementos que dibuja `vt-field-host`,
+ * porque llevan el atributo de *ese* componente. Lo que haga falta cambiar se
+ * cambia allí, para el formulario y para esta vista a la vez.
+ */
+
+@media (max-width: 640px) {
+  .act__field {
+    padding: var(--vt-space-4) var(--vt-space-3);
+  }
+}
+
+/* ── Campos de archivo ────────────────────────────────────────────────────── */
+
+/* Misma etiqueta que `.fld__label` del formulario. */
+.act__label {
+  display: block;
+  margin-bottom: 8px;
+  font-family: var(--vt-font);
+  font-size: var(--vt-text-base);
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--vt-text);
+}
+
+.act__files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vt-space-2);
+  align-items: center;
+}
+
+/**
+ * La imagen conserva su proporción, como en el formulario.
+ *
+ * Antes iba encajada en un cuadrado con `object-fit: cover`, y eso **recorta**.
+ * En una foto se pierde el borde; en una **firma** —ancha y baja— se pierden los
+ * extremos del trazo, que es justo lo que la identifica: quedaba cortada por los
+ * lados.
+ *
+ * El tope de alto existe porque una foto vertical a 600 píxeles de ancho pasa de
+ * 800 de alto y empuja las preguntas siguientes fuera de la pantalla. Con
+ * `contain` se reduce entera en vez de recortarse, y el original se abre en otra
+ * pestaña.
+ */
+.act__thumb {
+  display: block;
+  line-height: 0;
+
+  img {
+    width: auto;
+    max-width: min(600px, 100%);
+    max-height: 320px;
+    border: 1px solid var(--vt-border);
+    border-radius: var(--vt-radius-sm);
+    object-fit: contain;
+  }
+}
+
+/**
+ * La firma, más ancha y sin alto que la achate.
+ *
+ * Su PNG ya viene opaco, así que no hace falta pintarle un fondo detrás: el
+ * borde marca dónde acaba la imagen, igual que en el formulario.
+ */
+.act__thumb--sign img {
+  max-height: 180px;
+  border-color: var(--vt-paper-rule, var(--vt-rule));
+}
+
+.act__media {
+  width: min(320px, 100%);
+  border: 1px solid var(--vt-border);
+  border-radius: var(--vt-radius-sm);
+}
+
+.act__audio {
+  width: min(320px, 100%);
+}
+
+.act__file {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 8px var(--vt-space-3);
+  border: 1px solid var(--vt-border);
+  border-radius: var(--vt-radius-sm);
+  font-size: var(--vt-text-sm);
+  color: var(--vt-text);
+  text-decoration: none;
+}
+
+/* Un campo de archivo sin responder: se dice, no se esconde. */
+.act__blank {
+  margin: 0;
+  font-size: var(--vt-text-sm);
+  font-style: italic;
+  color: var(--vt-text-subtle);
+}
+
+/* ── Estados ──────────────────────────────────────────────────────────────── */
+
+.act__state {
+  margin: 0;
+  display: flex;
+  gap: var(--vt-space-2);
+  align-items: center;
+  font-size: var(--vt-text-sm);
+  color: var(--vt-text-muted);
+}
+
+.act__state--error {
+  color: var(--vt-danger);
+}
+
+/* Los pasos de página, con la flecha mirando a cada lado. */
+.act__step {
+  display: grid;
+  place-items: center;
+  padding: 6px 10px !important;
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+
+  vt-icon {
+    transform: rotate(180deg);
+  }
+}
+
+.act__step--next vt-icon {
+  transform: none;
+}

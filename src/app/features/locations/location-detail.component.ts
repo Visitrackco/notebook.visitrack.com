@@ -7,7 +7,9 @@ import { SurveyAnswerRepository } from '../../core/repositories/survey-answer.re
 import { BinaryStorageService } from '../../core/services/binary-storage.service';
 import { LocationEditorService } from '../../core/services/location-editor.service';
 import { PermissionsService } from '../../core/services/permissions.service';
+import { ActivityHistoryStateService } from '../../core/services/activity-history-state.service';
 import { DataRevisionService } from '../../core/sync/data-revision.service';
+import { ActivityHistoryComponent } from '../history/activity-history.component';
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { ToTopComponent } from '../../shared/components/to-top/to-top.component';
@@ -40,7 +42,7 @@ interface ActivityCard {
   synced: boolean;
 }
 
-type Tab = 'info' | 'assets' | 'activities';
+type Tab = 'info' | 'assets' | 'activities' | 'history';
 
 /**
  * La ficha de una ubicación o de un activo.
@@ -62,13 +64,21 @@ type Tab = 'info' | 'assets' | 'activities';
 @Component({
   selector: 'vt-location-detail',
   standalone: true,
-  imports: [ConfirmDialogComponent, IconComponent, NearEndDirective, RouterLink, ToTopComponent],
+  imports: [
+    ActivityHistoryComponent,
+    ConfirmDialogComponent,
+    IconComponent,
+    NearEndDirective,
+    RouterLink,
+    ToTopComponent,
+  ],
   templateUrl: './location-detail.component.html',
   styleUrl: './location-detail.component.scss',
 })
 export class LocationDetailComponent {
   private readonly editor = inject(LocationEditorService);
   private readonly assets = inject(AssetRepository);
+  private readonly historyState = inject(ActivityHistoryStateService);
   private readonly answers = inject(SurveyAnswerRepository);
   private readonly binaries = inject(BinaryStorageService);
   private readonly router = inject(Router);
@@ -187,6 +197,26 @@ export class LocationDetailComponent {
     return title || (this.isAsset() ? 'Activo' : 'Ubicación');
   });
 
+  /**
+   * Identificadores para el historial en línea.
+   *
+   * Van vacíos mientras la ficha se carga, y también cuando la entidad se creó
+   * aquí y todavía no tiene identificador del servidor: en el servidor no hay
+   * historia de algo que aún no existe allí.
+   */
+  readonly historyAssetId = computed(() =>
+    this.isAsset() ? String(this.current()?.AssetID ?? '') : '',
+  );
+
+  readonly historyLocationId = computed(() =>
+    this.isAsset() ? '' : String(this.location()?.LocationID ?? ''),
+  );
+
+  /** Se puede consultar el historial: hay identificador del servidor. */
+  readonly hasHistory = computed(
+    () => Boolean(this.historyAssetId()) || Boolean(this.historyLocationId()),
+  );
+
   /** Ubicación a la que pertenece, cuando la ficha es de un activo. */
   readonly parentName = computed(() => (this.isAsset() ? (this.location()?.Name ?? '') : ''));
 
@@ -274,6 +304,21 @@ export class LocationDetailComponent {
       this.current.set(target);
 
       if (asset && !target) return;
+
+      /**
+       * Se vuelve a la pestaña del historial si se venía de ahí.
+       *
+       * Entrar a una actividad y volver aterrizando en «Información» —con la
+       * consulta intacta pero escondida detrás de otra pestaña— se vive como si
+       * se hubiera perdido. La consulta guardada es la señal de que se venía de
+       * ahí, y desaparece al cambiar de entidad.
+       */
+      const entityId = target ? String(target.AssetID ?? '') : String(record.LocationID ?? '');
+      const kind = target ? 'activo' : 'ubicación';
+
+      if (entityId && this.historyState.recall(this.historyState.keyOf(kind, entityId))) {
+        this.tab.set('history');
+      }
 
       await Promise.all([
         this.loadValues(target ?? record),

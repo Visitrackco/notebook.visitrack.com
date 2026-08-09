@@ -156,6 +156,28 @@ export const routes: Routes = [
       },
 
       /**
+       * Historial de una ubicación o un activo.
+       *
+       * La única pantalla que exige conexión: lo que responde —qué se le ha
+       * hecho antes a este equipo— vive en el servidor, no en el dispositivo.
+       * De ahí sale también la descarga puntual de una actividad concreta.
+       */
+      {
+        path: 'historial',
+        title: 'Historial · Visitrack',
+        loadComponent: () =>
+          import('./features/history/activity-history.component').then(
+            (m) => m.ActivityHistoryComponent,
+          ),
+      },
+      {
+        path: 'historial/:guid',
+        title: 'Actividad · Visitrack',
+        loadComponent: () =>
+          import('./features/history/activity-view.component').then((m) => m.ActivityViewComponent),
+      },
+
+      /**
        * Lo creado aquí que todavía no está en Visitrack.
        *
        * Aparte de «Pendientes», que son actividades: una entidad sin subir

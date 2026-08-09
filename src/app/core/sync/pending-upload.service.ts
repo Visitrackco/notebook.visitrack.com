@@ -7,6 +7,7 @@ import { SurveyAnswerRepository } from '../repositories/survey-answer.repository
 import { ActivityService, ConsistencyIssue } from '../services/activity.service';
 import { AuthService } from '../services/auth.service';
 import { ConnectivityService } from '../services/connectivity.service';
+import { NotifyService } from '../services/notify.service';
 import { AnswerSubmitService } from './answer-submit.service';
 import { BinaryUploadService } from './binary-upload.service';
 import { EntityUploadService } from './entity-upload.service';
@@ -94,6 +95,7 @@ export class PendingUploadService {
   private readonly verify = inject(BinaryVerifyService);
   private readonly submit = inject(AnswerSubmitService);
   private readonly activities = inject(ActivityService);
+  private readonly notify = inject(NotifyService);
   private readonly revisions = inject(DataRevisionService);
   private readonly connectivity = inject(ConnectivityService);
   private readonly auth = inject(AuthService);
@@ -225,6 +227,22 @@ export class PendingUploadService {
 
       this.lastRun.set(new Date());
       this.lastSummary.set(summary);
+
+      /**
+       * Se anuncia solo cuando salió una actividad.
+       *
+       * Ni los archivos ni las entidades: son pasos intermedios, y avisar de
+       * cada uno convertiría el aviso en ruido que se aprende a ignorar. Lo que
+       * el usuario espera saber es que su trabajo **ya está en Visitrack** y no
+       * depende del equipo.
+       */
+      if (sent > 0) {
+        void this.notify.success(
+          sent === 1 ? 'Actividad enviada' : `${sent} actividades enviadas`,
+          summary.message,
+        );
+      }
+
       return summary;
     } finally {
       this.running.set(false);
@@ -237,6 +255,10 @@ export class PendingUploadService {
 
     await this.refresh();
     this.revisions.touchAll();
+
+    if (result.outcome === 'sent') {
+      void this.notify.success('Actividad enviada', result.message);
+    }
 
     return result.message;
   }

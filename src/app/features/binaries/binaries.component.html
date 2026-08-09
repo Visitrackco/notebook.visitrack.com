@@ -35,6 +35,13 @@
         <vt-icon name="send" [size]="17" />
         Procesar todo
       </button>
+
+      <!-- Sacar los archivos del navegador. No necesita conexión: lo que se
+           exporta es lo que ya está guardado aquí. -->
+      <button type="button" class="bins__btn" [disabled]="exporting()" (click)="exportAll()">
+        <vt-icon name="download" [size]="17" />
+        {{ exportLabel() }}
+      </button>
     </div>
   </header>
 
