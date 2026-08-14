@@ -71,6 +71,26 @@
                 {{ pendingCount() }}
               </span>
             }
+
+            <!-- Cuántas actividades hay creadas. A diferencia de los otros dos,
+                 no pide ninguna acción: es una referencia de cuánto trabajo
+                 hay, y por eso va en tono apagado. -->
+            @if (item.key === 'forms' && activityCount() > 0) {
+              <span
+                class="shell__nav-badge shell__nav-badge--quiet"
+                [title]="activityCount() + ' actividades creadas'"
+              >
+                {{ activityCount() }}
+              </span>
+            }
+
+            <!-- Archivos que todavía no están en el bucket. Estos sí piden
+                 acción: mientras existan, hay actividades que no pueden salir. -->
+            @if (item.key === 'files' && pendingFiles() > 0) {
+              <span class="shell__nav-badge" [title]="pendingFiles() + ' archivos sin confirmar'">
+                {{ pendingFiles() }}
+              </span>
+            }
           </a>
         }
       }
@@ -202,4 +222,4 @@
 
 <!-- Lo que pasó fuera de la pantalla que se está mirando: consignas que
      llegaron, archivos que se descargaron. -->
-<vt-toasts />
+<!-- Los avisos se pintan en la raíz de la aplicación: ver app.ts -->

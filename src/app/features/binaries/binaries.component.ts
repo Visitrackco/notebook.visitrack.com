@@ -26,6 +26,7 @@ import { ConnectivityService } from '../../core/services/connectivity.service';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { AudioPlayerComponent } from '../activities/form/fields/audio-player/audio-player.component';
 import { MediaViewerComponent } from '../activities/form/fields/media-viewer/media-viewer.component';
+import { DatabaseService } from '../../core/database/database.service';
 
 /**
  * Cuántos archivos por página.
@@ -60,9 +61,11 @@ const PAGE_SIZE = 12;
 })
 export class BinariesComponent implements OnDestroy {
   private readonly audit = inject(BinaryAuditService);
-  private readonly storage = inject(BinaryStorageService);
+  /** Público: la plantilla usa `formatSize` para el espacio y los tamaños. */
+  readonly storage = inject(BinaryStorageService);
   private readonly revisions = inject(DataRevisionService);
   private readonly exporter = inject(BinaryExportService);
+  private readonly db = inject(DatabaseService);
 
   readonly uploads = inject(BinaryUploadService);
   readonly verify = inject(BinaryVerifyService);
@@ -72,6 +75,29 @@ export class BinariesComponent implements OnDestroy {
   readonly all = signal<BinaryEntry[]>([]);
   readonly loading = signal(true);
   readonly feedback = signal('');
+
+  /**
+   * Cuánto espacio lleva ocupado el navegador.
+   *
+   * `null` mientras se consulta o si el navegador no lo expone.
+   */
+  readonly space = signal<{ usage: number; quota: number } | null>(null);
+
+  /** Proporción ocupada, de 0 a 1. */
+  readonly spaceRatio = computed(() => {
+    const space = this.space();
+
+    return space && space.quota > 0 ? space.usage / space.quota : 0;
+  });
+
+  /**
+   * Se está llenando.
+   *
+   * A partir de aquí conviene decirlo: cuando IndexedDB se llena, **guardar
+   * falla**, y eso en campo se vive como que la aplicación se dañó. Avisar al
+   * 80 % deja margen para exportar y liberar antes de que ocurra.
+   */
+  readonly spaceTight = computed(() => this.spaceRatio() >= 0.8);
 
   /** Exportación al computador en curso. */
   readonly exporting = signal(false);
@@ -163,6 +189,10 @@ export class BinariesComponent implements OnDestroy {
 
     try {
       this.all.set(await this.audit.load());
+
+      // El espacio se mide aquí: esta recarga ya corre al entrar y cada vez que
+      // algo toca los archivos, que son justo los momentos en que cambia.
+      await this.refreshSpace();
     } finally {
       this.loading.set(false);
     }
@@ -266,6 +296,11 @@ export class BinariesComponent implements OnDestroy {
    * cientos de fotos, armar un único comprimido significa tenerlas todas en
    * memoria a la vez.
    */
+  /** Consulta el espacio. Se llama al entrar y después de liberar. */
+  async refreshSpace(): Promise<void> {
+    this.space.set(await this.db.storageEstimate());
+  }
+
   async exportAll(): Promise<void> {
     if (this.exporting()) return;
 

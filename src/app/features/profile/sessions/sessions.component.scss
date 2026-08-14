@@ -1,0 +1,293 @@
+/**
+ * Sesiones abiertas, dentro del perfil.
+ *
+ * ## Por qué se ve así y no como una tarjeta
+ *
+ * La primera versión metía cada sesión en su propia tarjeta con borde y fondo
+ * `--vt-surface`… dentro de un panel que **ya es** una tarjeta con ese mismo
+ * fondo. El resultado era una caja dentro de otra caja del mismo color: los
+ * bordes se veían pegados y en modo oscuro las filas desaparecían contra el
+ * panel.
+ *
+ * Ahora usa exactamente el mismo lenguaje que las cuentas guardadas, que es la
+ * lista análoga de esta misma pantalla: fila sobre `--vt-surface-2`, borde
+ * transparente que solo se enciende en la que está activa, y los tonos del
+ * sistema — que son los que están calculados para los dos temas.
+ */
+
+:host {
+  display: block;
+  width: 100%;
+}
+
+.ses__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vt-space-3);
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--vt-space-3);
+}
+
+.ses__hint {
+  flex: 1;
+  min-width: 220px;
+  margin: 0;
+  font-size: var(--vt-text-sm);
+  color: var(--vt-text-muted);
+}
+
+.ses__all {
+  padding: 7px var(--vt-space-3);
+  border: 1px solid var(--vt-rule-strong);
+  border-radius: var(--vt-radius-full);
+  background: transparent;
+  font: inherit;
+  font-size: var(--vt-text-sm);
+  color: var(--vt-text);
+  cursor: pointer;
+  transition: background var(--vt-transition);
+
+  &:hover {
+    background: var(--vt-surface-2);
+  }
+}
+
+/* ── La lista ─────────────────────────────────────────────────────────────── */
+
+.ses__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vt-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ses__item {
+  display: flex;
+  gap: var(--vt-space-3);
+  align-items: center;
+  padding: 10px var(--vt-space-3);
+  background: var(--vt-surface-2);
+  border: 1px solid transparent;
+  border-radius: var(--vt-radius);
+  transition:
+    background var(--vt-transition),
+    border-color var(--vt-transition);
+
+  &:hover {
+    background: var(--vt-surface-3);
+  }
+}
+
+/**
+ * El equipo desde el que se está mirando.
+ *
+ * Con el tinte de marca del sistema, no con un color propio: `--vt-icon-brand-bg`
+ * está resuelto para claro y para oscuro, y el borde sale del mismo color con
+ * `color-mix`, así que nunca queda un filo saturado sobre fondo oscuro.
+ */
+.ses__item--current {
+  background: var(--vt-icon-brand-bg);
+  border-color: color-mix(in srgb, var(--vt-brand) 30%, transparent);
+}
+
+.ses__icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--vt-radius-full);
+  background: var(--vt-surface);
+  color: var(--vt-text-muted);
+}
+
+.ses__item--current .ses__icon {
+  color: var(--vt-icon-brand-fg);
+}
+
+.ses__info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.ses__name {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vt-space-2);
+  align-items: center;
+  font-size: var(--vt-text-sm);
+  font-weight: 600;
+  color: var(--vt-text);
+  overflow-wrap: anywhere;
+}
+
+/**
+ * El distintivo «Este equipo».
+ *
+ * Con la pareja de marca del sistema y no con `--vt-brand-dark`: en oscuro ese
+ * es un rojo saturado que sobre el tinte de la fila queda ilegible.
+ * `--vt-icon-brand-fg` está pensada justo para ir encima de `--vt-icon-brand-bg`,
+ * y cambia con el tema.
+ */
+.ses__badge {
+  padding: 1px 8px;
+  border-radius: var(--vt-radius-full);
+  background: var(--vt-icon-brand-bg);
+  font-size: var(--vt-text-xs);
+  font-style: normal;
+  font-weight: 700;
+  color: var(--vt-icon-brand-fg);
+}
+
+.ses__meta {
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-subtle);
+}
+
+/**
+ * Cerrar: en rojo, pero sin recuadro.
+ *
+ * Un botón con borde rojo en cada fila convierte la lista en una hilera de
+ * alarmas. El color basta para decir qué hace, y el recuadro aparece al pasar
+ * por encima.
+ */
+.ses__close {
+  flex: none;
+  padding: 6px var(--vt-space-3);
+  border: 1px solid transparent;
+  border-radius: var(--vt-radius-full);
+  background: transparent;
+  font: inherit;
+  font-size: var(--vt-text-sm);
+  font-weight: 600;
+  color: var(--vt-danger);
+  cursor: pointer;
+  transition:
+    background var(--vt-transition),
+    border-color var(--vt-transition);
+
+  &:hover {
+    background: var(--vt-danger-bg);
+    border-color: color-mix(in srgb, var(--vt-danger) 35%, transparent);
+  }
+}
+
+.ses__state {
+  margin: 0;
+  padding: var(--vt-space-3);
+  font-size: var(--vt-text-sm);
+  color: var(--vt-text-muted);
+}
+
+/* ── Confirmación ─────────────────────────────────────────────────────────── */
+
+/* Mismo tratamiento que el diálogo del sistema: velo oscuro con desenfoque y
+   panel sobre `--vt-surface` con el filo de la aplicación. */
+.ses__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgb(12 14 18 / 58%);
+  backdrop-filter: blur(3px);
+}
+
+.ses__dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 61;
+  width: min(400px, calc(100vw - 32px));
+  padding: var(--vt-space-5);
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-rule);
+  border-radius: var(--vt-radius-xl);
+  box-shadow: 0 28px 70px -22px rgb(12 14 18 / 50%);
+  transform: translate(-50%, -50%);
+
+  h3 {
+    margin: 0 0 6px;
+    font-size: var(--vt-text-lg);
+    font-weight: 700;
+    color: var(--vt-text);
+  }
+
+  p {
+    margin: 0 0 var(--vt-space-4);
+    font-size: var(--vt-text-sm);
+    line-height: 1.5;
+    color: var(--vt-text-muted);
+  }
+
+  input {
+    width: 100%;
+    padding: 11px var(--vt-space-3);
+    background: var(--vt-surface-2);
+    border: 1px solid var(--vt-rule-strong);
+    border-radius: var(--vt-radius-sm);
+    font: inherit;
+    color: var(--vt-text);
+
+    &:focus {
+      outline: 2px solid color-mix(in srgb, var(--vt-brand) 45%, transparent);
+      outline-offset: 1px;
+    }
+  }
+}
+
+.ses__error {
+  margin: var(--vt-space-2) 0 0 !important;
+  font-size: var(--vt-text-sm);
+  color: var(--vt-danger) !important;
+}
+
+.ses__actions {
+  display: flex;
+  gap: var(--vt-space-2);
+  justify-content: flex-end;
+  margin-top: var(--vt-space-4);
+
+  button {
+    padding: 9px var(--vt-space-4);
+    border-radius: var(--vt-radius-full);
+    font: inherit;
+    font-size: var(--vt-text-sm);
+    font-weight: 600;
+    cursor: pointer;
+  }
+}
+
+.ses__cancel {
+  border: 1px solid var(--vt-rule-strong);
+  background: transparent;
+  color: var(--vt-text);
+
+  &:hover {
+    background: var(--vt-surface-2);
+  }
+}
+
+.ses__confirm {
+  border: 0;
+  background: var(--vt-danger);
+  color: var(--vt-on-state, #fff);
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+}
+
+@media (max-width: 480px) {
+  .ses__item {
+    flex-wrap: wrap;
+  }
+
+  .ses__close {
+    margin-left: auto;
+  }
+}

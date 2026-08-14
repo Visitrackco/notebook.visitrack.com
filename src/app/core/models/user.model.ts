@@ -88,6 +88,16 @@ export interface LoginUserData {
   LastName: string;
   Email: string;
   AccessToken: string;
+
+  /**
+   * Token de sesión de este servidor (JWT).
+   *
+   * Distinto del `AccessToken`, que identifica al usuario en la plataforma
+   * .NET y no dice nada de si esta sesión sigue abierta. Opcional porque los
+   * despliegues que todavía no lo emiten siguen respondiendo sin él.
+   */
+  token?: string;
+  tokenExpiresOn?: string | null;
   UTCCode?: string;
   Active?: string | number | boolean;
   Phone?: string;

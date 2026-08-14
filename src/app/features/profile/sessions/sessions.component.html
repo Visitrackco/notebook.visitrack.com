@@ -1,0 +1,79 @@
+<div class="ses">
+  <div class="ses__head">
+    <p class="ses__hint">
+      Tu sesión se mantiene abierta 30 días y se renueva sola con el uso. Si perdiste un
+      equipo o usaste uno prestado, ciérralo aquí.
+    </p>
+
+    @if (others().length > 0) {
+      <button type="button" class="ses__all" (click)="askOthers()">
+        Cerrar las demás
+      </button>
+    }
+  </div>
+
+  @if (loading()) {
+    <p class="ses__state">Consultando…</p>
+  } @else {
+    <ul class="ses__list">
+      @for (session of sessions(); track session.ID) {
+        <li class="ses__item" [class.ses__item--current]="session.isCurrent">
+          <span class="ses__icon">
+            <vt-icon [name]="session.Platform === 'web' ? 'database' : 'phone'" [size]="18" />
+          </span>
+
+          <div class="ses__info">
+            <span class="ses__name">
+              {{ nameOf(session) }}
+              @if (session.isCurrent) {
+                <em class="ses__badge">Este equipo</em>
+              }
+            </span>
+            <span class="ses__meta">Última actividad {{ lastSeen(session) }}</span>
+          </div>
+
+          <!-- La propia no se cierra desde aquí: para eso está «Cerrar sesión»,
+               que además limpia lo de este equipo. -->
+          @if (!session.isCurrent) {
+            <button type="button" class="ses__close" (click)="ask(session)">Cerrar</button>
+          }
+        </li>
+      } @empty {
+        <li class="ses__state">
+          No hay sesiones registradas. Si acabas de actualizar, vuelve a iniciar sesión.
+        </li>
+      }
+    </ul>
+  }
+</div>
+
+<!-- Se pide la contraseña: cerrar una sesión ajena no puede depender solo de
+     tener esta pantalla delante. -->
+@if (target(); as t) {
+  <div class="ses__backdrop" (click)="cancel()"></div>
+
+  <div class="ses__dialog" role="dialog" aria-modal="true">
+    <h3>Cerrar {{ t.label }}</h3>
+    <p>Ese equipo tendrá que iniciar sesión otra vez. Confirma con tu contraseña.</p>
+
+    <input
+      type="password"
+      autocomplete="current-password"
+      placeholder="Tu contraseña"
+      [ngModel]="password()"
+      (ngModelChange)="password.set($event)"
+      (keyup.enter)="confirm()"
+    />
+
+    @if (error()) {
+      <p class="ses__error" role="alert">{{ error() }}</p>
+    }
+
+    <div class="ses__actions">
+      <button type="button" class="ses__cancel" (click)="cancel()">Cancelar</button>
+      <button type="button" class="ses__confirm" (click)="confirm()" [disabled]="working()">
+        {{ working() ? 'Cerrando…' : 'Cerrar sesión' }}
+      </button>
+    </div>
+  </div>
+}

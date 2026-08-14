@@ -343,17 +343,21 @@
   @case ('datediff') {
     <vt-derived-field [field]="f" [value]="text()" [invalid]="invalid()" />
   }
-  <!-- Formulario vinculado: no se dibuja nada.
+  <!-- Formulario vinculado: otra actividad que cuelga de esta.
 
-       Abre otra actividad de otro formulario desde dentro de esta, y eso en la
-       web no tiene el sentido que tiene en el móvil —donde la navegación es
-       toda a pantalla completa—. Mostrar un aviso de «pendiente» solo añadiría
-       ruido a un campo que aquí no hace falta.
+       Se abre en su propia pantalla y no se dibuja aquí dentro: lo que hay
+       detrás es una actividad completa —con su ubicación, sus archivos y su
+       propio envío— y embeberla obligaría a decidir qué significa guardar la de
+       fuera con la de dentro a medias.
 
        Se contemplan los dos nombres: la app lo llama `form` y el diseñador web
        lo emite como `webform`. -->
-  @case ('form') {}
-  @case ('webform') {}
+  @case ('form') {
+    <ng-container *ngTemplateOutlet="linkedTpl" />
+  }
+  @case ('webform') {
+    <ng-container *ngTemplateOutlet="linkedTpl" />
+  }
 
   <!-- ── Texto, número, fecha, hora, correo, teléfono, dirección ────────── -->
   @default {
@@ -403,6 +407,16 @@
       <small class="fld__binary-error">Este campo es obligatorio.</small>
     }
   </div>
+</ng-template>
+
+<ng-template #linkedTpl>
+  <vt-linked-form-field
+    [field]="f"
+    [value]="value()"
+    [readOnly]="readOnly()"
+    [parentGuid]="answerGuid()"
+    (valueChange)="valueChange.emit($event)"
+  />
 </ng-template>
 
 <!-- Los tipos que faltan se anuncian con su nombre y el del campo. Un hueco en

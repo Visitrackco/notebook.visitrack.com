@@ -3,6 +3,7 @@ import { RouterOutlet } from '@angular/router';
 
 import { DatabaseService } from './core/database/database.service';
 import { ThemeService } from './core/services/theme.service';
+import { ToastsComponent } from './shared/components/toasts/toasts.component';
 
 /**
  * Raíz de la aplicación.
@@ -15,7 +16,7 @@ import { ThemeService } from './core/services/theme.service';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet],
+  imports: [RouterOutlet, ToastsComponent],
   template: `
     @if (db.upgradeBlocked()) {
       <div class="app-blocked">
@@ -31,6 +32,18 @@ import { ThemeService } from './core/services/theme.service';
     }
 
     <router-outlet />
+
+    <!--
+      Los avisos viven aquí, en la raíz, y no dentro del shell.
+
+      Estaban en el shell, que es el marco de las pantallas con sesión abierta.
+      Un aviso emitido justo antes de salir de ahí —«tu sesión terminó», que es
+      el que más importa— se creaba y desaparecía en el mismo instante, porque
+      la navegación al inicio destruía el componente que lo pintaba. Aquí
+      sobreviven a cualquier cambio de ruta, y además funcionan en la pantalla
+      de inicio de sesión.
+    -->
+    <vt-toasts />
   `,
   styles: [
     `

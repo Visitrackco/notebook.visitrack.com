@@ -256,7 +256,10 @@ export class FormEngine {
     });
 
     this.touched.update((current) => new Set(current).add(field.id));
-    this.updateSections(field, value);
+
+    // Las secciones se rehacen enteras, no se retoca la del campo respondido.
+    // Ver [updateSections].
+    this.updateSections();
   }
 
   /**
@@ -348,19 +351,25 @@ export class FormEngine {
    * que cerrar, y el resultado depende del orden en que se marquen — así que el
    * esquema no las usa ahí y aquí tampoco.
    */
-  private updateSections(field: FormField, value: FieldValue): void {
-    const options = field.opt ?? [];
-    if (options.length === 0) return;
-    if (Array.isArray(value)) return;
-
-    const chosenId = asOption(value)?.id ?? null;
-    const chosen = options.find((option) => option.id === chosenId);
-    const sect = (chosen?.act_data ?? '').toString();
-
-    this.sections.update((current) => {
-      const others = current.filter((active) => active.id !== field.id);
-      return sect ? [...others, { id: field.id, sect }] : others;
-    });
+  /**
+   * Rehace **todas** las secciones activas a partir de los valores.
+   *
+   * Antes se retocaba solo la entrada del campo que se acababa de responder, y
+   * eso deja la cadena inconsistente en los dos sentidos:
+   *
+   * - **Al cerrar**: se quitaba la de A, pero la de B —que vive dentro de A y
+   *   conserva su valor— seguía activa, así que C se quedaba visible colgando
+   *   de una pregunta que ya no se ve. Y se le exigía como obligatorio.
+   * - **Al reabrir**: volvía B, pero la sección que B abría no, porque nadie la
+   *   volvía a activar hasta que el usuario respondiera B otra vez — aunque su
+   *   respuesta siguiera ahí.
+   *
+   * Recalcular resuelve los dos casos con la misma regla, sin llevar cuentas de
+   * qué colgaba de qué. Cuesta un recorrido de los campos por respuesta, que en
+   * un formulario real es imperceptible.
+   */
+  private updateSections(): void {
+    this.sections.set(this.deriveSections(this.values()));
   }
 
   /** Marca todo como tocado. Se llama al intentar guardar. */
@@ -641,18 +650,50 @@ export class FormEngine {
    */
   private deriveSections(values: ReadonlyMap<string, FieldValue>): ActiveSection[] {
     const active: ActiveSection[] = [];
+    const seen = new Set<string>();
 
-    for (const page of this.pages) {
-      for (const field of page.fie) {
-        const options = field.opt ?? [];
-        if (options.length === 0) continue;
+    /**
+     * Se resuelve **en cadena**, no de una pasada.
+     *
+     * Una rama puede abrir otra: la opción de A muestra B, y la respuesta de B
+     * muestra C. Recorriendo los campos una sola vez, B activaba lo suyo aunque
+     * estuviera oculto —porque conserva el valor que tenía antes de que su
+     * padre lo escondiera— y C se quedaba visible colgando de una pregunta que
+     * ya no se ve. El usuario respondía algo que no debía y, peor, se le exigía
+     * como obligatorio.
+     *
+     * Aquí solo activa quien **está visible con lo que ya se activó**, y se
+     * repite hasta que no aparezca ninguna sección nueva. Cada vuelta añade al
+     * menos una, así que el número de vueltas está acotado por el número de
+     * secciones del formulario.
+     */
+    let added = true;
 
-        const chosenId = asOption(values.get(field.id) ?? null)?.id;
-        if (!chosenId) continue;
+    while (added) {
+      added = false;
 
-        const chosen = options.find((option) => option.id === chosenId);
-        const sect = (chosen?.act_data ?? '').toString();
-        if (sect) active.push({ id: field.id, sect });
+      for (const page of this.pages) {
+        for (const field of page.fie) {
+          const options = field.opt ?? [];
+          if (options.length === 0) continue;
+
+          // La condición nueva: un campo escondido no manda sobre nada.
+          if (!isFieldVisible(field, active)) continue;
+
+          const chosenId = asOption(values.get(field.id) ?? null)?.id;
+          if (!chosenId) continue;
+
+          const chosen = options.find((option) => option.id === chosenId);
+          const sect = (chosen?.act_data ?? '').toString();
+          if (!sect) continue;
+
+          const key = `${field.id}|${sect}`;
+          if (seen.has(key)) continue;
+
+          seen.add(key);
+          active.push({ id: field.id, sect });
+          added = true;
+        }
       }
     }
 

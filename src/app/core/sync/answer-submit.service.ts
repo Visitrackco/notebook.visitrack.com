@@ -88,7 +88,17 @@ export class AnswerSubmitService {
    *   minutos—; el botón de reintento usa uno corto, porque hay alguien
    *   mirando la pantalla.
    */
-  async submit(answer: SurveyAnswer, attempts = 6): Promise<SubmitResult> {
+  /**
+   * @param extra campos que viajan **solo en el envío**, sin escribirse en la
+   *   actividad. Es lo que usa el correo de Brillantex para mandar su estado
+   *   sin cambiar el que la actividad tiene aquí — igual que la app, donde el
+   *   `extra` se mezcla en el cuerpo de `createAnswer` y no en la base.
+   */
+  async submit(
+    answer: SurveyAnswer,
+    attempts = 6,
+    extra: Record<string, unknown> = {},
+  ): Promise<SubmitResult> {
     if (!answer.GUID || answer.ID == null) {
       return { outcome: 'error', message: 'La actividad no tiene identificador.' };
     }
@@ -152,7 +162,7 @@ export class AnswerSubmitService {
 
       const blocking = await this.binaries.countBlockingByAnswer(answer.GUID);
 
-      if (blocking === 0) return await this.create(answer);
+      if (blocking === 0) return await this.create(answer, extra);
 
       // Se marca antes de esperar: ver el párrafo de la clase.
       await this.answers.update(answer.ID, { isSaved: ANSWER_STATE.WAITING_BINARIES });
@@ -176,7 +186,7 @@ export class AnswerSubmitService {
         };
       }
 
-      return await this.create(answer);
+      return await this.create(answer, extra);
     } catch (error) {
       console.error('[Submit] fallo enviando la actividad', error);
       return { outcome: 'error', message: 'No se pudo enviar la actividad.' };
@@ -194,7 +204,10 @@ export class AnswerSubmitService {
    * sin existir en la plataforma, y nadie la volvía a enviar porque para el
    * dispositivo ya estaba resuelta.
    */
-  private async create(answer: SurveyAnswer): Promise<SubmitResult> {
+  private async create(
+    answer: SurveyAnswer,
+    extra: Record<string, unknown> = {},
+  ): Promise<SubmitResult> {
     // Se relee de la base: entre abrir el formulario y llegar aquí, el
     // autoguardado pudo escribir campos que la copia en memoria no tiene.
     const fresh = (await this.answers.findByGuid(answer.GUID)) ?? answer;
@@ -202,7 +215,37 @@ export class AnswerSubmitService {
     const row: Record<string, unknown> = {
       ...fresh,
       UpdatedOn: new Date().toISOString(),
+      // Lo puntual del envío, encima de lo guardado. Ver `submit`.
+      ...extra,
     };
+
+    /**
+     * Lo que ya subió una vez viaja como **modificación**, no como alta.
+     *
+     * El procedimiento del servidor recibe `CompanyStatusID` y `StatusInternal`
+     * juntos, y es el segundo el que decide qué hace con el primero: con `'1'`
+     * lo trata como un alta, y un alta de algo que ya existe no cambia nada.
+     * Ese `'1'` es el que trae el registro desde que se creó y no se movía
+     * nunca, así que **volver a guardar no actualizaba el servidor**: la
+     * actividad quedaba terminada aquí y sin estado en Visitrack.
+     *
+     * Se marca como modificación en dos casos:
+     *
+     * - **Ya se subió** (`IsUpload = '1'`). Un reenvío es por definición una
+     *   modificación, lleve estado o no: también las respuestas corregidas.
+     * - **Lleva estado**. Es lo que hace la app móvil, y cubre a los
+     *   formularios que deciden su estado al guardar —Brillantex, Inverpack—
+     *   incluso la primera vez.
+     */
+    const yaSubio = String(fresh.IsUpload ?? '') === '1';
+    const llevaEstado = String(row['Status'] ?? '').trim() !== '';
+
+    if (yaSubio || llevaEstado) row['StatusInternal'] = '2';
+
+    console.debug(
+      `[Envío] ${fresh.GUID.slice(0, 8)} estado=${row['Status'] || '(ninguno)'} ` +
+        `interno=${row['StatusInternal']}`,
+    );
 
     const result = await this.api.createAnswer(row);
 

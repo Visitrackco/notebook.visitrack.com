@@ -10,7 +10,7 @@ import { BaseRepository } from './base.repository';
  * bucket, y esperarlos dejaría la actividad detenida para siempre. Queda
  * constancia de qué se perdió, pero el trabajo del usuario sigue su camino.
  */
-const BLOCKING_STATES: readonly BinaryState[] = [BinaryState.Pending, BinaryState.InRepository];
+export const BLOCKING_STATES: readonly BinaryState[] = [BinaryState.Pending, BinaryState.InRepository];
 
 /**
  * Archivos capturados: fotos, firmas, audio y documentos.

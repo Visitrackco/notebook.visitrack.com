@@ -27,6 +27,7 @@ import { FieldHostComponent } from './fields/field-host.component';
 import { PageNavComponent } from './page-nav/page-nav.component';
 import { MasterDetailPanelsService } from './master-detail-row/master-detail-panels.service';
 import { MissingEntry, RequiredDialogComponent } from './required-dialog/required-dialog.component';
+import { CompanyLogicService } from '../../../core/rules/company-logic.service';
 
 /**
  * Diligenciamiento de una actividad.
@@ -66,6 +67,7 @@ export class FormRunnerComponent {
   private readonly panels = inject(MasterDetailPanelsService);
   private readonly sound = inject(AlertSoundService);
   private readonly shortcuts = inject(ShortcutsService);
+  private readonly companyLogic = inject(CompanyLogicService);
 
   readonly survey = input.required<Survey>();
   readonly answer = input.required<SurveyAnswer>();
@@ -320,7 +322,7 @@ export class FormRunnerComponent {
     this.autosave.schedule(key, async () => {
       await this.answers.update(id, {
         Fields: JSON.stringify(engine.toAnswerFields()),
-        Titles: JSON.stringify(engine.toTitles(this.survey().Title)),
+        Titles: JSON.stringify(await this.titlesFor(engine, id)),
         UpdatedOn: new Date().toISOString(),
       });
     });
@@ -380,6 +382,58 @@ export class FormRunnerComponent {
   async requestLeave(): Promise<void> {
     await this.flush();
     this.leave.emit();
+  }
+
+  /**
+   * Los descriptivos: los del formulario, **sin borrar los de fuera**.
+   *
+   * `toTitles()` los reconstruye desde cero con los campos marcados `pri`. Eso
+   * está bien para lo que responde el usuario, pero arrasa con lo que escriben
+   * las reglas de la compañía —«CORREO ENVIADO», los indicadores de conformidad
+   * de Brillantex— que no salen de ningún campo `pri` y por lo tanto no se
+   * regeneran. El síntoma era que aparecían al calcularse y desaparecían al
+   * siguiente autoguardado.
+   *
+   * Se conserva lo que cumpla las dos condiciones: que no lo acabe de generar
+   * el formulario, y que **no corresponda a un campo `pri`**. Lo segundo es lo
+   * que evita el efecto contrario — que un descriptivo se quede pegado después
+   * de borrar la respuesta que lo produjo.
+   */
+  private async titlesFor(
+    engine: FormEngine,
+    id: number,
+  ): Promise<{ lab: string; val: string; id?: string }[]> {
+    const generated = engine.toTitles(this.survey().Title);
+
+    try {
+      const stored = await this.answers.getByKey(id);
+      const previous = JSON.parse(String(stored?.Titles ?? '[]')) as {
+        lab?: string;
+        val?: string;
+        id?: string;
+      }[];
+
+      if (!Array.isArray(previous)) return generated;
+
+      const priIds = new Set(
+        engine.pages.flatMap((page) => page.fie).filter((field) => field.pri).map((field) => field.id),
+      );
+
+      const kept = previous.filter(
+        (entry) =>
+          entry.lab !== '[DEF]' &&
+          entry.id != null &&
+          !priIds.has(entry.id) &&
+          !generated.some((item) => item.id === entry.id),
+      );
+
+      return [...generated, ...(kept as { lab: string; val: string; id?: string }[])];
+    } catch (error) {
+      // Descriptivos ilegibles: se escriben los del formulario y ya. Perder un
+      // añadido es menos malo que no poder guardar.
+      console.warn('[Formulario] no se pudieron conservar los descriptivos previos', error);
+      return generated;
+    }
   }
 
   /** Escribe lo pendiente antes de cambiar de página. */
@@ -504,6 +558,24 @@ export class FormRunnerComponent {
       // Con archivos por subir, la actividad queda esperándolos en lugar de
       // ponerse en cola: subirla antes la dejaría en Visitrack apuntando a
       // fotos que no existen, y eso pasa por completa sin serlo.
+      /**
+       * Las reglas de la compañía, antes de marcarla como guardada.
+       *
+       * Deciden el estado a partir de lo respondido —si falta la firma queda
+       * pendiente, si el trabajo se cerró queda terminado—. Va antes de
+       * `markSaved` para que el estado ya esté escrito cuando la actividad
+       * entre en la cola de subida: al revés, podría salir con el estado
+       * anterior. Ver `core/rules/company-logic.service.ts`.
+       */
+      const engineForRules = this.engine();
+      if (engineForRules) {
+        await this.companyLogic.onSaved(
+          answer,
+          engineForRules.toAnswerFields(),
+          engineForRules.pages,
+        );
+      }
+
       const pendingFiles = await this.activities.countBlockingBinaries(answer.GUID);
       await this.answers.markSaved(answer.ID, pendingFiles > 0);
 

@@ -266,6 +266,25 @@
   border-radius: var(--vt-radius-full);
 }
 
+/**
+ * El distintivo que no pide nada.
+ *
+ * «Formularios» lleva cuántas actividades hay creadas: es una referencia, no
+ * trabajo pendiente. Con el mismo rojo que los demás competiría con los que sí
+ * piden entrar —consignas por hacer, archivos sin confirmar— y en un menú donde
+ * todo llama la atención, nada la llama.
+ */
+.shell__nav-badge--quiet {
+  color: var(--vt-text-muted);
+  background: var(--vt-surface-2);
+}
+
+/* Contraída, el de referencia desaparece del todo: un punto rojo junto a
+   «Formularios» diría que hay algo que atender, y no lo hay. */
+.shell--collapsed .shell__nav-badge--quiet {
+  display: none;
+}
+
 /* Con la barra reducida a iconos no hay sitio para el número: se convierte en
    un punto sobre el icono, que sigue diciendo «aquí hay algo». */
 .shell--collapsed .shell__nav-badge {

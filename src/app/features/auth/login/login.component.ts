@@ -83,6 +83,9 @@ export class LoginComponent {
   readonly infoMessage = signal('');
 
   readonly isSubmitting = this.auth.isAuthenticating;
+
+  /** Motivo por el que se cerró la sesión anterior, si lo hubo. */
+  readonly sessionEnded = this.auth.sessionEndedReason;
   readonly appVersion = environment.appVersion;
 
   /** Se habilita el botón solo con ambos campos escritos. */

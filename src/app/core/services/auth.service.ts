@@ -52,6 +52,17 @@ export class AuthService {
   /** true mientras se procesa un inicio de sesión. */
   readonly isAuthenticating = signal(false);
 
+  /**
+   * Por qué terminó la última sesión, para contarlo en la pantalla de inicio.
+   *
+   * Un aviso flotante no sirve aquí: se emite justo antes de navegar al inicio
+   * de sesión, y aunque ahora sobreviva al cambio de ruta, se desvanece en
+   * segundos. Quien vuelve al equipo un rato después encuentra la pantalla de
+   * inicio sin ninguna explicación, y eso se lee como que la aplicación se
+   * rompió. Esto se queda en pantalla hasta que vuelva a entrar.
+   */
+  readonly sessionEndedReason = signal('');
+
   /** Hay sesión abierta. */
   readonly isAuthenticated = computed(() => this.currentUser() !== null);
 
@@ -133,6 +144,9 @@ export class AuthService {
           user: cleanLogin,
           password,
           deviceid: this.device.getDeviceId(),
+          // Con qué nombre aparecerá esta sesión en el perfil y en el teléfono.
+          platform: 'web',
+          devicename: this.device.getDeviceInfo().description,
         }),
       );
 
@@ -152,6 +166,10 @@ export class AuthService {
 
       const user = await this.persistFromResponse(cleanLogin, password, data);
       this.currentUser.set(user);
+
+      // Ya entró: la explicación de por qué se cerró la anterior deja de venir
+      // al caso y no debe seguir en pantalla.
+      this.sessionEndedReason.set('');
 
       // Los permisos definen qué secciones ve el usuario. Si falla, no se
       // bloquea el acceso: se entra sin permisos y el menú muestra lo básico.
@@ -225,7 +243,14 @@ export class AuthService {
       Email: data.Email ?? '',
       Login: login,
       Password: password,
-      Token: data.AccessToken ?? '',
+      /**
+       * El token de sesión, con respaldo en el viejo `AccessToken`.
+       *
+       * Mientras el servidor no emita el nuevo —o mientras esté en modo
+       * gracia— se sigue mandando lo que había, y nada deja de funcionar. En
+       * cuanto el backend lo entregue, este es el que viaja en `x-token`.
+       */
+      Token: data.token || data.AccessToken || '',
       UTCCode: data.UTCCode ?? '',
       DefaultLanguage: data.DefaultLanguage ?? 'es',
       GroupID: Number(data.GroupID ?? 0),
@@ -337,7 +362,29 @@ export class AuthService {
    * borrarlas al salir las perdería para siempre. Para eliminarlas de verdad
    * está la opción de quitar la cuenta del dispositivo.
    */
+  /** Deja anotado por qué se cerró la sesión. Lo llama el interceptor. */
+  noteSessionEnded(reason: string): void {
+    this.sessionEndedReason.set(reason);
+  }
+
   async logout(): Promise<void> {
+    /**
+     * Se avisa al servidor para que cierre la sesión de verdad.
+     *
+     * Sin esto, borrar el token de aquí solo lo esconde: seguiría siendo válido
+     * hasta caducar, y con él cualquiera que lo hubiera copiado seguiría
+     * entrando. Es el sentido de tener una tabla de sesiones.
+     *
+     * No se espera el resultado ni se deja que falle: cerrar sesión **siempre**
+     * tiene que funcionar, aunque no haya señal. Lo que quede abierto en el
+     * servidor caduca solo.
+     */
+    try {
+      await firstValueFrom(this.api.post('/logout', {}));
+    } catch {
+      // Sin conexión o servidor sin desplegar: se cierra igual aquí.
+    }
+
     await this.users.closeSession();
     this.currentUser.set(null);
     this.logo.clear();
@@ -388,7 +435,9 @@ export class AuthService {
         }),
       );
 
-      const token = (response?.response ?? response?.body)?.AccessToken;
+      const fresh = response?.response ?? response?.body;
+      const token = fresh?.token || fresh?.AccessToken;
+
       if (!response?.status || !token) return false;
 
       await this.users.updateToken(user.UserID, token);

@@ -2,6 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { environment } from '../../../environments/environment';
+import { ApiFetchService } from '../services/api-fetch.service';
 import { DatabaseService } from '../database/database.service';
 import { UserConfig } from '../models/entities.model';
 import { UserConfigRepository } from '../repositories/entity.repositories';
@@ -16,6 +17,7 @@ import {
 import { DispatchFilesService } from './dispatch-files.service';
 import { AlertSoundService } from '../services/alert-sound.service';
 import { ToastService } from '../services/toast.service';
+import { BrillantexMailService } from '../rules/brillantex-mail.service';
 
 /** Fase en la que va la descarga. */
 export type SyncPhase = 'idle' | 'connecting' | 'downloading' | 'done' | 'error' | 'cancelled';
@@ -84,6 +86,8 @@ const MAX_RETRIES = 3;
 @Injectable({ providedIn: 'root' })
 export class SyncService {
   private readonly db = inject(DatabaseService);
+  private readonly api = inject(ApiFetchService);
+  private readonly brillantexMail = inject(BrillantexMailService);
   private readonly users = inject(UserRepository);
   private readonly configs = inject(UserConfigRepository);
   private readonly connectivity = inject(ConnectivityService);
@@ -207,6 +211,21 @@ export class SyncService {
          * llega, los permisos se resuelven como estaban — permitiendo, que es
          * el criterio de la app cuando no sabe.
          */
+        /**
+         * El correo de Brillantex, si la compañía es la suya.
+         *
+         * Al final y sin poder tumbar la sincronización: manda los informes de
+         * las inspecciones terminadas cuyas fotos ya están confirmadas. Es el
+         * momento natural — acaba de subirse y confirmarse lo que faltaba, que
+         * es justo lo que las tenía retenidas. El propio servicio se descarta
+         * solo si el usuario no es de esa compañía.
+         */
+        try {
+          await this.brillantexMail.run();
+        } catch (error) {
+          console.warn('[Sync] no se pudo enviar el correo de Brillantex', error);
+        }
+
         try {
           await this.downloadUserConfig(session.UserID, session.CompanyID, effectiveUserId);
         } catch (error) {
@@ -287,7 +306,7 @@ export class SyncService {
     const base = environment.useLocalApi ? environment.localApiUrl : environment.apiUrl;
     const url = `${base}/getSyncNew?id=${encodeURIComponent(userId)}&deviceid=${encodeURIComponent(deviceId)}`;
 
-    const response = await fetch(url, { signal: this.controller.signal });
+    const response = await this.api.fetch(url, { signal: this.controller.signal });
 
     if (!response.ok) {
       throw new Error(`El servidor respondió ${response.status}.`);
@@ -578,7 +597,7 @@ export class SyncService {
     try {
       const base = environment.useLocalApi ? environment.localApiUrl : environment.apiUrl;
 
-      await fetch(`${base}/ackSync`, {
+      await this.api.fetch(`${base}/ackSync`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -690,7 +709,7 @@ export class SyncService {
       `${base}/getUsersModuleByUserIdAndCompanyId` +
       `?userId=${encodeURIComponent(userId)}&companyId=${encodeURIComponent(String(companyId))}`;
 
-    const reply = await fetch(url);
+    const reply = await this.api.fetch(url);
     if (!reply.ok) return;
 
     const response = (await reply.json()) as { status?: boolean; response?: unknown };
@@ -723,7 +742,7 @@ export class SyncService {
   ): Promise<PrepareResult> {
     const base = environment.useLocalApi ? environment.localApiUrl : environment.apiUrl;
 
-    const reply = await fetch(`${base}/prepareDevice`, {
+    const reply = await this.api.fetch(`${base}/prepareDevice`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ UserID: userId, DeviceID: deviceId, reset: full }),

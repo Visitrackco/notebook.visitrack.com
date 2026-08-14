@@ -13,6 +13,7 @@ import { BinaryUploadService } from './binary-upload.service';
 import { EntityUploadService } from './entity-upload.service';
 import { BinaryVerifyService } from './binary-verify.service';
 import { DataRevisionService } from './data-revision.service';
+import { BrillantexMailService } from '../rules/brillantex-mail.service';
 
 /** Una actividad esperando salir, con el detalle de por qué. */
 export interface PendingActivity {
@@ -96,6 +97,7 @@ export class PendingUploadService {
   private readonly submit = inject(AnswerSubmitService);
   private readonly activities = inject(ActivityService);
   private readonly notify = inject(NotifyService);
+  private readonly brillantexMail = inject(BrillantexMailService);
   private readonly revisions = inject(DataRevisionService);
   private readonly connectivity = inject(ConnectivityService);
   private readonly auth = inject(AuthService);
@@ -236,6 +238,20 @@ export class PendingUploadService {
        * el usuario espera saber es que su trabajo **ya está en Visitrack** y no
        * depende del equipo.
        */
+      /**
+       * Los informes de Brillantex, si toca.
+       *
+       * Aquí y no solo tras sincronizar: lo que retiene un informe son los
+       * archivos sin confirmar, y esta corrida es precisamente la que los
+       * confirma. Esperar a la sincronización siguiente sería dejarlo quieto
+       * hasta quince minutos con todo listo.
+       */
+      try {
+        await this.brillantexMail.run();
+      } catch (error) {
+        console.warn('[Pendientes] no se pudo enviar el correo de Brillantex', error);
+      }
+
       if (sent > 0) {
         void this.notify.success(
           sent === 1 ? 'Actividad enviada' : `${sent} actividades enviadas`,

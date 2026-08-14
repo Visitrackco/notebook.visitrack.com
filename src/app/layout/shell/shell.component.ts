@@ -13,7 +13,7 @@ import { ShortcutsService } from '../../core/services/shortcuts.service';
 import { CommandPaletteComponent } from '../../shared/components/command-palette/command-palette.component';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { ShortcutsHelpComponent } from '../../shared/components/shortcuts-help/shortcuts-help.component';
-import { ToastsComponent } from '../../shared/components/toasts/toasts.component';
+import { MenuCountersService } from '../../core/services/menu-counters.service';
 
 /** Clave donde se recuerda si la barra quedó colapsada. */
 const SIDEBAR_KEY = 'visitrack.sidebarCollapsed';
@@ -38,7 +38,6 @@ const SIDEBAR_KEY = 'visitrack.sidebarCollapsed';
     IconComponent,
     CommandPaletteComponent,
     ShortcutsHelpComponent,
-    ToastsComponent,
   ],
 
   host: {
@@ -56,6 +55,7 @@ export class ShellComponent {
   private readonly dispatches = inject(DispatchCounterService);
   private readonly draftMaintenance = inject(DraftMaintenanceService);
   private readonly pendingUploads = inject(PendingUploadService);
+  private readonly counters = inject(MenuCountersService);
   readonly auth = inject(AuthService);
   readonly connectivity = inject(ConnectivityService);
 
@@ -66,6 +66,10 @@ export class ShellComponent {
 
   /** Consignas por hacer, para su distintivo. */
   readonly dispatchCount = this.dispatches.pending;
+
+  /** Actividades creadas y archivos sin confirmar, para el menú. */
+  readonly activityCount = this.counters.activities;
+  readonly pendingFiles = this.counters.pendingFiles;
 
   /** Hay teclado: se ofrece el botón de atajos y funcionan las teclas. */
   readonly hasKeyboard = this.shortcuts.enabled;

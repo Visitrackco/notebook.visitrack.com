@@ -1,0 +1,75 @@
+/**
+ * El campo de formulario vinculado.
+ *
+ * Se lee como una fila de tarea, no como una pregunta: lo que hay detrás es
+ * otra actividad, y lo que importa de un vistazo es su nombre y si está hecha.
+ */
+
+:host {
+  display: block;
+  width: 100%;
+}
+
+.lnk {
+  display: flex;
+  gap: var(--vt-space-3);
+  align-items: center;
+  padding: var(--vt-space-3);
+  background: var(--vt-surface-2);
+  border: 1px solid transparent;
+  border-radius: var(--vt-radius);
+}
+
+/* Sin el formulario descargado no hay nada que abrir: se apaga entero en vez
+   de ofrecer un botón que solo daría un error. */
+.lnk--missing {
+  opacity: 0.7;
+}
+
+.lnk__icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--vt-radius-full);
+  background: var(--vt-surface);
+  color: var(--vt-text-muted);
+}
+
+.lnk__info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.lnk__title {
+  font-size: var(--vt-text-sm);
+  font-weight: 600;
+  color: var(--vt-text);
+  overflow-wrap: anywhere;
+}
+
+.lnk__meta {
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-subtle);
+}
+
+.lnk__open {
+  flex: none;
+  padding: 8px var(--vt-space-4);
+  border: 0;
+  border-radius: var(--vt-radius-full);
+  background: var(--vt-primary);
+  font: inherit;
+  font-size: var(--vt-text-sm);
+  font-weight: 600;
+  color: var(--vt-text-on-primary);
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+}

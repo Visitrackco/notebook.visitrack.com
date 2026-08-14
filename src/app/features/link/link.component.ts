@@ -81,6 +81,18 @@ export class LinkComponent {
 
   constructor() {
     /**
+     * Al entrar, se empieza de cero.
+     *
+     * El servicio vive en la raíz y conserva lo suyo al salir de aquí. Si entre
+     * una visita y otra se cerró sesión y entró otra cuenta, el código que
+     * quedaba en pantalla lleva dentro el usuario anterior — el servidor lo
+     * rechazaría al reclamarlo y el QR se vería normal fallando sin motivo
+     * aparente. Un traspaso en curso de la misma cuenta sí se respeta.
+     */
+    this.link.refresh();
+    this.lastLink.set(this.link.lastLink());
+
+    /**
      * El código se dibuja cuando llega, no cuando se pide.
      *
      * El lienzo no existe hasta que la pantalla entra en modo «pendiente», así

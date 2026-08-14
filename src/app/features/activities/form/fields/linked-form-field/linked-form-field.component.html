@@ -1,0 +1,25 @@
+<div class="lnk" [class.lnk--missing]="missing()">
+  <span class="lnk__icon">
+    <vt-icon [name]="exists() ? 'clipboard' : 'plus'" [size]="18" />
+  </span>
+
+  <div class="lnk__info">
+    <span class="lnk__title">{{ title() }}</span>
+
+    @if (missing()) {
+      <span class="lnk__meta">Este formulario no está asignado a tu usuario</span>
+    } @else if (exists()) {
+      <span class="lnk__meta">{{ state() }}</span>
+    } @else {
+      <span class="lnk__meta">Todavía no se ha abierto</span>
+    }
+  </div>
+
+  <!-- En lectura no se abre: crearía una actividad desde una vista que está
+       para consultar, y eso no es lo que pidió quien la abrió. -->
+  @if (!readOnly() && !missing()) {
+    <button type="button" class="lnk__open" (click)="open()" [disabled]="working()">
+      {{ exists() ? 'Abrir' : 'Diligenciar' }}
+    </button>
+  }
+</div>

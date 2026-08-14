@@ -36,6 +36,7 @@ import { LinkFieldComponent } from './link-field/link-field.component';
 import { ListFieldComponent, ListSelection } from './list-field/list-field.component';
 import { MasterDetailFieldComponent } from './master-detail-field/master-detail-field.component';
 import { RichTextFieldComponent } from './rich-text-field/rich-text-field.component';
+import { LinkedFormFieldComponent } from './linked-form-field/linked-form-field.component';
 
 /**
  * Formatos de fecha y hora.
@@ -100,6 +101,7 @@ const VT_DATE_FORMATS: MatDateFormats = {
   selector: 'vt-field-host',
   standalone: true,
   imports: [
+    LinkedFormFieldComponent,
     BinaryFieldComponent,
     DerivedFieldComponent,
     GpsFieldComponent,

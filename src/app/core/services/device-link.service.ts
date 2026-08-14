@@ -103,6 +103,9 @@ export class DeviceLinkService {
   private readonly device = inject(DeviceService);
   private readonly revisions = inject(DataRevisionService);
   private readonly auth = inject(AuthService);
+
+  /** Con qué cuenta se pidió lo que hay en pantalla. */
+  private startedFor = '';
   private readonly sync = inject(SyncService);
 
   readonly state = signal<LinkState>('inactivo');
@@ -192,6 +195,7 @@ export class DeviceLinkService {
    */
   async start(): Promise<void> {
     this.reset();
+    this.startedFor = String(this.auth.currentUser()?.UserID ?? '');
     this.state.set('pendiente');
 
     try {
@@ -207,6 +211,14 @@ export class DeviceLinkService {
             os: info.os,
             model: info.description,
           },
+          /**
+           * A quién tiene ya abierto este navegador, si tiene a alguien.
+           *
+           * Lo normal es pedir el código sin sesión —para eso existe—, pero si
+           * hay una, el servidor la compara con la del teléfono al reclamar: un
+           * traspaso es entre dos equipos de la **misma** persona.
+           */
+          UserID: this.auth.currentUser()?.UserID ?? '',
         }),
       });
 
@@ -230,6 +242,28 @@ export class DeviceLinkService {
   }
 
   /** Cancela la espera. El código caduca solo. */
+  /**
+   * Deja la pantalla lista para empezar de cero.
+   *
+   * Este servicio vive en la raíz, así que su estado —el código, el QR, el
+   * progreso— **sobrevive a salir de la pantalla y volver**, y también a cerrar
+   * sesión y entrar con otra cuenta. Un código pedido con la sesión anterior
+   * lleva dentro el usuario anterior: el servidor lo rechazaría al reclamarlo,
+   * y con razón, pero el usuario vería un QR de aspecto normal fallando sin
+   * motivo aparente.
+   *
+   * Lo llama la pantalla al entrar. Si la cuenta no cambió y hay un traspaso en
+   * marcha, no se toca: volver a la pantalla no puede tirar un envío a medias.
+   */
+  refresh(): void {
+    const current = String(this.auth.currentUser()?.UserID ?? '');
+    const working = this.state() === 'transfiriendo' || this.state() === 'reclamado';
+
+    if (working && current === this.startedFor) return;
+
+    this.stop();
+  }
+
   stop(): void {
     clearTimeout(this.timer);
     this.timer = undefined;
@@ -357,6 +391,25 @@ export class DeviceLinkService {
      * base con una sesión que la aplicación no sabe que existe.
      */
     if (batch.kind === 'session') {
+      /**
+       * Segunda comprobación, por si acaso.
+       *
+       * El servidor ya rechaza el reclamo cuando el navegador tiene abierta la
+       * sesión de otra persona. Esto es la red por debajo: si algo cambió entre
+       * el reclamo y la entrega —alguien inició sesión aquí mientras el teléfono
+       * enviaba— lo que llega ya no corresponde a quien está sentado aquí, y
+       * adoptarlo mezclaría el trabajo de dos personas en la misma base.
+       */
+      const incoming = String((batch.records[0] as { UserID?: unknown })?.UserID ?? '');
+      const current = this.auth.currentUser()?.UserID;
+
+      if (current && incoming && String(current) !== incoming) {
+        await this.abort(
+          'El teléfono tiene la sesión de otro usuario. Cierra la sesión de este navegador y vuelve a vincular.',
+        );
+        return;
+      }
+
       await this.adoptSession(batch.records[0]);
       return;
     }

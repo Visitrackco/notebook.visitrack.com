@@ -666,3 +666,19 @@
     color: #111827;
   }
 }
+
+/**
+ * Por qué terminó la sesión anterior.
+ *
+ * En ámbar y no en rojo: no es un error de quien está entrando —no hizo nada
+ * mal— sino la explicación de por qué se le pide la contraseña otra vez.
+ */
+.login__ended {
+  padding: 10px 12px;
+  margin-bottom: 4px;
+  border: 1px solid var(--vt-warning);
+  border-radius: var(--vt-radius-sm);
+  background: var(--vt-warning-bg);
+  font-size: var(--vt-text-sm);
+  color: var(--vt-text);
+}

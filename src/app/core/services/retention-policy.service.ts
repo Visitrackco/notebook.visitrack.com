@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../environments/environment';
+import { ApiFetchService } from './api-fetch.service';
 import { ANSWER_STATE } from '../models/activity.model';
 import { Survey, SurveyAnswer } from '../models/entities.model';
 import { SurveyRepository } from '../repositories/entity.repositories';
@@ -82,6 +83,7 @@ export interface RetentionRule {
 @Injectable({ providedIn: 'root' })
 export class RetentionPolicyService {
   private readonly answers = inject(SurveyAnswerRepository);
+  private readonly apiFetch = inject(ApiFetchService);
   private readonly surveys = inject(SurveyRepository);
   private readonly binaries = inject(BinaryStorageService);
   private readonly api = inject(UploadApiService);
@@ -236,7 +238,7 @@ export class RetentionPolicyService {
     const base = environment.useLocalApi ? environment.localApiUrl : environment.apiUrl;
 
     try {
-      const reply = await fetch(`${base}/deleteSurveysAnswers`, {
+      const reply = await this.apiFetch.fetch(`${base}/deleteSurveysAnswers`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -12,6 +12,7 @@ import { ConnectivityService } from '../../core/services/connectivity.service';
 import { DeviceService } from '../../core/services/device.service';
 import { BRAND_PRESETS, ThemeMode, ThemeService } from '../../core/services/theme.service';
 import { IconComponent } from '../../shared/components/icon/icon.component';
+import { SessionsComponent } from './sessions/sessions.component';
 
 /**
  * Perfil del usuario: sus datos, el estado del almacenamiento local, las
@@ -25,7 +26,7 @@ import { IconComponent } from '../../shared/components/icon/icon.component';
 @Component({
   selector: 'vt-profile',
   standalone: true,
-  imports: [IconComponent, MatSlideToggleModule],
+  imports: [IconComponent, MatSlideToggleModule, SessionsComponent],
   templateUrl: './profile.component.html',
   styleUrl: './profile.component.scss',
 })

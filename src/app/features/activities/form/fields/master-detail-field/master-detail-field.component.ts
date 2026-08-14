@@ -42,6 +42,7 @@ import { IconComponent } from '../../../../../shared/components/icon/icon.compon
 import { MasterDetailPanelsService } from '../../master-detail-row/master-detail-panels.service';
 import { MasterDetailStackService } from '../../master-detail-row/master-detail-stack.service';
 import { ListPickerComponent } from '../list-picker/list-picker.component';
+import { scrollToCenter } from '../../../../../shared/utils/scroll';
 
 /**
  * Qué está abierto encima del campo.
@@ -938,12 +939,39 @@ export class MasterDetailFieldComponent {
       return;
     }
 
-    // Un fotograma más antes de medir: el formulario acaba de reaparecer y sus
-    // filas todavía se están colocando, así que la posición de ahora mismo no
-    // es la definitiva.
-    requestAnimationFrame(() =>
-      element.scrollIntoView({ block: 'center', behavior: 'smooth' }),
-    );
+    /**
+     * Se espera a que la altura deje de moverse antes de dar por buena la
+     * posición.
+     *
+     * Dos cosas cambian el alto **después** de pedir el desplazamiento: el
+     * formulario acaba de reaparecer y sus filas todavía se están colocando, y
+     * —al descartar— la fila que se quitó desaparece de la tabla en el
+     * repintado siguiente. Con un solo fotograma de espera, el desplazamiento
+     * se calculaba contra un formulario más alto del que iba a quedar y
+     * terminaba por encima del campo, o directamente arriba del todo.
+     *
+     * Por eso se desplaza, se vuelve a medir un fotograma después, y si el
+     * campo se movió de sitio se corrige. Es imperceptible y evita el caso que
+     * más molesta: descartar un registro y aparecer en otra parte del
+     * formulario.
+     */
+    requestAnimationFrame(() => {
+      const before = element.getBoundingClientRect().top;
+
+      scrollToCenter(element);
+
+      // Un fotograma después: si el repintado cambió la altura —al descartar,
+      // la fila desaparece— el destino calculado ya no vale y se corrige. Sin
+      // animación esta vez: la primera ya mostró el movimiento, y repetirlo
+      // se vería como un temblor.
+      requestAnimationFrame(() => {
+        const after = element.getBoundingClientRect().top;
+
+        // Cuatro píxeles de tolerancia: el desplazamiento ya está en marcha y
+        // siempre mueve algo. Lo que se busca es el salto de un repintado.
+        if (Math.abs(after - before) > 4) scrollToCenter(element, 0);
+      });
+    });
   }
 
   private engineFor(

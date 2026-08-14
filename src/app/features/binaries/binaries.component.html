@@ -45,6 +45,31 @@
     </div>
   </header>
 
+  <!-- Cuánto espacio queda en el navegador.
+       Cuando IndexedDB se llena, guardar falla — y eso, sin un sitio donde
+       verlo venir, se vive como que la aplicación se dañó. -->
+  @if (space(); as space) {
+    <div class="bins__space" [class.bins__space--tight]="spaceTight()">
+      <div class="bins__space-head">
+        <span>
+          <strong>{{ storage.formatSize(space.usage) }}</strong>
+          de {{ storage.formatSize(space.quota) }} usados en este navegador
+        </span>
+
+        @if (spaceTight()) {
+          <span class="bins__space-warn">
+            <vt-icon name="alert" [size]="15" />
+            Queda poco espacio. Exporta y libera lo que ya esté en Visitrack.
+          </span>
+        }
+      </div>
+
+      <div class="bins__space-bar">
+        <span [style.width.%]="spaceRatio() * 100"></span>
+      </div>
+    </div>
+  }
+
   <!-- Estado de la conexión: sin ella ninguna de las acciones puede hacer nada,
        y decirlo aquí evita que se pulsen esperando un resultado. -->
   @if (!connectivity.isOnline()) {

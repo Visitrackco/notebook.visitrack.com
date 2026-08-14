@@ -5,6 +5,7 @@ import { DatabaseService } from '../../core/database/database.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ConnectivityService } from '../../core/services/connectivity.service';
 import { IconComponent } from '../../shared/components/icon/icon.component';
+import { BrillantexMailService } from '../../core/rules/brillantex-mail.service';
 
 /** Tarjeta de resumen del inicio. */
 interface SummaryCard {
@@ -39,6 +40,7 @@ interface SummaryCard {
 })
 export class HomeComponent {
   private readonly db = inject(DatabaseService);
+  private readonly brillantexMail = inject(BrillantexMailService);
   readonly auth = inject(AuthService);
   readonly connectivity = inject(ConnectivityService);
 
@@ -50,6 +52,17 @@ export class HomeComponent {
   readonly greeting = this.buildGreeting();
 
   constructor() {
+    /**
+     * Los informes pendientes de Brillantex, al entrar.
+     *
+     * Es el tercer momento en que la app móvil lo intenta, y hace falta: una
+     * actividad puede quedar lista mientras la aplicación está cerrada —los
+     * archivos se confirman del lado del servidor— y sin esto habría que
+     * esperar a la sincronización siguiente. El propio servicio se descarta
+     * solo si el usuario no es de esa compañía.
+     */
+    void this.brillantexMail.run();
+
     void this.load();
   }
 

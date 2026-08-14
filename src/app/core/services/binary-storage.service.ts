@@ -6,6 +6,13 @@ import { BinaryData, BinaryResource, BinaryState, BinaryType } from '../models/s
 import { BinaryResourceRepository } from '../repositories/binary.repository';
 import { DataRevisionService } from '../sync/data-revision.service';
 import { AuthService } from './auth.service';
+import { SettingsRepository } from '../repositories/settings.repository';
+import {
+  IMAGE_QUALITY_DEFAULT,
+  IMAGE_QUALITY_KEY,
+  compressImage,
+  presetOf,
+} from '../../shared/utils/image';
 
 /**
  * Valor que guarda un campo binario dentro de `Fields`.
@@ -58,6 +65,33 @@ export class BinaryStorageService {
   private readonly binaries = inject(BinaryResourceRepository);
   private readonly revisions = inject(DataRevisionService);
   private readonly auth = inject(AuthService);
+  private readonly settings = inject(SettingsRepository);
+
+  /**
+   * El nivel de reducción de la cuenta.
+   *
+   * Se lee del mismo ajuste que guarda el teléfono (`imageQualityLevel`), así
+   * que quien lo cambió allá lo encuentra respetado aquí. Si no lo configuró
+   * nunca, el de la app: **baja**.
+   */
+  private async preset(): Promise<{ limit: number; quality: number }> {
+    try {
+      const user = this.auth.currentUser();
+
+      const level = await this.settings.getUserSetting(
+        IMAGE_QUALITY_KEY,
+        String(user?.UserID ?? ''),
+        IMAGE_QUALITY_DEFAULT,
+      );
+
+      const [limit, quality] = presetOf(level);
+
+      return { limit, quality };
+    } catch {
+      const [limit, quality] = presetOf(IMAGE_QUALITY_DEFAULT);
+      return { limit, quality };
+    }
+  }
 
   /**
    * URLs de objeto entregadas, por GUID.
@@ -81,6 +115,18 @@ export class BinaryStorageService {
 
     if (input.replaces) await this.remove(input.replaces);
 
+    /**
+     * Las fotografías se reducen antes de guardarse.
+     *
+     * Aquí y no en cada sitio que captura: por este método pasan la cámara, el
+     * archivo elegido, el que se suelta encima y el que sale del editor. Puesto
+     * en uno solo de ellos, los otros tres seguirían guardando el original.
+     *
+     * Solo las fotografías: ver `compressImage`.
+     */
+    const blob =
+      input.type === BinaryType.Image ? await compressImage(input.blob, await this.preset()) : input.blob;
+
     const guid = crypto.randomUUID().slice(0, 49);
     const now = Date.now();
 
@@ -88,8 +134,8 @@ export class BinaryStorageService {
       this.db.request(
         tx.objectStore('BinariesData').put({
           GUID: guid,
-          blob: input.blob,
-          mimeType: input.blob.type || 'application/octet-stream',
+          blob,
+          mimeType: blob.type || 'application/octet-stream',
           createdAt: new Date().toISOString(),
         } satisfies BinaryData),
       ),

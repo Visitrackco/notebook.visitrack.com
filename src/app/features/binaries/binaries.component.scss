@@ -592,3 +592,66 @@
     justify-content: center;
   }
 }
+
+/**
+ * El espacio del navegador.
+ *
+ * Un dato de fondo mientras hay de sobra —gris, discreto— y una advertencia en
+ * ámbar cuando se acerca al tope. No en rojo: todavía no ha fallado nada, y el
+ * rojo aquí competiría con los estados de los archivos, que sí son problemas.
+ */
+.bins__space {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: var(--vt-space-3);
+  border: 1px solid var(--vt-border);
+  border-radius: var(--vt-radius);
+  background: var(--vt-surface);
+  font-size: var(--vt-text-sm);
+  color: var(--vt-text-muted);
+}
+
+.bins__space--tight {
+  border-color: var(--vt-warning);
+  background: var(--vt-warning-bg);
+}
+
+.bins__space-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vt-space-3);
+  align-items: center;
+  justify-content: space-between;
+
+  strong {
+    color: var(--vt-text);
+  }
+}
+
+.bins__space-warn {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-weight: 600;
+  color: var(--vt-warning);
+}
+
+.bins__space-bar {
+  height: 6px;
+  overflow: hidden;
+  background: var(--vt-surface-3);
+  border-radius: var(--vt-radius-full);
+
+  span {
+    display: block;
+    height: 100%;
+    background: var(--vt-primary);
+    border-radius: inherit;
+    transition: width var(--vt-transition-slow);
+  }
+}
+
+.bins__space--tight .bins__space-bar span {
+  background: var(--vt-warning);
+}
