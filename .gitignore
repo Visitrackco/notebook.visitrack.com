@@ -6,6 +6,10 @@
 /out-tsc
 /bazel-out
 
+# Configuración del despliegue: cada servidor tiene la suya.
+# La plantilla es .env.example, que sí va al repositorio.
+.env
+
 # Node
 /node_modules
 npm-debug.log
