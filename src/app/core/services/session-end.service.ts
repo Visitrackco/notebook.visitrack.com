@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 
 import { AuthService } from './auth.service';
 import { NotifyService } from './notify.service';
+import { SessionsApi } from './sessions.api';
 
 /**
  * Qué hacer cuando el servidor deja de aceptar la sesión.
@@ -24,12 +25,29 @@ import { NotifyService } from './notify.service';
  * La marca se levanta de forma **síncrona**, en el mismo instante en que llega
  * el primer 401. Comprobar `isAuthenticated()` no basta: es asíncrono, y los
  * diez 401 llegan antes de que el primer cierre termine.
+ *
+ * ## Un 401 es una acusación, no una prueba
+ *
+ * No todas las peticiones hablan de nuestra sesión. Al traer los datos de un
+ * teléfono, parte del traspaso se autentica con el código del enlace y no con
+ * el token del navegador: su 401 significa «ese código no vale». Tratarlo como
+ * «tu sesión terminó» cerraba una sesión que estaba perfectamente viva, y con
+ * varias cuentas recordadas en el mismo navegador el usuario acababa fuera sin
+ * entender por qué — justo en mitad de un traspaso, que es cuando más trabajo
+ * hay en juego.
+ *
+ * Por eso antes de cerrar se pregunta. Y solo se cierra con un **sí** del
+ * servidor: si no se puede preguntar —sin red, servidor caído— la sesión se
+ * queda. Estar dentro de más se arregla solo en la siguiente petición que sí
+ * obtenga respuesta; estar fuera de menos obliga a volver a entrar, y en campo
+ * eso puede ser no poder trabajar.
  */
 @Injectable({ providedIn: 'root' })
 export class SessionEndService {
   private readonly auth = inject(AuthService);
   private readonly notify = inject(NotifyService);
   private readonly router = inject(Router);
+  private readonly sessions = inject(SessionsApi);
 
   private ending = false;
 
@@ -49,9 +67,28 @@ export class SessionEndService {
   async handle(detail: string): Promise<boolean> {
     if (this.ending || !this.auth.isAuthenticated()) return false;
 
+    /**
+     * Se levanta **antes** de preguntar, no después.
+     *
+     * La comprobación tarda, y en ese rato llegan los otros nueve 401. Sin la
+     * marca puesta ya, cada uno lanzaría su propia comprobación y acabaríamos
+     * con diez preguntas para una sola respuesta.
+     */
     this.ending = true;
 
     try {
+      const token = this.auth.currentUser()?.Token ?? '';
+
+      /**
+       * Solo un `invalid` cierra. `valid` significa que el 401 venía de otra
+       * cosa, y `unknown` que no se pudo saber: en ninguno de los dos hay
+       * motivo para echar a nadie.
+       */
+      if ((await this.sessions.verify(token)) !== 'invalid') return false;
+
+      // Pudo cerrarse por otra vía mientras se preguntaba.
+      if (!this.auth.isAuthenticated()) return false;
+
       const message = detail || 'Vuelve a iniciar sesión para continuar.';
 
       // Con sonido, y del sistema si la pestaña no está a la vista: la sesión

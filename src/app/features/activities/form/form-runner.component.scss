@@ -469,6 +469,42 @@ vt-page-nav {
   color: var(--vt-text-subtle);
 }
 
+/**
+ * El acceso a los atajos, flotante y discreto.
+ *
+ * Se coloca **por encima** del sitio que ocupa «volver arriba», con hueco
+ * reservado aunque ese botón no esté: aparece al desplazarse y desaparece al
+ * volver, y un control que se mueve cada vez que el otro entra y sale es un
+ * control al que hay que perseguir.
+ *
+ * Discreto a propósito. Es una ayuda, no una acción del formulario: compitiendo
+ * en peso con «Guardar» estaría reclamando una atención que no le corresponde.
+ */
+.runner__shortcuts {
+  position: fixed;
+  right: var(--vt-space-4);
+
+  /* El alto de «volver arriba» (46) más su separación. */
+  bottom: calc(var(--vt-space-4) + 54px);
+
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  color: var(--vt-text-subtle);
+  cursor: pointer;
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-border);
+  border-radius: var(--vt-radius-full);
+  box-shadow: 0 4px 14px rgb(0 0 0 / 12%);
+
+  &:hover {
+    color: var(--vt-brand);
+    border-color: var(--vt-brand);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .runner__bar-fill {
     transition: none;

@@ -958,17 +958,25 @@ export class MasterDetailFieldComponent {
     requestAnimationFrame(() => {
       const before = element.getBoundingClientRect().top;
 
-      scrollToCenter(element);
+      /**
+       * Sin animación: el campo ya está ahí en cuanto la fila se cierra.
+       *
+       * Antes se desplazaba en 200 ms para que el movimiento se viera y no se
+       * perdiera la referencia de dónde se estaba. Pero al volver de una fila
+       * no hay referencia que perder — la pantalla anterior era otra, no una
+       * posición de este formulario—, así que lo único que aporta la animación
+       * es una espera. Y se paga en cada registro: al cargar veinte, son veinte
+       * esperas mirando cómo la pantalla se coloca sola.
+       */
+      scrollToCenter(element, 0);
 
       // Un fotograma después: si el repintado cambió la altura —al descartar,
-      // la fila desaparece— el destino calculado ya no vale y se corrige. Sin
-      // animación esta vez: la primera ya mostró el movimiento, y repetirlo
-      // se vería como un temblor.
+      // la fila desaparece— el destino calculado ya no vale y se corrige.
       requestAnimationFrame(() => {
         const after = element.getBoundingClientRect().top;
 
-        // Cuatro píxeles de tolerancia: el desplazamiento ya está en marcha y
-        // siempre mueve algo. Lo que se busca es el salto de un repintado.
+        // Cuatro píxeles de tolerancia: lo que se busca es el salto de un
+        // repintado, no el redondeo de una medida.
         if (Math.abs(after - before) > 4) scrollToCenter(element, 0);
       });
     });

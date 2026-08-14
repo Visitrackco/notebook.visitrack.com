@@ -70,6 +70,22 @@ export const NAVIGATION: NavSection[] = [
         icon: 'map-pin',
         description: 'Sedes, sus activos y sus actividades',
       },
+      /**
+       * El historial es operación, no gestión de datos.
+       *
+       * Estaba entre «Datos» —sincronización, pendientes, archivos—, que agrupa
+       * lo que hay que *administrar*. Pero a esto no se entra a administrar
+       * nada: se entra en mitad de una visita, con el equipo delante, a saber
+       * qué se le hizo la vez anterior. Es la misma pregunta que se responde
+       * desde una ubicación o un formulario, y se busca en el mismo momento.
+       */
+      {
+        key: 'history',
+        label: 'Historial',
+        route: '/historial',
+        icon: 'clipboard',
+        description: 'Qué se le ha hecho a una sede o a un equipo',
+      },
     ],
   },
   {
@@ -102,13 +118,6 @@ export const NAVIGATION: NavSection[] = [
         route: '/vincular',
         icon: 'send',
         description: 'Trae aquí lo que tienes en el teléfono',
-      },
-      {
-        key: 'history',
-        label: 'Historial',
-        route: '/historial',
-        icon: 'clipboard',
-        description: 'Qué se le ha hecho a una sede o a un equipo',
       },
       {
         key: 'entities',

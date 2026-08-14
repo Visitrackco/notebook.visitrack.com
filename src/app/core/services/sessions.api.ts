@@ -25,6 +25,16 @@ interface Reply<T> {
 }
 
 /**
+ * Lo que se sabe de una sesión tras preguntarle al servidor.
+ *
+ * `unknown` es un resultado de pleno derecho y no un fallo: no poder preguntar
+ * —sin red, el servidor caído— **no** es lo mismo que una sesión rechazada, y
+ * confundirlos es lo que echa de la aplicación a quien solo se quedó sin
+ * cobertura.
+ */
+export type SessionCheck = 'valid' | 'invalid' | 'unknown';
+
+/**
  * Las sesiones abiertas del usuario, y cómo cerrarlas.
  *
  * ## Cerrar una sesión pide la contraseña
@@ -41,6 +51,61 @@ export class SessionsApi {
 
   private get baseUrl(): string {
     return environment.useLocalApi ? environment.localApiUrl : environment.apiUrl;
+  }
+
+  /**
+   * ¿El servidor sigue aceptando esta sesión?
+   *
+   * ## Por qué hace falta preguntar
+   *
+   * Un 401 llega desde cualquier petición, y **no todas hablan de nuestra
+   * sesión**: durante un traspaso entre equipos hay llamadas que se autentican
+   * con el código del enlace y no con el token del navegador, y su 401 dice
+   * «ese código no vale», no «tu sesión terminó». Cerrar por eso echa de la
+   * aplicación a quien tenía la sesión correcta abierta.
+   *
+   * `mySessions` responde exactamente a la pregunta: si el servidor devuelve la
+   * lista, es que aceptó el token.
+   *
+   * ## Por qué con `fetch` y no con `HttpClient`
+   *
+   * `HttpClient` pasa por el interceptor, que ante un 401 desencadena el cierre
+   * de sesión. El comprobante no puede provocar lo que está comprobando. Aquí
+   * se manda el token a mano y no se avisa a nadie.
+   *
+   * @param token el de la sesión que se quiere comprobar.
+   */
+  async verify(token: string): Promise<SessionCheck> {
+    // Sin token no hay nada que comprobar, y tampoco nada que conservar.
+    if (!token) return 'invalid';
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), environment.requestTimeout * 1000);
+
+    try {
+      const response = await fetch(`${this.baseUrl}/mySessions`, {
+        headers: { 'x-token': token },
+        signal: controller.signal,
+      });
+
+      if (response.status === 401) return 'invalid';
+
+      /**
+       * Cualquier otra cosa —500, 404, un proxy de por medio— **no** es una
+       * respuesta sobre la sesión. Decir «inválida» aquí sería inventarse una
+       * confirmación que el servidor no dio.
+       */
+      if (!response.ok) return 'unknown';
+
+      const body = (await response.json()) as Reply<UserSession[]> | null;
+
+      return body?.status === true ? 'valid' : 'unknown';
+    } catch {
+      // Sin red, o se acabó el tiempo. No se sabe.
+      return 'unknown';
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   async list(): Promise<UserSession[]> {

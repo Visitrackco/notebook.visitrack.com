@@ -135,6 +135,33 @@ export class FormRunnerComponent {
   }
 
   /**
+   * Hay teclado, así que los atajos existen y merece la pena anunciarlos.
+   *
+   * En una tableta o un teléfono el botón sería un control que no lleva a nada
+   * que se pueda usar.
+   */
+  readonly shortcutsAvailable = this.shortcuts.enabled;
+
+  /**
+   * Enseña los atajos disponibles aquí.
+   *
+   * ## Por qué un botón y no solo la tecla
+   *
+   * El panel ya se abre con `?`, pero `?` **no llega** mientras se escribe: una
+   * interrogación dentro de un campo de texto es una interrogación, no un
+   * atajo. Y en un formulario el foco está casi siempre dentro de un campo, así
+   * que la ayuda de los atajos era justo lo único inalcanzable desde la
+   * pantalla donde más atajos hay.
+   *
+   * Un botón no depende de dónde esté el foco. Y de paso resuelve el problema
+   * anterior: enterarse de que los atajos existen, que con una tecla escondida
+   * solo pasa por accidente.
+   */
+  openShortcuts(): void {
+    this.shortcuts.toggleHelp();
+  }
+
+  /**
    * Los atajos del formulario.
    *
    * Aquí es donde se pasa el tiempo, y cada paso —guardar, cambiar de página,

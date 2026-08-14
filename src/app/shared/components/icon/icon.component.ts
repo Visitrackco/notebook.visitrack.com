@@ -202,6 +202,12 @@ import { Component, input } from '@angular/core';
         @case ('plus') {
           <path d="M12 5v14M5 12h14" />
         }
+        @case ('keyboard') {
+          <rect x="2.5" y="6" width="19" height="12" rx="2" />
+          <path d="M6.5 9.5h.01M10 9.5h.01M13.5 9.5h.01M17 9.5h.01" />
+          <path d="M6.5 12.8h.01M10 12.8h.01M13.5 12.8h.01M17 12.8h.01" />
+          <path d="M8 15.6h8" />
+        }
       }
     </svg>
   `,

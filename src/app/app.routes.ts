@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 
 import { authGuard, guestGuard } from './core/guards/auth.guard';
+import { surveyGuard } from './core/guards/survey.guard';
 
 /**
  * Rutas de la aplicación.
@@ -66,8 +67,18 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/activities/activities.component').then((m) => m.ActivitiesComponent),
       },
+      /**
+       * De aquí en adelante, `surveyGuard`.
+       *
+       * `formularios/:surveyId` se queda sin él a propósito: es quien enseña el
+       * mensaje de que el formulario no está, y protegerla la haría redirigirse
+       * a sí misma. Todas las que cuelgan de ella sí lo llevan — a ellas se
+       * llega por un enlace guardado o recargando la página, sin haber pasado
+       * por el listado, y sin formulario no tienen nada que dibujar.
+       */
       {
         path: 'formularios/:surveyId/ubicaciones',
+        canActivate: [surveyGuard],
         title: 'Elegir ubicación · Visitrack',
         loadComponent: () =>
           import('./features/activities/location-picker.component').then(
@@ -76,12 +87,20 @@ export const routes: Routes = [
       },
       {
         path: 'formularios/:surveyId/activos',
+        canActivate: [surveyGuard],
         title: 'Elegir activo · Visitrack',
         loadComponent: () =>
           import('./features/activities/asset-picker.component').then((m) => m.AssetPickerComponent),
       },
       {
+        /**
+         * El guard va en la actividad y **no** en `registro`/`registros`: las
+         * hijas no se activan sin activar antes a su padre, así que cubrirlas
+         * por separado solo repetiría la consulta a la base en cada fila que se
+         * abre.
+         */
         path: 'formularios/:surveyId/actividad/:guid',
+        canActivate: [surveyGuard],
         title: 'Actividad · Visitrack',
         loadComponent: () =>
           import('./features/activities/activity-detail.component').then(

@@ -1,16 +1,18 @@
 /**
- * Desplazamiento propio, más corto que el del navegador.
+ * Desplazamiento propio, con la duración en manos de quien llama.
  *
  * ## Por qué no `scrollIntoView({ behavior: 'smooth' })`
  *
  * El desplazamiento nativo dura lo que el navegador decide —medio segundo largo
- * cuando la distancia es grande— y no se puede ajustar. En un formulario, ese
- * medio segundo se repite cada vez que se entra y se sale de una fila de una
- * tabla de detalle: al agregar cinco registros, son cinco esperas mirando cómo
- * la pantalla se desliza sola antes de poder seguir.
+ * cuando la distancia es grande— y **no se puede ajustar**. Eso deja una sola
+ * opción para quitarlo: renunciar al suave y saltar. Aquí la duración es un
+ * parámetro, así que cada sitio elige.
  *
- * Con doscientos milisegundos el movimiento **se sigue viendo** —que es lo que
- * evita perder de vista dónde se estaba— pero no se espera.
+ * Hoy el único que llama —volver al campo desde una fila de una tabla de
+ * detalle— pide `0`: al volver de otra pantalla no hay una posición previa que
+ * el movimiento ayude a no perder, y la espera se paga en cada registro. La
+ * animación se conserva para cuando el desplazamiento ocurra **dentro** de la
+ * misma pantalla, que es donde sí orienta.
  */
 
 /** Cuánto dura el desplazamiento por omisión. */

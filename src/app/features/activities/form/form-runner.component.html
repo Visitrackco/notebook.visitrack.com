@@ -164,6 +164,23 @@
          principio es desplazar una pantalla entera. -->
     <vt-to-top />
 
+    <!-- Los atajos, a la vista.
+         Solo con teclado: en una tableta no hay nada que enseñar. El panel se
+         abre igualmente con `?`, pero esa tecla no llega mientras se escribe
+         —y aquí el foco vive dentro de un campo—, así que sin este botón la
+         ayuda quedaba fuera del alcance justo donde más atajos hay. -->
+    @if (shortcutsAvailable()) {
+      <button
+        type="button"
+        class="runner__shortcuts"
+        (click)="openShortcuts()"
+        matTooltip="Atajos de teclado"
+        aria-label="Ver los atajos de teclado"
+      >
+        <vt-icon name="keyboard" [size]="19" />
+      </button>
+    }
+
     <vt-required-dialog
       [open]="askingRequired()"
       [missing]="missing()"
