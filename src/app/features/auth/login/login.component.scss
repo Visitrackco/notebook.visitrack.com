@@ -55,9 +55,13 @@
   gap: 10px;
   align-items: center;
 
-  svg {
+  img {
     width: 34px;
     height: 34px;
+
+    // El original es cuadrado; `contain` evita que se deforme si algún día se
+    // reemplaza por una versión con otra proporción.
+    object-fit: contain;
   }
 
   span {

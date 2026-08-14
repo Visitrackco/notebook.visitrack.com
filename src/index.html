@@ -11,7 +11,19 @@
     <meta name="description" content="Gestión de formularios en campo, con soporte sin conexión." />
     <meta name="theme-color" content="#003366" />
 
+    <!-- ── Icono de la marca ─────────────────────────────────────────────────
+         Los archivos salen de `public/`, que el build copia a la raíz: por eso
+         la ruta es `icon.png` y no `public/icon.png` — esa carpeta no existe en
+         `dist/`.
+
+         El PNG va primero porque el navegador se queda con el último formato
+         que entienda, y todos entienden PNG: el `.ico` queda solo para los
+         viejos que ignoran la primera línea. Y `apple-touch-icon` es el que usa
+         iOS al guardar la página en la pantalla de inicio, que es como se abre
+         en campo. -->
+    <link rel="icon" type="image/png" sizes="1024x1024" href="icon.png" />
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <link rel="apple-touch-icon" href="icon.png" />
   </head>
   <body>
     <app-root></app-root>

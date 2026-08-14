@@ -1,24 +1,24 @@
 <div class="login">
   <!-- ── Marca ──────────────────────────────────────────────────────────── -->
   <header class="login__topbar">
+    <!--
+      El icono sale de `public/`, que el build copia a la raíz del paquete: la
+      ruta es `icon.png`, sin `public/` delante. Es relativa al `<base href>`,
+      así que sigue resolviendo bien si algún día la aplicación cuelga de un
+      subdirectorio.
+
+      Aquí sí es un archivo y no un SVG en línea como el resto de la pantalla:
+      un logotipo con letras propias trazado a mano acaba pareciéndose al
+      original sin llegar a serlo, y una marca a medio parecer es peor que una
+      imagen de más. Viaja en el mismo despliegue que el resto, así que no
+      depende de la red más de lo que ya depende la propia aplicación.
+
+      `width`/`height` van en el atributo además del CSS: sin ellos el navegador
+      no sabe cuánto sitio reservar y la barra da un salto al terminar de
+      cargar.
+    -->
     <div class="login__logo">
-      <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <path
-          d="M20 3 5 10v10c0 9.2 6.4 17.8 15 20 8.6-2.2 15-10.8 15-20V10L20 3Z"
-          fill="var(--lg-brand)"
-          fill-opacity=".1"
-          stroke="var(--lg-brand)"
-          stroke-width="2"
-          stroke-linejoin="round"
-        />
-        <path
-          d="m13.5 20 5 5 9-10"
-          stroke="var(--lg-brand)"
-          stroke-width="2.8"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        />
-      </svg>
+      <img src="icon.png" width="34" height="34" alt="" />
       <span>Visitrack</span>
     </div>
 
