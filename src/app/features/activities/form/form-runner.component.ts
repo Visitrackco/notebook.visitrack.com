@@ -1085,7 +1085,10 @@ export class FormRunnerComponent {
 
   /** Con qué se reconoce un despacho entre dos guardados. */
   private claveDeDespacho(d: Record<string, unknown>): string {
-    return [d['regla'] ?? '', d['que'] ?? '', d['formulario'] ?? ''].join('|');
+    // Con la programación dentro: una misma regla puede pedir dos consignas del
+    // mismo formulario para dos fechas distintas, y cada una puede ir a alguien
+    // distinto. Sin ella, la segunda heredaba el destinatario de la primera.
+    return [d['regla'] ?? '', d['que'] ?? '', d['formulario'] ?? '', d['programado'] ?? ''].join('|');
   }
 
   /** Qué se está despachando mientras el diálogo está abierto, o `null`. */
