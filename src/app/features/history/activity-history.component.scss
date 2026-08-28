@@ -188,6 +188,62 @@
   min-width: 160px;
 }
 
+/**
+ * «Solo las mías» va en línea, no en columna como los demás.
+ *
+ * Una casilla con su texto encima deja un hueco raro entre ambos y separa la
+ * marca de lo que significa. Aquí el texto es la etiqueta de la casilla y se lee
+ * de corrido.
+ */
+.hst__check {
+  flex-direction: row !important;
+  gap: 7px !important;
+  align-items: center;
+  align-self: center;
+  padding-top: var(--vt-space-4);
+  font-size: var(--vt-text-sm) !important;
+  color: var(--vt-text) !important;
+  cursor: pointer;
+  white-space: nowrap;
+
+  input {
+    width: 16px;
+    height: 16px;
+    padding: 0 !important;
+    accent-color: var(--vt-primary);
+    cursor: pointer;
+  }
+}
+
+.hst__actions {
+  display: flex;
+  gap: var(--vt-space-2);
+  align-items: center;
+  margin-left: auto;
+}
+
+/**
+ * «Quitar filtros» aparece solo cuando hay algo que quitar.
+ *
+ * Y en tono secundario: la acción principal es consultar. Con el mismo peso
+ * visual, la salida de emergencia compite con la puerta.
+ */
+.hst__clear {
+  padding: 9px var(--vt-space-3);
+  border: 1px solid var(--vt-border);
+  border-radius: var(--vt-radius-sm);
+  background: transparent;
+  font: inherit;
+  font-size: var(--vt-text-sm);
+  color: var(--vt-text-muted);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--vt-text);
+    border-color: var(--vt-text-subtle);
+  }
+}
+
 .hst__apply {
   display: flex;
   gap: 6px;

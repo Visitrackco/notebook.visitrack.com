@@ -814,6 +814,20 @@
  * lo único que se retira es la copia local; pintarlo de aviso haría que la
  * gente creyera que va a perder algo.
  */
+/* El aviso del borrador va en tono de alerta y el de retención en gris: uno
+   avisa de que se pierde trabajo, el otro solo de que se libera espacio. */
+.acts__borrador {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  padding: 2px 9px;
+  font-size: var(--vt-text-xs);
+  font-weight: 600;
+  color: var(--vt-warning);
+  background: color-mix(in srgb, var(--vt-warning) 12%, transparent);
+  border-radius: var(--vt-radius-full);
+}
+
 .acts__retires {
   display: inline-flex;
   gap: 5px;

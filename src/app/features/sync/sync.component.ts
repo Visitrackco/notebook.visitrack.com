@@ -146,25 +146,64 @@ export class SyncComponent {
   }
 
   /**
-   * Pide al servidor reenviar toda la entidad.
+   * Pide al servidor reenviar toda la entidad, y la descarga.
    *
    * Es la salida cuando una entidad se queda corta y las descargas normales no
    * la completan, porque sus registros ya fueron dados por entregados.
+   *
+   * ## Por qué descarga aquí mismo
+   *
+   * Antes solo marcaba, y dejaba el mensaje «se enviará en la próxima
+   * descarga». Nadie reinicia una entidad para dejarlo a medias: se reinicia
+   * **porque falta algo ahora**, y pedir un segundo clic en otro botón era
+   * repartir en dos pasos una intención que siempre es una sola. Peor aún, el
+   * que se quedaba en el primer paso creía haberlo arreglado y volvía a ver los
+   * mismos faltantes.
    */
   async resetEntity(card: EntityCard): Promise<void> {
     const ok = await this.status.resetEntity(card.entity);
-    this.showFeedback(
-      ok
-        ? `${card.label}: el servidor volverá a enviar sus datos en la próxima descarga.`
-        : this.status.lastError() || 'No se pudo solicitar el reenvío.',
-    );
+
+    if (!ok) {
+      this.showFeedback(this.status.lastError() || 'No se pudo solicitar el reenvío.');
+      return;
+    }
+
+    this.showFeedback(`${card.label}: marcada. Descargando…`);
+    await this.downloadAll();
   }
 
-  /** Borra la entidad en local para que se descargue completa de nuevo. */
+  /**
+   * Borra la entidad en local y la vuelve a traer.
+   *
+   * Igual que el reinicio: dejar los datos borrados y esperar a que alguien
+   * pulse descargar deja la aplicación **peor** de como estaba, con esa
+   * entidad a cero. Si algo falla en la descarga, el mensaje lo dice y los
+   * botones siguen ahí.
+   */
   async clearEntity(card: EntityCard): Promise<void> {
     await this.status.clearEntity(card.entity);
     await this.readStorage();
-    this.showFeedback(`${card.label}: datos locales eliminados.`);
+
+    /*
+     * Y se le pide al servidor que los reenvíe.
+     *
+     * Sin esto, borrar en local dejaba la entidad **vacía para siempre**: el
+     * servidor lleva por separado qué le ha entregado a este equipo, y como
+     * para él ya estaban dados, la descarga siguiente no traía ni una fila.
+     * El botón prometía «se vuelve a descargar» y hacía justo lo contrario.
+     */
+    const ok = await this.status.resetEntity(card.entity);
+
+    if (!ok) {
+      this.showFeedback(
+        `${card.label}: datos eliminados, pero el servidor no aceptó reenviarlos. ` +
+          (this.status.lastError() || 'Vuelve a intentarlo con «Reiniciar».'),
+      );
+      return;
+    }
+
+    this.showFeedback(`${card.label}: datos locales eliminados. Descargando…`);
+    await this.downloadAll();
   }
 
   /** Texto del estado, en términos de lo que el usuario debe entender. */

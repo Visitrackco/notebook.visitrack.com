@@ -8,6 +8,7 @@ import { ActivityHistoryStateService } from '../../core/services/activity-histor
 import {
   ActivityHistoryApi,
   HistoryDateField,
+  HistoryFacets,
   HistoryItem,
   HistoryPage,
 } from '../../core/services/activity-history.api';
@@ -87,6 +88,22 @@ export class ActivityHistoryComponent {
   readonly dateField = signal<HistoryDateField>('CreatedOn');
   readonly term = signal('');
 
+  /**
+   * Los filtros que acotan. Vacío significa «todos».
+   *
+   * `assetId` aquí es **el activo elegido dentro de una ubicación**, distinto
+   * del `assetId()` de entrada, que fija la entidad de la consulta. Al mandarlo
+   * al servidor manda sobre la ubicación, que es lo que se quiere: pedir la
+   * historia de un equipo dentro de la sede es pedir la del equipo.
+   */
+  readonly surveyId = signal('');
+  readonly statusId = signal('');
+  readonly mine = signal(false);
+  readonly assetWithin = signal('');
+
+  /** Con qué se puede acotar esta historia. Lo dice el servidor. */
+  readonly facets = signal<HistoryFacets>({ surveys: [], statuses: [], assets: [] });
+
   // ── Resultado ─────────────────────────────────────────────────────────────
 
   readonly page = signal(1);
@@ -101,6 +118,9 @@ export class ActivityHistoryComponent {
    * la clave no cambió, no hay nada que traer.
    */
   private loadedKey = '';
+
+  /** Qué entidad y qué rango tienen cargadas las opciones de filtro. */
+  private facetsKey = '';
 
   /** Sobre qué se está consultando ahora mismo. */
   readonly target = computed<Target | null>(() => {
@@ -165,8 +185,86 @@ export class ActivityHistoryComponent {
       this.to(),
       this.dateField(),
       this.term(),
+      this.surveyId(),
+      this.statusId(),
+      this.mine() ? 'mias' : '',
+      this.assetWithin(),
       page,
     ].join('|');
+  }
+
+  /**
+   * Trae las opciones de filtro si cambió algo que las afecte.
+   *
+   * Dependen de la entidad y del rango, **no** de los filtros ya elegidos: si
+   * dependieran, elegir un formulario dejaría el desplegable con esa única
+   * opción y no habría manera de cambiar de idea sin limpiarlo antes.
+   *
+   * Por eso tampoco entran en la clave de la consulta: pasar de la página 2 a la
+   * 3 no puede costar tres agregados sobre toda la historia de la sede.
+   */
+  private ensureFacets(target: Target): void {
+    const key = [
+      this.state.keyOf(target.kind, target.id),
+      this.from(),
+      this.to(),
+      this.dateField(),
+    ].join('|');
+
+    if (key === this.facetsKey) return;
+
+    this.facetsKey = key;
+
+    // No se espera: el listado es lo que se vino a ver. Los desplegables llegan
+    // cuando lleguen y, si no llegan, las fechas siguen filtrando.
+    void this.loadFacets(target);
+  }
+
+  private async loadFacets(target: Target): Promise<void> {
+    const facets = await this.api.facets({
+      locationId: target.kind === 'ubicación' ? target.id : null,
+      assetId: target.kind === 'activo' ? target.id : null,
+      from: this.from(),
+      to: this.endOfDay(this.to()),
+      dateField: this.dateField(),
+    });
+
+    this.facets.set(facets);
+
+    /**
+     * Lo elegido puede haber dejado de existir al mover las fechas.
+     *
+     * Un formulario que ya no aparece en el nuevo rango seguiría filtrando en
+     * silencio y daría cero resultados sin que nada explicara por qué — con su
+     * nombre puesto en un desplegable donde ya no está la opción.
+     */
+    if (this.surveyId() && !facets.surveys.some((entry) => entry.id === this.surveyId())) {
+      this.surveyId.set('');
+    }
+
+    if (this.statusId() && !facets.statuses.some((entry) => entry.id === this.statusId())) {
+      this.statusId.set('');
+    }
+
+    if (this.assetWithin() && !facets.assets.some((entry) => entry.id === this.assetWithin())) {
+      this.assetWithin.set('');
+    }
+  }
+
+  /** Ningún filtro puesto más allá del rango de fechas. */
+  readonly hasNarrowing = computed(
+    () => !!(this.surveyId() || this.statusId() || this.mine() || this.assetWithin() || this.term()),
+  );
+
+  /** Quita lo que acota y deja el rango. */
+  clearFilters(): void {
+    this.surveyId.set('');
+    this.statusId.set('');
+    this.mine.set(false);
+    this.assetWithin.set('');
+    this.term.set('');
+
+    this.apply();
   }
 
   private restore(): void {
@@ -184,6 +282,10 @@ export class ActivityHistoryComponent {
     this.to.set(saved.to);
     this.dateField.set(saved.dateField);
     this.term.set(saved.term);
+    this.surveyId.set(saved.surveyId);
+    this.statusId.set(saved.statusId);
+    this.mine.set(saved.mine);
+    this.assetWithin.set(saved.assetWithin);
     this.page.set(saved.page);
     this.result.set(saved.result);
 
@@ -194,7 +296,14 @@ export class ActivityHistoryComponent {
 
     const target = this.target();
 
-    if (target) this.loadedKey = this.keyOf(target, saved.page);
+    if (target) {
+      this.loadedKey = this.keyOf(target, saved.page);
+
+      // El resultado se restauró y no se va a volver a pedir, pero las opciones
+      // de filtro no se guardan: sin esto los desplegables volverían vacíos y
+      // parecería que los filtros elegidos salieron de la nada.
+      this.ensureFacets(target);
+    }
 
     // Después de que el listado esté pintado; si no, no hay a dónde bajar.
     if (saved.scroll > 0) {
@@ -215,6 +324,10 @@ export class ActivityHistoryComponent {
       to: this.to(),
       dateField: this.dateField(),
       term: this.term(),
+      surveyId: this.surveyId(),
+      statusId: this.statusId(),
+      mine: this.mine(),
+      assetWithin: this.assetWithin(),
       page: this.page(),
       result: this.result(),
       scroll: window.scrollY,
@@ -310,14 +423,30 @@ export class ActivityHistoryComponent {
     this.loading.set(true);
     this.error.set('');
 
+    // Aquí y no en cada sitio que consulta: `load` es el único paso por el que
+    // todos pasan —el efecto, «Consultar» y el paginador—, y `ensureFacets`
+    // decide por su cuenta si hace falta pedirlas.
+    this.ensureFacets(target);
+
+    /**
+     * El activo elegido dentro de la sede gana sobre la sede.
+     *
+     * El servidor ya da precedencia al activo, así que basta con mandarlo: pedir
+     * la historia de un equipo dentro de una ubicación es pedir la del equipo.
+     */
+    const within = target.kind === 'ubicación' ? this.assetWithin() : '';
+
     const reply = await this.api.search({
-      locationId: target.kind === 'ubicación' ? target.id : null,
-      assetId: target.kind === 'activo' ? target.id : null,
+      locationId: target.kind === 'ubicación' && !within ? target.id : null,
+      assetId: target.kind === 'activo' ? target.id : within || null,
       from: this.from(),
       to: this.endOfDay(this.to()),
       page,
       dateField: this.dateField(),
       search: this.term(),
+      surveyId: this.surveyId(),
+      statusId: this.statusId(),
+      mine: this.mine(),
     });
 
     this.loading.set(false);

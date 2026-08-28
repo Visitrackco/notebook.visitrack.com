@@ -15,6 +15,18 @@ export interface HistorySnapshot {
   dateField: HistoryDateField;
   term: string;
 
+  /**
+   * Los filtros que acotan. Se guardan con el resto porque son justamente los
+   * que más cuesta volver a poner: elegir formulario y estado son dos
+   * desplegables, y perderlos al volver de mirar una actividad obliga a rehacer
+   * lo que ya se había decidido.
+   */
+  surveyId: string;
+  statusId: string;
+  mine: boolean;
+  /** Activo elegido dentro de una ubicación. */
+  assetWithin: string;
+
   page: number;
   result: HistoryPage | null;
 

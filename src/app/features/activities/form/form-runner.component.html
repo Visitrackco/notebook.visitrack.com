@@ -125,14 +125,30 @@
 
     <!-- ── Campos ──────────────────────────────────────────────────────────── -->
     <div class="runner__fields" #fields>
-      @for (field of eng.visibleFields(); track field.id) {
+      <!-- La clave lleva el sello del campo: cuando el flujo le reescribe el
+           valor, el control se rehace en vez de quedarse con lo que el usuario
+           había pulsado. Ver `FormEngine.escribirLoQueElFlujoPuso`. -->
+      @for (field of eng.visibleFields(); track field.id + ':' + selloDe(field.id)) {
+        <!-- Lo que el flujo de trabajo decidió para este campo: el color de
+             fondo, el del texto, si está en solo lectura y el mensaje que
+             acompaña. `null` cuando ninguna regla habla de él. -->
+        @let flujo = eng.estadoDeFlujo(field.id);
+
         <div
           class="runner__field"
           [class.runner__field--invalid]="eng.showsError(field)"
           [class.runner__field--title]="isHeading(field)"
+          [class.runner__field--bloqueado]="flujo?.soloLectura === true"
+          [class.runner__field--pintado]="!!flujo?.colorTexto"
+          [attr.inert]="flujo?.soloLectura === true ? '' : null"
+          [style.background-color]="flujo?.color || null"
+          [style.--vt-flujo-texto]="flujo?.colorTexto || null"
           [id]="'field-' + field.id"
         >
           <vt-field-host
+            [limites]="limitesDe(flujo)"
+            [textoDelFlujo]="flujo?.texto ?? null"
+            [imagenDelFlujo]="flujo?.imagen ?? null"
             [field]="field"
             [value]="eng.valueOf(field.id)"
             [invalid]="eng.showsError(field)"
@@ -142,6 +158,10 @@
             (valueChange)="onValueChange(field, $event)"
             (descriptorsChange)="onDescriptorsChange(field, $event)"
           />
+
+          @if (flujo?.mensaje) {
+            <p class="runner__field-aviso">{{ flujo?.mensaje }}</p>
+          }
         </div>
       } @empty {
         <p class="runner__empty">Esta página no tiene campos visibles.</p>
@@ -153,9 +173,9 @@
     <!-- ── Navegación y guardado ───────────────────────────────────────────── -->
     <vt-page-nav
       [pages]="pageMarks()"
-      [current]="eng.page()"
+      [current]="posicionEnElPaginador()"
       [saving]="saving()"
-      (goTo)="goToPage($event)"
+      (goTo)="irAlPunto($event)"
       (save)="save()"
       (leave)="requestLeave()"
     />
@@ -189,6 +209,15 @@
       (saveAnyway)="onSaveAnyway()"
       (goToField)="goToMissing($event)"
       (close)="askingRequired.set(false)"
+    />
+
+    <!-- A quién se le despacha, cuando la regla no lo trae decidido. De aquí
+         solo se sale eligiendo, o cancelando el guardado entero. -->
+    <vt-destinatario-dialog
+      [open]="pidiendoDestinatario() !== null"
+      [queFormulario]="pidiendoDestinatario() ?? ''"
+      (elegir)="alElegirDestinatario($event)"
+      (cancelar)="alCancelarDestinatario()"
     />
   </section>
 }

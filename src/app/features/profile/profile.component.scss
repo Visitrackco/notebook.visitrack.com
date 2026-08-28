@@ -97,6 +97,22 @@
   }
 }
 
+/*
+ * La placa: el logo sobre blanco, como en un membrete.
+ *
+ * Un PNG con trazo oscuro y fondo transparente se pierde sobre el panel
+ * oscuro. El relleno interior es tan importante como el fondo: pegado a los
+ * bordes parece un recorte, y con aire parece una marca.
+ */
+.profile__logo-frame--placa {
+  padding: 8px;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.18),
+    0 8px 20px -10px rgb(0 0 0 / 0.35);
+}
+
 .profile__identity-info {
   min-width: 0;
 
@@ -142,6 +158,12 @@
 .profile__chip--warn {
   color: #fcd34d;
   background: rgb(252 211 77 / 15%);
+}
+
+.profile__acciones {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .profile__logout {
@@ -741,6 +763,10 @@
     padding: var(--vt-space-4);
   }
 
+  .profile__acciones {
+    width: 100%;
+  }
+
   .profile__logout {
     width: 100%;
     justify-content: center;
@@ -765,4 +791,32 @@
   .profile__color:hover {
     transform: none;
   }
+}
+
+/* El logo y su opción, en columna: el control queda a mano sin robarle sitio
+   al nombre de la compañía. */
+.profile__logo-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* Discreto: se usa una vez y después estorba. */
+.profile__logo-fondo {
+  max-width: 96px;
+  padding: 2px 4px;
+  border: 1px solid rgb(255 255 255 / 0.28);
+  border-radius: 6px;
+  background: rgb(0 0 0 / 0.25);
+  color: inherit;
+  font-family: inherit;
+  font-size: 10px;
+  opacity: 0.75;
+  cursor: pointer;
+
+  &:hover, &:focus-visible { opacity: 1; }
+
+  option { color: initial; }
 }

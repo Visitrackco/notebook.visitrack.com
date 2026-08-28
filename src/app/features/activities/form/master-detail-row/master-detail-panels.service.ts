@@ -1,7 +1,7 @@
 import { Location } from '@angular/common';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { NavigationEnd, Router } from '@angular/router';
-import { filter, firstValueFrom } from 'rxjs';
+import { Router, Scroll } from '@angular/router';
+import { filter, firstValueFrom, race, timer } from 'rxjs';
 
 import { MasterDetailRow } from '../../../../core/forms/master-detail';
 import { MasterDetailStackService } from './master-detail-stack.service';
@@ -152,8 +152,29 @@ export class MasterDetailPanelsService {
   async close(): Promise<void> {
     this.location.back();
 
-    await firstValueFrom(
-      this.router.events.pipe(filter((event) => event instanceof NavigationEnd)),
+    await this.trasElDesplazamiento();
+  }
+
+  /**
+   * Espera a que el router termine de navegar **y de mover la página**.
+   *
+   * Volver de un panel es un «atrás» del navegador, y la aplicación tiene
+   * encendida la restauración de posición: después de `NavigationEnd` el router
+   * lleva la página a donde él guardó para esa entrada del historial. Quien
+   * quiera colocar la vista tiene que hacerlo **después** de eso, o el router se
+   * lo deshace — que es lo que dejaba el formulario arriba del todo al volver de
+   * un registro.
+   *
+   * `Scroll` es el evento que llega justo después de que el router haya hecho lo
+   * suyo. Con tope de espera: más vale colocar tarde que dejar a alguien
+   * esperando para siempre.
+   */
+  trasElDesplazamiento(): Promise<unknown> {
+    return firstValueFrom(
+      race(
+        this.router.events.pipe(filter((event) => event instanceof Scroll)),
+        timer(1200),
+      ),
     );
   }
 

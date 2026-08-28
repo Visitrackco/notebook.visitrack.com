@@ -25,23 +25,37 @@ Exigir conexión la volvería inútil justo cuando más se necesita. Por eso:
 ```
 src/app/
 ├── core/                    Todo lo que no es pantalla
-│   ├── config/              Menú y constantes de navegación
+│   ├── config/              Menú, reglas por compañía, configuración en ejecución
 │   ├── database/            Esquema de IndexedDB y acceso de bajo nivel
+│   ├── forms/               Motor de diligenciamiento
 │   ├── guards/              Protección de rutas
 │   ├── interceptors/        Token en las peticiones
 │   ├── models/              Tipos del dominio
 │   ├── repositories/        Acceso a datos (patrón repositorio)
-│   └── services/            Autenticación, HTTP, conectividad, dispositivo
+│   ├── rules/               Lógica propia de una compañía, aislada
+│   ├── services/            Autenticación, HTTP, conectividad, dispositivo
+│   └── sync/                Subida de actividades, archivos y entidades
 ├── features/                Una carpeta por pantalla
-│   ├── activities/          Actividades: listado, selectores y detalle
-│   ├── auth/login/
+│   ├── activities/          Actividades: listado, selectores, detalle y formulario
+│   ├── auth/                Login y la descarga inicial
+│   ├── binaries/            Archivos guardados en el navegador
+│   ├── dispatches/          Consignas: el trabajo que llega asignado
+│   ├── drafts/              Lo que se abrió y nunca se guardó
+│   ├── entities/            Ubicaciones y activos creados aquí, por subir
 │   ├── forms/               Listado de formularios
+│   ├── history/             Historial de una ubicación o un activo
 │   ├── home/
+│   ├── link/                Traspaso desde el teléfono
+│   ├── locations/           Catálogo de sedes y equipos
+│   ├── pending/             Actividades esperando salir
 │   ├── profile/
 │   └── sync/
 ├── layout/shell/            Barra lateral + cabecera
 └── shared/components/       Componentes reutilizables
 ```
+
+Las rutas van **en español**: la URL es parte de la interfaz — el usuario la ve,
+la comparte y a veces la escribe.
 
 ### Regla de dependencias
 
@@ -212,7 +226,7 @@ sesión después en el mismo equipo. Aquí va a nombre de la cuenta.
 
 ## Diligenciamiento
 
-El motor vive en `core/forms/` y se apoya en dos piezas:
+El motor vive en `core/forms/`. Dos piezas lo sostienen:
 
 - **`form-schema.ts`** — tipos y reglas puras: qué es una página, qué es un
   campo, cuándo está visible y cuándo cuenta como respondido. Los nombres de
@@ -221,6 +235,14 @@ El motor vive en `core/forms/` y se apoya en dos piezas:
 - **`form-engine.ts`** — el estado de una actividad abierta. Es una **clase, no
   un servicio**: con un servicio de raíz habría que acordarse de limpiarlo al
   salir, y la actividad siguiente heredaría los valores de la anterior.
+
+Alrededor, un archivo por cada cosa que un campo puede necesitar y que no es el
+motor: de dónde salen los ítems de una lista (`list-source.service.ts`,
+`list-search.api.ts`), de dónde salen las filas de una tabla de detalle
+(`master-detail-source.service.ts`, `master-detail.ts`), qué se calcula a partir
+de otras respuestas (`derived-fields.ts`), qué llega puesto de antemano
+(`inherited-defaults.ts`) y los formularios vinculados
+(`linked-form.service.ts`).
 
 ### Visibilidad condicionada
 
@@ -248,41 +270,58 @@ tenido ocasión de cometer.
 
 ### Tipos implementados
 
-Texto, texto largo, numérico, fecha, fecha y hora, hora, correo, teléfono,
-celular, dirección, selección única, selección múltiple, desplegable, título,
-párrafo e hipervínculo.
+**Todos.** Texto, texto largo, numérico, fecha, fecha y hora, hora, correo,
+teléfono, celular, dirección, selección única, selección múltiple, desplegable,
+título, párrafo, hipervínculo, foto, imagen, firma, audio, video, archivo, GPS,
+tabla de detalle, suma de detalle, cálculo, diferencia de fechas y formulario
+vinculado.
 
-Los que faltan —foto, firma, audio, video, archivo, GPS, tabla de detalle,
-cálculo— **se anuncian en su sitio con el nombre del campo**, y si son
-obligatorios avisan de que la actividad hay que terminarla en la app móvil. Un
-hueco en silencio haría creer que el formulario está completo cuando le falta
-justo la foto que se pedía.
+Los seis tipos de archivo comparten un mismo componente: entre una foto y una
+firma lo que cambia es **de dónde sale el contenido**, no cómo se guarda ni cómo
+se muestra después.
 
 ## Estado actual
 
 | Módulo | Estado |
 |---|---|
-| Base de datos local (26 stores) | Listo |
+| Base de datos local (29 stores) | Listo |
 | Repositorios | Listo |
 | Login (con modo offline) | Listo |
 | Menú y navegación | Listo |
 | Perfil y preferencias | Listo |
-| Sincronización | Solo lectura del estado local |
+| Descarga inicial y sincronización por lotes | Listo |
 | Listado de formularios | Listo |
 | Actividades: listado, estados, regla de borrado | Listo |
 | Flujo de apertura (ubicación → activo → formulario) | Listo |
 | Autoguardado y política de borradores | Listo |
 | Motor de formularios: páginas, obligatorios, visibilidad condicionada | Listo |
-| Campos básicos (texto, número, fecha, selección) | Listo |
-| Campos con captura (foto, firma, audio, archivo, GPS) | Pendiente |
-| MasterDetail, cálculos y formularios vinculados | Pendiente |
-| Archivos binarios | Esquema listo, interfaz pendiente |
+| Todos los tipos de campo, archivos incluidos | Listo |
+| MasterDetail, cálculos y formularios vinculados | Listo |
+| Subida de actividades, archivos y entidades, con el gate de confirmación | Listo |
+| Consignas, borradores, pendientes y archivos como pantallas propias | Listo |
+| Catálogo de ubicaciones y activos, con creación y edición | Listo |
+| Vinculación con el teléfono | Listo |
+| Reglas por compañía (`core/rules/`) | Listo |
+| Historial por ubicación o activo | Escrito, **sin probar contra datos reales** |
+| MasterDetail como tabla y pegar desde Excel | Propuesta, sin implementar |
 
 ### Lo que sigue
 
-1. Captura de archivos con `Blob` + IndexedDB (foto, firma, audio), y el
-   control de publicación en el bucket que ya existe en la app móvil.
-2. MasterDetail, campos calculados y formularios vinculados.
-3. Subida de actividades y el gate que las retiene hasta que sus archivos estén
-   confirmados (el estado `isSaved = 3` ya se lee y se muestra; falta quien lo
-   escriba desde el lado web).
+1. Probar el historial contra SQL Server con un usuario que tenga zonas de
+   trabajo y un activo con actividades de varios formularios. Ver
+   `docs/historial-actividades.md`.
+2. MasterDetail como tabla editable y pegar un bloque desde Excel. El diseño
+   está acordado en `docs/masterdetail-pegar-excel.md`, con su regla de fondo:
+   nunca adivinar a qué registro corresponde un nombre.
+
+## Documentación
+
+| Documento | De qué trata |
+|---|---|
+| `docs/login-y-servidor.md` | A qué servidor apunta y cómo cambiarlo sin recompilar |
+| `docs/servicio-login.md` | Contrato de `GET /loginTemp` |
+| `docs/historial-actividades.md` | Historial por ubicación o activo, y descargar una actividad |
+| `docs/masterdetail-pegar-excel.md` | Propuesta de tabla editable con pegado desde Excel |
+
+El backend es **`cloud-server`** (Node), el mismo que consume la app móvil. No
+está en este repositorio.

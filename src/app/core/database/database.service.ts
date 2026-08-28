@@ -205,6 +205,59 @@ export class DatabaseService {
   // ───────────────────────────────────────────────────────────────────────────
 
   /** Cuántos registros hay en cada store. Alimenta la pantalla de sincronización. */
+  /**
+   * Cuántos registros hay **de una persona** en cada tienda.
+   *
+   * `counts()` cuenta todo lo que hay en la base, y en este navegador puede
+   * haber datos de varias cuentas: la aplicación permite cambiar de usuario sin
+   * borrar lo del anterior, precisamente para no obligar a descargarlo todo de
+   * nuevo al volver. Sumarlos hacía que el inicio anunciara formularios y
+   * ubicaciones que esta sesión no puede abrir.
+   *
+   * Se cuenta por el índice `byUserID`, que existe en casi todas las tiendas.
+   * Donde no existe —las de configuración, que no son de nadie en particular—
+   * se cuenta entero, que ahí sí es la respuesta correcta.
+   */
+  async countsForUser(userId: string): Promise<Record<string, number>> {
+    const db = await this.open();
+    const names = Array.from(db.objectStoreNames);
+    if (names.length === 0) return {};
+
+    return this.transaction(names, 'readonly', async (tx) => {
+      const result: Record<string, number> = {};
+
+      for (const name of names) {
+        const store = tx.objectStore(name);
+
+        if (!store.indexNames.contains('byUserID')) {
+          result[name] = await this.request(store.count());
+          continue;
+        }
+
+        const indice = store.index('byUserID');
+        let n = await this.request(indice.count(userId));
+
+        /*
+         * IndexedDB indexa por tipo: la clave '766688' y la clave 766688 son
+         * distintas y no se encuentran entre sí. Según de dónde venga la fila
+         * —del inicio de sesión o de la sincronización— el identificador puede
+         * haberse guardado como texto o como número, así que si por un lado no
+         * aparece nada se prueba por el otro antes de dar cero por bueno.
+         */
+        if (n === 0) {
+          const comoNumero = Number(userId);
+          if (Number.isFinite(comoNumero) && userId !== '') {
+            n = await this.request(indice.count(comoNumero));
+          }
+        }
+
+        result[name] = n;
+      }
+
+      return result;
+    });
+  }
+
   async counts(): Promise<Record<string, number>> {
     const db = await this.open();
     const names = Array.from(db.objectStoreNames);

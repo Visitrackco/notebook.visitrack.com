@@ -1,0 +1,60 @@
+<div class="pv-velo" (click)="cerrarSiEsElVelo($event)">
+  <div class="pv" role="dialog" aria-modal="true" [attr.aria-label]="titulo()">
+
+    <header class="pv-cab">
+      <div class="pv-cab-txt">
+        <vt-icon name="file" [size]="17" />
+        <div class="pv-cab-lineas">
+          <span class="pv-titulo">{{ titulo() }}</span>
+          @if (subtitulo()) {
+            <span class="pv-sub">{{ subtitulo() }}</span>
+          }
+        </div>
+      </div>
+
+      <div class="pv-acciones">
+        <button type="button" class="pv-btn" (click)="abrirEnPestana()" title="Abrir en una pestaña aparte">
+          <vt-icon name="download" [size]="15" />
+          <span class="pv-btn-txt">Abrir aparte</span>
+        </button>
+
+        <button type="button" class="pv-x" (click)="cerrado.emit()" title="Cerrar (Esc)" aria-label="Cerrar">
+          <vt-icon name="close" [size]="17" />
+        </button>
+      </div>
+    </header>
+
+    <div class="pv-cuerpo">
+      @if (connectivity.isOffline()) {
+        <!-- El resto de la aplicación funciona sin red; esto no puede. Se dice
+             antes, en vez de dejar una pantalla en blanco que parece un fallo. -->
+        <div class="pv-estado">
+          <vt-icon name="connection-off" [size]="32" />
+          <p>Sin conexión</p>
+          <span class="pv-estado-nota">
+            El PDF lo arma el servidor en el momento. Vuelve a intentarlo cuando
+            tengas señal.
+          </span>
+        </div>
+      } @else {
+        @if (!listo()) {
+          <div class="pv-estado">
+            <span class="pv-aro"></span>
+            <p>Generando el documento…</p>
+            <span class="pv-estado-nota">Suele tardar unos segundos</span>
+          </div>
+        }
+
+        @if (fuente(); as src) {
+          <iframe
+            class="pv-marco"
+            [class.pv-marco-listo]="listo()"
+            [src]="src"
+            [title]="titulo()"
+            (load)="listo.set(true)"
+          ></iframe>
+        }
+      }
+    </div>
+  </div>
+</div>

@@ -1,6 +1,6 @@
 import { Location } from '@angular/common';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { NavigationEnd, Router } from '@angular/router';
+import { Router, Scroll } from '@angular/router';
 import { filter, firstValueFrom, race, timer } from 'rxjs';
 
 import { FormEngine } from '../../../../core/forms/form-engine';
@@ -164,10 +164,27 @@ export class MasterDetailStackService {
     void this.afterNavigation().then(() => level.settle(outcome));
   }
 
+  /**
+   * Espera a que la navegación **y el desplazamiento del router** terminen.
+   *
+   * Se espera al evento `Scroll` y no a `NavigationEnd`, y la diferencia
+   * importa: cerrar una fila es un «atrás» del navegador, y el router tiene
+   * encendida la restauración de posición, así que después de `NavigationEnd`
+   * **él** mueve la página a la posición que guardó para esa entrada del
+   * historial. Avisando en `NavigationEnd`, quien devuelve la vista a su campo
+   * colocaba bien y el router lo deshacía un instante después: el formulario
+   * aparecía arriba del todo tras editar un registro.
+   *
+   * `Scroll` llega justo después de que el router haya hecho lo suyo, que es
+   * cuando de verdad se puede colocar la vista.
+   *
+   * Con un tope de espera: si la navegación no llega a completarse, más vale
+   * avisar tarde que no avisar — quien espera se quedaría colgado.
+   */
   private afterNavigation(): Promise<unknown> {
     return firstValueFrom(
       race(
-        this.router.events.pipe(filter((event) => event instanceof NavigationEnd)),
+        this.router.events.pipe(filter((event) => event instanceof Scroll)),
         timer(1200),
       ),
     );

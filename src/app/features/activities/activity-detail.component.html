@@ -40,7 +40,7 @@
       <!-- Estado de despacho, sincronización y autoguardado en la misma línea:
            las tres señales que se consultan de reojo mientras se diligencia. -->
       <div class="detail__signals">
-        <span [class]="'detail__saving detail__saving--' + autosave.state()">
+        <span [class]="'detail__saving detail__saving--' + autosaveTone()">
           <span class="detail__saving-dot" aria-hidden="true"></span>
           <span class="detail__saving-text">{{ autosaveLabel() }}</span>
         </span>
@@ -154,6 +154,7 @@
           [survey]="form"
           [answer]="act"
           (saved)="onFormSaved()"
+          (statusChanged)="onFlowStatus($event)"
           (leave)="leave()"
         />
       }
@@ -220,7 +221,8 @@
     @if (expiresAt(); as expiry) {
       <p class="detail__expiry">
         <vt-icon name="alert" [size]="15" />
-        Como borrador, se eliminará sola el {{ formatDate(expiry) }} si no se guarda.
+        Como borrador, se eliminará sola dentro de <strong>{{ draftLeft() }}</strong>
+        —el {{ formatDate(expiry) }}— si no se guarda.
       </p>
     } @else if (deleteRule().enabled) {
       <p class="detail__rule">

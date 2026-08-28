@@ -153,6 +153,104 @@ export class FieldHostComponent {
   /** true cuando falta y hay que señalarlo. */
   readonly invalid = input(false);
 
+  /**
+   * Los límites que el flujo puso a este campo: desde, hasta y qué días.
+   *
+   * Llegan del motor de flujos ya resueltos por el formulario. Aquí solo se
+   * traducen a lo que entiende el calendario, porque impedir elegir mal es
+   * mejor que avisar después de haberlo hecho.
+   */
+  readonly limites = input<{ desde?: string; hasta?: string; dias?: string } | null>(null);
+
+  /**
+   * Lo que el campo **dice**, si una regla lo cambió.
+   *
+   * Un título, un párrafo o una etiqueta son texto fijo del formulario, así que
+   * no tienen valor que escribir. Esto es lo que permite reescribirlos desde una
+   * regla sin confundirlos con una respuesta.
+   */
+  readonly textoDelFlujo = input<string | null>(null);
+
+  /** La dirección de la imagen, si una regla la cambió. */
+  readonly imagenDelFlujo = input<string | null>(null);
+
+  /** El enunciado que toca enseñar: el de la regla, si lo hay. */
+  readonly enunciado = computed(() => {
+    const f = this.field();
+    return this.textoDelFlujo() || f.txt || f.lab;
+  });
+
+  /** La imagen que toca enseñar: la de la regla, si la hay. */
+  readonly imagen = computed(() => this.imagenDelFlujo() || this.field().url);
+
+  /**
+   * La fecha mínima que se puede elegir.
+   *
+   * `HOY` se resuelve **aquí**, contra el reloj del aparato: un flujo se guarda
+   * una vez y se ejecuta durante meses, así que una fecha calculada al
+   * guardarlo estaría vencida al día siguiente.
+   */
+  readonly fechaDesde = computed(() => this.aFecha(this.limites()?.desde));
+  readonly fechaHasta = computed(() => this.aFecha(this.limites()?.hasta));
+
+  private aFecha(valor: string | undefined): Date | null {
+    const texto = (valor ?? '').trim();
+    if (!texto) return null;
+
+    if (texto.toUpperCase() === 'HOY') {
+      const hoy = new Date();
+      hoy.setHours(0, 0, 0, 0);
+      return hoy;
+    }
+
+    const fecha = new Date(texto);
+    return Number.isNaN(fecha.getTime()) ? null : fecha;
+  }
+
+  /**
+   * Los límites de hora, como `Date` del día de hoy.
+   *
+   * `mat-timepicker` compara horas pero trabaja con `Date`, así que la hora de
+   * la regla —«08:00»— se planta sobre la fecha de hoy. Solo se mira la hora,
+   * de modo que el día da igual mientras sea el mismo en los dos extremos.
+   */
+  readonly horaDesde = computed(() => this.aHora(this.limites()?.desde));
+  readonly horaHasta = computed(() => this.aHora(this.limites()?.hasta));
+
+  private aHora(valor: string | undefined): Date | null {
+    const texto = (valor ?? '').trim();
+    if (!texto) return null;
+
+    const [h, m] = texto.split(':').map(Number);
+    if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+
+    const cuando = new Date();
+    cuando.setHours(h, m, 0, 0);
+    return cuando;
+  }
+
+  /**
+   * Qué días se pueden elegir en el calendario.
+   *
+   * Los días vienen del 1 (lunes) al 7 (domingo), que es como los cuenta la
+   * gente; `Date.getDay()` empieza en domingo con el 0, de ahí la conversión.
+   * Sin días declarados no se filtra nada: devolver siempre `true` deja el
+   * calendario como estaba.
+   */
+  readonly filtroDeDias = computed<(d: Date | null) => boolean>(() => {
+    const crudo = (this.limites()?.dias ?? '').trim();
+    if (!crudo) return () => true;
+
+    const permitidos = new Set(crudo.split(',').map((d) => d.trim()).filter(Boolean));
+
+    return (fecha: Date | null) => {
+      if (!fecha) return true;
+
+      const dia = fecha.getDay() === 0 ? '7' : String(fecha.getDay());
+      return permitidos.has(dia);
+    };
+  });
+
   readonly valueChange = output<FieldValue>();
 
   /** Solo muestra información: no lleva marca de obligatorio. */

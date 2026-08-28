@@ -25,7 +25,17 @@ import {
   InheritedSource,
   inheritsDefault,
   resolveInheritedDefault,
+  valoresDelEntorno,
 } from './inherited-defaults';
+import { Campo, Encargo, EstadoCampo, Flujo, Momento, Resultado, ESTADO_DE_LA_ACTIVIDAD } from './flujo-modelo';
+import {
+  camposDeLaRegla,
+  camposDeLasReglas,
+  camposQueDecideLaRegla,
+  comoLoGuarda,
+  comoTexto,
+  evaluar,
+} from './flujo-motor';
 
 /**
  * Cuántas veces se rehacen los campos calculados antes de rendirse.
@@ -63,6 +73,14 @@ export interface FormEngineInput {
    * Lo que no se respondió tiene que verse vacío.
    */
   readOnly?: boolean;
+
+  /**
+   * El flujo de trabajo que aplica a este formulario, si lo hay.
+   *
+   * Lo trae `FlujoService` desde lo que bajó la sincronización. Sin flujo, el
+   * formulario se comporta como siempre.
+   */
+  flujo?: Flujo | null;
 }
 
 /**
@@ -133,11 +151,202 @@ export class FormEngine {
   /** Solo consulta: ver [FormEngineInput.readOnly]. */
   private readonly readOnly: boolean;
 
+  // ── Flujo de trabajo ──────────────────────────────────────────────────────
+
+  /** Las reglas que aplican, si el formulario tiene flujo. */
+  private readonly flujo: Flujo | null;
+
+  /** Lo que el flujo decidió sobre cada campo, por `id` de campo. */
+  private readonly estadoFlujo = signal(new Map<string, EstadoCampo>());
+
+  /**
+   * En qué estado está la actividad, para poder preguntarlo en una condición.
+   *
+   * Lo mantiene al día la pantalla, que es la que conoce la actividad: el motor
+   * solo sabe de campos.
+   */
+  readonly estadoActividad = signal('');
+
+  /**
+   * Cuántas veces le ha reescrito el flujo el valor a cada campo.
+   *
+   * Va en la clave del `@for` que dibuja los campos: al subir, ese campo —y
+   * solo ese— se rehace. Ver [escribirLoQueElFlujoPuso] para el porqué.
+   */
+  private readonly sellos = signal<Record<string, number>>({});
+
+  /** El sello de un campo, para la clave del `@for`. */
+  selloDe(id: string): number {
+    return this.sellos()[id] ?? 0;
+  }
+
+  /** Los avisos que hay que enseñar, con las mismas llaves que lo demás. */
+  private readonly avisosPorMomento = signal<Record<string, readonly string[]>>({});
+
+  /**
+   * Todo lo que el flujo quiere avisar ahora mismo, sin repetir.
+   *
+   * Es una señal para que la pantalla reaccione en cuanto aparezca uno: un aviso
+   * que llega tarde ya no informa de nada.
+   */
+  readonly avisosDelFlujo = computed<string[]>(() => {
+    const porMomento = this.avisosPorMomento();
+
+    return [...new Set(this.enOrden(Object.keys(porMomento)).flatMap((k) => porMomento[k] ?? []))];
+  });
+
+  /** Lo que decidió cada momento por separado. Ver [correrFlujo]. */
+  private readonly porMomento = new Map<string, Map<string, EstadoCampo>>();
+
+  /**
+   * Lo que pidió cada momento por su cuenta. Ver [correrFlujo].
+   *
+   * Por momento y no todo junto, por lo mismo que los campos: un estado puesto
+   * por una regla de «al cambiar» tenía que sobrevivir a la evaluación de «al
+   * guardar». Quedándose solo con la última, guardar borraba el estado que el
+   * flujo había puesto mientras se diligenciaba.
+   */
+  private readonly encargosPorMomento = signal<Record<string, readonly Encargo[]>>({});
+
+  /** Todo lo pedido, en el orden en que ocurren los momentos. */
+  private readonly encargosDeFlujo = computed<readonly Encargo[]>(() => {
+    const porMomento = this.encargosPorMomento();
+
+    return this.enOrden(Object.keys(porMomento)).flatMap((k) => porMomento[k] ?? []);
+  });
+
+  /**
+   * El estado al que el flujo quiere pasar la actividad, o `null`.
+   *
+   * `null` no significa «déjalo como está»: significa que **ninguna regla pide
+   * un estado ahora mismo**. Si el flujo se lo había cambiado antes, hay que
+   * devolverlo a como estaba — una regla que deja de cumplirse tiene que
+   * deshacer lo que hizo, igual que con un campo que vuelve a verse.
+   *
+   * Es una señal y no un método para que la pantalla pueda reaccionar en
+   * cuanto cambie: un estado puesto por una regla de «al cambiar» tiene que
+   * verse al momento, no al guardar.
+   */
+  readonly estadoDelFlujo = computed<string | null>(() => {
+    let pedido: string | null = null;
+
+    for (const encargo of this.encargosDeFlujo()) {
+      if (encargo.que !== 'cambiar-estado') continue;
+
+      const valor = String(encargo.valor ?? '').trim();
+      if (valor) pedido = valor;
+    }
+
+    return pedido;
+  });
+  private readonly bloqueosPorMomento = new Map<string, readonly string[]>();
+
+  /**
+   * Junta lo que decidió cada momento, del más general al más concreto.
+   *
+   * «Al abrir» pone el estado de partida, «al cambiar» reacciona a lo que se
+   * responde y «al guardar» tiene la última palabra: es el orden en que ocurren
+   * y por tanto el orden en que uno espera que se pisen.
+   */
+  private combinarMomentos(): Map<string, EstadoCampo> {
+    const salida = new Map<string, EstadoCampo>();
+
+    for (const llave of this.enOrden([...this.porMomento.keys()])) {
+      for (const [id, estado] of this.porMomento.get(llave) ?? []) {
+        salida.set(id, { ...salida.get(id), ...estado });
+      }
+    }
+
+    return salida;
+  }
+
+  /**
+   * Olvida lo que decidieron en otras pasadas las reglas que se acaban de
+   * evaluar.
+   *
+   * ## Por qué hace falta
+   *
+   * Cada pasada se guarda en su propio cajón —`abrir`, `cambia:GESTION`,
+   * `guardar`— y eso es lo que permite que responder una cosa no borre lo que
+   * decidieron las reglas de otra. Pero una regla marcada **en dos momentos**
+   * decide en dos cajones distintos sobre los mismos campos, y ahí se rompía:
+   *
+   * Una regla «al abrir y al cambiar» que esconde un campo lo escondía al
+   * entrar. Al responder, la regla se volvía a evaluar, su condición ya no se
+   * cumplía y no decidía nada… pero lo que había decidido al abrir seguía en su
+   * cajón, así que el campo no volvía a aparecer nunca. Deshacer funcionaba
+   * solo cuando las dos evaluaciones caían en el mismo cajón.
+   *
+   * Así que cuando una regla se evalúa, lo que decidió antes se tira: sus
+   * decisiones viven en la última pasada que la miró, y en ninguna otra.
+   */
+  private olvidarLoViejoDe(momento: Momento, campoQueCambio: string | undefined, llave: string): void {
+    const evaluadas = (this.flujo?.reglas ?? []).filter((regla) => {
+      if (regla.activa === false) return false;
+      if (regla.general) return momento === 'guardar';
+      if (!regla.cuando?.includes(momento)) return false;
+
+      // Sin campo que cambie —al abrir, al guardar— se evalúan todas. Con él,
+      // solo las suyas, que es el mismo criterio que usa el motor.
+      if (!campoQueCambio) return true;
+
+      const suyos = camposDeLaRegla(regla);
+      return suyos.length === 0 || suyos.includes(campoQueCambio);
+    });
+
+    if (!evaluadas.length) return;
+
+    const decididos = new Set<string>();
+
+    for (const regla of evaluadas) {
+      for (const apiId of camposQueDecideLaRegla(regla)) {
+        const id = this.idPorApiId.get(apiId);
+        decididos.add(id ?? apiId);
+      }
+    }
+
+    for (const [otra, mapa] of this.porMomento) {
+      if (otra === llave) continue;
+
+      for (const id of decididos) mapa.delete(id);
+    }
+  }
+
+  /**
+   * Las llaves ordenadas: primero abrir, luego lo respondido en su orden, y
+   * guardar al final.
+   *
+   * Guardar va el último porque es la última palabra, y abrir el primero porque
+   * es el punto de partida. En medio, cada campo en el orden en que se fue
+   * respondiendo: si dos reglas dicen cosas distintas del mismo campo, manda la
+   * del campo que se contestó después.
+   */
+  private enOrden(llaves: string[]): string[] {
+    return [
+      ...llaves.filter((k) => k === 'abrir'),
+      ...llaves.filter((k) => k !== 'abrir' && k !== 'guardar'),
+      ...llaves.filter((k) => k === 'guardar'),
+    ];
+  }
+
+  /** Motivos por los que el flujo impide guardar. Vacío = se puede. */
+  readonly bloqueosDeFlujo = signal<readonly string[]>([]);
+
+  /** Página a la que el flujo pidió ir, si alguna regla lo pidió. */
+  readonly paginaDeFlujo = signal<number | null>(null);
+
+  /** Los campos del formulario tal como los necesita el motor, por `apiId`. */
+  private readonly camposPorApiId = new Map<string, Campo>();
+
+  /** De `apiId` a `id` interno: el motor habla en `apiId` y el motor de formularios en `id`. */
+  private readonly idPorApiId = new Map<string, string>();
+
   constructor(input: FormEngineInput) {
     this.pages = parseQuestions(input.questions);
     this.inherits = input.inherits ?? {};
     this.derived = derivedFieldsOf(this.pages);
     this.readOnly = input.readOnly ?? false;
+    this.flujo = input.flujo ?? null;
 
     const stored = parseAnswerFields(input.answers);
     const initial = this.buildInitialValues(stored);
@@ -149,13 +358,504 @@ export class FormEngine {
     // defecto, o una rama que abre un `def` no aparece hasta la segunda vez que
     // se abre la actividad. Ver [deriveSections].
     this.sections.set(this.deriveSections(initial));
+
+    if (this.flujo?.reglas?.length) {
+      this.indexarCampos();
+
+      /*
+       * Al entrar, **solo** el momento «al abrir».
+       *
+       * Ahí es donde viven las reglas que miran la sede y el equipo: esos datos
+       * vienen ya escritos del registro del que cuelga la actividad, nadie los
+       * va a responder aquí, y si no se evaluaran al entrar no se evaluarían
+       * nunca.
+       *
+       * Los campos del formulario no: los resuelve el propio formulario según
+       * se van respondiendo, que es lo que significa «al cambiar». Correrlo
+       * también al entrar adelantaba decisiones sobre campos que el usuario
+       * todavía no ha tocado.
+       */
+      this.correrFlujo('abrir');
+    }
   }
+
+  /**
+   * El índice de campos que necesita el motor de flujos.
+   *
+   * Se arma una sola vez: el esquema no cambia mientras se diligencia, y
+   * recorrerlo en cada tecla sería recorrer cientos de campos por pulsación.
+   */
+  private indexarCampos(): void {
+    this.pages.forEach((page, indice) => {
+      /*
+       * La página, como un campo más.
+       *
+       * Se puede esconder o dejar en solo lectura, y el motor reparte a sus
+       * campos lo que se decida sobre ella. Su identificador es `PAGINA:1`,
+       * `PAGINA:2`… — el mismo que arma el Module, para que la regla que se
+       * escribe allí valga aquí.
+       *
+       * No entra en `idPorApiId` a propósito: no tiene valor que leer ni que
+       * escribir, y lo que se decide sobre ella acaba en sus campos.
+       */
+      this.camposPorApiId.set(`PAGINA:${indice + 1}`, {
+        apiId: `PAGINA:${indice + 1}`,
+        fty: 'page',
+        pagina: indice + 1,
+        esPagina: true,
+      });
+
+      for (const field of page.fie) {
+        /*
+         * El identificador de un campo es su `apiId`, y si no tiene, su `id`.
+         *
+         * Los títulos, los párrafos y los separadores no llevan `apiId`, y por
+         * eso quedaban fuera del flujo: no había forma de escribir una regla
+         * sobre ellos. Pero sí llevan `id`, que es único dentro del formulario
+         * y sirve igual. El motor trata el identificador como una cadena opaca.
+         */
+        const apiId = (field.apiId ?? '').toString().trim() || (field.id ?? '').toString().trim();
+        if (!apiId) continue;
+
+        this.camposPorApiId.set(apiId, {
+          apiId,
+          fty: field.fty,
+          opt: field.opt as any,
+          pagina: indice + 1,
+        });
+
+        this.idPorApiId.set(apiId, field.id);
+      }
+    });
+  }
+
+  /**
+   * Evalúa el flujo y guarda lo que decidió.
+   *
+   * ## Por qué el resultado se guarda en vez de calcularse al vuelo
+   *
+   * El motor puede **escribir valores** —«poner el valor», «copiar de»— y eso
+   * no se puede hacer dentro de un `computed`, que tiene que ser puro. Se
+   * ejecuta en los tres momentos que el flujo declara (al abrir, al cambiar y
+   * al guardar) y el resto del motor lee lo que dejó.
+   */
+  private correrFlujo(momento: Momento, campoQueCambio?: string): void {
+    if (!this.flujo?.reglas?.length) return;
+
+
+
+    // El motor trabaja con `apiId`; los valores viven aquí por `id`.
+    const actuales = this.values();
+
+    /*
+     * Se parte de la sede y del activo, y encima van las respuestas.
+     *
+     * Una regla puede preguntar por dónde se trabaja y sobre qué —«si la sede
+     * es la de Bogotá»— y esos datos no están en el formulario: vienen del
+     * registro del que cuelga la actividad. Van primero para que, si alguna vez
+     * un campo del formulario se llamara igual, mande el del formulario, que es
+     * lo que el usuario está respondiendo delante.
+     */
+    const valores: Record<string, unknown> = { ...valoresDelEntorno(this.inherits) };
+
+    /*
+     * El estado de la actividad, como si fuera un campo más.
+     *
+     * No se responde —lo pone la plataforma o una regla— pero sí se pregunta:
+     * «si quedó en Aprobado, despacha». Se mete aquí, junto a las respuestas,
+     * para que el motor no tenga que saber nada especial sobre él.
+     */
+    valores[ESTADO_DE_LA_ACTIVIDAD] = this.estadoActividad();
+
+    for (const [apiId, id] of this.idPorApiId) {
+      valores[apiId] = actuales.get(id) ?? null;
+    }
+
+    /*
+     * Los campos del entorno se declaran como texto.
+     *
+     * El motor mira el `fty` para saber si compara como fecha o como número, y
+     * un campo que no conoce se compara como texto — que es justo lo que hay
+     * que hacer con el nombre de una sede o la marca de un equipo.
+     */
+    const campos = Object.fromEntries(this.camposPorApiId);
+
+    /*
+     * Sin opciones a propósito: comoTexto traduce identificadores a nombres
+     * cuando el campo las trae, y aquí se compara identificador contra
+     * identificador. Con opciones, la condición nunca casaría.
+     */
+    campos[ESTADO_DE_LA_ACTIVIDAD] = { apiId: ESTADO_DE_LA_ACTIVIDAD, fty: 'estado' };
+
+    for (const apiId of Object.keys(valores)) {
+      if (!campos[apiId]) campos[apiId] = { apiId, fty: 'text' };
+    }
+
+    const resultado: Resultado = evaluar(this.flujo, {
+      valores,
+      campos,
+      momento,
+      campoQueCambio,
+    });
+
+    const porId = new Map<string, EstadoCampo>();
+
+    for (const [apiId, estado] of Object.entries(resultado.campos)) {
+      const id = this.idPorApiId.get(apiId);
+
+      if (id) {
+        porId.set(id, estado);
+        continue;
+      }
+
+      /*
+       * Una página se guarda con su propio identificador.
+       *
+       * No tiene `id` de campo —no es un campo—, pero lo que se decida sobre
+       * ella hace falta después para quitarla del paginador. `PAGINA:2` no
+       * puede chocar con el `id` de ningún campo, así que caben en el mismo
+       * sitio y se combinan por momento como todo lo demás.
+       */
+      if (this.camposPorApiId.get(apiId)?.esPagina) porId.set(apiId, estado);
+    }
+
+    /*
+     * Se guarda **lo de cada momento por separado**, y se combinan al leer.
+     *
+     * `evaluar` solo mira las reglas del momento que se le pide, así que su
+     * resultado es completo para ese momento pero no dice nada de los otros.
+     * Machacarlo todo con lo último hacía que pulsar guardar borrara lo que las
+     * reglas de «al cambiar» habían decidido —reaparecían los campos ocultos—;
+     * y acumularlo sin más dejaba pegado para siempre lo que una regla decidió
+     * y luego dejó de cumplirse.
+     *
+     * Por momento, cada pasada reemplaza limpiamente lo suyo y respeta lo ajeno.
+     */
+    /*
+     * La llave no es solo el momento sino «momento:campo».
+     *
+     * Cada campo dispara sus propias reglas: responder «Tipo de gestión» evalúa
+     * las suyas y no toca las de «Fecha». Guardándolo solo por momento, cada
+     * respuesta borraría lo que habían decidido las reglas de los demás campos.
+     *
+     * Y se reemplaza, no se acumula: así una regla que deja de cumplirse deshace
+     * lo que hizo sin tocar lo ajeno.
+     */
+    const llave = campoQueCambio ? `${momento}:${campoQueCambio}` : momento;
+
+    /*
+     * Y se reinserta al final, no se sobreescribe en su sitio.
+     *
+     * Un `Map` conserva el orden de inserción, pero reasignar una llave que ya
+     * existe **no la mueve**. Sin esto, responder A, luego B y luego A otra vez
+     * dejaba a A donde estaba y las decisiones de B seguían pesando más que las
+     * de A, aunque A fuera lo último que se contestó.
+     */
+    this.porMomento.delete(llave);
+    this.bloqueosPorMomento.delete(llave);
+
+    // Y lo que estas mismas reglas hubieran decidido en otra pasada deja de
+    // valer: acaban de decidir otra vez. Ver [olvidarLoViejoDe].
+    this.olvidarLoViejoDe(momento, campoQueCambio, llave);
+
+    this.porMomento.set(llave, porId);
+    this.bloqueosPorMomento.set(llave, resultado.bloqueos);
+
+    /*
+     * Lo que hay que hacer con la actividad, para que lo recoja la pantalla.
+     *
+     * El motor no cambia estados ni crea actividades —no sabe dónde está la
+     * actividad, y tiene que dar el mismo resultado aquí que en el móvil—, así
+     * que los deja anotados y quien sí lo sabe los ejecuta.
+     */
+    // Lo mismo con los encargos: se quita y se vuelve a poner para que quede el
+    // último, que es el que manda cuando dos reglas piden estados distintos.
+    const encargos = { ...this.encargosPorMomento() };
+    delete encargos[llave];
+
+    this.encargosPorMomento.set({ ...encargos, [llave]: resultado.encargos ?? [] });
+
+    const avisos = { ...this.avisosPorMomento() };
+    delete avisos[llave];
+
+    this.avisosPorMomento.set({ ...avisos, [llave]: resultado.avisos ?? [] });
+
+    this.estadoFlujo.set(this.combinarMomentos());
+    this.bloqueosDeFlujo.set([...new Set([...this.bloqueosPorMomento.values()].flat())]);
+    /*
+     * Y si una regla pidió ir a otra página, se va.
+     *
+     * El motor solo puede anotar el número: no sabe nada de paginación. Se
+     * anotaba y no lo recogía nadie, así que «ir a la página» era una acción
+     * que se podía configurar y no hacía absolutamente nada.
+     *
+     * Las páginas se cuentan desde 1 al escribir la regla —es lo que se ve en
+     * el formulario— y desde 0 por dentro.
+     */
+    const pagina = resultado.irAPagina ?? null;
+    this.paginaDeFlujo.set(pagina);
+
+    if (pagina !== null && pagina - 1 !== this.page()) this.goTo(pagina - 1);
+
+    this.salirDeLaPaginaEscondida();
+
+    // Los valores que el flujo escribió se llevan al formulario. Sin esto, una
+    // regla que rellena un campo se vería en el resultado pero no en pantalla.
+    this.escribirLoQueElFlujoPuso(resultado.campos, campos);
+
+    /*
+     * Rastro de lo que hizo, para no diagnosticar a ciegas.
+     *
+     * El flujo decide en silencio: si una regla no se dispara no hay nada que
+     * mirar, y averiguar por qué obligaba a ir poniendo puntos de parada. Es
+     * `debug`, así que no aparece salvo que se pida.
+     */
+    // Lo que leyó de cada campo por el que preguntan las reglas: es lo que dice
+    // si una regla no se dispara porque su condición no se cumple o porque el
+    // valor no llegó.
+    const leido: Record<string, string> = {};
+
+    for (const apiId of camposDeLasReglas(this.flujo)) {
+      leido[apiId] = campos[apiId]
+        ? `${campos[apiId].fty} = "${comoTexto(valores[apiId], campos[apiId])}"`
+        : '(no está en el formulario)';
+    }
+
+    /*
+     * Y con qué acabó.
+     *
+     * Una regla puede escribirle encima a un campo, y entonces la siguiente ya
+     * no decide con lo que respondió el usuario. Enseñando solo lo de entrada,
+     * el rastro decía «leí Llamada comercial» y a la vez «no se disparó la
+     * regla que pregunta por Llamada comercial», que no hay forma de entender.
+     */
+    const acabo: Record<string, string> = {};
+
+    for (const apiId of Object.keys(leido)) {
+      acabo[apiId] = `"${comoTexto(resultado.valoresFinales?.[apiId], campos[apiId])}"`;
+    }
+
+    console.debug('[flujo]', momento, {
+      cambió: campoQueCambio ?? '(ninguno)',
+      leyó: leido,
+      acabó: acabo,
+      reglasCargadas: (this.flujo?.reglas ?? [])
+        .filter((r) => r.cuando?.includes(momento))
+        .map((r) => `${r.id}: ${r.nombre ?? ''}${r.activa === false ? ' (apagada)' : ''}`),
+      seDispararon: resultado.disparadas,
+      campos: Object.keys(resultado.campos),
+      escribieron: resultado.escrituras,
+      // Una regla que intenta borrar lo que alguien acaba de contestar casi
+      // nunca es lo que quería quien la escribió.
+      ojo: resultado.pisadas,
+      bloqueos: resultado.bloqueos,
+      estado: this.estadoDelFlujo(),
+    });
+  }
+
+  private escribirLoQueElFlujoPuso(
+    porApiId: Record<string, EstadoCampo>,
+    campos: Record<string, Campo>,
+  ): void {
+    const cambios: [string, FieldValue][] = [];
+
+    // Los que además hay que rehacer, no solo reescribir. Ver abajo.
+    const seRehacen: string[] = [];
+
+    for (const [apiId, estado] of Object.entries(porApiId)) {
+      if (estado.valor === undefined) continue;
+
+      const id = this.idPorApiId.get(apiId);
+      if (!id) continue;
+
+      /*
+       * El valor, con la forma que ese campo guarda.
+       *
+       * Una regla dice «pon "No enciende"» porque es lo que se eligió de una
+       * lista al escribirla, pero un radio guarda `{id, txt}` y una casilla una
+       * lista de eso. Escribiendo el texto a secas no se marcaba ninguna
+       * opción: `selectedId()` buscaba un `id` dentro de una cadena.
+       */
+      const nuevo = comoLoGuarda(estado.valor, campos[apiId]);
+
+      // Una regla que nombra una opción que ya no existe: se deja el campo como
+      // está. Escribirle una respuesta que no está entre sus opciones es peor
+      // que no tocarlo.
+      if (nuevo === undefined) {
+        console.warn('[FormEngine] el campo no admite ese valor', apiId, estado.valor);
+        continue;
+      }
+
+      const actual = this.values().get(id) ?? null;
+
+      /*
+       * Solo si de verdad cambia.
+       *
+       * Se comparan **los textos** y no los objetos: dos objetos con las mismas
+       * claves en distinto orden se serializan distinto, y un radio recién
+       * escrito parecía cambiar en cada pasada. Cada escritura dispara otra
+       * evaluación, así que eso era un formulario rehaciéndose sin parar.
+       */
+      if (comoTexto(actual, campos[apiId]) === comoTexto(nuevo, campos[apiId])) continue;
+
+      cambios.push([id, nuevo as FieldValue]);
+
+      /*
+       * Y se apunta para rehacer el control, **pero solo si es de opciones**.
+       *
+       * Rehacerlo hace falta cuando el control se guarda por dentro lo que el
+       * usuario pulsó: un `mat-radio-group` corregido en la misma pasada acaba
+       * enseñando lo que se pulsó mientras el motor tiene otra cosa, y ya no
+       * vuelven a coincidir.
+       *
+       * Los demás leen su valor de la entrada en cada pintado y no necesitan
+       * nada. Rehacerlos era peor que no hacerlo: una tabla de detalle se
+       * destruía y volvía a nacer al guardar una fila, y con ella se perdía el
+       * sitio al que había que devolver la vista — por eso guardar un registro
+       * dejaba el formulario arriba del todo.
+       */
+      const fty = (campos[apiId]?.fty ?? '').toLowerCase();
+
+      if (fty === 'radio' || fty === 'checkbox' || fty === 'dropdownlist') {
+        seRehacen.push(id);
+      }
+    }
+
+    /*
+     * Se apunta qué campos reescribió el flujo, para poder rehacer su control.
+     *
+     * Un `mat-radio-group` **se guarda por dentro lo que el usuario pulsó**. Si
+     * el flujo lo corrige en la misma pasada, la expresión del `[value]` acaba
+     * dando lo mismo que la vez anterior, Angular la da por no cambiada y no
+     * se la escribe al componente: el motor queda con «Malo» y la pantalla
+     * enseñando «Bueno», y a partir de ahí ya no vuelven a coincidir nunca.
+     *
+     * Es justo el caso de «lo cambia una vez y ya no lo vuelve a cambiar». Con
+     * el sello en la clave del `@for`, el control se destruye y se rehace, y
+     * nace leyendo el valor bueno.
+     */
+    if (seRehacen.length) {
+      this.sellos.update((current) => {
+        const next = { ...current };
+        for (const id of seRehacen) next[id] = (next[id] ?? 0) + 1;
+        return next;
+      });
+    }
+
+    if (!cambios.length) return;
+
+    this.values.update((current) => {
+      const next = new Map(current);
+      for (const [id, valor] of cambios) next.set(id, valor);
+      this.applyDerived(next);
+      return next;
+    });
+
+    this.sections.set(this.deriveSections(this.values()));
+  }
+
+  /** Cómo dejó el flujo a un campo. `undefined` si no dijo nada de él. */
+  estadoDeFlujo(fieldId: string): EstadoCampo | undefined {
+    return this.estadoFlujo().get(fieldId);
+  }
+
+  /**
+   * ¿Se ve el campo, contando lo que el flujo decidió?
+   *
+   * El flujo manda sobre el esquema, y por eso se pregunta aquí y no solo al
+   * pintar: si un campo que abre una rama lo esconde una regla, **la rama
+   * entera tiene que cerrarse con él**. Sin esto, ocultar una firma dejaba a la
+   * vista los campos que esa firma mostraba —colgando de una pregunta que ya no
+   * se ve— y encima se seguían exigiendo como obligatorios.
+   *
+   * La cascada la resuelve `deriveSections` sola: repite hasta que no aparezca
+   * ninguna sección nueva, así que basta con que un campo oculto deje de
+   * activar la suya para que se cierre todo lo que colgaba de él.
+   */
+  private visibleConFlujo(field: FormField, active: readonly ActiveSection[]): boolean {
+    const dijo = this.estadoFlujo().get(field.id)?.visible;
+    if (dijo !== undefined) return dijo;
+
+    return isFieldVisible(field, active);
+  }
+
+  /** Se evalúa el flujo con el momento «al guardar», y se dice si deja. */
+  revisarFlujoAlGuardar(): readonly string[] {
+    this.correrFlujo('guardar');
+    return this.bloqueosDeFlujo();
+  }
+
+  /**
+   * Los formularios de los que el flujo quiere abrir una actividad.
+   *
+   * Son identificadores de formulario, no títulos: un título se edita y la
+   * regla dejaría de funcionar el día que alguien lo cambiara.
+   *
+   * Se devuelven todos y sin repetir. A diferencia del estado —donde solo cabe
+   * uno y gana el último—, aquí varias reglas pueden querer abrir formularios
+   * distintos y todas tienen razón; lo que no tiene sentido es abrir dos veces
+   * el mismo.
+   */
+  /**
+   * Las consignas que el flujo quiere despachar.
+   *
+   * Vienen con todo resuelto: qué se despacha, a quién, con qué estado y con
+   * qué aviso. Las que traen `preguntar` no tienen destinatario — hay que
+   * pedírselo a quien está guardando antes de dejar cerrar la actividad.
+   *
+   * Solo las del momento «al guardar»: despachar mientras alguien escribe
+   * mandaría una consigna por cada tecla.
+   */
+  despachosQuePideElFlujo(): Record<string, unknown>[] {
+    return (this.encargosPorMomento()['guardar'] ?? [])
+      .filter((e) => e.que === 'despachar' && e.valor && typeof e.valor === 'object')
+      .map((e) => ({ ...(e.valor as Record<string, unknown>), regla: e.regla }));
+  }
+
+  formulariosQuePideElFlujo(): string[] {
+    const destinos = new Set<string>();
+
+    /*
+     * Solo lo pedido «al guardar», y a propósito.
+     *
+     * Crear una actividad **no se puede deshacer**. Una regla que se cumple y
+     * se deja de cumplir mientras se escribe dejaría un rastro de actividades
+     * sueltas que alguien tendría que ir borrando a mano. El estado sí se
+     * aplica en cuanto cambia el campo, porque devolverlo es tan fácil como
+     * ponerlo.
+     */
+    for (const encargo of this.encargosPorMomento()['guardar'] ?? []) {
+      if (encargo.que !== 'crear-actividad') continue;
+
+      const valor = String(encargo.valor ?? '').trim();
+      if (valor) destinos.add(valor);
+    }
+
+    return [...destinos];
+  }
+
 
   // ───────────────────────────────────────────────────────────────────────────
   // Estado derivado
   // ───────────────────────────────────────────────────────────────────────────
 
-  readonly totalPages = computed(() => this.pages.length);
+  /**
+   * Las páginas que se pueden ver, por su posición real.
+   *
+   * Esconder una página es quitarla del formulario entero, no solo vaciarla: no
+   * aparece en el paginador, no se llega a ella pasando páginas y sus
+   * obligatorios no impiden guardar. Una página a la que no se puede llegar y
+   * que aun así exige algo es una actividad que no hay forma de cerrar.
+   */
+  readonly paginasVisibles = computed<number[]>(() => {
+    const estado = this.estadoFlujo();
+
+    return this.pages
+      .map((_, i) => i)
+      .filter((i) => estado.get(`PAGINA:${i + 1}`)?.visible !== false);
+  });
+
+  readonly totalPages = computed(() => this.paginasVisibles().length);
 
   readonly currentPage = computed<FormPage | null>(() => this.pages[this.page()] ?? null);
 
@@ -165,13 +865,50 @@ export class FormEngine {
     if (!page) return [];
 
     const active = this.sections();
-    return page.fie.filter((field) => isFieldVisible(field, active));
+
+    // El flujo manda sobre el esquema: para eso existe. Un campo del que
+    // ninguna regla dijo nada se comporta como siempre.
+    return page.fie.filter((field) => this.visibleConFlujo(field, active));
   });
 
   /** Obligatorios sin responder, en todo el formulario. */
-  readonly missing = computed(() =>
-    findMissingRequired(this.pages, this.values(), this.sections()),
-  );
+  readonly missing = computed(() => {
+    const base = findMissingRequired(this.pages, this.values(), this.sections());
+    const flujo = this.estadoFlujo();
+
+    if (!flujo.size) return base;
+
+    // Lo que el flujo escondió deja de exigirse aunque el esquema lo pidiera:
+    // un obligatorio que nadie ve bloquea el guardado sin decir por qué.
+    const active = this.sections();
+
+    // Lo que el flujo dejó opcional u oculto deja de faltar, y lo que hizo
+    // obligatorio se suma aunque el esquema no lo pidiera.
+    const salida = base.filter((entrada) => {
+      const estado = flujo.get(entrada.field.id);
+      if (estado?.visible === false) return false;
+      if (estado?.obligatorio === false) return false;
+      return true;
+    });
+
+    const yaEstan = new Set(salida.map((e) => e.field.id));
+
+    this.pages.forEach((page, indice) => {
+      for (const field of page.fie) {
+        const estado = flujo.get(field.id);
+
+        if (estado?.obligatorio !== true) continue;
+        if (!this.visibleConFlujo(field, active)) continue;
+        if (yaEstan.has(field.id)) continue;
+        if (isDisplayOnly(field.fty)) continue;
+        if (!isEmptyValue(this.values().get(field.id) ?? null)) continue;
+
+        salida.push({ field, page: indice });
+      }
+    });
+
+    return salida;
+  });
 
   /** ¿Está todo lo obligatorio respondido? */
   readonly isComplete = computed(() => this.missing().length === 0);
@@ -260,6 +997,13 @@ export class FormEngine {
     // Las secciones se rehacen enteras, no se retoca la del campo respondido.
     // Ver [updateSections].
     this.updateSections();
+
+    // Y el flujo: responder un campo es lo que dispara la mitad de las reglas.
+    // El mismo identificador con el que se indexó: `apiId`, o `id` si no tiene.
+    this.correrFlujo(
+      'cambia',
+      (field.apiId ?? '').toString().trim() || (field.id ?? '').toString().trim() || undefined,
+    );
   }
 
   /**
@@ -381,18 +1125,41 @@ export class FormEngine {
 
   goTo(index: number): void {
     if (index < 0 || index >= this.pages.length) return;
+
+    // A una página escondida no se va, ni pasando páginas ni pulsando su punto.
+    if (!this.paginasVisibles().includes(index)) return;
+
     this.page.set(index);
   }
 
+  /**
+   * Si la página en la que se está acaba de esconderse, se sale de ella.
+   *
+   * Pasa cuando una regla la esconde mientras se diligencia: quedarse ahí deja
+   * una pantalla en blanco sin forma de salir salvo a ciegas.
+   */
+  private salirDeLaPaginaEscondida(): void {
+    const visibles = this.paginasVisibles();
+    if (!visibles.length || visibles.includes(this.page())) return;
+
+    // La más cercana hacia atrás, y si no hay, la primera que quede.
+    const antes = [...visibles].reverse().find((i) => i < this.page());
+
+    this.page.set(antes ?? visibles[0]);
+  }
+
+  /** La siguiente que se pueda ver, saltándose las escondidas. */
   next(): void {
-    this.goTo(this.page() + 1);
+    const siguiente = this.paginasVisibles().find((i) => i > this.page());
+    if (siguiente !== undefined) this.goTo(siguiente);
   }
 
   previous(): void {
-    this.goTo(this.page() - 1);
+    const anterior = [...this.paginasVisibles()].reverse().find((i) => i < this.page());
+    if (anterior !== undefined) this.goTo(anterior);
   }
 
-  readonly isFirstPage = computed(() => this.page() === 0);
+  readonly isFirstPage = computed(() => this.page() === (this.paginasVisibles()[0] ?? 0));
   readonly isLastPage = computed(() => this.page() >= this.pages.length - 1);
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -678,7 +1445,7 @@ export class FormEngine {
           if (options.length === 0) continue;
 
           // La condición nueva: un campo escondido no manda sobre nada.
-          if (!isFieldVisible(field, active)) continue;
+          if (!this.visibleConFlujo(field, active)) continue;
 
           const chosenId = asOption(values.get(field.id) ?? null)?.id;
           if (!chosenId) continue;

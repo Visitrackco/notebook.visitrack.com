@@ -510,3 +510,80 @@ vt-page-nav {
     transition: none;
   }
 }
+
+/*
+ * Un campo que el flujo dejó en solo lectura.
+ *
+ * Se bloquea con CSS y no quitando el control: el valor tiene que seguir
+ * viéndose —muchas veces es justo lo que la regla acaba de rellenar— y un
+ * campo que desaparece al pasar a solo lectura parecería un error.
+ *
+ * Quien bloquea de verdad es el atributo `inert` del HTML, que apaga el ratón,
+ * el táctil **y** el teclado: sin él se podía llegar al campo con el tabulador
+ * y escribir en algo que la regla había cerrado. Aquí solo se le da el aspecto
+ * de apagado, para que se vea que está así a propósito.
+ */
+.runner__field--bloqueado {
+  position: relative;
+  opacity: 0.75;
+}
+
+/* El mensaje que el flujo pone bajo un campo: explica por qué está así. */
+.runner__field-aviso {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--vt-text-muted, #6b6b74);
+}
+
+/*
+ * Un campo al que el flujo le puso color de texto.
+ *
+ * ## Por qué no basta con `color` en el contenedor
+ *
+ * Los controles de formulario **no heredan el color**: el navegador les pone
+ * el suyo. Con un `input`, un `select` o un `textarea` se pintaba la etiqueta
+ * y el valor seguía en negro; y con `type="date"` o `type="time"`, donde el
+ * control entero lo dibuja el navegador, no se veía absolutamente nada. Hay
+ * que decírselo a cada uno.
+ *
+ * ## Y por qué `::ng-deep`
+ *
+ * Los campos se dibujan dentro de `vt-field-host`, que es otro componente:
+ * con la encapsulación de Angular, una regla escrita aquí no llega hasta
+ * ellos. `::ng-deep` colgando de `.runner__field--pintado` la deja pasar solo
+ * dentro de los campos que el flujo pintó, no por toda la aplicación.
+ */
+.runner__field--pintado {
+  color: var(--vt-flujo-texto);
+
+  ::ng-deep {
+    label,
+    span,
+    p,
+    strong,
+    input,
+    select,
+    textarea,
+    option {
+      color: var(--vt-flujo-texto);
+    }
+
+    /* Las fechas y las horas se dibujan por trozos —día, mes, año— y cada uno
+       es un campo aparte dentro del control. */
+    input[type='date'],
+    input[type='time'],
+    input[type='datetime-local'] {
+      &::-webkit-datetime-edit,
+      &::-webkit-datetime-edit-text,
+      &::-webkit-datetime-edit-day-field,
+      &::-webkit-datetime-edit-month-field,
+      &::-webkit-datetime-edit-year-field,
+      &::-webkit-datetime-edit-hour-field,
+      &::-webkit-datetime-edit-minute-field,
+      &::-webkit-datetime-edit-ampm-field {
+        color: var(--vt-flujo-texto);
+      }
+    }
+  }
+}

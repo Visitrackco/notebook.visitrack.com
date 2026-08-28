@@ -1,6 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
+import { environment } from '../../../environments/environment';
 import { LoginResponse, LoginUserData, User, fullName, initials } from '../models/user.model';
 import { RolePermissionRepository } from '../repositories/entity.repositories';
 import { UserRepository } from '../repositories/user.repository';
@@ -100,6 +101,47 @@ export class AuthService {
   }
 
   /**
+   * Trae del servidor los datos del usuario y reescribe la copia local.
+   *
+   * La copia se guarda al iniciar sesión y no se vuelve a mirar. Si desde
+   * Module o desde la plataforma le cambian el nombre, la zona o el teléfono,
+   * el navegador sigue mostrando lo de antes hasta el próximo inicio de sesión
+   * —y cerrar sesión aquí no es gratis: obliga a volver a sincronizar—.
+   *
+   * Devuelve si el usuario sigue activo, para que quien llame pueda avisarlo:
+   * seguir trabajando con una cuenta que el servidor ya no acepta solo aplaza
+   * el problema hasta la próxima subida.
+   */
+  async refreshUserData(): Promise<{ ok: boolean; activo: boolean; error?: string }> {
+    const user = this.currentUser();
+    if (!user) return { ok: false, activo: false, error: 'No hay sesión abierta' };
+
+    try {
+      const res = await firstValueFrom(
+        this.api.get<{ status: boolean; active?: boolean; response?: Record<string, unknown>; error?: string }>(
+          '/getUserData',
+          { userId: user.UserID },
+        ),
+      );
+
+      if (!res?.status || !res.response) {
+        return { ok: false, activo: false, error: res?.error ?? 'No se pudieron traer tus datos' };
+      }
+
+      await this.users.refreshFromServer(user.UserID, res.response);
+
+      // La señal se recarga desde la base y no del cuerpo de la respuesta: así
+      // lo que queda en pantalla es exactamente lo que quedó guardado.
+      const actualizado = await this.users.getActiveSession();
+      if (actualizado) this.currentUser.set(actualizado);
+
+      return { ok: true, activo: res.active === true };
+    } catch (e) {
+      return { ok: false, activo: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  }
+
+  /**
    * Deja el logo de la compañía disponible.
    *
    * Primero lo pinta desde el almacenamiento local —instantáneo y sin red— y
@@ -147,6 +189,10 @@ export class AuthService {
           // Con qué nombre aparecerá esta sesión en el perfil y en el teléfono.
           platform: 'web',
           devicename: this.device.getDeviceInfo().description,
+          // Con qué versión se entró. El servidor la guarda contra el usuario,
+          // para saber quién está corriendo qué sin tener que preguntárselo.
+          appversion: environment.appVersion,
+          osversion: this.device.getDeviceInfo().description,
         }),
       );
 

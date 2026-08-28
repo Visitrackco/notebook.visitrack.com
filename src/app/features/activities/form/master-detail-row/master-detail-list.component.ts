@@ -91,9 +91,23 @@ export class MasterDetailListComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
-    // Se vuelve al formulario: que la vista aterrice en el campo del que se
-    // salió y no arriba del todo.
-    this.current()?.focus();
+    /*
+     * Se vuelve al formulario: que la vista aterrice en el campo del que se
+     * salió y no arriba del todo.
+     *
+     * Pero **después** de que el router haya movido la página. Volver de aquí es
+     * un «atrás» del navegador y la restauración de posición está encendida:
+     * colocando la vista en este mismo instante, el router la deshacía un
+     * suspiro más tarde y el formulario aparecía por el principio. Es justo lo
+     * que pasaba al editar un registro desde el listado.
+     *
+     * El campo se coge ahora, antes de que este componente deje de existir; lo
+     * que se aplaza es solo el colocarse.
+     */
+    const campo = this.current();
+
+    void this.panels.trasElDesplazamiento().then(() => campo?.focus());
+
     this.panels.openKey.set('');
   }
 

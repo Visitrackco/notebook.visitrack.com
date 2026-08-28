@@ -221,3 +221,36 @@ export class DraftPolicyService {
     return new Date(created + hours * 60 * 60 * 1000);
   }
 }
+
+/**
+ * Cuánto falta para una fecha, en horas y minutos.
+ *
+ * Con precisión de minuto y no «en 3 horas» redondeado: un borrador se pierde
+ * de verdad, y quien lo mira necesita saber si le da tiempo a terminarlo ahora
+ * o si puede dejarlo para después de comer. La diferencia entre «3 h» y «3 h
+ * 55 min» es exactamente esa decisión.
+ *
+ * Devuelve solo la cantidad —«3 h 25 min»— para que cada sitio la meta en su
+ * propia frase.
+ */
+export function cuantoFalta(fecha: Date | null): string {
+  if (!fecha) return '';
+
+  const ms = fecha.getTime() - Date.now();
+  if (ms <= 0) return 'menos de un minuto';
+
+  const minutos = Math.floor(ms / 60_000);
+
+  if (minutos < 60) return minutos <= 1 ? 'menos de un minuto' : `${minutos} min`;
+
+  const horas = Math.floor(minutos / 60);
+  const sueltos = minutos % 60;
+
+  if (horas < 24) return sueltos ? `${horas} h ${sueltos} min` : `${horas} h`;
+
+  const dias = Math.floor(horas / 24);
+  const restantes = horas % 24;
+
+  const cuenta = dias === 1 ? '1 día' : `${dias} días`;
+  return restantes ? `${cuenta} ${restantes} h` : cuenta;
+}

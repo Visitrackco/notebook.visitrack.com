@@ -80,21 +80,88 @@
         </select>
       </label>
 
+      <!-- ── Lo que acota de verdad ──────────────────────────────────────────
+           Cada opción viene del servidor y existe en esta historia, con
+           cuántas hay detrás. Un desplegable con el catálogo entero de la
+           compañía dejaría elegir entre cuarenta formularios de los que tres
+           devuelven algo, y eso no es filtrar: es adivinar con una lista
+           delante. Por eso cada uno aparece solo si hay más de una opción —con
+           una sola no hay nada que decidir. -->
+
+      @if (facets().assets.length > 1) {
+        <label>
+          Activo
+          <select
+            [ngModel]="assetWithin()"
+            (ngModelChange)="assetWithin.set($event)"
+            name="assetWithin"
+          >
+            <option value="">Todos los de la sede</option>
+            @for (asset of facets().assets; track asset.id) {
+              <option [value]="asset.id">{{ asset.name }} ({{ asset.total }})</option>
+            }
+          </select>
+        </label>
+      }
+
+      @if (facets().surveys.length > 1) {
+        <label>
+          Formulario
+          <select [ngModel]="surveyId()" (ngModelChange)="surveyId.set($event)" name="surveyId">
+            <option value="">Todos</option>
+            @for (survey of facets().surveys; track survey.id) {
+              <option [value]="survey.id">{{ survey.name }} ({{ survey.total }})</option>
+            }
+          </select>
+        </label>
+      }
+
+      @if (facets().statuses.length > 1) {
+        <label>
+          Estado
+          <select [ngModel]="statusId()" (ngModelChange)="statusId.set($event)" name="statusId">
+            <option value="">Todos</option>
+            @for (status of facets().statuses; track status.id) {
+              <option [value]="status.id">{{ status.name }} ({{ status.total }})</option>
+            }
+          </select>
+        </label>
+      }
+
       <label class="hst__term">
-        Formulario o consecutivo
+        Buscar
         <input
           type="search"
-          placeholder="Opcional"
+          placeholder="Consecutivo o formulario"
           [ngModel]="term()"
           (ngModelChange)="term.set($event)"
           name="term"
         />
       </label>
 
-      <button type="submit" class="hst__apply" [disabled]="loading()">
-        <vt-icon name="clipboard" [size]="15" />
-        Consultar
-      </button>
+      <!-- El servidor ya marca cada fila como mía o no; esto lo lleva al WHERE,
+           que es donde tiene que estar: filtrando después lo ya traído saldrían
+           páginas de tres elementos y un total que no cuadra con lo que se ve. -->
+      <label class="hst__check">
+        <input
+          type="checkbox"
+          [ngModel]="mine()"
+          (ngModelChange)="mine.set($event)"
+          name="mine"
+        />
+        Solo las mías
+      </label>
+
+      <div class="hst__actions">
+        <button type="submit" class="hst__apply" [disabled]="loading()">
+          <vt-icon name="clipboard" [size]="15" />
+          Consultar
+        </button>
+
+        @if (hasNarrowing()) {
+          <button type="button" class="hst__clear" (click)="clearFilters()">Quitar filtros</button>
+        }
+      </div>
     </form>
 
     @if (loading()) {
@@ -143,7 +210,15 @@
             </a>
           </li>
         } @empty {
-          <li class="hst__empty">No hay actividades en ese rango de fechas.</li>
+          <!-- Se distingue «no hay nada» de «no hay nada con estos filtros»:
+               sin eso, un filtro olvidado se lee como una sede sin historia. -->
+          <li class="hst__empty">
+            @if (hasNarrowing()) {
+              Ninguna actividad cumple estos filtros en el rango elegido.
+            } @else {
+              No hay actividades en ese rango de fechas.
+            }
+          </li>
         }
       </ul>
 

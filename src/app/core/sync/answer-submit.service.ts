@@ -265,26 +265,23 @@ export class AnswerSubmitService {
 
     if (fresh.ID != null) {
       /**
-       * `CompletedOn` se sella aquí, y solo la primera vez.
+       * `CompletedOn` **no se sella aquí**.
        *
-       * Es el momento en que la actividad está de verdad terminada: existe en
-       * Visitrack y ya no depende de este equipo. De esa marca cuelga la regla
-       * de borrado del formulario —ver [RetentionPolicyService]—, así que sin
-       * ella la actividad se quedaría en el dispositivo para siempre.
+       * Subir no es terminar. Aquí se sellaba en cuanto la actividad existía en
+       * Visitrack, con lo que una guardada de todos modos —con obligatorios sin
+       * responder— empezaba a contar el plazo de la regla de borrado del
+       * formulario y acababa retirándose del equipo sin haberse terminado.
        *
-       * No se reescribe en un reenvío: el plazo cuenta desde que se completó,
-       * no desde el último intento, o una actividad que se reintenta sola nunca
-       * llegaría a cumplirlo.
+       * La marca la pone quien sabe si está completa: el guardado del
+       * formulario, y las reglas de compañía que dan la actividad por cerrada.
+       * Ver [RetentionPolicyService].
        */
-      const completedOn = fresh.CompletedOn || new Date().toISOString();
-
       await this.answers.update(fresh.ID, {
         // Sin confirmación se queda pendiente, no sincronizada: es preferible
         // reenviar de más a dar por buena una actividad que no llegó.
         isSaved: exists ? ANSWER_STATE.SYNCED : ANSWER_STATE.PENDING,
         IsUpload: exists ? '1' : fresh.IsUpload,
         SyncOn: exists ? new Date().toISOString() : fresh.SyncOn,
-        CompletedOn: exists ? completedOn : fresh.CompletedOn,
       });
 
       this.revisions.touchActivities();

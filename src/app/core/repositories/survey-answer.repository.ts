@@ -250,12 +250,23 @@ export class SurveyAnswerRepository extends BaseRepository<SurveyAnswer> {
    *   **no** se envía mientras sus fotos no hayan llegado, porque una actividad
    *   en Visitrack que apunta a imágenes inexistentes es peor que una que
    *   todavía no llegó — la primera parece completa y nadie la revisa.
+   * @param completedOn marca de «terminada de verdad», o vacío si no lo está.
+   *   De ella cuelga la regla de borrado del formulario, así que solo se sella
+   *   cuando no falta ningún obligatorio. Ver [RetentionPolicyService].
    */
-  async markSaved(id: number, waitingBinaries = false): Promise<SurveyAnswer | null> {
+  async markSaved(
+    id: number,
+    waitingBinaries = false,
+    completedOn = '',
+  ): Promise<SurveyAnswer | null> {
     return this.update(id, {
       eraser: 0,
       isSaved: waitingBinaries ? ANSWER_STATE.WAITING_BINARIES : ANSWER_STATE.PENDING,
       UpdatedOn: new Date().toISOString(),
+
+      // Vacío no borra lo que ya estuviera sellado: una actividad completada no
+      // deja de estarlo porque se vuelva a guardar.
+      ...(completedOn ? { CompletedOn: completedOn } : {}),
     });
   }
 

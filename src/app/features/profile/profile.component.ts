@@ -66,8 +66,21 @@ export class ProfileComponent {
   readonly savingPreference = signal(false);
   readonly feedback = signal('');
 
+  /** Mientras se traen los datos del usuario del servidor. */
+  readonly refrescandoUsuario = signal(false);
+
   /** Logo de la compañía, para mostrarlo en el encabezado del perfil. */
-  readonly companyLogo = inject(CompanyLogoService).logoUrl;
+  private readonly logos = inject(CompanyLogoService);
+
+  readonly companyLogo = this.logos.logoUrl;
+
+  /** Si el logo va sobre placa blanca, y la opción para cambiarlo. */
+  readonly logoConPlaca = this.logos.conPlaca;
+  readonly fondoLogo = this.logos.fondoLogo;
+
+  cambiarFondoLogo(valor: 'auto' | 'blanco' | 'sin'): void {
+    this.logos.cambiarFondo(valor);
+  }
   readonly syncingLogo = signal(false);
 
   constructor() {
@@ -193,6 +206,36 @@ export class ProfileComponent {
 
     if (await this.auth.switchAccount(user.Login)) {
       await this.router.navigate(['/inicio']);
+    }
+  }
+
+  /**
+   * Trae del servidor los datos del usuario y reescribe la copia local.
+   *
+   * Hace falta un botón porque la copia se guarda al iniciar sesión y no se
+   * vuelve a mirar: un cambio hecho desde Module no llega solo. La alternativa
+   * —cerrar sesión y volver a entrar— obliga a sincronizar de nuevo, que es un
+   * precio absurdo por corregir un teléfono.
+   */
+  async refrescarUsuario(): Promise<void> {
+    if (this.refrescandoUsuario()) return;
+    this.refrescandoUsuario.set(true);
+
+    try {
+      const res = await this.auth.refreshUserData();
+
+      if (!res.ok) {
+        this.showFeedback(res.error ?? 'No se pudieron traer tus datos');
+        return;
+      }
+
+      this.showFeedback(
+        res.activo
+          ? 'Tus datos quedaron actualizados'
+          : 'Tus datos se actualizaron, pero tu usuario ya no está activo',
+      );
+    } finally {
+      this.refrescandoUsuario.set(false);
     }
   }
 

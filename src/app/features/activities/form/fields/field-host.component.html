@@ -36,11 +36,22 @@
 
 @switch (f.fty) {
   <!-- ── Solo presentación ──────────────────────────────────────────────── -->
+  <!-- El enunciado sale de `enunciado()`: es el del formulario, salvo que una
+       regla del flujo haya puesto otro. -->
   @case ('title') {
-    <h3 class="fld__title">{{ f.txt || f.lab }}</h3>
+    <h3 class="fld__title">{{ enunciado() }}</h3>
   }
+  <!-- Un párrafo tiene dos partes y las dos son opcionales: un encabezado y el
+       texto. Se dibujaba solo el texto, así que uno que solo trae encabezado
+       —muy común para separar bloques del formulario— no se veía en absoluto:
+       el diseñador lo había puesto y en pantalla no había nada. -->
   @case ('paragraph') {
-    <p class="fld__paragraph">{{ f.txt || f.lab }}</p>
+    @if (f.tit) {
+      <p class="fld__paragraph-tit">{{ f.tit }}</p>
+    }
+    @if (enunciado()) {
+      <p class="fld__paragraph">{{ enunciado() }}</p>
+    }
   }
   @case ('hyperlink') {
     <vt-link-field [field]="f" [answerGuid]="answerGuid()" />
@@ -166,6 +177,9 @@
       <input
         matInput
         [matDatepicker]="datePicker"
+        [min]="fechaDesde()"
+        [max]="fechaHasta()"
+        [matDatepickerFilter]="filtroDeDias()"
         [ngModel]="dateValue()"
         [readonly]="true"
         [placeholder]="f.pho || 'dd/mm/aaaa'"
@@ -189,6 +203,8 @@
       <input
         matInput
         [matTimepicker]="timePicker"
+        [matTimepickerMin]="horaDesde()"
+        [matTimepickerMax]="horaHasta()"
         [ngModel]="timeValue()"
         [readonly]="readOnly()"
         (valueChange)="onTime($event)"
@@ -216,6 +232,9 @@
           <input
             matInput
             [matDatepicker]="dtDate"
+            [min]="fechaDesde()"
+            [max]="fechaHasta()"
+            [matDatepickerFilter]="filtroDeDias()"
             [ngModel]="dateValue()"
             [readonly]="true"
             (click)="readOnly() || dtDate.open()"
@@ -230,6 +249,8 @@
           <input
             matInput
             [matTimepicker]="dtTime"
+            [matTimepickerMin]="horaDesde()"
+            [matTimepickerMax]="horaHasta()"
             [ngModel]="timeValue()"
             [readonly]="readOnly()"
             (valueChange)="onTime($event)"
@@ -276,9 +297,12 @@
        modelo de etiqueta, un ejemplo de lo que hay que buscar. No se responde
        nada aquí; la foto que se toma en campo es `picture`. -->
   @case ('image') {
+    <!-- La dirección sale de `imagen()`: la del formulario, salvo que una regla
+         haya puesto otra. Así el formulario puede enseñar el plano o la ficha
+         que toca según lo que se vaya respondiendo. -->
     <figure class="fld__figure">
-      @if (f.url) {
-        <img [src]="f.url" [alt]="f.lab" loading="lazy" />
+      @if (imagen()) {
+        <img [src]="imagen()" [alt]="f.lab" loading="lazy" />
       }
       @if (f.lab) {
         <figcaption>{{ f.lab }}</figcaption>

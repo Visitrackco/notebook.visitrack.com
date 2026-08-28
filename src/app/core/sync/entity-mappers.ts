@@ -30,6 +30,7 @@ export const ENTITY_TO_STORE: Record<number, string> = {
   15: 'Items',
   35: 'WorkZones',
   79: 'Surveys',
+  100: 'Workflows',
 };
 
 /** Nombre legible de cada entidad, para la interfaz. */
@@ -46,6 +47,7 @@ export const ENTITY_LABELS: Record<number, string> = {
   15: 'Ítems',
   35: 'Zonas de trabajo',
   79: 'Formularios',
+  100: 'Flujos de formularios',
 };
 
 /** Qué contiene cada entidad, en una línea, para la tarjeta. */
@@ -62,6 +64,7 @@ export const ENTITY_HINTS: Record<number, string> = {
   15: 'Ítems de inventario',
   35: 'Agrupan las ubicaciones que puedes ver',
   79: 'Los formularios que puedes diligenciar',
+  100: 'La lógica configurable de cada formulario',
 };
 
 /**
@@ -74,8 +77,12 @@ export const ENTITY_HINTS: Record<number, string> = {
  * todavía no existe, así que mostrar su conteo solo añadiría una fila que el
  * usuario no puede usar. Siguen mapeándose y guardándose si llegan en el
  * stream; basta con volver a incluirlas aquí cuando el módulo esté listo.
+ *
+ * Los flujos (100) van justo detrás de los formularios: son su lógica, y
+ * cuando un formulario no se comporta como debería, lo primero que hay que
+ * poder mirar es si sus flujos llegaron.
  */
-export const ENTITY_ORDER: number[] = [35, 1, 2, 12, 10, 79, 0, 7, 8, 14, 15];
+export const ENTITY_ORDER: number[] = [35, 1, 2, 12, 10, 79, 100, 0, 7, 8, 14, 15];
 
 /** Un registro tal como llega en el stream de sincronización. */
 export interface SyncItem {
@@ -234,6 +241,32 @@ const mapSurvey: Mapper = (r, userId) => ({
   IsDeleted: flag(r['IsDeleted']),
   SyncOn: 0,
   VTEntityID: s(r['GUID']),
+});
+
+/**
+ * Un flujo de trabajo (entidad 100).
+ *
+ * Réplica de `_mapWorkflow` en `DBsqlite.dart`. `UserID` es de quien
+ * sincroniza —así se filtra igual que todo lo demás— y el usuario al que va
+ * dirigido el flujo, cuando lo tiene, va en `WorkflowUserID`. Son dos cosas
+ * distintas: mezclarlas haría que un flujo dirigido a una persona pareciese
+ * suyo en cualquier navegador.
+ */
+const mapWorkflow: Mapper = (r, userId) => ({
+  ID: n(r['ID']),
+  CompanyID: n(r['CompanyID']),
+  SurveyID: n(r['SurveyID']),
+  SurveyGUID: s(r['SurveyGUID']),
+  WorkflowUserID: r['UserID'] === null || r['UserID'] === undefined ? null : n(r['UserID']),
+  Name: s(r['Name']),
+  JSONFlow: s(r['JSONFlow']),
+  IsActive: flag(r['IsActive']),
+  GUID: '',
+  UserID: userId,
+  IsDeleted: flag(r['IsDeleted']),
+  CreatedOn: s(r['CreatedOn']),
+  UpdatedOn: s(r['UpdatedOn']),
+  SyncOn: 1,
 });
 
 const mapList: Mapper = (r, userId) => ({
@@ -455,4 +488,5 @@ export const ENTITY_MAPPERS: Record<number, Mapper> = {
   15: mapItem,
   35: mapWorkZone,
   79: mapSurvey,
+  100: mapWorkflow,
 };

@@ -1,10 +1,11 @@
-import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router, RouterLink, RouterOutlet } from '@angular/router';
 
 import { resolveCatalogOwnerId } from '../../core/config/company-rules';
 import {
+  ANSWER_STATE,
   AnswerStateInfo,
   DeleteRule,
   describeAnswer,
@@ -17,7 +18,7 @@ import { ActivityService, ConsistencyIssue } from '../../core/services/activity.
 import { DataRevisionService } from '../../core/sync/data-revision.service';
 import { AuthService } from '../../core/services/auth.service';
 import { AutosaveService } from '../../core/services/autosave.service';
-import { DraftPolicyService } from '../../core/services/draft-policy.service';
+import { DraftPolicyService, cuantoFalta } from '../../core/services/draft-policy.service';
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { Descriptor, parseAnswerTitles } from '../../shared/utils/descriptors';
@@ -91,8 +92,19 @@ export class ActivityDetailComponent {
   readonly location = signal<LocationForm | null>(null);
   readonly asset = signal<Asset | null>(null);
   readonly statuses = signal<DispatchStatus[]>([]);
-  readonly expiresAt = signal<Date | null>(null);
   readonly feedback = signal('');
+
+  /** Horas que vive un borrador sin guardarse, según la preferencia del usuario. */
+  private readonly draftHours = signal(0);
+
+  /**
+   * La hora, para que la cuenta atrás avance sola.
+   *
+   * Una actividad se deja abierta mientras se diligencia —a veces horas— y un
+   * «se borra en 3 h 25 min» calculado al entrar acaba mintiendo justo cuando
+   * más importa. Se refresca cada minuto, que es la precisión que se enseña.
+   */
+  private readonly ahora = signal(Date.now());
 
   /**
    * Descuadre entre la ubicación y el activo.
@@ -134,6 +146,35 @@ export class ActivityDetailComponent {
     return answer ? parseAnswerTitles(answer.Titles) : [];
   });
 
+  /**
+   * Cuándo se borra sola, si es que se borra.
+   *
+   * Derivado y no guardado a mano: en cuanto la actividad deja de ser borrador
+   * —al guardarla— esto pasa a `null` sin que nadie se acuerde de apagarlo. La
+   * versión anterior lo calculaba una vez al abrir y se quedaba anunciando un
+   * borrado imposible en una actividad que ya no se puede ni descartar.
+   */
+  /**
+   * Cuánto le queda al borrador, en horas y minutos.
+   *
+   * Vacío cuando no es un borrador: una actividad guardada ya no se borra sola
+   * —y tampoco se puede descartar—, así que anunciarle un plazo es mentirle.
+   */
+  readonly draftLeft = computed(() => {
+    this.ahora();
+    return cuantoFalta(this.expiresAt());
+  });
+
+  readonly expiresAt = computed<Date | null>(() => {
+    const answer = this.answer();
+    const hours = this.draftHours();
+
+    if (!answer || answer.eraser !== 1 || hours <= 0) return null;
+
+    const created = Date.parse(answer.CreatedOn ?? '');
+    return Number.isFinite(created) ? new Date(created + hours * 60 * 60 * 1000) : null;
+  });
+
   readonly deleteRule = computed<DeleteRule>(() => {
     const survey = this.survey();
     return describeDeleteRule(survey?.DeviceMaintType, survey?.DeviceMaintValue);
@@ -142,24 +183,45 @@ export class ActivityDetailComponent {
   /** ¿El formulario permite elegir estado de despacho? */
   readonly statusEnabled = computed(() => Number(this.survey()?.StatusEnabled) === 1);
 
-  /** Texto del indicador de autoguardado. */
+  /**
+   * ¿Queda algo por guardar de verdad?
+   *
+   * El autoguardado escribe en el navegador, no en Visitrack. Decir «Guardado a
+   * las 10:32» en cuanto vuelca lo escrito hace creer que la actividad ya está
+   * hecha, cuando lo único que pasó es que no se perdería al cerrar la pestaña.
+   * Mientras no se pulse Guardar, lo que hay son cambios pendientes.
+   */
+  readonly hasPendingChanges = computed(() => {
+    const answer = this.answer();
+    const editada = this.autosave.state() === 'pending' || this.autosave.state() === 'saved';
+
+    return editada || answer?.eraser === 1 || answer?.isSaved === ANSWER_STATE.UNSAVED;
+  });
+
+  /** Texto del indicador de guardado. */
   readonly autosaveLabel = computed(() => {
     switch (this.autosave.state()) {
-      case 'pending':
-        return 'Cambios sin guardar…';
       case 'saving':
         return 'Guardando…';
       case 'error':
         return 'No se pudo guardar';
-      case 'saved': {
-        const at = this.autosave.lastSavedAt();
-        return at
-          ? `Guardado a las ${at.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}`
-          : 'Guardado';
-      }
       default:
-        return 'Todo guardado';
+        return this.hasPendingChanges() ? 'Cambios pendientes' : 'Todo guardado';
     }
+  });
+
+  /**
+   * Color del indicador.
+   *
+   * No es el estado del autoguardado: ese pone en verde un «saved» que aquí se
+   * lee como «Cambios pendientes», y un texto de aviso en verde no lo mira
+   * nadie.
+   */
+  readonly autosaveTone = computed(() => {
+    const estado = this.autosave.state();
+
+    if (estado === 'saving' || estado === 'error') return estado;
+    return this.hasPendingChanges() ? 'pending' : 'saved';
   });
 
   /**
@@ -183,6 +245,11 @@ export class ActivityDetailComponent {
   }
 
   constructor() {
+    // El minutero de la cuenta atrás del borrador. Se para al salir: un
+    // intervalo suelto sigue despertando la pestaña para siempre.
+    const minutero = setInterval(() => this.ahora.set(Date.now()), 60_000);
+    inject(DestroyRef).onDestroy(() => clearInterval(minutero));
+
     effect(() => {
       const surveyId = this.surveyId();
       const guid = this.guid();
@@ -234,15 +301,15 @@ export class ActivityDetailComponent {
 
       if (!answer) return;
 
-      const [location, asset, expiry] = await Promise.all([
+      const [location, asset, hours] = await Promise.all([
         this.activities.locationOf(answer),
         this.activities.assetOf(answer),
-        this.drafts.expiresAt(answer),
+        this.drafts.draftHours(),
       ]);
 
       this.location.set(location);
       this.asset.set(asset);
-      this.expiresAt.set(expiry);
+      this.draftHours.set(hours);
 
       // Se comprueba que ubicación y activo cuadren. Mientras no cuadren, el
       // formulario no se dibuja: lo que se responda quedaría atado a una pareja
@@ -367,7 +434,6 @@ export class ActivityDetailComponent {
     const updated = await this.activities.findByGuid(this.guid());
     if (updated) this.answer.set(updated);
 
-    this.expiresAt.set(null);
     await this.exit();
   }
 
@@ -479,6 +545,20 @@ export class ActivityDetailComponent {
       });
       this.activities.notifyChanged();
     });
+  }
+
+  /**
+   * El flujo movió la actividad de estado.
+   *
+   * Solo se refresca la copia en memoria: el runner ya lo escribió en la base,
+   * y volver a escribirlo desde aquí sería pisarlo con lo mismo. Sin esto, el
+   * selector de estado de la cabecera seguía enseñando el anterior.
+   */
+  onFlowStatus(dispatchId: string): void {
+    const answer = this.answer();
+    if (!answer) return;
+
+    this.answer.set({ ...answer, Status: dispatchId });
   }
 
   /** Copia el identificador completo al portapapeles. */

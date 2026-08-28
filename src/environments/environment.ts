@@ -47,5 +47,5 @@ export const environment = {
   syncIntervalMinutes: 15,
 
   /** Versión mostrada en el perfil. */
-  appVersion: '0.1.0',
+  appVersion: '0.2.0',
 };

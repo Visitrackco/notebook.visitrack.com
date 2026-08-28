@@ -42,7 +42,7 @@ import { IconComponent } from '../../../../../shared/components/icon/icon.compon
 import { MasterDetailPanelsService } from '../../master-detail-row/master-detail-panels.service';
 import { MasterDetailStackService } from '../../master-detail-row/master-detail-stack.service';
 import { ListPickerComponent } from '../list-picker/list-picker.component';
-import { scrollToCenter } from '../../../../../shared/utils/scroll';
+import { scrollToCenter, scrollerOf } from '../../../../../shared/utils/scroll';
 
 /**
  * Qué está abierto encima del campo.
@@ -334,6 +334,7 @@ export class MasterDetailFieldComponent {
       return;
     }
 
+    this.recordarSitio();
     this.panels.show(this.panelKey());
   }
 
@@ -870,6 +871,8 @@ export class MasterDetailFieldComponent {
      * de la sede, el código del equipo—, y el motor los aplica al construirse:
      * llegar tarde significaría montar el formulario con esos campos vacíos.
      */
+    this.recordarSitio();
+
     const info = await this.source.infoFor(row, config);
     const engine = this.engineFor(row, config, info);
 
@@ -926,8 +929,50 @@ export class MasterDetailFieldComponent {
    * pantalla y no al formulario —cerrar una fila abierta desde el listado
    * devuelve al listado— y entonces no hay nada que enfocar.
    */
+  /**
+   * Dónde estaba el formulario justo antes de irse a la fila.
+   *
+   * Se guarda el contenedor que se desplaza y su posición exacta. Es lo más
+   * fiel a «devuélveme donde estaba»: no se calcula nada, se vuelve al número.
+   */
+  private sitio: { scroller: HTMLElement; top: number } | null = null;
+
+  /** Apunta dónde se estaba, antes de abrir una fila o el listado. */
+  private recordarSitio(): void {
+    const scroller = scrollerOf(this.host.nativeElement);
+
+    this.sitio = { scroller, top: scroller.scrollTop };
+  }
+
+  /**
+   * Vuelve al número apuntado, si sigue valiendo.
+   *
+   * Mientras la fila está abierta el formulario queda con `display: none`, y un
+   * contenedor sin dibujar **pierde su desplazamiento**: el navegador lo pone a
+   * cero. Por eso hace falta apuntarlo antes y devolverlo a mano; no hay nada
+   * que restaurar solo.
+   */
+  private volverAlSitio(): void {
+    const sitio = this.sitio;
+    if (!sitio || !sitio.scroller.isConnected) return;
+
+    sitio.scroller.scrollTop = sitio.top;
+  }
+
   private scrollIntoView(attempt = 0): void {
-    const element = this.host.nativeElement;
+    const element = this.donde();
+
+    /*
+     * Todavía no está en la página: se espera, no se abandona.
+     *
+     * Al volver de una fila el formulario puede tardar un fotograma en
+     * dibujarse. Rindiéndose a la primera —que es lo que hacía— no se colocaba
+     * nada y quedaba arriba del todo.
+     */
+    if (!element) {
+      if (attempt < 180) requestAnimationFrame(() => this.scrollIntoView(attempt + 1));
+      return;
+    }
 
     // Mientras hay una pantalla encima, el formulario está oculto y a un
     // elemento oculto no se le puede llevar la vista. Se espera —hasta unos
@@ -939,47 +984,85 @@ export class MasterDetailFieldComponent {
       return;
     }
 
-    /**
-     * Se espera a que la altura deje de moverse antes de dar por buena la
-     * posición.
+    /*
+     * Se coloca, y se vuelve a comprobar dos veces.
      *
-     * Dos cosas cambian el alto **después** de pedir el desplazamiento: el
-     * formulario acaba de reaparecer y sus filas todavía se están colocando, y
-     * —al descartar— la fila que se quitó desaparece de la tabla en el
-     * repintado siguiente. Con un solo fotograma de espera, el desplazamiento
-     * se calculaba contra un formulario más alto del que iba a quedar y
-     * terminaba por encima del campo, o directamente arriba del todo.
+     * Hay tres cosas que mueven la página **después** de que pidamos el sitio, y
+     * ninguna está en nuestras manos:
      *
-     * Por eso se desplaza, se vuelve a medir un fotograma después, y si el
-     * campo se movió de sitio se corrige. Es imperceptible y evita el caso que
-     * más molesta: descartar un registro y aparecer en otra parte del
-     * formulario.
+     * - El formulario acaba de reaparecer y sus filas todavía se están
+     *   colocando, así que el alto cambia bajo los pies.
+     * - Al descartar, la fila que se quitó desaparece en el repintado siguiente.
+     * - Y la más terca: cerrar una fila es un «atrás» del navegador, y el router
+     *   tiene la restauración de posición encendida — restaura **él** la que
+     *   guardó para esa entrada del historial, y lo hace después que nosotros.
+     *   Eso es lo que dejaba el formulario arriba del todo por mucho que
+     *   hubiéramos apuntado bien.
+     *
+     * Por eso no basta con desplazarse una vez. Se coloca, y si al fotograma
+     * siguiente —o poco después— el campo ya no está donde se le dejó, se vuelve
+     * a colocar. Son dos correcciones como mucho y ninguna se ve: todas van sin
+     * animación.
      */
-    requestAnimationFrame(() => {
-      const before = element.getBoundingClientRect().top;
+    const asentar = () => {
+      const antes = element.getBoundingClientRect().top;
 
-      /**
-       * Sin animación: el campo ya está ahí en cuanto la fila se cierra.
-       *
-       * Antes se desplazaba en 200 ms para que el movimiento se viera y no se
-       * perdiera la referencia de dónde se estaba. Pero al volver de una fila
-       * no hay referencia que perder — la pantalla anterior era otra, no una
-       * posición de este formulario—, así que lo único que aporta la animación
-       * es una espera. Y se paga en cada registro: al cargar veinte, son veinte
-       * esperas mirando cómo la pantalla se coloca sola.
-       */
       scrollToCenter(element, 0);
 
-      // Un fotograma después: si el repintado cambió la altura —al descartar,
-      // la fila desaparece— el destino calculado ya no vale y se corrige.
-      requestAnimationFrame(() => {
-        const after = element.getBoundingClientRect().top;
+      const revisar = () => {
+        // Cuatro píxeles de tolerancia: lo que se busca es que algo lo haya
+        // movido, no el redondeo de una medida.
+        if (Math.abs(element.getBoundingClientRect().top - antes) > 4) {
+          scrollToCenter(element, 0);
+        }
+      };
 
-        // Cuatro píxeles de tolerancia: lo que se busca es el salto de un
-        // repintado, no el redondeo de una medida.
-        if (Math.abs(after - before) > 4) scrollToCenter(element, 0);
-      });
+      requestAnimationFrame(revisar);
+
+      // Y otra pasada más tarde, para lo que llegue después del fotograma: la
+      // restauración del router no ocurre en el mismo instante siempre.
+      setTimeout(revisar, 150);
+    };
+
+    // Primero se vuelve al número apuntado —que es la posición exacta de la que
+    // se salió— y luego se afina sobre el campo, por si la tabla creció o
+    // encogió con lo que se acaba de guardar.
+    this.volverAlSitio();
+
+    requestAnimationFrame(asentar);
+
+    /*
+     * Y se cuenta lo que hizo, para poder diagnosticarlo sin adivinar.
+     *
+     * Esto ha costado varias vueltas porque son tres cosas distintas moviendo la
+     * página y desde fuera todas se ven igual: el formulario aparece por el
+     * principio. Con esta línea se sabe qué contenedor se movió y a dónde.
+     */
+    console.debug('[md] vuelta al campo', {
+      campo: this.field().lab,
+      apuntado: this.sitio?.top,
+      contenedor: this.sitio?.scroller.className || '(la página)',
+      quedo: this.sitio?.scroller.scrollTop,
     });
+  }
+
+  /**
+   * El sitio al que devolver la vista.
+   *
+   * Normalmente es este componente. Pero si mientras la fila estaba abierta el
+   * formulario volvió a dibujar este campo, **este componente ya no está en la
+   * página**: quedó suelto, y a un elemento suelto no se le puede llevar la
+   * vista — se esperaban tres segundos a que reapareciera y se acababa dejando
+   * el formulario arriba del todo.
+   *
+   * Por eso, si el propio no está puesto, se busca el campo por su
+   * identificador, que es el mismo lo hayan rehecho o no.
+   */
+  private donde(): HTMLElement | null {
+    const propio = this.host.nativeElement;
+    if (propio.isConnected) return propio;
+
+    return document.getElementById(`field-${this.field().id}`);
   }
 
   private engineFor(

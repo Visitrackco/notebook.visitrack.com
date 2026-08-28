@@ -133,10 +133,25 @@
   border-bottom: 2px solid var(--vt-icon-brand-bg);
 }
 
+/* El encabezado de un párrafo: más marcado que su texto, pero por debajo de un
+   título de sección — es lo que separa bloques dentro de una misma parte. */
+.fld__paragraph-tit {
+  margin: 0 0 2px;
+  font-size: var(--vt-text-sm);
+  font-weight: 650;
+  line-height: 1.45;
+  color: var(--vt-text);
+}
+
 .fld__paragraph {
   font-size: var(--vt-text-sm);
   line-height: 1.6;
   color: var(--vt-text-muted);
+}
+
+/* Con encabezado y texto juntos, el texto se pega demasiado. */
+.fld__paragraph-tit + .fld__paragraph {
+  margin-top: 0;
 }
 
 .fld__link {

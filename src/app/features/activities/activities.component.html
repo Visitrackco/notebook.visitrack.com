@@ -155,9 +155,9 @@
           </strong>
           <span>Se enviarán solas en cuanto estén confirmados. No hay que hacer nada.</span>
         </div>
-        <button mat-stroked-button type="button" (click)="refresh()">
+        <button mat-stroked-button type="button" (click)="refresh()" [disabled]="checking()">
           <vt-icon name="refresh" [size]="16" />
-          Comprobar
+          {{ checking() ? 'Comprobando…' : 'Comprobar' }}
         </button>
       </aside>
     }
@@ -322,6 +322,16 @@
                        formulario tiene regla de borrado y la actividad ya está
                        en Visitrack: retirarla entonces no pierde nada, pero
                        verla desaparecer sin aviso se vive como si sí. -->
+                  <!-- Un borrador no se «retira»: se pierde. Se avisa con
+                       minutos, que es lo que decide si da tiempo a terminarlo
+                       ahora o hay que guardarlo ya. -->
+                  @if (card.borrador) {
+                    <span class="acts__borrador" matTooltip="Se descarta sola si no se guarda. Lo diligenciado se pierde.">
+                      <vt-icon name="alert" [size]="13" />
+                      se borra en {{ card.borrador }}
+                    </span>
+                  }
+
                   @if (card.retires) {
                     <span class="acts__retires" matTooltip="Sigue en Visitrack: solo se libera el espacio de este equipo">
                       <vt-icon name="trash" [size]="13" />
@@ -447,3 +457,12 @@
   (done)="onReassigned($event)"
   (cancel)="reassigning.set(null)"
 />
+
+@if (pdfCard(); as card) {
+  <vt-pdf-preview
+    [url]="pdfUrl()"
+    [titulo]="pdfTitulo()"
+    [subtitulo]="card.dispatchName + '  ·  ' + card.updated"
+    (cerrado)="pdfCard.set(null)"
+  />
+}

@@ -23,8 +23,11 @@ import {
   resolveNextStep,
 } from '../../core/services/activity.service';
 import { AuthService } from '../../core/services/auth.service';
-import { DraftPolicyService } from '../../core/services/draft-policy.service';
+import { DraftPolicyService, cuantoFalta } from '../../core/services/draft-policy.service';
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
+import { PendingUploadService } from '../../core/sync/pending-upload.service';
+import { ConnectivityService } from '../../core/services/connectivity.service';
+import { PdfPreviewComponent } from '../../shared/components/pdf-preview/pdf-preview.component';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import {
   RetentionPolicyService,
@@ -63,6 +66,15 @@ export interface ActivityCard {
    * hace quien mira una actividad concreta, que es cuánto le queda a **esta**.
    */
   retires: string;
+
+  /**
+   * Cuánto le queda como borrador, si lo es.
+   *
+   * Es otra cosa distinta de [retires]: aquí no se libera espacio, se **pierde
+   * lo diligenciado**. Por eso se dice aunque la ficha ya diga «Borrador»: la
+   * etiqueta cuenta qué es, no cuánto le queda.
+   */
+  borrador: string;
 }
 
 /** Por qué campo se ordena el listado. */
@@ -96,6 +108,7 @@ type SortField = 'UpdatedOn' | 'CreatedOn';
     MatTooltipModule,
     ReassignDialogComponent,
     RouterLink,
+    PdfPreviewComponent,
   ],
   templateUrl: './activities.component.html',
   styleUrl: './activities.component.scss',
@@ -103,6 +116,8 @@ type SortField = 'UpdatedOn' | 'CreatedOn';
 export class ActivitiesComponent {
   private readonly router = inject(Router);
   private readonly activities = inject(ActivityService);
+  private readonly pendingUploads = inject(PendingUploadService);
+  readonly connectivity = inject(ConnectivityService);
   private readonly toasts = inject(ToastService);
   private readonly dispatch = inject(DispatchStatusRepository);
   private readonly auth = inject(AuthService);
@@ -119,6 +134,44 @@ export class ActivitiesComponent {
   readonly surveyId = input.required<string>();
 
   // ── Estado de la pantalla ──────────────────────────────────────────────────
+
+  /** La actividad cuyo PDF se está viendo. `null` = vista previa cerrada. */
+  readonly pdfCard = signal<ActivityCard | null>(null);
+
+  /** Mientras se comprueba contra el servidor. */
+  readonly checking = signal(false);
+
+  /**
+   * Dirección del documento que se está viendo.
+   *
+   * Se calcula aquí y no en la plantilla porque el servicio es privado, y
+   * abrirlo entero a la vista solo para componer una dirección sería pagar de
+   * más: la plantilla no necesita nada más de él.
+   */
+  readonly pdfUrl = computed(() => {
+    const card = this.pdfCard();
+    return card ? this.activities.pdfUrl(card.answer.GUID) : '';
+  });
+
+  /**
+   * Con qué se titula la vista previa.
+   *
+   * Los descriptivos son lo que distingue una actividad de otra del mismo
+   * formulario —es para lo que están—, así que se usan los dos primeros. Si no
+   * hay, queda el GUID recortado, que al menos identifica.
+   */
+  readonly pdfTitulo = computed(() => {
+    const card = this.pdfCard();
+    if (!card) return 'Actividad';
+
+    const desc = card.descriptors
+      .slice(0, 2)
+      .map((d) => d.val)
+      .filter((v) => !!v)
+      .join('  ·  ');
+
+    return desc || `Actividad ${card.shortGuid}`;
+  });
 
   readonly loading = signal(true);
   readonly survey = signal<Survey | null>(null);
@@ -387,10 +440,13 @@ export class ActivitiesComponent {
         return;
       }
 
-      const [answers, statuses] = await Promise.all([
+      const [answers, statuses, draftHours] = await Promise.all([
         this.activities.listBySurvey(surveyId),
         this.loadDispatchStatuses(),
+        this.drafts.draftHours(),
       ]);
+
+      this.draftHours = draftHours;
 
       this.all.set(answers.map((answer) => this.toCard(answer, statuses)));
     } catch (error) {
@@ -417,6 +473,9 @@ export class ActivitiesComponent {
 
   private readonly retention = inject(RetentionPolicyService);
 
+  /** Horas que vive un borrador aquí, según la preferencia del usuario. */
+  private draftHours = 0;
+
   private toCard(answer: SurveyAnswer, statuses: Map<string, DispatchStatus>): ActivityCard {
     const dispatch = statuses.get(String(answer.Status));
 
@@ -435,7 +494,25 @@ export class ActivitiesComponent {
       created: formatDateTime(answer.CreatedOn),
       shortGuid: shortenGuid(answer.GUID),
       retires: expires ? timeLeft(expires) : '',
+      borrador: this.cuantoLeQuedaAlBorrador(answer),
     };
+  }
+
+  /**
+   * Cuánto le queda a un borrador antes de que se limpie solo.
+   *
+   * Vacío si no es un borrador. Es la otra regla, la del equipo: cuenta desde
+   * que se creó y las horas las pone el usuario en sus preferencias. Y aquí sí
+   * se pierde trabajo, así que se dice en la propia ficha y con minutos — «te
+   * quedan 40 min» y «te quedan 3 h» llevan a decisiones distintas.
+   */
+  private cuantoLeQuedaAlBorrador(answer: SurveyAnswer): string {
+    if (answer.eraser !== 1 || this.draftHours <= 0) return '';
+
+    const creada = Date.parse(answer.CreatedOn ?? '');
+    if (!Number.isFinite(creada)) return '';
+
+    return cuantoFalta(new Date(creada + this.draftHours * 3_600_000));
   }
 
   /**
@@ -522,9 +599,15 @@ export class ActivitiesComponent {
     }
   }
 
-  /** Abre el PDF que genera el servidor a partir del GUID. */
+  /**
+   * Abre la vista previa del PDF dentro de la aplicación.
+   *
+   * Antes saltaba a otra pestaña, que era lo único posible mientras el
+   * generador respondía `attachment`. Revisar actividades es abrir varias
+   * seguidas, y cada una dejaba una pestaña huérfana detrás.
+   */
   private downloadPdf(card: ActivityCard): void {
-    window.open(this.activities.pdfUrl(card.answer.GUID), '_blank', 'noopener');
+    this.pdfCard.set(card);
   }
 
   /** Devuelve los archivos al estado inicial para que se vuelvan a subir. */
@@ -630,19 +713,80 @@ export class ActivitiesComponent {
    * el mantenimiento, que es justo lo que el usuario espera cuando refresca
    * porque «esa actividad ya no debería estar ahí».
    */
+  /**
+   * Comprueba de verdad: pregunta al servidor y vacía la cola.
+   *
+   * Antes esto solo hacía mantenimiento local —borrar borradores caducados y
+   * repintar—, así que el botón junto a «N actividades esperan que sus archivos
+   * lleguen al servidor» no llegaba a preguntar por esos archivos. Pulsarlo no
+   * cambiaba nada y la única forma de salir de ahí era esperar al proceso
+   * automático, sin saber que existía.
+   *
+   * `PendingUploadService.run()` es lo que hace el trabajo completo: sube lo
+   * que no ha salido del navegador, le pide al servidor que confirme los
+   * archivos y manda las actividades que ya no tienen nada bloqueándolas.
+   */
   async refresh(): Promise<void> {
     this.feedback.set('');
-    const removed = await this.activities.runMaintenance();
 
-    if (removed > 0) {
-      this.feedback.set(
-        removed === 1
-          ? 'Se eliminó 1 borrador que ya había caducado.'
-          : `Se eliminaron ${removed} borradores que ya habían caducado.`,
-      );
+    if (this.checking()) return;
+
+    // Sin conexión no hay nada que comprobar, y decirlo evita que el botón
+    // parezca averiado: el resto de la aplicación sí funciona sin red.
+    if (this.connectivity.isOffline()) {
+      this.feedback.set('Sin conexión: no se puede comprobar con el servidor todavía.');
+      return;
     }
 
-    this.activities.notifyChanged();
+    this.checking.set(true);
+
+    try {
+      const removed = await this.activities.runMaintenance();
+      const summary = await this.pendingUploads.run();
+
+      const partes: string[] = [];
+
+      if (summary.confirmedFiles > 0) {
+        partes.push(
+          summary.confirmedFiles === 1
+            ? '1 archivo confirmado'
+            : `${summary.confirmedFiles} archivos confirmados`,
+        );
+      }
+
+      if (summary.sentActivities > 0) {
+        partes.push(
+          summary.sentActivities === 1
+            ? '1 actividad enviada'
+            : `${summary.sentActivities} actividades enviadas`,
+        );
+      }
+
+      if (removed > 0) {
+        partes.push(
+          removed === 1
+            ? '1 borrador caducado eliminado'
+            : `${removed} borradores caducados eliminados`,
+        );
+      }
+
+      if (partes.length) {
+        this.feedback.set(`${partes.join(', ')}.`);
+      } else if (summary.stillWaiting > 0) {
+        // Que no haya cambiado nada es un resultado, no un fallo: los archivos
+        // grandes tardan en confirmarse. Decirlo evita volver a pulsar en bucle.
+        this.feedback.set(
+          'El servidor todavía no confirma los archivos. Vuelve a comprobar en un momento.',
+        );
+      } else {
+        this.feedback.set(summary.message || 'Todo está al día.');
+      }
+    } catch {
+      this.feedback.set('No se pudo comprobar con el servidor. Inténtalo de nuevo.');
+    } finally {
+      this.checking.set(false);
+      this.activities.notifyChanged();
+    }
   }
 
   // ── Filtros ────────────────────────────────────────────────────────────────

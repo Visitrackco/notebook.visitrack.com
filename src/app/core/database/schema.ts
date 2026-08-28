@@ -39,8 +39,9 @@ export const DB_NAME = 'VisitrackWeb';
  *
  * Historial:
  *  - 1: esquema inicial (equivalente a la v65 del SQLite móvil).
+ *  - 2: store `Workflows` — flujos de trabajo, entidad 100.
  */
-export const DB_VERSION = 1;
+export const DB_VERSION = 3;
 
 /** Definición de un índice secundario dentro de un store. */
 export interface IndexDefinition {
@@ -259,6 +260,32 @@ export const DB_SCHEMA: readonly StoreDefinition[] = [
       ...CATALOG_INDEXES,
       { name: 'bySurveyID', keyPath: 'SurveyID' },
       { name: 'byLocationTypeID', keyPath: 'LocationTypeID' },
+    ],
+  },
+  {
+    name: 'Workflows',
+    keyPath: 'ID',
+    description:
+      'Flujos de trabajo (entidad 100): la lógica configurable de un formulario. `JSONFlow` trae ' +
+      'las reglas tal como se dibujaron en el Module y las ejecuta el mismo motor que corre en la app.',
+    indexes: [
+      ...CATALOG_INDEXES,
+      { name: 'bySurveyID', keyPath: 'SurveyID' },
+      { name: 'byIsActive', keyPath: 'IsActive' },
+    ],
+  },
+  {
+    name: 'DespachosFlujo',
+    keyPath: 'ID',
+    autoIncrement: true,
+    description:
+      'Consignas que pidio una regla de flujo y todavia no han salido. No se mandan al pulsar ' +
+      'guardar: se mandan cuando la actividad que las disparo ya esta en Visitrack con sus ' +
+      'archivos confirmados. Si salieran antes, quien las recibe abriria una consigna que ' +
+      'remite a algo que no existe.',
+    indexes: [
+      { name: 'byAnswerGUID', keyPath: 'AnswerGUID' },
+      { name: 'byEnviado', keyPath: 'Enviado' },
     ],
   },
   {

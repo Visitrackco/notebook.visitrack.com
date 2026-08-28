@@ -414,11 +414,21 @@ export class ActivityService {
   /**
    * Dirección del PDF de una actividad.
    *
-   * Lo genera el servidor a partir del GUID, así que basta con abrirlo: no hay
-   * nada que descargar ni que guardar en este lado.
+   * Lo genera el servidor a partir del GUID, así que basta con pedirlo: no hay
+   * nada que guardar en este lado.
+   *
+   * ## Por qué `exports` y `preview=1`
+   *
+   * Apuntaba a `vtmobileplus.../pdf2`, que exige token —responde 401 a secas— y
+   * además contesta `Content-Disposition: attachment`. Esa cabecera le dice al
+   * navegador «esto es una descarga» y le impide pintarlo, así que el documento
+   * solo podía acabar en la carpeta de descargas.
+   *
+   * `exports.visitrack.com/pdf23` con `preview=1` responde `inline`, y con eso
+   * el visor del propio navegador lo muestra dentro de la aplicación.
    */
   pdfUrl(answerGuid: string): string {
-    return `https://vtmobileplus.visitrack.com/pdf2?GUID=${encodeURIComponent(answerGuid)}`;
+    return `https://exports.visitrack.com/pdf23?GUID=${encodeURIComponent(answerGuid)}&preview=1`;
   }
 
   // ───────────────────────────────────────────────────────────────────────────

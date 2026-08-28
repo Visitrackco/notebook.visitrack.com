@@ -38,6 +38,41 @@ const DIRECT: Record<string, { from: keyof InheritedSource; key: string }> = {
 };
 
 /**
+ * Datos del activo que se piden con el prefijo `ASS_`.
+ *
+ * Es la familia nueva del diseñador: un `def` que empieza por `ASS_` hereda del
+ * activo de la actividad sin necesidad de ninguna bandera. Trae la marca, el
+ * modelo y el serial, que son las tres cosas que un formulario de mantenimiento
+ * vuelve a pedir siempre.
+ *
+ * Se admiten varios nombres para lo mismo porque el identificador lo escribe
+ * quien diseña el formulario, y `ASS_MARKE`, `ASS_MARCA` o `ASS_MAKE` quieren
+ * decir lo mismo. Un sufijo que no esté aquí se busca en los campos propios del
+ * activo, igual que cualquier otro heredado.
+ */
+const ASSET_COLUMNS: Record<string, string> = {
+  MARKE: 'Make',
+  MARCA: 'Make',
+  MAKE: 'Make',
+  BRAND: 'Make',
+
+  MODEL: 'Model',
+  MODELO: 'Model',
+
+  SERIAL: 'SerialNumber',
+  SERIE: 'SerialNumber',
+  SERIALNUMBER: 'SerialNumber',
+  SERIALNO: 'SerialNumber',
+
+  NAME: 'Name',
+  NOMBRE: 'Name',
+  TAG: 'TagUID',
+  TAGUID: 'TagUID',
+  DESCRIPTION: 'Description',
+  DESCRIPCION: 'Description',
+};
+
+/**
  * ¿El valor por defecto de este campo se hereda de otro registro?
  *
  * Se decide por las banderas del esquema y no por la forma del `def`: el
@@ -49,7 +84,8 @@ export function inheritsDefault(field: FormField): boolean {
     field.defaultIsLocationField ||
       field.defaultIsAssetField ||
       field.defaultIsListField ||
-      field.defaultIsItemField,
+      field.defaultIsItemField ||
+      assetTokenOf(field.def),
   );
 }
 
@@ -75,6 +111,11 @@ export function inheritsDefault(field: FormField): boolean {
  * campo sin heredar se deja para que lo llene quien responde, no se rompe.
  */
 export function resolveInheritedDefault(field: FormField, source: InheritedSource): string {
+  // Los `ASS_` van primero y por su cuenta: se reconocen por el prefijo, no por
+  // las banderas, y leen del activo aunque el campo no venga marcado.
+  const asset = assetTokenOf(field.def);
+  if (asset) return fromAsset(asset, source.AssetInfo);
+
   const ref = refOf(field.def);
   if (!ref) return '';
 
@@ -92,6 +133,50 @@ export function resolveInheritedDefault(field: FormField, source: InheritedSourc
 
   const entry = fieldsOf(record['jsonValues']).find(
     (item) => String(item?.['id'] ?? '') === ref,
+  );
+
+  return entry ? text(entry['val']) : '';
+}
+
+/**
+ * El identificador `ASS_…` de un `def`, si lo es.
+ *
+ * Acepta las dos formas en que llega el `def` —el objeto con `id` y el texto
+ * suelto— porque el diseñador escribe una u otra según por dónde se creó el
+ * campo. Devuelve cadena vacía cuando no es de esta familia, y así quien
+ * pregunta sigue con el camino de siempre.
+ */
+function assetTokenOf(def: string | DefaultRef | undefined): string {
+  if (!def) return '';
+
+  const crudo = typeof def === 'string' ? def.trim() : String(def.id ?? '').trim();
+
+  // Un texto que en realidad es el objeto serializado: se mira dentro.
+  if (crudo.startsWith('{')) {
+    const dentro = refOf(crudo);
+    return /^ASS_/i.test(dentro) ? dentro.toUpperCase() : '';
+  }
+
+  return /^ASS_/i.test(crudo) ? crudo.toUpperCase() : '';
+}
+
+/**
+ * El dato del activo al que apunta un `ASS_…`.
+ *
+ * **Sin activo no hay herencia**: si la actividad no cuelga de ningún equipo el
+ * campo se queda vacío para que lo llene quien responde. Escribir ahí el nombre
+ * del identificador, o el de otro registro, sería peor que dejarlo en blanco.
+ */
+function fromAsset(token: string, assetInfo: unknown): string {
+  const asset = asRecord(assetInfo);
+  if (!asset) return '';
+
+  const columna = ASSET_COLUMNS[token.slice(4)];
+  if (columna) return text(asset[columna]);
+
+  // Un sufijo que no es de la tabla: será un campo propio del tipo de activo.
+  const entry = fieldsOf(asset['jsonValues']).find(
+    (item) => String(item?.['id'] ?? '').toUpperCase() === token,
   );
 
   return entry ? text(entry['val']) : '';
@@ -151,4 +236,55 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 
 function text(value: unknown): string {
   return value === null || value === undefined ? '' : String(value);
+}
+
+/**
+ * Los datos de la sede y del activo, por el nombre con que los llama un flujo.
+ *
+ * Un flujo puede preguntar por dónde se trabaja y sobre qué —«si la sede es la
+ * de Bogotá», «si el equipo es de tal marca»— y esos valores no están en las
+ * respuestas del formulario: viven en el registro del que cuelga la actividad.
+ * Aquí se sacan con los mismos prefijos que ya usan los valores heredados y las
+ * plantillas de PDF, `LOC_` y `AST_`, para no tener dos nomenclaturas.
+ *
+ * Devuelve texto siempre: el motor compara textos y ya sabe convertir a número
+ * o a fecha cuando la condición lo pide.
+ */
+export function valoresDelEntorno(source: InheritedSource): Record<string, string> {
+  const salida: Record<string, string> = {};
+
+  // Los de la propia tabla: nombre, ciudad, teléfono…
+  for (const [clave, def] of Object.entries(DIRECT)) {
+    const record = asRecord(source[def.from]);
+    if (record) salida[clave] = text(record[def.key]);
+  }
+
+  // Y los que cada compañía define en el tipo de sede o de activo, que viven
+  // en `jsonValues` con su propio `apiId`.
+  const propios = (origen: keyof InheritedSource, prefijo: string) => {
+    const record = asRecord(source[origen]);
+    if (!record) return;
+
+    // El `apiId` está en la definición del tipo, no en el valor: se cruza por
+    // `id`, que es lo que ambos comparten.
+    const definiciones = new Map<string, string>();
+
+    for (const pagina of fieldsOf(record['jsonQuestion'])) {
+      for (const campo of fieldsOf((pagina as Record<string, unknown>)?.['fie'])) {
+        const c = campo as Record<string, unknown>;
+        const apiId = String(c['apiId'] ?? '').trim();
+        if (apiId) definiciones.set(String(c['id'] ?? ''), apiId);
+      }
+    }
+
+    for (const item of fieldsOf(record['jsonValues'])) {
+      const apiId = definiciones.get(String(item?.['id'] ?? ''));
+      if (apiId) salida[prefijo + apiId.toUpperCase()] = text(item['val']);
+    }
+  };
+
+  propios('LocationInfo', 'LOC_');
+  propios('AssetInfo', 'AST_');
+
+  return salida;
 }

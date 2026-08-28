@@ -7,6 +7,7 @@ import { SurveyAnswerRepository } from '../repositories/survey-answer.repository
 import { ActivityService, ConsistencyIssue } from '../services/activity.service';
 import { AuthService } from '../services/auth.service';
 import { ConnectivityService } from '../services/connectivity.service';
+import { DespachoService } from '../services/despacho.service';
 import { NotifyService } from '../services/notify.service';
 import { AnswerSubmitService } from './answer-submit.service';
 import { BinaryUploadService } from './binary-upload.service';
@@ -100,6 +101,7 @@ export class PendingUploadService {
   private readonly brillantexMail = inject(BrillantexMailService);
   private readonly revisions = inject(DataRevisionService);
   private readonly connectivity = inject(ConnectivityService);
+  private readonly despachos = inject(DespachoService);
   private readonly auth = inject(AuthService);
 
   readonly running = signal(false);
@@ -202,7 +204,20 @@ export class PendingUploadService {
         // Rondas cortas: aquí no hay nadie esperando en pantalla, y si todavía
         // no está lista se reintenta en la corrida siguiente.
         const result = await this.submit.submit(entry.answer, 1);
-        if (result.outcome === 'sent') sent++;
+
+        if (result.outcome !== 'sent') continue;
+
+        sent++;
+
+        /*
+         * Y sus consignas, ahora que la actividad ya está en Visitrack.
+         *
+         * Es el único momento en que se puede: el servidor rechaza el despacho
+         * mientras la actividad de origen no exista. Sin esto, quien guardó sin
+         * cobertura dejaba la consigna apuntada y no salía hasta que volviera a
+         * abrir esa actividad y la guardara otra vez.
+         */
+        await this.despachos.enviarPendientes(entry.answer.GUID);
       }
 
       await this.refresh();

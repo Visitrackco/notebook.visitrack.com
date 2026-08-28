@@ -113,6 +113,40 @@ export class UserRepository extends BaseRepository<User> {
     });
   }
 
+  /**
+   * Reescribe los datos del usuario con lo que manda el servidor.
+   *
+   * Toca **solo** lo que administra la plataforma. Quedan fuera a propósito
+   * `Token` y `Password` —son de esta sesión y de este navegador; pisarlos con
+   * lo que venga de una consulta de datos cerraría la sesión sin motivo— y el
+   * logo de la compañía, que tiene su propio ciclo en `CompanyLogoService`.
+   */
+  async refreshFromServer(userId: string, datos: Record<string, unknown>): Promise<void> {
+    const user = await this.getByIndex('byUserID', userId);
+    if (!user?.ID) return;
+
+    const texto = (v: unknown, porDefecto = '') =>
+      v === null || v === undefined ? porDefecto : String(v);
+    const numero = (v: unknown) => Number(v) || 0;
+
+    await this.update(user.ID, {
+      FirstName: texto(datos['FirstName']),
+      LastName: texto(datos['LastName']),
+      Email: texto(datos['Email']),
+      Login: texto(datos['Login']).toLowerCase() || user.Login,
+      UTCCode: texto(datos['UTCCode']),
+      DefaultLanguage: texto(datos['DefaultLanguage'], 'es'),
+      GroupID: numero(datos['GroupID']),
+      DivisionID: numero(datos['DivisionID']),
+      // El modelo del navegador guarda `Active` como texto ('1' / '0'), no
+      // como numero: es lo que compara el resto de la aplicacion.
+      Active: texto(datos['Active'], '0'),
+      WorkZoneID: numero(datos['WorkZoneID']),
+      StatusID: texto(datos['StatusID'], '0'),
+      Phone: texto(datos['Phone']),
+    });
+  }
+
   /** Cambia el estado operativo del usuario (disponible, en ruta, etc.). */
   async updateStatus(userId: string, statusId: string): Promise<void> {
     const user = await this.getByIndex('byUserID', userId);

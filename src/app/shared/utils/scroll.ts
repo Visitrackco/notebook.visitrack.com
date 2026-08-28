@@ -25,19 +25,37 @@ const DURATION = 200;
  * `overflow: auto` no basta si el contenido cabe entero, y en ese caso mover su
  * `scrollTop` no haría nada mientras el que sí se mueve es la página.
  */
-function scrollerOf(element: HTMLElement): HTMLElement {
+export function scrollerOf(element: HTMLElement): HTMLElement {
   let parent = element.parentElement;
+
+  /**
+   * El primero que **declara** que se desplaza, aunque ahora mismo no le haga
+   * falta.
+   *
+   * Se guarda como recambio porque `scrollHeight > clientHeight` es una medida
+   * del instante, y hay un instante en el que engaña: justo cuando el
+   * formulario vuelve de estar oculto, el navegador todavía no ha medido su
+   * contenido y el contenedor parece que cabe entero. Sin recambio se seguía
+   * subiendo hasta la página, y mover la página no hace nada cuando quien se
+   * desplaza es un contenedor de dentro — el formulario se quedaba donde
+   * estaba, arriba del todo.
+   */
+  let declarado: HTMLElement | null = null;
 
   while (parent) {
     const style = getComputedStyle(parent);
     const scrolls = /(auto|scroll|overlay)/.test(style.overflowY);
 
-    if (scrolls && parent.scrollHeight > parent.clientHeight) return parent;
+    if (scrolls) {
+      if (parent.scrollHeight > parent.clientHeight) return parent;
+
+      declarado ??= parent;
+    }
 
     parent = parent.parentElement;
   }
 
-  return (document.scrollingElement as HTMLElement) ?? document.documentElement;
+  return declarado ?? (document.scrollingElement as HTMLElement) ?? document.documentElement;
 }
 
 /** Suave al final: arranca rápido y frena, que es como se lee un movimiento corto. */

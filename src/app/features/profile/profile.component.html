@@ -9,8 +9,23 @@
 
       <div class="profile__identity">
         @if (companyLogo(); as logo) {
-          <span class="profile__logo-frame">
-            <img [src]="logo" alt="Logo de la compañía" />
+          <span class="profile__logo-wrap">
+            <span class="profile__logo-frame" [class.profile__logo-frame--placa]="logoConPlaca()">
+              <img [src]="logo" alt="Logo de la compañía" />
+            </span>
+
+            <!-- La última palabra la tiene quien lo está viendo: el formato solo
+                 dice si el logo *puede* ser transparente, no si se ve bien. -->
+            <select
+              class="profile__logo-fondo"
+              [value]="fondoLogo()"
+              (change)="cambiarFondoLogo($any($event.target).value)"
+              aria-label="Fondo del logo"
+            >
+              <option value="auto">Fondo automático</option>
+              <option value="blanco">Sobre blanco</option>
+              <option value="sin">Sin fondo</option>
+            </select>
           </span>
         } @else {
           <span class="profile__avatar">{{ avatarInitials(user) }}</span>
@@ -47,10 +62,25 @@
         </div>
       </div>
 
-      <button type="button" class="profile__logout" (click)="logout()">
-        <vt-icon name="logout" [size]="17" />
-        Cerrar sesión
-      </button>
+      <div class="profile__acciones">
+        <!-- Refrescar los propios datos: lo que cambian desde Module no llega
+             solo, y cerrar sesión para verlo obliga a sincronizar de nuevo. -->
+        <button
+          type="button"
+          class="profile__logout"
+          (click)="refrescarUsuario()"
+          [disabled]="refrescandoUsuario()"
+          title="Traer del servidor tu nombre, zona, teléfono y demás datos"
+        >
+          <vt-icon name="refresh" [size]="17" />
+          {{ refrescandoUsuario() ? 'Actualizando…' : 'Actualizar mis datos' }}
+        </button>
+
+        <button type="button" class="profile__logout" (click)="logout()">
+          <vt-icon name="logout" [size]="17" />
+          Cerrar sesión
+        </button>
+      </div>
     </header>
 
     @if (feedback()) {

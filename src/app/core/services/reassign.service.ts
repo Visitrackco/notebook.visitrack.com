@@ -205,6 +205,19 @@ export class ReassignService {
     await this.dropLocal(answer);
   }
 
+  /**
+   * Retira del equipo una actividad que ya cambió de dueño en el servidor.
+   *
+   * Lo usa el despacho de flujo cuando la regla manda **esta misma actividad**:
+   * allí la transferencia la hace el servidor —el flujo ya validó lo suyo— y lo
+   * único que falta es que deje de estar aquí. Dejarla permitiría seguir
+   * editándola y subiendo cambios sobre algo que ya es de otra persona.
+   */
+  async retirarDelEquipo(answerGuid: string): Promise<void> {
+    const answer = await this.answers.findByGuid(answerGuid);
+    if (answer) await this.dropLocal(answer);
+  }
+
   /** Retira la actividad y sus archivos del dispositivo. */
   private async dropLocal(answer: SurveyAnswer): Promise<void> {
     try {

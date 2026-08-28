@@ -87,6 +87,38 @@ export interface HistoryQuery {
   page?: number;
   dateField?: HistoryDateField;
   search?: string;
+
+  /** Solo ese formulario. */
+  surveyId?: string | null;
+  /** Solo ese estado de despacho. */
+  statusId?: string | null;
+  /** Solo las actividades del usuario que consulta. */
+  mine?: boolean;
+}
+
+/** Una opción de filtro, con cuántas actividades tiene detrás. */
+export interface HistoryFacet {
+  id: string;
+  name: string;
+  total: number;
+  /** Solo los estados lo traen. */
+  color?: string;
+}
+
+/**
+ * Con qué se puede acotar **esta** historia.
+ *
+ * Poblar los desplegables con el catálogo entero de la compañía deja al usuario
+ * eligiendo entre cuarenta formularios de los que tres devuelven algo: eso no es
+ * filtrar, es adivinar con una lista delante. Aquí cada opción existe de verdad
+ * en el historial de esta entidad y en el rango elegido, y su contador dice
+ * cuántas hay antes de pulsar.
+ */
+export interface HistoryFacets {
+  surveys: HistoryFacet[];
+  statuses: HistoryFacet[];
+  /** Vacío cuando se consulta un activo: dentro de uno no hay activos que ofrecer. */
+  assets: HistoryFacet[];
 }
 
 interface Reply<T> {
@@ -134,6 +166,12 @@ export class ActivityHistoryApi {
     if (query.to) params['to'] = query.to;
     if (query.search?.trim()) params['search'] = query.search.trim();
 
+    // Solo los que estén puestos. Lo que no se manda, no acota — y así una
+    // consulta sin filtros pesa lo mismo que antes de que existieran.
+    if (query.surveyId) params['SurveyID'] = query.surveyId;
+    if (query.statusId) params['CompanyStatusID'] = query.statusId;
+    if (query.mine) params['mine'] = '1';
+
     try {
       const reply = await firstValueFrom(
         this.http
@@ -146,6 +184,60 @@ export class ActivityHistoryApi {
       return { ok: false, error: reply?.error ?? 'El servidor no devolvió resultados.' };
     } catch (error) {
       return { ok: false, error: this.messageOf(error) };
+    }
+  }
+
+  /**
+   * Las opciones de filtro que tienen sentido para esta entidad y este rango.
+   *
+   * Depende solo de la entidad y de las fechas, no de los filtros ya elegidos:
+   * si dependiera de ellos, elegir un formulario dejaría el desplegable con esa
+   * única opción y no habría forma de cambiar de idea sin limpiar antes.
+   *
+   * Un fallo aquí **no es un error de la pantalla**: se devuelven listas vacías
+   * y el listado sigue funcionando con los filtros de fecha. Perder los
+   * desplegables es peor que antes, pero mucho mejor que perder la consulta.
+   */
+  async facets(query: {
+    locationId?: string | number | null;
+    assetId?: string | number | null;
+    from?: string;
+    to?: string;
+    dateField?: HistoryDateField;
+  }): Promise<HistoryFacets> {
+    const empty: HistoryFacets = { surveys: [], statuses: [], assets: [] };
+    const user = this.auth.currentUser();
+
+    if (!user) return empty;
+
+    const params: Record<string, string> = {
+      CompanyID: String(user.CompanyID),
+      UserID: String(user.UserID),
+      dateField: query.dateField ?? 'CreatedOn',
+    };
+
+    if (query.assetId) params['AssetID'] = String(query.assetId);
+    else if (query.locationId) params['LocationID'] = String(query.locationId);
+
+    if (query.from) params['from'] = query.from;
+    if (query.to) params['to'] = query.to;
+
+    try {
+      const reply = await firstValueFrom(
+        this.http
+          .get<Reply<HistoryFacets>>(`${this.baseUrl}/activityHistoryFacets`, { params })
+          .pipe(timeout(environment.requestTimeout * 1000)),
+      );
+
+      if (!reply?.status || !reply.response) return empty;
+
+      return {
+        surveys: reply.response.surveys ?? [],
+        statuses: reply.response.statuses ?? [],
+        assets: reply.response.assets ?? [],
+      };
+    } catch {
+      return empty;
     }
   }
 

@@ -68,7 +68,10 @@ export class HomeComponent {
 
   private async load(): Promise<void> {
     try {
-      const counts = await this.db.counts();
+      // Lo de esta sesión, no lo de todas las cuentas que hayan pasado por
+      // este navegador: anunciar formularios que no se pueden abrir es peor
+      // que no anunciar nada.
+      const counts = await this.db.countsForUser(this.auth.currentUserId());
 
       this.cards.set([
         {
