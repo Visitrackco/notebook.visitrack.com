@@ -432,6 +432,19 @@ export interface Contexto {
   campoQueCambio?: ApiId;
 
   /**
+   * Qué hora es, en el reloj de quien diligencia (`aaaa-mm-dd hh:mm`).
+   *
+   * Solo la usa la programación de una consigna: «dentro de dos días», «el 5
+   * del mes». Se recibe en vez de leerla del sistema por dos motivos que van
+   * juntos: el motor tiene que dar el mismo resultado en el simulador que en un
+   * teléfono —si no, la batería de casos no podría comprobar nada— y la hora
+   * buena es la del aparato, que es el único que sabe en qué huso está.
+   *
+   * Sin ella, una regla que programa en relativo no programa: sale ya.
+   */
+  ahora?: string;
+
+  /**
    * Que cuente qué pasó con cada regla.
    *
    * Apagado por omisión, y a propósito: construir el relato en cada tecla

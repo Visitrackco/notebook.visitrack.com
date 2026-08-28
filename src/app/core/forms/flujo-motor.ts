@@ -334,7 +334,7 @@ export function evaluar(flujo: Flujo, contexto: Contexto): Resultado {
           continue;
         }
 
-        aplicar(accion, resultado, valores, contexto.campos, regla.id, puedeAvisar, iniciales);
+        aplicar(accion, resultado, valores, contexto.campos, regla.id, puedeAvisar, iniciales, String(contexto.ahora ?? ''));
 
         if (accion.campo && ESCRIBEN_VALOR.has(accion.accion)) {
           // Un campo al que el flujo le acaba de escribir cuenta como cambiado:
@@ -357,7 +357,7 @@ export function evaluar(flujo: Flujo, contexto: Contexto): Resultado {
     resultado.escrituras = Object.fromEntries(escrituras);
 
     if (huella(resultado, valores) === antes) {
-      cerrar(generales, resultado, valores, contexto.campos, puedeAvisar);
+      cerrar(generales, resultado, valores, contexto.campos, puedeAvisar, String(contexto.ahora ?? ''));
       expandirPaginas(resultado.campos, contexto.campos);
       resultado.campos = limpiar(resultado.campos);
       return resultado;
@@ -365,7 +365,7 @@ export function evaluar(flujo: Flujo, contexto: Contexto): Resultado {
   }
 
   resultado.ciclo = true;
-  cerrar(generales, resultado, valores, contexto.campos, puedeAvisar);
+  cerrar(generales, resultado, valores, contexto.campos, puedeAvisar, String(contexto.ahora ?? ''));
   expandirPaginas(resultado.campos, contexto.campos);
   resultado.campos = limpiar(resultado.campos);
   return resultado;
@@ -422,6 +422,7 @@ function cerrar(
   valores: Record<ApiId, unknown>,
   campos: Record<ApiId, Campo>,
   puedeAvisar: boolean,
+  ahoraDelCierre: string,
 ): void {
   for (const regla of generales) {
     // También aquí: una general puede esperar a otra general anterior.
@@ -438,7 +439,7 @@ function cerrar(
        * una que acumula sobre lo que dejó la anterior es el caso normal aquí, y
        * como corren una sola vez no hay nada que se dispare.
        */
-      aplicar(accion, resultado, valores, campos, regla.id, puedeAvisar, valores);
+      aplicar(accion, resultado, valores, campos, regla.id, puedeAvisar, valores, ahoraDelCierre);
     }
   }
 }
@@ -680,6 +681,102 @@ export function comoMomentoLocal(texto: string, fty = '', horaPorDefecto = '08:0
   return `${fecha} ${horaDelDespacho(hora || horaPorDefecto)}`;
 }
 
+/**
+ * Una fecha de pared armada por piezas, en `aaaa-mm-dd hh:mm`.
+ *
+ * Se construye con el constructor de fechas y no a mano para que los
+ * desbordamientos salgan bien solos: el 31 de enero + 1 día es el 1 de febrero,
+ * y el 30 de febrero es el 1 o el 2 de marzo según el año. Escribirlo a mano es
+ * la forma habitual de programar una consigna para un día que no existe.
+ */
+function armarMomento(a: number, mes: number, dia: number, hora: string): string {
+  const fecha = new Date(a, mes - 1, dia, 12);
+  if (Number.isNaN(fecha.getTime())) return '';
+
+  const dos = (n: number) => String(n).padStart(2, '0');
+
+  return (
+    `${fecha.getFullYear()}-${dos(fecha.getMonth() + 1)}-${dos(fecha.getDate())} ` +
+    `${horaDelDespacho(hora)}`
+  );
+}
+
+/**
+ * Cuándo se despacha, resuelto contra el reloj de quien diligencia.
+ *
+ * ## Por qué ninguna es una fecha fija
+ *
+ * Un flujo se dibuja una vez y se ejecuta durante meses. Una fecha escrita en
+ * la regla —«el 15 de septiembre»— vale para el primer despacho y a partir de
+ * ahí programa consignas en el pasado, que es peor que no programarlas: nacen
+ * vencidas y nadie se entera. Por eso se dice **en relativo** y se resuelve en
+ * el momento de despachar.
+ *
+ * ## Las formas
+ *
+ * - `dias` — «dentro de N días, a tal hora». N puede ser 0: hoy a esa hora.
+ * - `mesdia` — «el día X del mes». El **próximo** día X: el de este mes si
+ *   todavía no ha pasado, y si ya pasó, el del mes que viene. Sin año, que es
+ *   lo que la hace dinámica. Es una sola consigna, no una repetición.
+ * - `campo` — el día que se respondió en un campo de fecha del formulario.
+ * - `fecha` — una fecha exacta. Ya no se ofrece en el lienzo, pero se sigue
+ *   entendiendo: hay flujos guardados con ella.
+ *
+ * Lo que no se entienda devuelve cadena vacía, y entonces la consigna sale ya:
+ * es preferible que llegue de más a que se pierda esperando una fecha que nadie
+ * supo leer.
+ */
+export function momentoDelDespacho(
+  config: Record<string, unknown>,
+  valores: Record<string, unknown>,
+  campos: Record<string, Campo>,
+  ahora: string,
+): string {
+  const cuando = String(config['cuando'] ?? 'ya');
+  const hora = horaDelDespacho(config['hora']);
+
+  if (cuando === 'fecha') {
+    return comoMomentoLocal(String(config['fecha'] ?? ''), '', hora);
+  }
+
+  if (cuando === 'campo') {
+    const id = String(config['campoFecha'] ?? '');
+    return comoMomentoLocal(comoTexto(valores[id], campos[id]), (campos[id]?.fty ?? '').toLowerCase(), hora);
+  }
+
+  // Las relativas necesitan saber qué día es hoy. Sin reloj no se inventan.
+  const hoy = comoMomentoLocal(ahora, '', hora);
+  if (!hoy) return '';
+
+  const [a, mes, dia] = hoy.slice(0, 10).split('-').map(Number);
+
+  if (cuando === 'dias') {
+    const cuantos = Math.trunc(Number(config['dias'] ?? 0));
+    if (!Number.isFinite(cuantos) || cuantos < 0) return '';
+
+    return armarMomento(a, mes, dia + cuantos, hora);
+  }
+
+  if (cuando === 'mesdia') {
+    const elegido = Math.trunc(Number(config['dia'] ?? 0));
+    if (!Number.isFinite(elegido) || elegido < 1 || elegido > 31) return '';
+
+    /*
+     * El próximo, no el de este mes a secas.
+     *
+     * Si hoy es 20 y la regla dice «el 5», el 5 de este mes ya pasó: la
+     * consigna nacería vencida. Y si es hoy mismo, cuenta hoy —a la hora que
+     * diga—, que es lo que espera quien la configuró.
+     */
+    const esteMes = armarMomento(a, mes, elegido, hora);
+    const yaPaso = elegido < dia || (esteMes && esteMes < comoMomentoLocal(ahora, '', horaDelDespacho(ahora.slice(11, 16))));
+
+    return yaPaso ? armarMomento(a, mes + 1, elegido, hora) : esteMes;
+  }
+
+  return '';
+}
+
 /** Los tipos de campo que llevan una fecha, una hora, o las dos. */
 const DE_FECHA = new Set(['date', 'datetime', 'time', 'datediff']);
 
@@ -837,6 +934,7 @@ function aplicar(
   regla = '',
   puedeAvisar = true,
   iniciales: Record<ApiId, unknown> = {},
+  ahora = '',
 ): void {
   /*
    * Despachar una consigna a alguien.
@@ -902,19 +1000,7 @@ function aplicar(
      * se entiende, la consigna sale ya: mejor que llegue de mas a que se pierda
      * esperando una fecha que nadie escribio.
      */
-    const cuando = String(config['cuando'] ?? 'ya');
-    const campoFecha = String(config['campoFecha'] ?? '');
-
-    const programado =
-      cuando === 'fecha'
-        ? comoMomentoLocal(String(config['fecha'] ?? ''), '', horaDelDespacho(config['hora']))
-        : cuando === 'campo'
-          ? comoMomentoLocal(
-              comoTexto(valores[campoFecha], campos[campoFecha]),
-              (campos[campoFecha]?.fty ?? '').toLowerCase(),
-              horaDelDespacho(config['hora']),
-            )
-          : '';
+    const programado = momentoDelDespacho(config, valores, campos, ahora);
 
     const despacho = {
       que,
