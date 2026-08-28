@@ -48,4 +48,4 @@ export const environment = {
 
   /** Versión mostrada en el perfil. */
   appVersion: '0.2.0',
-};
+}; 

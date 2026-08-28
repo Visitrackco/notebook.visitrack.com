@@ -99,11 +99,20 @@ export class DespachoService {
     try {
       const ya = await this.repo.todosDe(despacho.AnswerGUID);
 
+      /*
+       * Repetida es la **misma** consigna, con su fecha y su regla.
+       *
+       * Una regla puede pedir dos despachos a la vez y programarlos distinto
+       * —«uno mañana y otro dentro de una semana»—, y comparando solo
+       * formulario, destinatario y tipo el segundo se descartaba por parecido.
+       */
       const repetido = ya.some(
         (d) =>
           String(d.SurveyID) === String(despacho.SurveyID) &&
           String(d.Destinatario) === String(despacho.Destinatario) &&
-          String(d.Que) === String(despacho.Que),
+          String(d.Que) === String(despacho.Que) &&
+          String(d.Programado ?? '') === String(despacho.Programado ?? '') &&
+          String(d.Regla ?? '') === String(despacho.Regla ?? ''),
       );
 
       if (repetido) return;

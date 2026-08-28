@@ -496,6 +496,11 @@ export class FormEngine {
       campos,
       momento,
       campoQueCambio,
+
+      // El reloj de quien diligencia. Lo usa la programación de una consigna
+      // —«dentro de dos días»— y se pasa en vez de leerlo dentro para que el
+      // motor siga dando el mismo resultado en el simulador que aquí.
+      ahora: ahoraLocal(),
     });
 
     const porId = new Map<string, EstadoCampo>();
@@ -1602,3 +1607,19 @@ function textOf(value: FieldValue): string {
  * campo: un repintado continuo de algo que no cambió.
  */
 const EMPTY_DESCRIPTORS: ResolvedDescriptor[] = [];
+
+/**
+ * Qué hora es aquí, en `aaaa-mm-dd hh:mm`.
+ *
+ * De pared y no en UTC: lo que se programa es «el jueves a las tres», y las
+ * tres son las del reloj de quien lo configuró.
+ */
+function ahoraLocal(): string {
+  const hoy = new Date();
+  const dos = (n: number) => String(n).padStart(2, '0');
+
+  return (
+    `${hoy.getFullYear()}-${dos(hoy.getMonth() + 1)}-${dos(hoy.getDate())} ` +
+    `${dos(hoy.getHours())}:${dos(hoy.getMinutes())}`
+  );
+}
