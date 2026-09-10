@@ -1,0 +1,152 @@
+/**
+ * Todo el color sale de los tokens del tema, igual que en la gráfica: dentro de
+ * estilos encapsulados `:root[data-theme='dark']` no llega a aplicarse nunca,
+ * así que un componente no puede aclarar sus colores por su cuenta.
+ */
+:host {
+  display: block;
+}
+
+/*
+ * En fila y con salto de línea.
+ *
+ * Dos o tres botones caben al lado del de guardar; cinco no, y en un móvil ni
+ * dos. Envolviendo se apilan solos cuando no caben, en vez de encogerse hasta
+ * que el título deja de leerse.
+ */
+.botones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vt-space-3);
+  margin-top: var(--vt-space-4);
+}
+
+.botones__uno {
+  display: flex;
+  flex: 1 1 14rem;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.botones__boton {
+  /*
+   * A todo el ancho.
+   *
+   * Un boton de flujo no es un boton de barra: es una accion que el formulario
+   * ofrece en medio de las preguntas, y a media anchura se lee como un adorno
+   * al lado del campo. Ocupando la linea entera se lee como lo que es.
+   */
+  width: 100%;
+  padding: var(--vt-space-3) var(--vt-space-4);
+  font: inherit;
+  font-size: var(--vt-text-base);
+  font-weight: 600;
+
+  /*
+   * El color de la empresa, aclarado.
+   *
+   * Sale de `--vt-brand`, que es la variable que se cambia para vestir la
+   * aplicacion de cada cliente: escribir el color a mano aqui dejaria estos
+   * botones rojos el dia que una empresa se ponga azul.
+   *
+   * El fondo se mezcla con transparente en vez de con blanco a proposito: asi
+   * el mismo 8% sirve en claro y en oscuro sin tener que redefinir nada bajo
+   * `[data-theme]`, que dentro de estilos encapsulados no llegaria a aplicarse.
+   * Y el texto va por `--vt-icon-brand-fg`, que ya es el tono de marca legible
+   * en cada tema.
+   */
+  color: var(--vt-icon-brand-fg);
+  cursor: pointer;
+  background: color-mix(in srgb, var(--vt-brand) 8%, transparent);
+
+  /* Fino: un borde de un pixel y de marca, no el gris grueso de un control. */
+  border: 1px solid color-mix(in srgb, var(--vt-brand) 32%, transparent);
+
+  /* Menos redondeado que un boton de barra: esto es un control de formulario. */
+  border-radius: var(--vt-radius-sm);
+  transition:
+    background var(--vt-transition),
+    border-color var(--vt-transition);
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--vt-brand) 14%, transparent);
+    border-color: color-mix(in srgb, var(--vt-brand) 48%, transparent);
+  }
+}
+
+/*
+ * Apagado, no escondido.
+ *
+ * «Se ve pero no se pulsa» es una decisión de quien diseñó el flujo y dice algo:
+ * que esto existe y ahora no toca. Escondido diría otra cosa —que no existe— y
+ * quien esté en campo no sabría que le falta un paso.
+ */
+.botones__boton--apagado {
+  color: var(--vt-text-subtle);
+  cursor: default;
+  background: var(--vt-surface-3);
+  border-color: var(--vt-border);
+}
+
+.botones__pendiente {
+  max-width: 22rem;
+  margin: 0;
+  font-size: var(--vt-text-xs);
+  color: var(--vt-warning);
+}
+
+.botones__pendiente--nada {
+  color: var(--vt-text-muted);
+}
+
+.botones__marca {
+  padding: 1px var(--vt-space-2);
+  margin-right: var(--vt-space-1);
+  font-weight: 600;
+  background: var(--vt-warning-bg);
+  border-radius: var(--vt-radius-full);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .botones__boton {
+    transition: none;
+  }
+}
+
+/*
+ * Que el botón está esperando a un servicio.
+ *
+ * Misma rueda y mismo cuerpo de letra que en la lista de llamadas —es la misma
+ * espera, vista desde el otro lado— para que no parezcan dos cosas distintas.
+ */
+.botones__trabajando {
+  display: flex;
+  gap: var(--vt-space-2);
+  align-items: center;
+  margin: 0;
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-muted);
+}
+
+.botones__girando {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--vt-border-strong);
+  border-top-color: var(--vt-text);
+  border-radius: 50%;
+  animation: botones-gira 0.8s linear infinite;
+}
+
+@keyframes botones-gira {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .botones__girando {
+    animation: none;
+  }
+}

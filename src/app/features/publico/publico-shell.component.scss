@@ -1,0 +1,179 @@
+/*
+ * El marco de un enlace público: un banner lateral y el formulario.
+ *
+ * En el banner solo hay dos cosas —la marca de la compañía y, al pie, de dónde
+ * sale la herramienta— porque no hace falta ninguna más: sin sesión no hay
+ * sincronización que mirar, ni borradores, ni perfil, ni otro formulario al que
+ * ir. Un menú aquí sería una lista de puertas cerradas.
+ */
+
+.pub {
+  display: flex;
+  min-height: 100dvh;
+  background: var(--vt-bg);
+
+  /*
+   * Aquí no hay barra superior.
+   *
+   * La cabecera de la actividad se pega con `top: var(--vt-topbar-height)`,
+   * pensada para la aplicación con sesión. Sin esta línea se quedaría flotando
+   * 62 px por debajo del borde, con una franja de fondo encima. Se apaga la
+   * variable en este ámbito y la cabecera se pega arriba del todo, que es donde
+   * tiene que quedarse.
+   */
+  --vt-topbar-height: 0px;
+}
+
+/* ── El banner ──────────────────────────────────────────────────────────── */
+
+.pub__banner {
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: var(--vt-space-4);
+  align-items: center;
+  justify-content: space-between;
+
+  width: var(--vt-sidebar-width);
+  height: 100dvh;
+  padding: var(--vt-space-6) var(--vt-space-4);
+
+  background: var(--vt-surface);
+  border-right: 1px solid var(--vt-rule);
+}
+
+/*
+ * Claro, y no el panel oscuro de la aplicación con sesión.
+ *
+ * Dos razones. Los logos de los clientes vienen casi siempre en trazo oscuro
+ * sobre fondo transparente, y sobre el panel oscuro desaparecen — se ve un
+ * hueco donde debería estar su marca. Y el enlace puede traer su propio color
+ * de fondo: una franja oscura fija al lado de un fondo elegido por otro se
+ * pelea con él.
+ */
+.pub__marca {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+/*
+ * El logo, contenido.
+ *
+ * `max-width`/`max-height` y nunca un tamaño fijo: llegan cuadrados, apaisados
+ * y muy apaisados, y estirar cualquiera de los tres deforma la marca de un
+ * cliente, que es de las cosas que peor sientan.
+ */
+.pub__logo {
+  max-width: 100%;
+  max-height: 72px;
+  object-fit: contain;
+}
+
+.pub__rotulo {
+  font-size: var(--vt-text-sm);
+  font-weight: 600;
+  color: var(--vt-text-muted);
+  text-align: center;
+}
+
+/* ── El pie del banner ──────────────────────────────────────────────────── */
+
+/*
+ * Discreto de verdad: es una atribución, no un anuncio.
+ *
+ * Con el mismo peso que la marca de la compañía competiría con ella, y la
+ * pregunta que esta pantalla responde de un vistazo es quién pide los datos, no
+ * con qué herramienta.
+ */
+.pub__pie {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--vt-text-xs);
+  line-height: 1.35;
+  color: var(--vt-text-muted);
+  text-align: center;
+  opacity: 0.75;
+}
+
+.pub__pie img {
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+
+.pub__pie strong {
+  font-weight: 600;
+}
+
+/* ── El formulario ──────────────────────────────────────────────────────── */
+
+/*
+ * El mismo aire que en la aplicacion con sesion (`.shell__content`).
+ *
+ * Sin el, el formulario queda pegado al borde de la ventana: las tarjetas de
+ * las preguntas pierden su margen y en un telefono el texto llega al filo de la
+ * pantalla. Se repite el valor en vez de compartir la clase porque son dos
+ * armazones distintos y encadenarlos haria que tocar uno moviera el otro.
+ */
+.pub__cuerpo {
+  flex: 1;
+  min-width: 0;
+  padding: var(--vt-space-6);
+}
+
+/* ── En un teléfono el banner se acuesta ────────────────────────────────── */
+
+/*
+ * Lateral en un computador, en franjas arriba y abajo en un teléfono.
+ *
+ * Un banner lateral de 248 px en una pantalla de 360 se come dos tercios del
+ * ancho, y lo que queda no da para un formulario. Sigue siendo el mismo banner
+ * —la misma marca arriba, la misma atribución al final— pero acostado, que es
+ * como cabe.
+ */
+@media (max-width: 900px) {
+  .pub {
+    flex-direction: column;
+  }
+
+  .pub__banner {
+    position: static;
+    flex-direction: row;
+    gap: var(--vt-space-3);
+    justify-content: space-between;
+
+    width: 100%;
+    height: auto;
+    padding: var(--vt-space-3) var(--vt-space-4);
+
+    border-right: 0;
+    border-bottom: 1px solid var(--vt-rule);
+  }
+
+  .pub__marca {
+    justify-content: flex-start;
+    width: auto;
+    min-width: 0;
+  }
+
+  .pub__logo {
+    max-height: 34px;
+  }
+
+  /* La atribución completa no cabe al lado del logo en 360 px: se queda el
+     nombre, que es lo que dice de qué herramienta se trata. */
+  .pub__pie-largo {
+    display: none;
+  }
+
+  .pub__cuerpo {
+    padding: var(--vt-space-3) var(--vt-space-2);
+  }
+}

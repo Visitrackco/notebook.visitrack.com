@@ -1,0 +1,123 @@
+<!--
+  Los correos que pidió el flujo, y en qué punto va cada uno.
+
+  Lo que manda aquí es el estado y el motivo, no el correo en sí: la pregunta a
+  la que responde esta pantalla es «¿salió?». El cuerpo no se enseña — son datos
+  de un tercero y para responder eso no hacen falta.
+-->
+<section class="fe">
+  <header class="fe__cab">
+    <div>
+      <h1 class="fe__titulo">Correos del flujo</h1>
+      <p class="fe__sub">
+        El correo no se manda desde aquí: se apunta y lo envía el servidor cuando
+        la actividad ya está en Visitrack con sus archivos.
+      </p>
+    </div>
+
+    <div class="fe__acciones">
+      <button type="button" class="fe__btn" (click)="cargar()" [disabled]="cargando()">
+        Recargar
+      </button>
+
+      @if (pendientes() > 0) {
+        <button
+          type="button"
+          class="fe__btn fe__btn--fuerte"
+          (click)="reintentar()"
+          [disabled]="reintentando()"
+        >
+          {{ reintentando() ? 'Reintentando…' : 'Reintentar pendientes' }}
+        </button>
+      }
+    </div>
+  </header>
+
+  @if (cargando()) {
+    <div class="fe__cargando" role="status" aria-live="polite">
+      <span class="fe__rueda" aria-hidden="true"></span>
+      <span>Leyendo la bandeja…</span>
+    </div>
+  } @else if (!filas().length) {
+    <!-- El hueco habla: en blanco se leería como algo que falló. -->
+    <div class="fe__vacio">
+      <p class="fe__vacio-tit">Ningún flujo ha pedido correos todavía</p>
+      <p class="fe__sub">Aparecen aquí en cuanto una regla pida uno.</p>
+    </div>
+  } @else {
+    <!--
+      El resumen, en contadores y no en una frase.
+
+      Antes solo decia cuantos esperaban. Los que fallaron —que es lo que de
+      verdad hay que mirar— no se contaban en ninguna parte: habia que recorrer
+      la lista entera para saber si habia alguno. Un contador a cero no se
+      pinta: compite con lo que si hay.
+    -->
+    <div class="fe__contadores">
+      @if (enEspera() > 0) {
+        <span class="fe__chip fe__chip--espera">
+          {{ enEspera() }} esperando
+        </span>
+      }
+      @if (enCola() > 0) {
+        <span class="fe__chip fe__chip--cola">
+          {{ enCola() }} en la cola
+        </span>
+      }
+      @if (conFallo() > 0) {
+        <span class="fe__chip fe__chip--mal">
+          {{ conFallo() }} no se pudieron
+        </span>
+      }
+    </div>
+
+    <ul class="fe__lista">
+      @for (c of filas(); track c.ID) {
+        <li class="fe__fila" [class.fe__fila--mal]="estadoDe(c) === 'mal'">
+          <span class="fe__pill" [class]="'fe__pill fe__pill--' + estadoDe(c)">
+            {{ comoSeLee(c) }}
+          </span>
+
+          <div class="fe__cuerpo">
+            <p class="fe__asunto" [title]="c.Asunto">{{ c.Asunto || '(sin asunto)' }}</p>
+            <p class="fe__para" [title]="c.Para">{{ c.Para }}</p>
+
+            <!-- El motivo, cuando lo hay. Es lo único que va a quedar de un
+                 correo que no llegó a la cola. -->
+            @if (c.Error) {
+              <p class="fe__motivo">{{ c.Error }}</p>
+            }
+
+            <p class="fe__pie">
+              @if (c.Intentos) {
+                {{ c.Intentos }} intento(s) ·
+              }
+              {{ c.CreatedOn | date: 'dd/MM/yy HH:mm' }}
+            </p>
+            <!--
+              «Enviar ahora», solo en los que esperan.
+
+              Uno que ya esta en la cola no se toca: volver a pedirlo crearia un
+              duplicado. Y uno rechazado para siempre tampoco, porque eso no lo
+              arregla pulsar — lo arregla cambiar la regla o el buzon. Ofrecer el
+              boton ahi seria prometer algo que no va a pasar.
+            -->
+            @if (estadoDe(c) === 'espera') {
+              <p class="fe__acciones-fila">
+                <button
+                  type="button"
+                  class="fe__enviar"
+                  (click)="dispararUno(c)"
+                  [disabled]="empujando() === c.ID"
+                >
+                  {{ empujando() === c.ID ? 'Enviando…' : 'Enviar ahora' }}
+                </button>
+              </p>
+            }
+
+          </div>
+        </li>
+      }
+    </ul>
+  }
+</section>

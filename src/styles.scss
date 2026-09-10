@@ -126,6 +126,28 @@ html {
   --vt-info-bg: #e9edf2;
 
   /**
+   * Paleta de las gráficas del flujo, por posición.
+   *
+   * Una serie puede traer su color escrito en la regla; cuando no lo trae, se
+   * le da el que le toque por su sitio. Sin esto, una gráfica sin colores
+   * configurados —que es la mayoría— saldría toda del mismo tono y no se
+   * distinguiría un sector de otro.
+   *
+   * Van aquí y no en el componente por lo mismo que los discos de icono: dentro
+   * de estilos encapsulados, `:root[data-theme='dark']` nunca aplica, y en
+   * oscuro estos seis tienen que aclararse para no hundirse en el fondo.
+   *
+   * El orden no es casual: se alternan familias de tono para que dos barras
+   * seguidas nunca se parezcan, que es cuando una gráfica deja de leerse.
+   */
+  --vt-grafica-1: #2563eb;
+  --vt-grafica-2: #16a34a;
+  --vt-grafica-3: #d97706;
+  --vt-grafica-4: #dc2626;
+  --vt-grafica-5: #7c3aed;
+  --vt-grafica-6: #0891b2;
+
+  /**
    * Color legible **encima** de un color de estado.
    *
    * Los estados se invierten con el tema: en claro son tonos profundos (un
@@ -396,6 +418,15 @@ html {
   --vt-info: #cbd5e1;
   --vt-info-bg: #1e232b;
 
+  /* Los seis de las gráficas, aclarados: los tonos profundos del tema claro se
+     confunden con el fondo oscuro y las barras pequeñas desaparecen. */
+  --vt-grafica-1: #60a5fa;
+  --vt-grafica-2: #4ade80;
+  --vt-grafica-3: #fbbf24;
+  --vt-grafica-4: #f87171;
+  --vt-grafica-5: #c084fc;
+  --vt-grafica-6: #22d3ee;
+
   /* Los estados pasan a tonos claros: encima va tinta, no blanco. */
   --vt-on-state: #0f1216;
 
@@ -533,6 +564,13 @@ html {
     --vt-info: #cbd5e1;
     --vt-info-bg: #1e232b;
     --vt-on-state: #0f1216;
+
+    --vt-grafica-1: #60a5fa;
+    --vt-grafica-2: #4ade80;
+    --vt-grafica-3: #fbbf24;
+    --vt-grafica-4: #f87171;
+    --vt-grafica-5: #c084fc;
+    --vt-grafica-6: #22d3ee;
   }
 }
 

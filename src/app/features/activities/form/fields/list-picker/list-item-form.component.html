@@ -45,6 +45,7 @@
           <vt-field-host
             [field]="field"
             [value]="eng.valueOf(field.id)"
+            [obligatorioDelFlujo]="eng.estadoDeFlujo(field.id)?.obligatorio ?? null"
             [invalid]="eng.showsError(field)"
             [parentValue]="eng.parentValueOf(field)"
             [descriptors]="eng.descriptorsOf(field.id)"

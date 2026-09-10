@@ -85,7 +85,48 @@
       </div>
     </aside>
 
-    <div class="runner__main">
+    <!--
+      Se esta esperando a un servicio, y se dice.
+
+      Gemelo del velo de la app. Sin esto, una llamada sincrona dejaba el
+      formulario sin responder y sin ninguna explicacion: desde fuera es
+      indistinguible de una pagina colgada. El velo deja ver el formulario por
+      debajo a proposito —no es un dialogo—, porque lo que esta pasando es que
+      un campo se esta llenando solo.
+
+      Guardar ya estaba impedido por el motor mientras haya cualquier llamada
+      en vuelo, sincrona o asincrona; esto solo lo hace visible.
+    -->
+    @if (eng.hayLlamadaSincronaEnVuelo()) {
+      <div class="runner__velo" role="status" aria-live="polite">
+        <div class="runner__velo-caja">
+          <span class="runner__velo-rueda" aria-hidden="true"></span>
+          <p class="runner__velo-titulo">{{ rotuloDeLaEspera(eng) }}</p>
+          <p class="runner__velo-nota">Un momento, se está llenando el formulario.</p>
+        </div>
+      </div>
+    }
+
+    <div class="runner__main" [class.runner__main--esperando]="eng.hayLlamadaSincronaEnVuelo()">
+    <!-- El flujo dejó la actividad en solo lectura, y dice por qué.
+         Sin el motivo, un formulario que no responde parece roto: quien lo
+         escribió es el único que sabe si es a propósito. -->
+    @if (soloLectura()) {
+      <aside class="runner__blocking runner__readonly">
+        <span class="runner__blocking-icon">
+          <vt-icon name="alert" [size]="19" />
+        </span>
+        <div>
+          <strong>Esta actividad no se puede editar</strong>
+          <ul>
+            @for (motivo of edicionBloqueada(); track motivo) {
+              <li>{{ motivo }}</li>
+            }
+          </ul>
+        </div>
+      </aside>
+    }
+
     <!-- Recordatorio de lo que quedó pendiente tras «Revisar campos». Se
          mantiene a la vista mientras se corrigen, para no tener que volver a
          intentar guardar solo para saber qué falta. -->
@@ -134,23 +175,64 @@
              acompaña. `null` cuando ninguna regla habla de él. -->
         @let flujo = eng.estadoDeFlujo(field.id);
 
+        <!--
+          Los botones que una regla colgo de **este** campo.
+
+          Fuera del `div` del campo por lo mismo que los de abajo: ese `div` se
+          pone `inert` cuando el campo o la actividad estan bloqueados, y mirar
+          un resumen no es editar. Encima o debajo lo decidio la regla; aqui
+          solo se pinta lo que hay.
+        -->
+        @if (eng.botonesDe(field.id, 'antes'); as antes) {
+          @if (antes.length) {
+            <vt-flujo-botones [botones]="antes" (mostrar)="destapar($event)" (encolar)="correosDeUnBoton($event)" (encolarPush)="pushesDeUnBoton($event)" (celebrar)="celebrarDeUnBoton($event)" (puntuar)="puntuarDesdeUnBoton($event)" (noSePuede)="correoNoSePuede($event)" (llamar)="llamadasDeUnBoton($event)" />
+          }
+        }
+
+        <!-- Y las llamadas a un servicio que cuelgan de este campo. Se reparten
+             igual que los botones, y por lo mismo: el sitio lo decidio la regla. -->
+        @if (eng.llamadasDe(field.id, 'antes'); as llamadas) {
+          @if (llamadas.length) {
+            <vt-flujo-llamadas
+              [llamadas]="llamadas"
+              [conBotonPropio]="llavesConBotonDeFlujo()"
+              [archivos]="archivosDeIntegracion()"
+              (llamar)="llamarAlServicio($event)"
+            />
+          }
+        }
+
+        <!-- `inert` y no `disabled`: apaga el campo entero —teclado, foco y
+             ratón— sin ir componente por componente. Ya se usaba para el solo
+             lectura de un campo suelto; ahora se le suma el de la actividad
+             entera, cuando el flujo la bloqueó. -->
         <div
           class="runner__field"
           [class.runner__field--invalid]="eng.showsError(field)"
           [class.runner__field--title]="isHeading(field)"
-          [class.runner__field--bloqueado]="flujo?.soloLectura === true"
+          [class.runner__field--bloqueado]="flujo?.soloLectura === true || soloLectura()"
           [class.runner__field--pintado]="!!flujo?.colorTexto"
-          [attr.inert]="flujo?.soloLectura === true ? '' : null"
+          [attr.inert]="flujo?.soloLectura === true || soloLectura() ? '' : null"
           [style.background-color]="flujo?.color || null"
           [style.--vt-flujo-texto]="flujo?.colorTexto || null"
           [id]="'field-' + field.id"
         >
           <vt-field-host
+            [flujo]="flujoDelFormulario()"
+            [motor]="eng"
+            [maxFilasDelFlujo]="flujo?.maxFilas ?? null"
+            [agregarDelFlujo]="flujo?.agregar ?? null"
+            [editarDelFlujo]="flujo?.editar ?? null"
+            [eliminarDelFlujo]="flujo?.eliminar ?? null"
             [limites]="limitesDe(flujo)"
             [textoDelFlujo]="flujo?.texto ?? null"
             [imagenDelFlujo]="flujo?.imagen ?? null"
+            [ayudaDelFlujo]="flujo?.ayuda ?? null"
+            [lineasDelFlujo]="flujo?.lineas ?? null"
+            [entrada]="entradaDe(flujo)"
             [field]="field"
             [value]="eng.valueOf(field.id)"
+            [obligatorioDelFlujo]="flujo?.obligatorio ?? null"
             [invalid]="eng.showsError(field)"
             [answerGuid]="answer().GUID"
             [parentValue]="eng.parentValueOf(field)"
@@ -162,19 +244,95 @@
           @if (flujo?.mensaje) {
             <p class="runner__field-aviso">{{ flujo?.mensaje }}</p>
           }
+
+          <!-- La gráfica va debajo del campo al que la regla la colocó, igual
+               que en la app. Los números vienen contados por el motor: aquí
+               solo se dibujan. Ver `FlujoGraficaComponent`. -->
+          @if (flujo?.grafica; as grafica) {
+            <vt-flujo-grafica [grafica]="grafica" [destapada]="estaDestapada(grafica)" />
+          }
         </div>
+
+        @if (eng.botonesDe(field.id, 'despues'); as despues) {
+          @if (despues.length) {
+            <vt-flujo-botones [botones]="despues" (mostrar)="destapar($event)" (encolar)="correosDeUnBoton($event)" (encolarPush)="pushesDeUnBoton($event)" (celebrar)="celebrarDeUnBoton($event)" (puntuar)="puntuarDesdeUnBoton($event)" (noSePuede)="correoNoSePuede($event)" (llamar)="llamadasDeUnBoton($event)" />
+          }
+        }
+
+        @if (eng.llamadasDe(field.id, 'despues'); as llamadas) {
+          @if (llamadas.length) {
+            <vt-flujo-llamadas
+              [llamadas]="llamadas"
+              [conBotonPropio]="llavesConBotonDeFlujo()"
+              [archivos]="archivosDeIntegracion()"
+              (llamar)="llamarAlServicio($event)"
+            />
+          }
+        }
       } @empty {
         <p class="runner__empty">Esta página no tiene campos visibles.</p>
+      }
+
+      <!--
+        Los botones del flujo, debajo de los campos.
+
+        Fuera del bucle porque no son de ningún campo: son acciones sobre la
+        actividad entera, y su sitio es el final, junto a guardar. Y fuera del
+        `div` con `inert` por lo mismo que están fuera del bucle: una actividad
+        bloqueada no se puede responder, pero mirar el resumen de lo respondido
+        sigue siendo mirar, no editar.
+      -->
+      @if (eng.botonesSueltos(); as botones) {
+        @if (botones.length) {
+          <vt-flujo-botones [botones]="botones" (mostrar)="destapar($event)" (encolar)="correosDeUnBoton($event)" (encolarPush)="pushesDeUnBoton($event)" (celebrar)="celebrarDeUnBoton($event)" (puntuar)="puntuarDesdeUnBoton($event)" (noSePuede)="correoNoSePuede($event)" (llamar)="llamadasDeUnBoton($event)" />
+        }
+      }
+
+      <!--
+        Y las llamadas a servicios que no cuelgan de ningun campo.
+
+        Van aqui, con los botones, porque son lo mismo: una accion sobre la
+        actividad entera. Se dibujan en cualquier estado —esperando, fallida— y
+        no solo cuando hay algo que pulsar: un campo que no se llena y ninguna
+        explicacion se lee como una aplicacion rota.
+      -->
+      @if (eng.llamadasSueltas(); as llamadas) {
+        @if (llamadas.length) {
+          <vt-flujo-llamadas
+              [llamadas]="llamadas"
+              [conBotonPropio]="llavesConBotonDeFlujo()"
+              [archivos]="archivosDeIntegracion()"
+              (llamar)="llamarAlServicio($event)"
+            />
+        }
       }
     </div>
 
     </div>
 
     <!-- ── Navegación y guardado ───────────────────────────────────────────── -->
+    <!--
+      El aviso que tapa la pantalla mientras un botón espera a su correo.
+
+      Solo en el modo síncrono — ver `CorreoDeFlujo.avisoSincrono`. Tapa a
+      propósito: lo que se pide ahí es que no se pueda seguir tocando el
+      formulario hasta que el correo esté pedido. Con tope de 20 segundos, así
+      que no puede quedarse puesto para siempre.
+    -->
+    @if (correoEnCurso(); as texto) {
+      <div class="runner__esperando" role="status" aria-live="polite">
+        <div class="runner__esperando-caja">
+          <span class="runner__esperando-rueda" aria-hidden="true"></span>
+          <p class="runner__esperando-texto">{{ texto }}</p>
+        </div>
+      </div>
+    }
+
     <vt-page-nav
       [pages]="pageMarks()"
       [current]="posicionEnElPaginador()"
       [saving]="saving()"
+      [saveHidden]="guardarOculto()"
       (goTo)="irAlPunto($event)"
       (save)="save()"
       (leave)="requestLeave()"

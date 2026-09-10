@@ -1,0 +1,308 @@
+/*
+ * La bandeja de notificaciones del flujo.
+ *
+ * Los mismos estilos que la de correos —es la misma pantalla con otro
+ * contenido— con el prefijo cambiado. Se copia en vez de compartirse porque las
+ * dos son pantallas de una funcion, no un componente reutilizable: unirlas
+ * obligaria a parametrizar cada rotulo y cada estado por una ganancia que no
+ * llega a doscientas lineas.
+ *
+ * `.fp__texto` es lo unico propio: un correo no ensena su cuerpo aqui, y un
+ * aviso si — son dos lineas escritas por quien configuro la regla, no datos de
+ * un tercero.
+ */
+/**
+ * Correos del flujo.
+ *
+ * Con los tokens de la plataforma, como el resto: el modo oscuro se resuelve
+ * donde ya se resuelve y esta pantalla no tiene que saber nada de colores.
+ */
+
+:host {
+  display: block;
+  width: 100%;
+}
+
+.fp {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vt-space-4);
+  width: 100%;
+}
+
+.fp__cab {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vt-space-4);
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.fp__titulo {
+  margin: 0 0 var(--vt-space-1);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--vt-text);
+}
+
+.fp__sub {
+  margin: 0;
+  max-width: 62ch;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--vt-text-subtle);
+}
+
+.fp__acciones {
+  display: flex;
+  gap: var(--vt-space-2);
+}
+
+.fp__btn {
+  padding: var(--vt-space-2) var(--vt-space-4);
+  color: var(--vt-text);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-border);
+  border-radius: var(--vt-radius-md);
+}
+
+.fp__btn:hover:not(:disabled) { background: var(--vt-surface-alt, var(--vt-surface)); }
+
+.fp__btn:disabled {
+  color: var(--vt-text-subtle);
+  cursor: default;
+}
+
+.fp__btn--fuerte {
+  color: #fff;
+  background: var(--vt-primary, #1b95d0);
+  border-color: transparent;
+}
+
+.fp__resumen {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--vt-text);
+}
+
+/* ── La lista ──────────────────────────────────────────────────────────────── */
+
+.fp__lista {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vt-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fp__fila {
+  display: flex;
+  gap: var(--vt-space-3);
+  align-items: flex-start;
+  padding: var(--vt-space-3) var(--vt-space-4);
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-border);
+  border-radius: var(--vt-radius-md);
+}
+
+/* El que no se pudo se ve desde lejos: es la fila que se viene a buscar. */
+.fp__fila--mal { border-color: var(--vt-danger, #c0392b); }
+
+.fp__cuerpo {
+  flex: 1;
+  min-width: 0;
+}
+
+.fp__asunto {
+  margin: 0;
+  overflow: hidden;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--vt-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fp__para {
+  margin: var(--vt-space-1) 0 0;
+  overflow: hidden;
+  font-size: 0.82rem;
+  color: var(--vt-text-subtle);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fp__motivo {
+  margin: var(--vt-space-1) 0 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--vt-danger, #c0392b);
+}
+
+.fp__pie {
+  margin: var(--vt-space-1) 0 0;
+  font-size: 0.75rem;
+  color: var(--vt-text-subtle);
+}
+
+/* ── El estado, en una pastilla ────────────────────────────────────────────── */
+
+/*
+ * Con su palabra dentro y no solo con color: quien no distinga el verde del
+ * rojo tiene que poder leer la lista igual.
+ */
+.fp__pill {
+  flex: 0 0 auto;
+  padding: 2px 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+  border-radius: var(--vt-radius-full, 999px);
+}
+
+.fp__pill--cola {
+  color: var(--vt-success, #1e7e34);
+  background: var(--vt-success-soft, rgb(30 126 52 / 12%));
+}
+
+.fp__pill--mal {
+  color: var(--vt-danger, #c0392b);
+  background: var(--vt-danger-soft, rgb(192 57 43 / 12%));
+}
+
+.fp__pill--espera {
+  color: var(--vt-warning, #a15c00);
+  background: color-mix(in srgb, var(--vt-warning, #a15c00) 12%, transparent);
+}
+
+/* ── Cargando y el hueco que habla ─────────────────────────────────────────── */
+
+.fp__cargando {
+  display: flex;
+  gap: var(--vt-space-3);
+  align-items: center;
+  justify-content: center;
+  padding: var(--vt-space-6) 0;
+  color: var(--vt-text-subtle);
+  font-size: 0.9rem;
+}
+
+.fp__rueda {
+  width: 18px;
+  height: 18px;
+  border: 3px solid var(--vt-border);
+  border-top-color: var(--vt-primary, #1b95d0);
+  border-radius: 50%;
+  animation: fe-gira 0.8s linear infinite;
+}
+
+@keyframes fe-gira {
+  to { transform: rotate(360deg); }
+}
+
+/* Sin movimiento la rueda se queda quieta: lo que dice que se está esperando es
+   el texto, que se lee con o sin animación. */
+@media (prefers-reduced-motion: reduce) {
+  .fp__rueda { animation: none; }
+}
+
+.fp__vacio {
+  padding: var(--vt-space-6) var(--vt-space-4);
+  text-align: center;
+}
+
+.fp__vacio-tit {
+  margin: 0 0 var(--vt-space-1);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--vt-text-subtle);
+}
+
+.fp__vacio .fp__sub { margin: 0 auto; }
+
+/* El texto del aviso: dos lineas y corta. Entero esta en el `title`. */
+.fp__texto {
+  margin: 0.1rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: var(--vt-text-muted, #6b7280);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ── Los contadores del resumen ────────────────────────────────────────────── */
+
+/*
+   Uno por punto, y solo los que tienen algo. Un cero pintado compite con lo que
+   si hay, y en esta pantalla lo que se viene a mirar es justo lo que falta.
+*/
+
+.fp__contadores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vt-space-2);
+  margin: 0;
+}
+
+.fp__chip {
+  padding: var(--vt-space-1) var(--vt-space-3);
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  border: 1px solid transparent;
+  border-radius: var(--vt-radius-full, 999px);
+}
+
+.fp__chip--espera {
+  color: var(--vt-warning, #a15c00);
+  background: color-mix(in srgb, var(--vt-warning, #a15c00) 12%, transparent);
+  border-color: color-mix(in srgb, var(--vt-warning, #a15c00) 34%, transparent);
+}
+
+.fp__chip--cola {
+  color: var(--vt-success, #1e7e34);
+  background: color-mix(in srgb, var(--vt-success, #1e7e34) 12%, transparent);
+  border-color: color-mix(in srgb, var(--vt-success, #1e7e34) 34%, transparent);
+}
+
+.fp__chip--mal {
+  color: var(--vt-danger, #c0392b);
+  background: color-mix(in srgb, var(--vt-danger, #c0392b) 12%, transparent);
+  border-color: color-mix(in srgb, var(--vt-danger, #c0392b) 34%, transparent);
+}
+
+/* ── Empujar uno ───────────────────────────────────────────────────────────── */
+
+.fp__acciones-fila {
+  margin: var(--vt-space-2) 0 0;
+}
+
+.fp__enviar {
+  padding: var(--vt-space-1) var(--vt-space-3);
+  color: var(--vt-primary, #1b95d0);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--vt-primary, #1b95d0) 40%, transparent);
+  border-radius: var(--vt-radius-2, 8px);
+}
+
+.fp__enviar:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--vt-primary, #1b95d0) 10%, transparent);
+}
+
+.fp__enviar:disabled {
+  color: var(--vt-text-subtle);
+  cursor: default;
+  border-color: var(--vt-border);
+}

@@ -7,6 +7,7 @@ export const environment = {
   localApiUrl: '',
   useLocalApi: false,
 
+
   /**
    * Servidor de archivos de la plataforma. Solo como respaldo.
    *

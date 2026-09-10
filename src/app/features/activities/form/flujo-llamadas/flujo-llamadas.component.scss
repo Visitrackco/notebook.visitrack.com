@@ -1,0 +1,230 @@
+/**
+ * Todo el color sale de los tokens del tema, igual que en los botones del
+ * flujo: dentro de estilos encapsulados `:root[data-theme='dark']` no llega a
+ * aplicarse nunca, así que un componente no puede aclarar sus colores por su
+ * cuenta.
+ */
+:host {
+  display: block;
+}
+
+/*
+ * Una debajo de otra, y no en fila como los botones.
+ *
+ * Cada llamada puede llevar un renglón de explicación —lo que falta, por qué
+ * falló— y en fila esos renglones quedan a distinta altura y no se sabe cuál es
+ * de cuál.
+ */
+.llamadas {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vt-space-3);
+  margin-top: var(--vt-space-4);
+}
+
+.llamadas__una {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.llamadas__linea {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vt-space-2);
+  align-items: center;
+
+  /* Con el boton ocupando la linea entera, lo que venga detras se coloca
+     debajo por si solo. */
+  width: 100%;
+}
+
+.llamadas__boton {
+  /*
+   * A todo el ancho.
+   *
+   * Un boton de flujo no es un boton de barra: es una accion que el formulario
+   * ofrece en medio de las preguntas, y a media anchura se lee como un adorno
+   * al lado del campo. Ocupando la linea entera se lee como lo que es.
+   */
+  width: 100%;
+  padding: var(--vt-space-3) var(--vt-space-4);
+  font: inherit;
+  font-size: var(--vt-text-base);
+  font-weight: 600;
+
+  /*
+   * El color de la empresa, aclarado.
+   *
+   * Sale de `--vt-brand`, que es la variable que se cambia para vestir la
+   * aplicacion de cada cliente: escribir el color a mano aqui dejaria estos
+   * botones rojos el dia que una empresa se ponga azul.
+   *
+   * El fondo se mezcla con transparente en vez de con blanco a proposito: asi
+   * el mismo 8% sirve en claro y en oscuro sin tener que redefinir nada bajo
+   * `[data-theme]`, que dentro de estilos encapsulados no llegaria a aplicarse.
+   * Y el texto va por `--vt-icon-brand-fg`, que ya es el tono de marca legible
+   * en cada tema.
+   */
+  color: var(--vt-icon-brand-fg);
+  cursor: pointer;
+  background: color-mix(in srgb, var(--vt-brand) 8%, transparent);
+
+  /* Fino: un borde de un pixel y de marca, no el gris grueso de un control. */
+  border: 1px solid color-mix(in srgb, var(--vt-brand) 32%, transparent);
+
+  /* Menos redondeado que un boton de barra: esto es un control de formulario. */
+  border-radius: var(--vt-radius-sm);
+  transition:
+    background var(--vt-transition),
+    border-color var(--vt-transition);
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--vt-brand) 14%, transparent);
+    border-color: color-mix(in srgb, var(--vt-brand) 48%, transparent);
+  }
+}
+
+/*
+ * Apagado: se ve, no se pulsa, y se nota que no se pulsa.
+ *
+ * Pierde el color de marca —que es lo que invita a tocarlo— y se queda en el
+ * gris de un control inactivo, conservando la misma forma para que no parezca
+ * otro boton distinto.
+ */
+.llamadas__boton--apagado {
+  color: var(--vt-text-subtle);
+  cursor: default;
+  background: var(--vt-surface-3);
+  border-color: var(--vt-border);
+}
+
+.llamadas__girando {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--vt-border-strong);
+  border-top-color: var(--vt-text);
+  border-radius: 50%;
+  animation: llamadas-gira 0.8s linear infinite;
+}
+
+.llamadas__esperando {
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-muted);
+}
+
+.llamadas__nota {
+  max-width: 24rem;
+  margin: 0;
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-muted);
+}
+
+.llamadas__nota--mal {
+  color: var(--vt-danger);
+}
+
+/*
+ * La vista previa se acota en alto y no en ancho.
+ *
+ * Lo que llega puede ser un carnet apaisado o una firma alargada, y fijar el
+ * ancho deformaría uno de los dos. Con el alto acotado y `contain`, los dos se
+ * ven enteros y ninguno empuja el formulario hacia abajo.
+ */
+.llamadas__miniatura {
+  max-width: 100%;
+  height: 120px;
+  margin: var(--vt-space-2) 0;
+  object-fit: contain;
+  object-position: left;
+  border: 1px solid var(--vt-border);
+  border-radius: var(--vt-radius);
+}
+
+@keyframes llamadas-gira {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/*
+ * Sin movimiento, la rueda se queda quieta y se nota igual.
+ *
+ * Que gire es lo de menos: lo que dice que se está esperando es el texto de al
+ * lado, que se lee con o sin animación.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .llamadas__boton {
+    transition: none;
+  }
+
+  .llamadas__girando {
+    animation: none;
+  }
+}
+
+/*
+ * El fallo, en un cuadro y no en un renglon suelto.
+ *
+ * Un servicio que dice que no es lo unico de esta lista que exige leerse entero:
+ * el mensaje viene redactado para explicar que hacer —«no hay red», «esa cedula
+ * no esta en el padron»— y suelto debajo del boton se lee como un pie de foto.
+ * Encuadrado se lee como lo que es.
+ *
+ * El color sale de `--vt-danger`, mezclado con transparente en vez de usar
+ * `--vt-danger-bg`: asi el mismo valor sirve en claro y en oscuro sin redefinir
+ * nada bajo `[data-theme]`, que dentro de estilos encapsulados no llegaria a
+ * aplicarse nunca.
+ */
+.llamadas__error {
+  display: flex;
+  gap: var(--vt-space-2);
+  align-items: flex-start;
+  padding: var(--vt-space-3);
+  margin-top: var(--vt-space-2);
+  background: color-mix(in srgb, var(--vt-danger) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--vt-danger) 34%, transparent);
+
+  /* Las mismas esquinas que el boton de arriba: son la misma pieza. */
+  border-radius: var(--vt-radius-sm);
+}
+
+/*
+ * La marca no lleva texto alternativo a proposito.
+ *
+ * Es decoracion: quien no la ve lee el mensaje igual, y el `role="alert"` del
+ * cuadro ya avisa a un lector de pantalla de que esto acaba de aparecer.
+ */
+.llamadas__error-marca {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  font-size: var(--vt-text-xs);
+  font-weight: 700;
+  color: var(--vt-surface);
+  background: var(--vt-danger);
+  border-radius: 50%;
+}
+
+.llamadas__error-cuerpo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.llamadas__error-texto {
+  margin: 0;
+  font-size: var(--vt-text-sm);
+  color: var(--vt-danger);
+}
+
+.llamadas__error-nota {
+  margin: 0;
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-muted);
+}

@@ -4,6 +4,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router, RouterLink, RouterOutlet } from '@angular/router';
 
 import { resolveCatalogOwnerId } from '../../core/config/company-rules';
+import { esModoPublico } from '../../core/config/modo-publico';
 import {
   ANSWER_STATE,
   AnswerStateInfo,
@@ -83,10 +84,37 @@ export class ActivityDetailComponent {
    */
   readonly rowOpen = signal(false);
 
+  /**
+   * Esta pestaña sirve un enlace público.
+   *
+   * Campo y no señal: el modo lo fija `main.ts` antes de arrancar y no cambia
+   * mientras la pestaña vive, así que preguntarlo en cada ciclo de detección
+   * sería trabajo por nada.
+   */
+  protected readonly esPublico = esModoPublico();
+
   readonly surveyId = input.required<string>();
   readonly guid = input.required<string>();
 
   readonly loading = signal(true);
+
+  /**
+   * ¿Se ven la ubicación y el activo?
+   *
+   * **Plegado en un enlace público, desplegado en la aplicación con sesión.**
+   *
+   * No es un capricho: en un enlace, la ubicación y el activo casi siempre
+   * vienen ya fijados —quien lo abrió no los eligió y no puede cambiarlos—, así
+   * que ocupan la primera pantalla con dos fichas que no hacen nada. En un
+   * teléfono eso es la diferencia entre ver la primera pregunta al entrar o
+   * tener que desplazarse para encontrarla.
+   *
+   * Con sesión es al revés: se acaban de elegir y confirmarlos de un vistazo es
+   * justo lo que se quiere. El nombre de la ubicación sigue en la cabecera fija
+   * en los dos casos, así que plegado no se pierde el contexto.
+   */
+  readonly contextoAbierto = signal(!esModoPublico());
+
   readonly survey = signal<Survey | null>(null);
   readonly answer = signal<SurveyAnswer | null>(null);
   readonly location = signal<LocationForm | null>(null);
@@ -238,6 +266,14 @@ export class ActivityDetailComponent {
 
   /** Es un borrador que se descartará al salir sin guardar. */
   readonly isDiscardable = computed(() => this.answer()?.eraser === 1);
+
+  /** Hay algo que enseñar en el contexto. */
+  readonly hayContexto = computed(() => this.location() !== null || this.asset() !== null);
+
+  /** Despliega o pliega la ubicación y el activo. */
+  toggleContexto(): void {
+    this.contextoAbierto.update((abierto) => !abierto);
+  }
 
   /** Clave del autoguardado para esta actividad. */
   private get autosaveKey(): string {
@@ -480,8 +516,20 @@ export class ActivityDetailComponent {
     this.dialog.set('none');
   }
 
-  /** Vuelve al listado de actividades del formulario. */
+  /**
+   * Vuelve al listado de actividades del formulario.
+   *
+   * Salvo en un enlace público, donde ese listado no existe: ahí no hay más
+   * formularios ni más actividades que ver, y lo único que queda por decir es
+   * si la respuesta llegó ya a Visitrack. De eso se encarga `/gracias`, que
+   * sigue mirando la cola hasta que deje de haber algo en vuelo.
+   */
   private async exit(): Promise<void> {
+    if (esModoPublico()) {
+      await this.router.navigate(['/gracias'], { replaceUrl: true });
+      return;
+    }
+
     await this.router.navigate(['/formularios', this.surveyId()]);
   }
 

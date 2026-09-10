@@ -820,3 +820,25 @@
 
   option { color: initial; }
 }
+
+/* ── El estado de las notificaciones ───────────────────────────────────────
+ *
+ * Una pastilla y no un botón cuando ya están activadas o bloqueadas: en esos
+ * dos casos no hay nada que pulsar aquí. Apagarlas de verdad solo se puede
+ * desde la barra del navegador, y un botón lo prometería.
+ */
+.profile__badge {
+  padding: 5px 12px;
+  border: 1px solid currentcolor;
+  border-radius: var(--vt-radius-full);
+  font-size: var(--vt-text-xs);
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--vt-ok, #0f7b3f);
+  background: color-mix(in srgb, var(--vt-ok, #0f7b3f) 12%, transparent);
+}
+
+.profile__badge--off {
+  color: var(--vt-text-muted);
+  background: var(--vt-surface-3);
+}

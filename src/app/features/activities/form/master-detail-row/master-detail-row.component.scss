@@ -204,6 +204,25 @@
   border-radius: var(--vt-radius);
 }
 
+.row__field--bloqueado {
+  /* Bloqueado por una regla: se ve, se lee, no se toca. */
+  opacity: 0.75;
+  cursor: not-allowed;
+}
+
+.row__field--pintado,
+.row__field--pintado :is(label, .fld__label, .fld__hint) {
+  /* El color de texto que pidió la regla, sobre la etiqueta y la pregunta. */
+  color: var(--vt-flujo-texto);
+}
+
+.row__field-aviso {
+  margin: 0.35rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  opacity: 0.85;
+}
+
 .row__field--invalid {
   border-color: var(--vt-danger);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--vt-danger) 35%, transparent);

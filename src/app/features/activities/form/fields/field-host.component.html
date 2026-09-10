@@ -3,7 +3,7 @@
 <!-- Marca de obligatorio: siempre en el mismo sitio, encendida en rojo cuando
      la validación lo señala. Los campos de solo presentación no la llevan
      porque no reciben datos. -->
-@if (f.req && !isDisplay()) {
+@if (esObligatorio() && !isDisplay()) {
   <span
     class="fld__flag"
     [class.fld__flag--on]="invalid()"
@@ -28,7 +28,7 @@
 @if (showsLabel()) {
   <label class="fld__label" [attr.for]="'input-' + f.id">
     {{ f.lab }}
-    @if (f.req) {
+    @if (esObligatorio()) {
       <em class="fld__req" title="Campo obligatorio">*</em>
     }
   </label>
@@ -67,15 +67,23 @@
         [value]="text()"
         [placeholder]="f.pho || ''"
         [readOnly]="readOnly()"
-        [invalid]="invalid()"
+        [invalid]="invalid() || !!avisoDeEntrada()"
+        [altoMinimo]="altoDelEditor()"
         (valueChange)="valueChange.emit($event)"
       />
 
-      @if (f.hel) {
-        <small class="fld__rich-help">{{ f.hel }}</small>
+      @if (ayuda()) {
+        <small class="fld__rich-help">{{ ayuda() }}</small>
       }
 
-      @if (invalid()) {
+      <!-- El aviso del flujo va primero: cuando lo hay, el campo tiene algo
+           escrito, así que «este campo es obligatorio» sería mentira. Y con un
+           patrón que se exige el campo ya sale marcado en rojo por el mismo
+           camino que un obligatorio sin responder, de modo que lo único que
+           falta es decir qué se esperaba. -->
+      @if (avisoDeEntrada()) {
+        <small class="fld__rich-error">{{ avisoDeEntrada() }}</small>
+      } @else if (invalid()) {
         <small class="fld__rich-error">Este campo es obligatorio.</small>
       }
     </div>
@@ -116,8 +124,8 @@
           <p class="rating__label">{{ ratingLabel() }}</p>
         }
 
-        @if (f.hel) {
-          <p class="fld__hint">{{ f.hel }}</p>
+        @if (ayuda()) {
+          <p class="fld__hint">{{ ayuda() }}</p>
         }
         @if (invalid()) {
           <p class="fld__error">Elige una calificación.</p>
@@ -137,8 +145,8 @@
         }
       </mat-radio-group>
 
-      @if (f.hel) {
-        <p class="fld__hint">{{ f.hel }}</p>
+      @if (ayuda()) {
+        <p class="fld__hint">{{ ayuda() }}</p>
       }
       @if (invalid()) {
         <p class="fld__error">Elige una opción.</p>
@@ -162,8 +170,8 @@
         }
       </div>
 
-      @if (f.hel) {
-        <p class="fld__hint">{{ f.hel }}</p>
+      @if (ayuda()) {
+        <p class="fld__hint">{{ ayuda() }}</p>
       }
       @if (invalid()) {
         <p class="fld__error">Marca al menos una opción.</p>
@@ -188,8 +196,8 @@
       />
       <mat-datepicker-toggle matIconSuffix [for]="datePicker" [disabled]="readOnly()" />
       <mat-datepicker #datePicker />
-      @if (f.hel) {
-        <mat-hint>{{ f.hel }}</mat-hint>
+      @if (ayuda()) {
+        <mat-hint>{{ ayuda() }}</mat-hint>
       }
       @if (invalid()) {
         <mat-error>Este campo es obligatorio.</mat-error>
@@ -211,8 +219,8 @@
       />
       <mat-timepicker-toggle matIconSuffix [for]="timePicker" [disabled]="readOnly()" />
       <mat-timepicker #timePicker interval="15m" />
-      @if (f.hel) {
-        <mat-hint>{{ f.hel }}</mat-hint>
+      @if (ayuda()) {
+        <mat-hint>{{ ayuda() }}</mat-hint>
       }
       @if (invalid()) {
         <mat-error>Este campo es obligatorio.</mat-error>
@@ -260,8 +268,8 @@
         </mat-form-field>
       </div>
 
-      @if (f.hel) {
-        <p class="fld__hint">{{ f.hel }}</p>
+      @if (ayuda()) {
+        <p class="fld__hint">{{ ayuda() }}</p>
       }
 
       <!-- Media fecha y hora no se guarda: hay que decirlo en el momento, o el
@@ -330,8 +338,8 @@
   @case ('gps') {
     <vt-gps-field
       [label]="f.lab"
-      [help]="f.hel || ''"
-      [required]="!!f.req"
+      [help]="ayuda() || ''"
+      [required]="esObligatorio()"
       [readOnly]="readOnly()"
       [invalid]="invalid()"
       [reading]="geoValue()"
@@ -345,6 +353,12 @@
   @case ('masterdetail') {
     <vt-master-detail-field
       [field]="f"
+      [flujo]="flujo()"
+      [padre]="motor()"
+      [maxFilasDelFlujo]="maxFilasDelFlujo()"
+      [agregarDelFlujo]="agregarDelFlujo()"
+      [editarDelFlujo]="editarDelFlujo()"
+      [eliminarDelFlujo]="eliminarDelFlujo()"
       [value]="value()"
       [readOnly]="readOnly()"
       [invalid]="invalid()"
@@ -386,21 +400,39 @@
   <!-- ── Texto, número, fecha, hora, correo, teléfono, dirección ────────── -->
   @default {
     <mat-form-field appearance="outline" class="fld__control">
+      <!-- Lo que el flujo decidió sobre el teclado va como atributo del propio
+           `input`: así el navegador ya impide pasarse de largo o escribir una
+           letra donde va un número, que es mejor que dejar escribir y avisar
+           después. El aviso de debajo es para lo que el atributo no atrapa —un
+           valor que ya venía guardado, un patrón a medio cumplir—. -->
       <input
         matInput
         [type]="inputType()"
         [value]="text()"
         [placeholder]="f.pho || ''"
         [readonly]="readOnly()"
+        [attr.min]="entrada()?.minimo ?? null"
+        [attr.max]="entrada()?.maximo ?? null"
+        [attr.minlength]="entrada()?.minCaracteres ?? null"
+        [attr.maxlength]="entrada()?.maxCaracteres ?? null"
+        [attr.pattern]="entrada()?.patron ?? null"
         (input)="onText($event)"
       />
-      @if (f.hel) {
-        <mat-hint>{{ f.hel }}</mat-hint>
+      @if (ayuda()) {
+        <mat-hint>{{ ayuda() }}</mat-hint>
       }
-      @if (invalid()) {
+      @if (invalid() && !avisoDeEntrada()) {
         <mat-error>Este campo es obligatorio.</mat-error>
       }
     </mat-form-field>
+
+    <!-- El aviso del flujo va aunque el campo esté marcado: cuando lo hay, hay
+         algo escrito, así que lo que toca decir no es que falte sino qué se
+         esperaba. Quien lo marca en rojo es `showsError`, por el mismo camino
+         que un obligatorio sin responder. -->
+    @if (avisoDeEntrada()) {
+      <p class="fld__aviso">{{ avisoDeEntrada() }}</p>
+    }
   }
 }
 
@@ -412,8 +444,8 @@
     <vt-binary-field
       [fty]="f.fty"
       [label]="f.lab"
-      [help]="f.hel || ''"
-      [required]="!!f.req"
+      [help]="ayuda() || ''"
+      [required]="esObligatorio()"
       [readOnly]="readOnly()"
       [invalid]="invalid()"
       [allowGallery]="allowsGallery()"
@@ -423,8 +455,8 @@
       (valueChange)="valueChange.emit($event)"
     />
 
-    @if (f.hel) {
-      <small class="fld__binary-help">{{ f.hel }}</small>
+    @if (ayuda()) {
+      <small class="fld__binary-help">{{ ayuda() }}</small>
     }
 
     @if (invalid()) {

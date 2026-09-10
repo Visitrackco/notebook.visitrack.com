@@ -2,6 +2,7 @@ import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http'
 import { Injectable, inject } from '@angular/core';
 import { Observable, catchError, tap, throwError, timeout } from 'rxjs';
 
+import { apiBaseUrl } from '../config/api-base';
 import { environment } from '../../../environments/environment';
 import { ConnectivityService } from './connectivity.service';
 
@@ -35,7 +36,15 @@ export class ApiService {
 
   /** URL base según la configuración del entorno. */
   private get baseUrl(): string {
-    return environment.useLocalApi ? environment.localApiUrl : environment.apiUrl;
+    /*
+     * Por `apiBaseUrl` y no leyendo el entorno directamente.
+     *
+     * En modo publico —un formulario abierto desde un enlace, sin sesion— esa
+     * funcion antepone `/public/enlace/<token>`, que es donde vive la lista
+     * blanca de rutas que el servidor sirve sin pedir sesion. Ver
+     * `core/config/api-base.ts`.
+     */
+    return apiBaseUrl();
   }
 
   get<T>(path: string, params?: Record<string, string | number | boolean>): Observable<T> {

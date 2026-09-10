@@ -113,6 +113,20 @@ export const NAVIGATION: NavSection[] = [
         description: 'Actividades por enviar a Visitrack',
       },
       {
+        key: 'flow-emails',
+        label: 'Correos del flujo',
+        route: '/correos-flujo',
+        icon: 'mail',
+        description: 'Los que pidió una regla, y si ya salieron',
+      },
+      {
+        key: 'flow-pushes',
+        label: 'Notificaciones del flujo',
+        route: '/avisos-flujo',
+        icon: 'send',
+        description: 'Las que pidió una regla, y si ya salieron',
+      },
+      {
         key: 'link',
         label: 'Vincular teléfono',
         route: '/vincular',

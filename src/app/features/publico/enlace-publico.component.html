@@ -1,0 +1,99 @@
+<!--
+  La puerta de un enlace público.
+
+  Quien llega aquí no conoce Visitrack, no ha iniciado sesión y probablemente
+  venga de un correo o de un código QR. Por eso todo lo que se dice está escrito
+  para alguien que no sabe nada del sistema: nada de «sincroniza», nada de
+  «actividad», nada de códigos de error.
+
+  Se resuelve con `@if` y no con `@switch` porque dos de los pasos —elegir la
+  ubicación y elegir el activo— pintan exactamente lo mismo, y un `@switch`
+  obligaría a escribir el selector dos veces o a envolverlo en una plantilla
+  aparte para poder repetirlo.
+-->
+<div class="ep">
+  @if (paso() === 'ubicacion' || paso() === 'activo') {
+    <!--
+      El selector, uno solo para las dos cosas.
+
+      Es el mismo `vt-entity-picker` que usa la aplicación con sesión: misma
+      lista, mismo buscador, mismo vacío. Lo único distinto es de dónde salen
+      los datos —de la red en vez de la base— y eso el componente no lo sabe ni
+      le hace falta.
+    -->
+    <vt-entity-picker
+      [icon]="paso() === 'activo' ? 'box' : 'map-pin'"
+      [title]="titulo()"
+      [subtitle]="subtitulo()"
+      [items]="items()"
+      [loading]="cargando()"
+      [searching]="buscando()"
+      [hasMore]="hayMas()"
+      [searchTerm]="busqueda()"
+      [totalCount]="total()"
+      emptyMessage="No hay nada que cuadre con lo que buscas. Prueba con otro nombre, o con el código de la etiqueta."
+      (search)="buscar($event)"
+      (loadMore)="masResultados()"
+      (choose)="elegir($event)"
+    />
+  } @else if (paso() === 'abriendo') {
+    <div class="ep-centro" role="status" aria-live="polite">
+      <span class="ep-rueda" aria-hidden="true"></span>
+      <p class="ep-titulo">Abriendo el formulario…</p>
+      <p class="ep-texto">Un momento. Esto necesita conexión.</p>
+    </div>
+  } @else if (paso() === 'retomar') {
+    <!--
+      Sale antes de crear nada.
+
+      Empezar una respuesta nueva encima de la anterior dejaría enterrada la que
+      quedó sin subir, y aquí no hay ninguna otra pantalla desde donde
+      recuperarla: no hay sesión con la que reconocer a esta persona mañana.
+    -->
+    <div class="ep-centro">
+      <vt-icon name="clipboard" [size]="40" />
+
+      <p class="ep-titulo">Tienes algo sin terminar</p>
+      <p class="ep-texto">
+        En este navegador quedó una respuesta de este mismo formulario que
+        todavía no llegó a su destino. Puedes continuarla o empezar de cero.
+      </p>
+
+      <div class="ep-lista">
+        @for (a of pendientes(); track a.GUID) {
+          <button type="button" class="ep-fila" (click)="retomar(a)">
+            <span class="ep-fila-texto">
+              <span class="ep-fila-nombre">{{ survey()?.Title }}</span>
+              <span class="ep-fila-fecha">
+                Empezada el {{ a.CreatedOn | date: 'd MMM, HH:mm' }}
+              </span>
+            </span>
+            <vt-icon name="chevron" [size]="18" />
+          </button>
+        }
+      </div>
+
+      <button type="button" class="ep-boton ep-boton--suave" (click)="empezarDeNuevo()">
+        Empezar una respuesta nueva
+      </button>
+    </div>
+  } @else if (paso() === 'cerrado') {
+    <div class="ep-centro">
+      <vt-icon name="shield" [size]="40" />
+
+      <p class="ep-titulo">{{ mensaje() }}</p>
+      <p class="ep-texto">{{ detalle() }}</p>
+    </div>
+  } @else {
+    <div class="ep-centro">
+      <vt-icon name="connection-off" [size]="40" />
+
+      <p class="ep-titulo">{{ mensaje() }}</p>
+      <p class="ep-texto">{{ detalle() }}</p>
+
+      <button type="button" class="ep-boton" (click)="reintentar()">
+        Intentar de nuevo
+      </button>
+    </div>
+  }
+</div>

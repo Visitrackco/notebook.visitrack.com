@@ -61,7 +61,11 @@
          disco —de eso se encarga el autoguardado— sino que da la actividad por
          terminada, y ofrecer eso en la página 2 de 8 contradice el recorrido
          que el propio formulario propone. -->
-    @if (isLast()) {
+    @if (isLast() && saveHidden()) {
+      <!-- El flujo lo escondió. Queda el hueco para que la barra no se
+           descuadre al llegar a la última página. -->
+      <span class="pagenav__spacer"></span>
+    } @else if (isLast()) {
       <button
         type="button"
         class="pagenav__save"

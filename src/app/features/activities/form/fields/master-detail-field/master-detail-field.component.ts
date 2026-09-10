@@ -12,6 +12,7 @@ import {
 
 import { allowsBulkPhotos } from '../../../../../core/config/company-rules';
 import { FormEngine } from '../../../../../core/forms/form-engine';
+import { Flujo } from '../../../../../core/forms/flujo-modelo';
 import {
   FieldValue,
   FormField,
@@ -115,6 +116,53 @@ export class MasterDetailFieldComponent {
 
   readonly field = input.required<FormField>();
   readonly value = input<FieldValue>(null);
+
+  /**
+   * El flujo del formulario, para las reglas que corren **dentro** de la fila.
+   *
+   * Cada fila se diligencia con su propio motor y hasta ahora se montaba sin
+   * flujo: una regla escrita sobre un campo de detalle no hacía nada. Se pasa
+   * entero y el motor filtra las suyas por ámbito y por tabla.
+   */
+  readonly flujo = input<Flujo | null>(null);
+
+  /**
+   * El motor del formulario que contiene la tabla.
+   *
+   * Se pasa **el motor**, no sus valores, y no es un detalle: un motor es una
+   * referencia estable mientras la actividad está abierta, así que pasarlo no
+   * hace que nada se recalcule. Pasar sus valores —que cambian con cada tecla—
+   * metía a este componente en un ciclo: cada cambio rehacía el resumen de las
+   * filas, y rehacer el resumen monta un motor por fila, y montar un motor
+   * ejecuta su flujo.
+   *
+   * De aquí sale lo que una regla de fila puede mirar hacia arriba, y se lee
+   * en el momento de abrir la fila, no antes.
+   */
+  readonly padre = input<FormEngine | null>(null);
+
+  /**
+   * Cuántas filas admite la tabla, si una regla lo decidió.
+   *
+   * `null` cuando ninguna dijo nada, y entonces manda el del formulario. Se
+   * decide con una regla porque casi siempre depende de algo —«si el contrato
+   * es básico, cinco equipos como mucho»— y un tope que no se entiende no se
+   * puede negociar.
+   */
+  readonly maxFilasDelFlujo = input<number | null>(null);
+
+  /*
+   * Lo que el flujo decidió sobre las filas. `null` es «no dijo nada».
+   *
+   * Se cruzan con los permisos del formulario y **manda el más restrictivo**,
+   * por lo mismo que el tope de filas: una regla decide sobre lo que se
+   * responde, no sobre cómo está hecho el formulario. Si el formulario no deja
+   * borrar, una regla no lo abre; lo que sí puede es cerrarlo cuando toca —«ya
+   * está aprobada, no se tocan las filas»—.
+   */
+  readonly agregarDelFlujo = input<boolean | null>(null);
+  readonly editarDelFlujo = input<boolean | null>(null);
+  readonly eliminarDelFlujo = input<boolean | null>(null);
   readonly readOnly = input(false);
   readonly invalid = input(false);
   readonly answerGuid = input('');
@@ -168,7 +216,22 @@ export class MasterDetailFieldComponent {
   private readonly pendingRemoval = signal<MasterDetailRow | null>(null);
 
   readonly rows = computed(() => readRows(this.value()));
-  readonly limit = computed(() => rowLimit(this.field().limitRows));
+  /**
+   * El tope de filas: el del formulario y el que una regla haya puesto.
+   *
+   * Manda **el más bajo de los dos**. Una regla que limita a cinco no puede
+   * quedar sin efecto porque el formulario dijera diez, y al revés tampoco: lo
+   * que el formulario prohíbe no lo abre una regla, que decide sobre lo que se
+   * responde y no sobre cómo está hecho el formulario.
+   */
+  readonly limit = computed(() => {
+    const delEsquema = rowLimit(this.field().limitRows);
+    const deLaRegla = this.maxFilasDelFlujo() ?? 0;
+
+    if (delEsquema > 0 && deLaRegla > 0) return Math.min(delEsquema, deLaRegla);
+
+    return delEsquema > 0 ? delEsquema : deLaRegla;
+  });
 
   readonly atLimit = computed(() => {
     const limit = this.limit();
@@ -186,7 +249,8 @@ export class MasterDetailFieldComponent {
 
   readonly canAdd = computed(
     () =>
-      (this.field().mobAdd ?? false) &&
+      // Si una regla lo decidió, manda la regla; si no dijo nada, el formulario.
+      (this.agregarDelFlujo() ?? (this.field().mobAdd ?? false)) &&
       !this.readOnly() &&
       !this.atLimit() &&
       this.ready() &&
@@ -203,14 +267,29 @@ export class MasterDetailFieldComponent {
     () => Boolean(this.field().parentId) && !this.parentValue(),
   );
 
-  readonly canEdit = computed(() => this.field().mobUpd ?? true);
-  readonly canDelete = computed(() => (this.field().mobDel ?? true) && !this.readOnly());
+  readonly canEdit = computed(
+    () => this.editarDelFlujo() ?? (this.field().mobUpd ?? true),
+  );
+
+  readonly canDelete = computed(
+    () => (this.eliminarDelFlujo() ?? (this.field().mobDel ?? true)) && !this.readOnly(),
+  );
 
   /** Por qué el botón de agregar está apagado. Vacío si no lo está. */
   readonly addBlocked = computed(() => {
     if (this.readOnly()) return '';
     if (!this.ready()) return '';
-    if (!(this.field().mobAdd ?? false)) return 'No tienes permiso para agregar registros aquí.';
+    // Una regla que lo cierra se dice, que si no es el peor de los casos: el
+    // botón apagado sin motivo visible y nadie sabe a quién preguntarle. Va
+    // antes que el permiso del formulario porque la regla es la que manda.
+    if (this.agregarDelFlujo() === false) {
+      return 'Una regla del formulario no permite agregar registros ahora.';
+    }
+
+    if (this.agregarDelFlujo() !== true && !(this.field().mobAdd ?? false)) {
+      return 'No tienes permiso para agregar registros aquí.';
+    }
+
     if (this.atLimit()) return `Alcanzaste el máximo de ${this.limit()} registros.`;
     if (this.needsParent()) {
       return 'Depende del campo anterior. Respóndelo para poder agregar registros.';
@@ -1070,6 +1149,33 @@ export class MasterDetailFieldComponent {
     config: DetailConfig,
     info: InheritedSource,
   ): FormEngine {
+    const arriba = this.padre();
+    const flujo = this.flujo();
+    const tabla = this.apiIdDelCampo();
+
+    /*
+     * Que se sepa si la fila corre reglas o no.
+     *
+     * Sin esto, «no pasa nada al abrir la fila» tiene cuatro causas posibles
+     * —no llega el flujo, no hay reglas de esa tabla, la tabla se llama de otra
+     * forma que en la regla, o la condicion no se cumple— y no hay manera de
+     * distinguirlas desde fuera.
+     */
+    const suyas = (flujo?.reglas ?? []).filter(
+      (r) => (r.ambito ?? 'actividad') === 'fila' && (!r.md || r.md === tabla),
+    );
+
+    console.log('[flujo] fila de', tabla, {
+      flujoCargado: !!flujo,
+      reglasEnElFlujo: (flujo?.reglas ?? []).length,
+      reglasDeFila: (flujo?.reglas ?? []).filter((r) => (r.ambito ?? 'actividad') === 'fila')
+        .map((r) => `${r.id} → md=${r.md ?? '(todas)'}`),
+      suyas: suyas.map((r) => r.id),
+      camposDeLaFila: (config.schema ?? []).flatMap((p) =>
+        p.fie.map((f) => (f.apiId ?? '').toString().trim() || f.id),
+      ),
+    });
+
     return new FormEngine({
       questions: config.schema,
       answers: row.JSONValues ?? [],
@@ -1078,11 +1184,79 @@ export class MasterDetailFieldComponent {
         LocationInfo: info.LocationInfo ?? row.LocationInfo,
         AssetInfo: info.AssetInfo ?? row.AssetInfo,
       },
+
+      /*
+       * Y con el flujo, en ámbito de fila.
+       *
+       * Aquí corren las reglas que la tabla declara para lo de dentro, no las
+       * de la actividad: sus tres momentos son abrir la fila, responder en ella
+       * y cerrarla.
+       */
+      flujo,
+      ambito: 'fila',
+      tabla,
+      origenDeLaFila: this.origenDe(row, info),
+
+      /*
+       * Lo de arriba se lee **una vez y sin escuchar**.
+       *
+       * Este motor vive lo que dure la fila abierta; lo que importa es el
+       * estado del formulario en el momento de abrirla. Suscribirse a sus
+       * cambios es lo que provocó el ciclo la vez anterior.
+       */
+      /*
+       * Y el item que dio origen a la fila, como algo que se puede preguntar.
+       *
+       * Es lo primero que se quiere mirar desde dentro —«si la fila es de tal
+       * equipo, pinta esto»— y no era posible: el nombre del item no es un
+       * campo del sub-formulario, es la cabecera de la fila. Con `FILA:nombre`
+       * entra como cualquier otro identificador, y no puede chocar con ninguno
+       * de los campos de dentro.
+       */
+      valoresDeFuera: {
+        ...(arriba ? untracked(() => arriba.valoresParaLasFilas()) : {}),
+        'FILA:nombre': row.Name ?? '',
+      },
+      camposDeFuera: {
+        ...(arriba ? untracked(() => arriba.camposParaLasFilas()) : {}),
+        'FILA:nombre': { apiId: 'FILA:nombre', fty: 'text' },
+      },
     });
+  }
+
+  /** Con qué nombre habla una regla de este campo. */
+  private apiIdDelCampo(): string {
+    const f = this.field();
+    return (f.apiId ?? '').toString().trim() || f.id;
+  }
+
+  /**
+   * El registro del que nació la fila, para el llenado automático.
+   *
+   * Los tres sitios, sin distinguir: la app copia el ítem en `itemsInfo`,
+   * `LocationInfo` y `AssetInfo` a la vez, y `heredar` busca en los tres.
+   */
+  private origenDe(row: MasterDetailRow, info: InheritedSource): Record<string, unknown> {
+    return {
+      Name: row.Name,
+      itemsInfo: info.itemsInfo ?? row.itemsInfo,
+      LocationInfo: info.LocationInfo ?? row.LocationInfo,
+      AssetInfo: info.AssetInfo ?? row.AssetInfo,
+    };
   }
 
   /** Escribe lo respondido en la fila. */
   private commit(row: MasterDetailRow, engine: FormEngine): void {
+    /*
+     * El flujo de la fila, con el momento «al guardar».
+     *
+     * Es el de las reglas de cierre de la fila: la que deja escrito un total,
+     * la que exige algo solo al terminar. Va antes de volcar las respuestas
+     * para que lo que una regla escriba aquí entre en lo que se guarda; al
+     * revés se guardaba lo de antes y el valor aparecía al reabrir la fila.
+     */
+    engine.revisarFlujoAlGuardar();
+
     const answers = engine.toAnswerFields();
     const header = (row.JSONValues ?? []).filter((entry) => entry.id === 'name');
 
@@ -1098,6 +1272,22 @@ export class MasterDetailFieldComponent {
           .toTitles('')
           .filter((title) => title.lab !== '[DEF]')
           .map((title) => ({ lab: title.lab, val: title.val })),
+
+        /*
+         * Y lo que el flujo de **esta fila** quiera que la describa.
+         *
+         * Una regla de ámbito fila corre con los campos de dentro, así que sus
+         * descriptivos son de la fila, no de la actividad: la misma acción sirve
+         * para las dos y el destino sale del ámbito.
+         *
+         * No hace falta marcarlos ni conservarlos: el título de la fila se
+         * rehace entero en cada guardado, así que uno cuya condición dejó de
+         * cumplirse desaparece solo.
+         */
+        ...engine.descriptivosDeFlujo().map((d) => ({
+          lab: d.lab || d.campo,
+          val: d.val,
+        })),
       ],
     };
 

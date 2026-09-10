@@ -1,6 +1,22 @@
 import { Injectable, signal } from '@angular/core';
 
-import { DB_NAME, DB_SCHEMA, DB_VERSION, StoreDefinition } from './schema';
+import { esModoPublico } from '../config/modo-publico';
+import { DB_NAME, DB_NAME_PUBLICO, DB_SCHEMA, DB_VERSION, StoreDefinition } from './schema';
+
+/**
+ * Contra qué base trabaja esta pestaña.
+ *
+ * Es lo único que separa un enlace público de la aplicación con sesión, y por
+ * eso se resuelve aquí y no en cada repositorio: preguntándolo en un solo sitio
+ * no hay forma de que una consulta acabe leyendo de la base equivocada.
+ *
+ * Se decide en cada apertura y no se guarda: el modo lo fija `main.ts` antes de
+ * arrancar y no cambia durante la vida de la pestaña, así que preguntarlo cada
+ * vez cuesta lo mismo y no deja un valor viejo cacheado si algún día cambiara.
+ */
+function nombreDeLaBase(): string {
+  return esModoPublico() ? DB_NAME_PUBLICO : DB_NAME;
+}
 
 /**
  * Acceso de bajo nivel a IndexedDB.
@@ -59,7 +75,7 @@ export class DatabaseService {
         return;
       }
 
-      const request = indexedDB.open(DB_NAME, DB_VERSION);
+      const request = indexedDB.open(nombreDeLaBase(), DB_VERSION);
 
       request.onupgradeneeded = (event) => {
         const db = request.result;
@@ -320,7 +336,7 @@ export class DatabaseService {
     this.close();
 
     return new Promise((resolve, reject) => {
-      const request = indexedDB.deleteDatabase(DB_NAME);
+      const request = indexedDB.deleteDatabase(nombreDeLaBase());
       request.onsuccess = () => resolve();
       request.onerror = () => reject(request.error);
       request.onblocked = () =>

@@ -15,7 +15,6 @@ import {
   isDeletedRecord,
 } from './entity-mappers';
 import { DispatchFilesService } from './dispatch-files.service';
-import { AlertSoundService } from '../services/alert-sound.service';
 import { ToastService } from '../services/toast.service';
 import { BrillantexMailService } from '../rules/brillantex-mail.service';
 
@@ -93,7 +92,6 @@ export class SyncService {
   private readonly connectivity = inject(ConnectivityService);
   private readonly dispatchFiles = inject(DispatchFilesService);
   private readonly toasts = inject(ToastService);
-  private readonly sound = inject(AlertSoundService);
   private readonly router = inject(Router);
 
   /**
@@ -643,8 +641,6 @@ export class SyncService {
         run: () => void this.router.navigate(['/consignas']),
       },
     });
-
-    void this.sound.notify();
   }
 
   /**

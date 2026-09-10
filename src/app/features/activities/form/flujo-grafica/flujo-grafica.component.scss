@@ -1,0 +1,305 @@
+/**
+ * Todo el color sale de los tokens del tema.
+ *
+ * Los seis de las series viven en `styles.scss` como `--vt-grafica-N`: dentro
+ * de estilos encapsulados, `:root[data-theme='dark']` no llega a aplicarse
+ * nunca, así que un componente no puede aclararlos por su cuenta para el modo
+ * oscuro. Ver el comentario de esos tokens.
+ */
+:host {
+  display: block;
+}
+
+.grafica {
+  margin: var(--vt-space-2) 0 0;
+  padding: var(--vt-space-3);
+  background: var(--vt-surface-3);
+  border-radius: var(--vt-radius);
+}
+
+.grafica__titulo {
+  margin-bottom: var(--vt-space-3);
+  font-size: var(--vt-text-base);
+  font-weight: 600;
+  color: var(--vt-text);
+}
+
+.grafica__vacia {
+  margin: 0;
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-muted);
+}
+
+/* ── Los ejes ───────────────────────────────────────────────────────────────
+ *
+ * El del eje Y va girado y pegado a la izquierda, en su propia columna, para no
+ * comerle ancho a lo que se dibuja. El del X va debajo y centrado.
+ *
+ * Los dos son rótulos y no una escala: el número de cada dato ya está escrito a
+ * su lado, así que unas marcas graduadas dirían dos veces lo mismo y ocuparían
+ * el sitio que hace falta para las etiquetas.
+ */
+.grafica__conEjes {
+  display: flex;
+  gap: var(--vt-space-2);
+  align-items: stretch;
+}
+
+.grafica__area {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.grafica__ejeY {
+  flex: 0 0 auto;
+  align-self: center;
+  font-size: 11px;
+  color: var(--vt-text-muted);
+  text-align: center;
+  writing-mode: vertical-rl;
+  rotate: 180deg;
+}
+
+.grafica__ejeX {
+  display: block;
+  margin-top: var(--vt-space-1);
+  font-size: 11px;
+  color: var(--vt-text-muted);
+  text-align: center;
+}
+
+/* ── Barras ─────────────────────────────────────────────────────────────────
+ *
+ * Tumbadas por omisión: en una columna estrecha las etiquetas de unas barras de
+ * pie no caben —«No cumple» debajo de una barra de cuarenta píxeles sale de
+ * canto o cortada—. Así la etiqueta tiene todo el ancho que necesita y se leen
+ * de un vistazo, que es de lo que se trata.
+ *
+ * De pie es lo que se pide cuando lo que importa es **comparar entre sí**: seis
+ * columnas una al lado de otra se ordenan con la vista mejor que seis renglones.
+ * Es una decisión de quien configura el flujo, no una que se pueda acertar sola,
+ * y por eso se pregunta.
+ */
+.grafica__barras {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.grafica__barra {
+  display: grid;
+  grid-template-columns: minmax(0, 7.5rem) 1fr auto;
+  gap: var(--vt-space-2);
+  align-items: center;
+
+  & + & {
+    margin-top: var(--vt-space-2);
+  }
+}
+
+.grafica__carril {
+  display: block;
+  height: 16px;
+  background: color-mix(in srgb, var(--vt-border-strong) 55%, transparent);
+  border-radius: var(--vt-radius-full);
+}
+
+.grafica__relleno {
+  display: block;
+  height: 100%;
+  border-radius: var(--vt-radius-full);
+
+  /* Crece hasta su sitio cuando el flujo recalcula: el salto seco no deja ver
+     que el número cambió por lo que se acaba de responder. */
+  transition: width var(--vt-transition-slow);
+}
+
+.grafica__texto {
+  overflow: hidden;
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.grafica__valor {
+  font-size: var(--vt-text-xs);
+  font-weight: 600;
+  color: var(--vt-text);
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* ── Barras de pie ──────────────────────────────────────────────────────────
+ *
+ * Se reparten el ancho a partes iguales y **no se desplazan**: una gráfica que
+ * hay que arrastrar para verla entera no es un resumen. Con muchas series las
+ * columnas se estrechan hasta que la etiqueta ya no cabe, y para eso están las
+ * tumbadas, que es lo que hay que elegir en ese caso.
+ */
+.grafica__columnas {
+  display: flex;
+  gap: var(--vt-space-2);
+  align-items: flex-end;
+  height: 160px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.grafica__columna {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 2px;
+  align-items: center;
+  min-width: 0;
+  height: 100%;
+}
+
+/* El carril crece con lo que le sobra: lo de arriba y lo de abajo miden lo que
+   miden, y el resto es el alto útil de la barra. */
+.grafica__carrilAlto {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: flex-end;
+  width: 100%;
+  max-width: 56px;
+  background: color-mix(in srgb, var(--vt-border-strong) 55%, transparent);
+  border-radius: var(--vt-radius);
+}
+
+.grafica__rellenoAlto {
+  display: block;
+  width: 100%;
+  border-radius: var(--vt-radius);
+
+  /* Crece hasta su sitio cuando el flujo recalcula, igual que la tumbada. */
+  transition: height var(--vt-transition-slow);
+}
+
+.grafica__textoAbajo {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 11px;
+  color: var(--vt-text);
+  text-align: center;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* ── Circular ────────────────────────────────────────────────────────────── */
+
+.grafica__circular {
+  display: flex;
+  gap: var(--vt-space-4);
+  align-items: center;
+}
+
+.grafica__anillo {
+  flex: 0 0 auto;
+  width: 116px;
+  height: 116px;
+}
+
+.grafica__leyenda {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.grafica__renglon {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--vt-space-2);
+  align-items: center;
+
+  & + & {
+    margin-top: var(--vt-space-1);
+  }
+}
+
+.grafica__muestra {
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+}
+
+.grafica__pct {
+  margin-left: 2px;
+  font-weight: 400;
+  color: var(--vt-text-muted);
+}
+
+/**
+ * En pantalla estrecha el anillo y su leyenda no caben uno al lado del otro.
+ *
+ * Apilados, la leyenda recupera el ancho completo: los textos de las series son
+ * lo primero que se corta cuando la columna se estrecha, y son justamente lo
+ * que hace falta para entender el dibujo.
+ */
+@media (width <= 520px) {
+  .grafica__circular {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .grafica__anillo {
+    align-self: center;
+  }
+}
+
+/* ── Líneas ──────────────────────────────────────────────────────────────── */
+
+.grafica__lineas {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.grafica__guia {
+  stroke: var(--vt-border-strong);
+  stroke-width: 1;
+}
+
+.grafica__trazo {
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.grafica__pies {
+  display: flex;
+  margin-top: var(--vt-space-1);
+}
+
+.grafica__pie {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-width: 0;
+  font-size: 11px;
+  color: var(--vt-text-muted);
+  text-align: center;
+}
+
+.grafica__pie-txt {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.grafica__pie-val {
+  font-weight: 600;
+  color: var(--vt-text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .grafica__relleno,
+  .grafica__rellenoAlto {
+    transition: none;
+  }
+}

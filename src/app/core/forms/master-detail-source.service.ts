@@ -15,6 +15,7 @@ import {
   ListSourceService,
   parseListDescriptors,
 } from './list-source.service';
+import { normalizar } from './flujo-motor';
 import { MasterDetailRow } from './master-detail';
 
 /**
@@ -470,6 +471,153 @@ export class MasterDetailSourceService {
   }
 
   /** La ubicación y el activo de la actividad. */
+  /**
+   * Un registro concreto de los que puede tener una tabla, por su identificador.
+   *
+   * Lo usa el llenado automático: una regla nombra los ítems y aquí se traen
+   * sus datos, que son los que la fila arrastra consigo —y de los que salen
+   * después los valores heredados y las condiciones sobre el origen—.
+   *
+   * Se busca en el mismo sitio del que salen al elegirlos a mano, así que una
+   * fila creada por una regla queda igual que una creada a mano.
+   */
+  async itemPorGuid(config: DetailConfig, guid: string): Promise<unknown | null> {
+    const buscado = (guid ?? '').trim();
+    if (!buscado) return null;
+
+    const registros = await this.registrosDe(config);
+
+    return registros.find((r) => String(r?.['GUID'] ?? '') === buscado) ?? null;
+  }
+
+  /**
+   * El mismo registro, pero buscándolo **por su nombre**.
+   *
+   * Una regla puede nombrar los ítems sin su identificador —se escribieron a
+   * mano, o vienen de otro sitio— y en ese caso el nombre es todo lo que hay.
+   * Se compara sin tildes, sin mayúsculas y sin espacios de sobra, que es como
+   * compara el motor: quien escribe la regla teclea el nombre y quien lo
+   * guardó lo eligió de una lista, y pedir que coincidan carácter a carácter
+   * es pedir que no funcione.
+   *
+   * Si dos ítems se llaman igual gana el primero. No hay forma de desempatar
+   * con lo único que dio la regla, y crear los dos sería peor.
+   */
+  async itemPorNombre(config: DetailConfig, nombre: string): Promise<unknown | null> {
+    const buscado = normalizar((nombre ?? '').trim(), 'solo-valor');
+    if (!buscado) return null;
+
+    const registros = await this.registrosDe(config);
+
+    return (
+      registros.find((r) => normalizar(String(r?.['Name'] ?? ''), 'solo-valor') === buscado) ??
+      null
+    );
+  }
+
+  /**
+   * De dónde salen las filas de esta tabla, según su origen.
+   *
+   * Un solo sitio para el árbol entero: lo usan tanto la búsqueda por
+   * identificador como la búsqueda por nombre, y tenerlo dos veces era la forma
+   * segura de que una de las dos se quedara sin un origen.
+   */
+  private async registrosDe(config: DetailConfig): Promise<Record<string, unknown>[]> {
+    const dueno = this.lists.duenoDeLosCatalogos();
+    if (dueno === null) return [];
+
+    try {
+      switch (config.origin) {
+        case 'locations':
+          return (await this.locations.findByTypeGuid(
+            dueno,
+            config.typeGuid,
+          )) as unknown as Record<string, unknown>[];
+
+        case 'assets':
+          return (await this.assets.findByTypeGuid(
+            dueno,
+            config.typeGuid,
+          )) as unknown as Record<string, unknown>[];
+
+        /*
+         * El inventario vive en otro catálogo, y por eso va aparte.
+         *
+         * Un ítem de inventario no está en `ListsDet`: está en `Items`, y de
+         * qué tipo es lo dice `ItemsTypes` —no la lista del campo—. Cayendo al
+         * caso de abajo se buscaba en la tabla equivocada y no se encontraba
+         * nunca, así que una regla que llenara una tabla de inventario creaba
+         * las filas con el nombre pelado y sin nada que heredar.
+         *
+         * Es el mismo camino que usa el desplegable al elegirlos a mano
+         * (`fromItems`): del tipo sale su `ListIDBD`, y con ese se piden los
+         * ítems. Sin esa vuelta, `config.typeGuid` no casa con el `ItemTypeID`
+         * que guardan.
+         */
+        case 'items': {
+          const tipo = await this.lists.itemTypeOf(config.typeGuid);
+          if (!tipo) return [];
+
+          /*
+           * Un tipo que no se descarga no tiene sus ítems aquí.
+           *
+           * Se eligen contra el servidor, así que buscarlos en el dispositivo
+           * daría vacío siempre. Se devuelve `null` y la fila se crea con lo
+           * que traiga la regla, que es lo mismo que pasa cuando el registro no
+           * está: existe y se puede diligenciar, solo que sin heredar.
+           */
+          if (Number(tipo.IsForSync) !== 1) return [];
+
+          return (await this.items.findByType(
+            dueno,
+            String(tipo.ListIDBD ?? ''),
+          )) as unknown as Record<string, unknown>[];
+        }
+
+        /*
+         * En una tabla de filas en blanco no hay ítem que traer.
+         *
+         * Cada fila nace vacía y no sale de ningún registro, así que no hay
+         * dónde buscar. Va explícito para que se lea como una decisión y no
+         * como un caso que se olvidó.
+         */
+        case 'blank':
+        case 'unavailable':
+          return [];
+
+        /*
+         * Y el resto salen de `ListsDet`: la lista a secas, la del usuario y el
+         * segundo paso de las de dos niveles.
+         *
+         * En los tres, `target` es ya la lista de verdad —el puntero se
+         * resolvió al armar la configuración—, así que se buscan igual. Que a
+         * la hora de elegirlos a mano el usuario vea solo algunos no cambia
+         * dónde están guardados.
+         */
+        default: {
+          const lista = config.target ?? config.definition;
+          if (!lista) return [];
+
+          return (await this.details.findByList(
+            dueno,
+            String(lista.ListIDBD ?? ''),
+          )) as unknown as Record<string, unknown>[];
+        }
+      }
+    } catch (error) {
+      /*
+       * Sin el registro, la fila se crea igual con el nombre que trae la regla.
+       *
+       * Perderá los datos heredados —la ciudad de la sede, el precio del ítem—
+       * pero existirá y se podrá diligenciar, que es infinitamente mejor que no
+       * crearla y dejar la tabla vacía sin decir por qué.
+       */
+      console.warn('[MasterDetail] no se pudieron traer los registros', error);
+
+      return [];
+    }
+  }
+
   async answerContext(answerGuid: string): Promise<{ loc: string; ass: string }> {
     return this.lists.answerContext(answerGuid);
   }

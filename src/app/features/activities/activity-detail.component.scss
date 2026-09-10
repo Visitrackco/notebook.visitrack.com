@@ -93,6 +93,59 @@
 
 /* ── Cabecera fija ─────────────────────────────────────────────────────────── */
 
+/*
+ * El botón que despliega la ubicación y el activo.
+ *
+ * Del tamaño del de volver y con la misma forma: son los dos controles de la
+ * cabecera y leerlos como pareja hace que no haya que buscarlos.
+ */
+.detail__context-toggle {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 1px;
+  align-items: center;
+  height: 36px;
+  padding: 0 var(--vt-space-2);
+  color: var(--vt-text-muted);
+  background: var(--vt-surface-2);
+  border: 1px solid transparent;
+  border-radius: var(--vt-radius-full);
+  cursor: pointer;
+  transition:
+    color var(--vt-transition),
+    background var(--vt-transition),
+    border-color var(--vt-transition);
+
+  &:hover {
+    color: var(--vt-text);
+    background: var(--vt-surface-3);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--vt-brand);
+    outline-offset: 2px;
+  }
+}
+
+/* Desplegado se marca con el color de la aplicación: es un interruptor, y un
+   interruptor tiene que decir en qué posición está sin abrir nada. */
+.detail__context-toggle--open {
+  color: var(--vt-brand);
+  background: var(--vt-brand-tint);
+  border-color: var(--vt-brand);
+}
+
+/* La flecha gira al desplegar. Es la señal que ya se entiende en cualquier
+   plegable, y ahorra tener que rotular el botón en una barra sin sitio. */
+.detail__context-caret {
+  transform: rotate(90deg);
+  transition: transform var(--vt-transition);
+}
+
+.detail__context-toggle--open .detail__context-caret {
+  transform: rotate(-90deg);
+}
+
 .detail__bar {
   position: sticky;
   top: var(--vt-topbar-height);

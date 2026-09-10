@@ -134,6 +134,50 @@
             <p class="profile__hint">«Automático» sigue la configuración de tu sistema.</p>
           </div>
 
+          <!--
+            El fondo de la página, aparte del color de la aplicación.
+
+            Son dos cosas distintas y por eso van en dos campos: uno tiñe los
+            botones y los acentos, el otro es el papel sobre el que se lee. Con
+            un solo selector, elegir un azul de marca oscurecía la pantalla
+            entera y nadie relacionaba una cosa con la otra.
+          -->
+          <div class="profile__field">
+            <span class="profile__field-label">Fondo de la página</span>
+
+            <div class="profile__colors">
+              @for (preset of fondoPresets; track preset.name) {
+                <button
+                  type="button"
+                  class="profile__color"
+                  [class.profile__color--active]="theme.fondoColor() === preset.value"
+                  [style.background]="preset.value || 'var(--vt-bg)'"
+                  [title]="preset.name"
+                  [attr.aria-label]="preset.name"
+                  (click)="setFondoColor(preset.value)"
+                >
+                  @if (theme.fondoColor() === preset.value) {
+                    <vt-icon name="check" [size]="15" />
+                  }
+                </button>
+              }
+
+              <label class="profile__color profile__color--custom" title="Elegir otro fondo">
+                <input
+                  type="color"
+                  [value]="theme.fondoColor() || '#f5f6f8'"
+                  (change)="onCustomFondo($event)"
+                />
+                <span>+</span>
+              </label>
+            </div>
+
+            <p class="profile__hint">
+              El primero deja el fondo que trae la aplicación, que es el que
+              cambia solo entre claro y oscuro.
+            </p>
+          </div>
+
           <div class="profile__field">
             <span class="profile__field-label">Color de la aplicación</span>
 
@@ -185,6 +229,38 @@
               <p>Son tuyas: no afectan a otras cuentas de este equipo.</p>
             </div>
           </header>
+
+          <!--
+            Las notificaciones van con boton y no con interruptor.
+
+            No es una preferencia que se guarde aqui: es un permiso que concede
+            el navegador, y solo lo concede a raiz de un clic. Un interruptor
+            prometeria poder apagarlas, y apagarlas de verdad solo se puede desde
+            la barra de direcciones.
+          -->
+          @if (push.sePuedeOfrecer()) {
+            <div class="profile__switch">
+              <div>
+                <strong>Notificaciones</strong>
+                <span>{{ push.explicacion() }}</span>
+              </div>
+
+              @if (push.estado() === 'encendido') {
+                <span class="profile__badge">Activadas</span>
+              } @else if (push.estado() === 'bloqueado') {
+                <span class="profile__badge profile__badge--off">Bloqueadas</span>
+              } @else {
+                <button
+                  type="button"
+                  class="profile__reset"
+                  [disabled]="push.estado() === 'pidiendo'"
+                  (click)="activarNotificaciones()"
+                >
+                  {{ push.estado() === 'pidiendo' ? 'Esperando…' : 'Activar' }}
+                </button>
+              }
+            </div>
+          }
 
           <div class="profile__switch">
             <div>

@@ -1,0 +1,76 @@
+<!--
+  El final de un enlace público.
+
+  Lo que manda es el estado real del envío, no un agradecimiento: mientras algo
+  siga en vuelo hay que decirlo, porque cerrar la pestaña ahora deja el trabajo
+  atrapado en este navegador y nadie más puede sacarlo de ahí.
+-->
+<div class="gr">
+  <div class="gr-centro">
+    @if (listo()) {
+      <span class="gr-marca gr-marca--ok">
+        <vt-icon name="check" [size]="34" />
+      </span>
+    } @else if (atascadas().length) {
+      <span class="gr-marca gr-marca--mal">
+        <vt-icon name="alert" [size]="34" />
+      </span>
+    } @else {
+      <span class="gr-rueda" aria-hidden="true"></span>
+    }
+
+    <h1 class="gr-titulo" aria-live="polite">{{ titulo() }}</h1>
+    <p class="gr-texto">{{ explicacion() }}</p>
+
+    <!--
+      Cuántos archivos faltan, cuando faltan.
+
+      Un número que baja es lo que convierte una espera en algo tolerable: sin
+      él, treinta segundos con una rueda girando se leen como algo colgado.
+    -->
+    @if (!listo() && esperandoArchivos()) {
+      <p class="gr-detalle">
+        @for (p of pendientes(); track p.answer.GUID) {
+          @if (p.blockingFiles > 0) {
+            <span>
+              Faltan {{ p.blockingFiles }} de {{ p.totalFiles }} archivos por confirmar.
+            </span>
+          }
+        }
+      </p>
+    }
+
+    <div class="gr-botones">
+      @if (listo()) {
+        <!-- Lo único que se puede querer hacer después de terminar: otra. No
+             hay a dónde volver, así que no se ofrece ninguna salida más. -->
+        <button type="button" class="gr-boton" (click)="otro()">
+          Llenar otra
+        </button>
+      } @else {
+        <button type="button" class="gr-boton" [disabled]="reintentando()"
+                (click)="reintentar()">
+          {{ reintentando() ? 'Enviando…' : 'Intentar ahora' }}
+        </button>
+
+        <!--
+          Empezar otra sin esperar a que ésta acabe de subir.
+
+          Se puede: la cola vive en el armazón y sigue trabajando al cambiar de
+          pantalla. Va en discreto porque lo que conviene es esperar unos
+          segundos, no porque esté mal.
+        -->
+        <button type="button" class="gr-boton gr-boton--suave" (click)="otro()">
+          Llenar otra de todas formas
+        </button>
+      }
+    </div>
+
+    @if (!listo()) {
+      <p class="gr-nota">
+        Lo que no alcance a enviarse queda guardado en este navegador. Para
+        recuperarlo hay que volver a abrir el mismo enlace en este mismo equipo.
+      </p>
+    }
+  </div>
+</div>

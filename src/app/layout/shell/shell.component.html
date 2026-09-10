@@ -209,6 +209,38 @@
       </div>
     </header>
 
+    <!--
+      El aviso para encender las notificaciones.
+
+      Enterrado en el perfil no lo activa nadie: hay que ofrecerlo donde se
+      trabaja. Pero **no se pide solo al entrar**, y eso no es timidez: el
+      navegador solo concede el permiso a raíz de un clic, y Chrome castiga a los
+      sitios cuyo aviso se rechaza mucho poniéndolos en «modo silencioso» — con
+      lo que después ya no se puede ni preguntar. Un botón que la persona pulsa
+      cuando quiere es lo que protege esa única oportunidad.
+
+      Y se puede posponer. Una tira que no se va nunca deja de leerse a los dos
+      días, y entonces tampoco la activa nadie.
+    -->
+    @if (push.conviene()) {
+      <div class="shell__aviso-push" role="status">
+        <vt-icon name="alert" [size]="18" />
+
+        <div class="shell__aviso-push-texto">
+          <strong>Activa las notificaciones</strong>
+          <span>Entérate de una consigna nueva sin tener que entrar a mirar.</span>
+        </div>
+
+        <button type="button" class="shell__aviso-push-si" (click)="activarPush()">
+          Activar
+        </button>
+
+        <button type="button" class="shell__aviso-push-no" (click)="push.posponer()">
+          Ahora no
+        </button>
+      </div>
+    }
+
     <main class="shell__content">
       <router-outlet />
     </main>

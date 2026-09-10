@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import { resolveCatalogOwnerId } from '../config/company-rules';
+import { esModoPublico } from '../config/modo-publico';
 import { Asset, ItemType, ListDefinition, ListDetail, LocationForm } from '../models/entities.model';
 import {
   AssetRepository,
@@ -13,6 +14,7 @@ import {
 import { SurveyAnswerRepository } from '../repositories/survey-answer.repository';
 import { AuthService } from '../services/auth.service';
 import { ConnectivityService } from '../services/connectivity.service';
+import { EnlacePublicoService } from '../services/enlace-publico.service';
 import { DescriptorConfig, FormField, ResolvedDescriptor } from './form-schema';
 import { ListSearchApi, ListSearchQuery } from './list-search.api';
 
@@ -186,6 +188,7 @@ export class ListSourceService {
   private readonly api = inject(ListSearchApi);
   private readonly auth = inject(AuthService);
   private readonly connectivity = inject(ConnectivityService);
+  private readonly enlace = inject(EnlacePublicoService);
 
   /**
    * Resuelve las opciones de un campo.
@@ -454,7 +457,7 @@ export class ListSourceService {
     } else if (filter.ass) {
       items = await this.details.findByAsset(ownerId, filter.ass, listId);
     } else if (filter.loc) {
-      items = await this.details.findByLocation(ownerId, filter.loc);
+      items = await this.details.findByLocation(ownerId, filter.loc, listId);
     } else if (filter.parent) {
       items = await this.details.findByParent(ownerId, filter.parent);
     } else {
@@ -469,6 +472,28 @@ export class ListSourceService {
        * Con búsqueda sí hay que recorrerlos: lo que se busca puede estar en
        * cualquier posición.
        */
+      items = await this.details.findByList(ownerId, listId, search ? undefined : PAGE);
+    }
+
+    /*
+     * Si el filtro no dejó nada, la lista entera.
+     *
+     * Los filtros por ubicación y por ítem padre acotan lo que **puede** estar
+     * atado a ellos, pero no toda lista lo está: un catálogo corriente en una
+     * actividad con sede no tiene ni un ítem con esa `LocationID`, y quedarse
+     * ahí deja el selector vacío sin decir por qué. Cuando el acote no encuentra
+     * nada, se ofrece la lista completa, que es lo que quien responde espera
+     * ver.
+     *
+     * Solo para esos dos: `byusers`, `parentlist` y `ass` acotan por algo que
+     * el propio campo declara, y ahí un resultado vacío es la respuesta buena.
+     */
+    if (items.length === 0 && (filter.loc || filter.parent)) {
+      console.log(
+        `[Listas] «${definition.Name}» sin ítems con ${describeQuery(filter)};` +
+          ' se ofrece la lista completa',
+      );
+
       items = await this.details.findByList(ownerId, listId, search ? undefined : PAGE);
     }
 
@@ -582,11 +607,85 @@ export class ListSourceService {
   // ───────────────────────────────────────────────────────────────────────────
 
   /** Ubicaciones de un tipo. El `lst` del campo es el GUID del tipo. */
+  /**
+   * Ubicaciones o activos de un tipo, traidos de la red.
+   *
+   * Solo en modo publico. Devuelve las opciones con la misma forma que la via
+   * local —mismo `src`, mismos descriptivos vacios— para que el campo no note
+   * de donde salieron.
+   *
+   * Una sola pagina: son desplegables, y el servidor ya acota a veinticinco y
+   * busca por nombre y etiqueta. Quien no encuentre lo suyo escribe mas, que es
+   * como se usa un desplegable largo.
+   */
+  private async deLaRedPorTipo(
+    que: 'ubicacion' | 'activo',
+    typeGuid: string,
+    search: string,
+  ): Promise<ListSource> {
+    if (!typeGuid) {
+      return none('El formulario no indica de qué tipo salen las opciones de este campo.');
+    }
+
+    try {
+      const filas =
+        que === 'ubicacion'
+          ? await this.enlace.ubicacionesDeTipo(typeGuid, search)
+          : await this.enlace.activosDeTipo(typeGuid, search);
+
+      if (filas.length === 0) {
+        return none(
+          search
+            ? 'Nada coincide con lo que buscas. Prueba con otro nombre o con el código de la etiqueta.'
+            : 'No hay opciones disponibles para este campo.',
+        );
+      }
+
+      return {
+        origin: 'online',
+        truncated: filas.length >= PAGE,
+        message: '',
+        choices: filas.map((fila: LocationForm | Asset) => ({
+          id: String(fila.GUID ?? ''),
+          txt: String(fila.Name ?? ''),
+          des: [],
+          preview: [],
+          src: {
+            item: fila,
+            lst: typeGuid,
+            ent: que === 'ubicacion' ? 1 : 12,
+            loc: que === 'ubicacion',
+          },
+        })),
+      };
+    } catch {
+      /*
+       * Sin conexion no se puede responder este campo, y hay que decirlo.
+       *
+       * En un enlace publico no hay copia local a la que caer: lo que no venga
+       * de la red no esta. Callarlo dejaria un desplegable vacio que parece
+       * roto.
+       */
+      return none('No se pudieron traer las opciones. Comprueba tu conexión e inténtalo de nuevo.');
+    }
+  }
+
   private async fromLocations(
     ownerId: number,
     typeGuid: string,
     search: string,
   ): Promise<ListSource> {
+    /*
+     * En un enlace publico, en linea.
+     *
+     * Aqui no hubo sincronizacion: en la base solo esta la ubicacion que el
+     * enlace fijo, si es que fijo alguna. Un desplegable de ubicaciones salia
+     * vacio con el mensaje «descargalas desde Sincronizacion», que a quien
+     * abrio un enlace no le dice nada y no puede hacer — y el formulario se
+     * quedaba sin poder terminarse, sin ningun error a la vista.
+     */
+    if (esModoPublico()) return this.deLaRedPorTipo('ubicacion', typeGuid, search);
+
     const found = await this.locations.findByTypeGuid(ownerId, typeGuid);
     const matched = applySearch(found, search);
 
@@ -647,6 +746,9 @@ export class ListSourceService {
     typeGuid: string,
     search: string,
   ): Promise<ListSource> {
+    // En un enlace publico, en linea. Ver la nota de `fromLocations`.
+    if (esModoPublico()) return this.deLaRedPorTipo('activo', typeGuid, search);
+
     // Sin búsqueda basta con la primera página. Con búsqueda hay que
     // recorrerlos todos: lo escrito puede estar en el último de veinte mil.
     const found = await this.assets.findByTypeGuid(
@@ -898,6 +1000,18 @@ export class ListSourceService {
   private ownerId(): number | null {
     const user = this.auth.currentUser();
     return user ? resolveCatalogOwnerId(user) : null;
+  }
+
+  /**
+   * Con qué usuario están guardados los catálogos de esta sesión.
+   *
+   * Lo necesita quien consulta los repositorios por su cuenta —el llenado
+   * automático de una tabla— y no hay motivo para que cada uno vuelva a
+   * resolverlo: un catálogo puede estar bajo otro usuario del mismo equipo, y
+   * esa regla vive aquí.
+   */
+  duenoDeLosCatalogos(): number | null {
+    return this.ownerId();
   }
 
   /**

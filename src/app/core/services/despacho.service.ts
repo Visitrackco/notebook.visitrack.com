@@ -43,12 +43,26 @@ export interface DespachoPendiente {
 export class DespachoRepository extends BaseRepository<DespachoPendiente> {
   protected readonly storeName = 'DespachosFlujo';
 
-  /** Lo que queda por mandar de una actividad. */
+  /**
+   * Lo que queda por mandar de una actividad.
+   *
+   * Sin las que esperan dueño: mandar una consigna sin destinatario es crearla
+   * para nadie.
+   */
   async pendientesDe(answerGuid: string): Promise<DespachoPendiente[]> {
     return this.query({
       index: 'byAnswerGUID',
       range: answerGuid,
-      filter: (d) => !d.Enviado,
+      filter: (d) => !d.Enviado && String(d.Destinatario ?? '').trim() !== '',
+    });
+  }
+
+  /** Las que siguen sin saber a quién van. Retienen el envío de la actividad. */
+  async sinDestinatario(answerGuid: string): Promise<DespachoPendiente[]> {
+    return this.query({
+      index: 'byAnswerGUID',
+      range: answerGuid,
+      filter: (d) => !d.Enviado && String(d.Destinatario ?? '').trim() === '',
     });
   }
 
@@ -116,6 +130,23 @@ export class DespachoService {
       );
 
       if (repetido) return;
+
+      /*
+       * Si esta misma consigna ya estaba apuntada **esperando dueño**, se le
+       * pone: no se crea otra. Es lo que pasa al resolverla después de guardar.
+       */
+      const esperando = ya.find(
+        (d) =>
+          !d.Enviado &&
+          String(d.Destinatario ?? '').trim() === '' &&
+          String(d.Regla ?? '') === String(despacho.Regla ?? '') &&
+          String(d.SurveyID) === String(despacho.SurveyID),
+      );
+
+      if (esperando && String(despacho.Destinatario ?? '').trim()) {
+        await this.repo.put({ ...esperando, Destinatario: despacho.Destinatario });
+        return;
+      }
 
       await this.repo.put({
         ...despacho,

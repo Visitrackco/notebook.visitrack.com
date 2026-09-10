@@ -1,0 +1,82 @@
+<div class="llamadas">
+  @for (una of llamadas(); track una.llave) {
+    <div class="llamadas__una">
+      <div class="llamadas__linea">
+        <!--
+          El botón solo cuando la regla dijo que se dispara pulsando.
+
+          Una que sale sola no tiene nada que pulsar, y ofrecer un botón apagado
+          ahí solo invitaría a tocarlo esperando algo.
+        -->
+        @if (porBoton(una)) {
+          <button
+            type="button"
+            class="llamadas__boton"
+            [class.llamadas__boton--apagado]="!sePuedePulsar(una)"
+            [disabled]="!sePuedePulsar(una)"
+            (click)="pulsar(una)"
+          >
+            {{ rotulo(una) }}
+          </button>
+        }
+
+        @if (una.estado === 'vuelo') {
+          <span class="llamadas__girando" aria-hidden="true"></span>
+
+          <!-- El nombre de lo que se está esperando, no «cargando»: con dos
+               consultas en marcha hay que poder saber cuál va lenta. -->
+          <span class="llamadas__esperando">Consultando «{{ una.titulo }}»…</span>
+        }
+      </div>
+
+      <!--
+        Y lo que pasó, con palabras.
+
+        El mensaje viene redactado del intermediario pensando en quien está
+        diligenciando, así que se enseña tal cual. Reescribirlo aquí daría dos
+        redacciones del mismo fallo.
+      -->
+      @if (una.estado === 'error' && una.mensaje) {
+        <div class="llamadas__error" role="alert">
+          <span class="llamadas__error-marca" aria-hidden="true">!</span>
+
+          <div class="llamadas__error-cuerpo">
+            <p class="llamadas__error-texto">{{ una.mensaje }}</p>
+
+            <!-- Y si no tiene arreglo desde aqui, se dice: sin esto se pulsa
+                 «reintentar» una y otra vez esperando que cambie algo. -->
+            @if (!una.reintentable) {
+              <p class="llamadas__error-nota">Volver a intentarlo no va a cambiar el resultado.</p>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- «Falta la cédula» no es un fallo: es lo normal mientras se
+           diligencia, y por eso se dice en gris y no en rojo. -->
+      @if (una.estado === 'falta' && una.mensaje) {
+        <p class="llamadas__nota">{{ una.mensaje }}</p>
+      }
+
+      <!--
+        Y si lo que respondió fue un archivo, se enseña.
+
+        Hoy **no se guarda en la actividad** —el porqué largo está en
+        `archivosDeIntegracion`, en el ejecutor— y una integración que trae un
+        PDF y no deja ni rastro en pantalla es indistinguible de una que falló
+        en silencio. Con esto se ve que el servicio contestó, con qué, y se lee
+        que ese archivo todavía no viaja con la actividad.
+      -->
+      @if (archivo(una); as archivo) {
+        @if (vistaPrevia(una); as fuente) {
+          <img class="llamadas__miniatura" [src]="fuente" [alt]="archivo.nombre" />
+        }
+
+        <p class="llamadas__nota">Llegó «{{ archivo.nombre }}» · {{ comoSeLee(archivo) }}</p>
+        <p class="llamadas__nota">
+          Todavía no se guarda en la actividad: no viajará con ella al sincronizar.
+        </p>
+      }
+    </div>
+  }
+</div>

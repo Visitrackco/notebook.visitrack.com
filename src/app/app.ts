@@ -3,6 +3,7 @@ import { RouterOutlet } from '@angular/router';
 
 import { DatabaseService } from './core/database/database.service';
 import { ThemeService } from './core/services/theme.service';
+import { LluviaEmojisComponent } from './shared/components/lluvia-emojis/lluvia-emojis.component';
 import { ToastsComponent } from './shared/components/toasts/toasts.component';
 
 /**
@@ -16,7 +17,7 @@ import { ToastsComponent } from './shared/components/toasts/toasts.component';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, ToastsComponent],
+  imports: [LluviaEmojisComponent, RouterOutlet, ToastsComponent],
   template: `
     @if (db.upgradeBlocked()) {
       <div class="app-blocked">
@@ -44,6 +45,15 @@ import { ToastsComponent } from './shared/components/toasts/toasts.component';
       de inicio de sesión.
     -->
     <vt-toasts />
+
+    <!--
+      Y las caritas del flujo, aquí por lo mismo que los avisos.
+
+      Ocupan la ventana entera y flotan por encima de todo: dentro del
+      formulario se recortarían en el borde de la lista de campos y subirían con
+      el desplazamiento de la página. Ver LluviaEmojisComponent.
+    -->
+    <vt-lluvia-emojis />
   `,
   styles: [
     `

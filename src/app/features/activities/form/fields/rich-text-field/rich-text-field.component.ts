@@ -69,6 +69,19 @@ export class RichTextFieldComponent {
   readonly readOnly = input(false);
   readonly invalid = input(false);
 
+  /**
+   * El alto mínimo del área de escritura, en píxeles, cuando lo pide un flujo.
+   *
+   * `null` deja el de la hoja de estilos, que es el de siempre. Llega en
+   * píxeles y no en líneas porque quien sabe lo que mide una línea es quien
+   * dibuja: el motor cuenta líneas y no sabe de píxeles ni debe saberlo.
+   *
+   * Solo mueve el mínimo. El techo se queda donde está: un editor que crece sin
+   * final deja el botón de guardar fuera de la pantalla, y ahí ya no se sale
+   * del campo.
+   */
+  readonly altoMinimo = input<number | null>(null);
+
   readonly valueChange = output<string>();
 
   private readonly editorRef = viewChild<ElementRef<HTMLElement>>('editor');

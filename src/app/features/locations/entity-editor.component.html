@@ -98,6 +98,7 @@
                 <vt-field-host
                   [field]="field"
                   [value]="eng.valueOf(field.id)"
+                  [obligatorioDelFlujo]="eng.estadoDeFlujo(field.id)?.obligatorio ?? null"
                   [invalid]="eng.showsError(field)"
                   [answerGuid]="binaryOwner()"
                   [parentValue]="eng.parentValueOf(field)"

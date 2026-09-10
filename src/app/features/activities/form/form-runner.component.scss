@@ -480,6 +480,64 @@ vt-page-nav {
  * Discreto a propósito. Es una ayuda, no una acción del formulario: compitiendo
  * en peso con «Guardar» estaría reclamando una atención que no le corresponde.
  */
+/*
+ * El aviso que tapa la pantalla mientras se espera a que un correo quede pedido.
+ *
+ * Tapa de verdad —`position: fixed` sobre todo— porque para eso está: el modo
+ * síncrono existe para que no se pueda seguir tocando el formulario hasta que
+ * el correo esté. Un aviso que solo se ve pero deja seguir sería el modo
+ * asíncrono con otra pintura.
+ *
+ * Por encima de la barra de páginas y de los atajos, y por debajo de los avisos
+ * de Material: si algo falla, el mensaje de error tiene que poder verse.
+ */
+.runner__esperando {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  background: rgb(0 0 0 / 45%);
+}
+
+.runner__esperando-caja {
+  display: flex;
+  gap: var(--vt-space-3);
+  align-items: center;
+  max-width: min(28rem, 88vw);
+  padding: var(--vt-space-4) var(--vt-space-5);
+  color: var(--vt-text);
+  background: var(--vt-surface);
+  border-radius: var(--vt-radius-lg);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 25%);
+}
+
+.runner__esperando-rueda {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  border: 3px solid var(--vt-border);
+  border-top-color: var(--vt-primary, #1b95d0);
+  border-radius: 50%;
+  animation: runner-gira 0.8s linear infinite;
+}
+
+.runner__esperando-texto {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+@keyframes runner-gira {
+  to { transform: rotate(360deg); }
+}
+
+/* Sin movimiento la rueda se queda quieta; lo que dice que se está esperando es
+   el texto, que se lee con o sin animación. */
+@media (prefers-reduced-motion: reduce) {
+  .runner__esperando-rueda { animation: none; }
+}
+
 .runner__shortcuts {
   position: fixed;
   right: var(--vt-space-4);
@@ -585,5 +643,88 @@ vt-page-nav {
         color: var(--vt-flujo-texto);
       }
     }
+  }
+}
+
+/*
+ * El velo mientras se espera a un servicio externo.
+ *
+ * Gemelo del de la app. Translucido y no opaco a proposito: el formulario se
+ * sigue viendo, que es lo que dice que no se ha ido a ninguna parte. Lo que
+ * esta pasando es que un campo se esta llenando solo, y taparlo entero
+ * convertiria una espera de dos segundos en una interrupcion.
+ */
+.runner__velo {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /* Los toques no llegan al velo: quien bloquea de verdad es
+     `runner__main--esperando`, que apaga el formulario entero. Asi el velo no
+     se come un clic que el usuario creia dar sobre la pagina. */
+  pointer-events: none;
+  background: color-mix(in srgb, var(--vt-bg) 72%, transparent);
+}
+
+.runner__velo-caja {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vt-space-2);
+  align-items: center;
+  max-width: 20rem;
+  padding: var(--vt-space-5) var(--vt-space-6);
+  text-align: center;
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-border);
+  border-radius: var(--vt-radius-lg, 14px);
+  box-shadow: 0 8px 28px rgb(0 0 0 / 18%);
+}
+
+.runner__velo-rueda {
+  width: 26px;
+  height: 26px;
+  border: 3px solid var(--vt-border-strong);
+  border-top-color: var(--vt-text);
+  border-radius: 50%;
+  animation: runner-velo-gira 0.8s linear infinite;
+}
+
+.runner__velo-titulo {
+  margin: 0;
+  font-weight: 600;
+}
+
+.runner__velo-nota {
+  margin: 0;
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-muted);
+}
+
+/*
+ * El formulario se apaga entero mientras se espera.
+ *
+ * `pointer-events: none` y no `disabled` campo a campo: son decenas de tipos
+ * de control, y apagarlos uno a uno dejaria fuera al que se anada manana. Es la
+ * misma decision que el `AbsorbPointer` de la app.
+ */
+.runner__main--esperando {
+  pointer-events: none;
+  user-select: none;
+}
+
+@keyframes runner-velo-gira {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Sin movimiento la rueda se queda quieta y se nota igual: lo que dice que se
+   esta esperando es el texto de al lado. */
+@media (prefers-reduced-motion: reduce) {
+  .runner__velo-rueda {
+    animation: none;
   }
 }

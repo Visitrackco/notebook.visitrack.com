@@ -35,13 +35,31 @@
 export const DB_NAME = 'VisitrackWeb';
 
 /**
+ * Nombre de la base cuando la pestaña sirve un enlace público.
+ *
+ * **Otra base, no otro store.** Un enlace público no tiene sesión con la que
+ * separar sus datos de los de nadie: si compartiera base con la aplicación
+ * normal, sus borradores, sus archivos y su cola de subida convivirían con los
+ * de quien tenga la sesión abierta en ese mismo navegador, distinguidos solo
+ * por un `UserID` que en este caso es el del usuario que el enlace lleva
+ * quemado — el mismo que puede estar usando la aplicación de verdad.
+ *
+ * Con dos bases el aislamiento no depende de que ninguna consulta se acuerde de
+ * filtrar. El esquema es el mismo (`DB_SCHEMA`), así que todos los repositorios
+ * funcionan igual sin enterarse de en cuál están.
+ */
+export const DB_NAME_PUBLICO = 'VisitrackPublico';
+
+/**
  * Versión del esquema. Subir SIEMPRE que se agregue un store o un índice.
  *
  * Historial:
  *  - 1: esquema inicial (equivalente a la v65 del SQLite móvil).
  *  - 2: store `Workflows` — flujos de trabajo, entidad 100.
+ *  - 4: store `CorreosFlujo` — los correos que pide una regla, por encolar.
+ *  - 5: store `PushFlujo` — las notificaciones que pide una regla, por encolar.
  */
-export const DB_VERSION = 3;
+export const DB_VERSION = 5;
 
 /** Definición de un índice secundario dentro de un store. */
 export interface IndexDefinition {
@@ -286,6 +304,38 @@ export const DB_SCHEMA: readonly StoreDefinition[] = [
     indexes: [
       { name: 'byAnswerGUID', keyPath: 'AnswerGUID' },
       { name: 'byEnviado', keyPath: 'Enviado' },
+    ],
+  },
+  {
+    name: 'CorreosFlujo',
+    keyPath: 'ID',
+    autoIncrement: true,
+    description:
+      'Correos que pidio una regla de flujo y todavia no estan en la cola del servidor. El ' +
+      'correo NO se manda desde el navegador: se apunta, se manda al servidor cuando la ' +
+      'actividad ya esta en Visitrack con sus archivos, y es el servidor quien lo envia. Las ' +
+      'credenciales del buzon no bajan al cliente, asi que aqui viaja el identificador del ' +
+      'proveedor o su area, nunca el servidor ni la contrasena. `Cuerpo` trae el HTML con las ' +
+      'variables ya resueltas y escapadas: el servidor no sabe leer un formulario.',
+    indexes: [
+      { name: 'byAnswerGUID', keyPath: 'AnswerGUID' },
+      { name: 'byEncolado', keyPath: 'Encolado' },
+    ],
+  },
+  {
+    name: 'PushFlujo',
+    keyPath: 'ID',
+    autoIncrement: true,
+    description:
+      'Notificaciones que pidio una regla de flujo y todavia no estan en la cola del ' +
+      'servidor. Gemelo de `CorreosFlujo`, y con el mismo trato: el aviso NO se manda desde ' +
+      'el navegador, se apunta y lo envia el servidor cuando la actividad ya esta arriba. La ' +
+      'diferencia esta en `Para`: aqui van PERSONAS y no direcciones —identificadores, o las ' +
+      'palabras @asignado y @creador, que el servidor resuelve contra la actividad—, porque a ' +
+      'que aparatos llega solo lo sabe el servidor mirando las sesiones vivas de cada quien.',
+    indexes: [
+      { name: 'byAnswerGUID', keyPath: 'AnswerGUID' },
+      { name: 'byEncolado', keyPath: 'Encolado' },
     ],
   },
   {

@@ -27,6 +27,8 @@ import {
   blocksGallery,
   isDisplayOnly,
 } from '../../../../core/forms/form-schema';
+import { FormEngine } from '../../../../core/forms/form-engine';
+import { Flujo } from '../../../../core/forms/flujo-modelo';
 import { GpsReading } from '../../../../core/services/geolocation.service';
 import { IconComponent } from '../../../../shared/components/icon/icon.component';
 import { BinaryFieldComponent } from './binary-field/binary-field.component';
@@ -154,6 +156,24 @@ export class FieldHostComponent {
   readonly invalid = input(false);
 
   /**
+   * Si el flujo dijo algo sobre exigir este campo. `null` cuando no dijo nada.
+   *
+   * Llega resuelto desde el formulario, que es quien tiene el motor. Aquí no se
+   * puede leer `f.req` a secas: ese es el del esquema, y una regla puede
+   * haberlo cambiado en cualquiera de los dos sentidos.
+   */
+  readonly obligatorioDelFlujo = input<boolean | null>(null);
+
+  /**
+   * Si este campo se exige, contando lo que el flujo decidió.
+   *
+   * Es lo que decide el asterisco y el `required` del control. Sin esto, la
+   * marca de obligatorio y lo que de verdad se exige al guardar decían cosas
+   * distintas en cuanto una regla tocaba el campo.
+   */
+  readonly esObligatorio = computed(() => this.obligatorioDelFlujo() ?? !!this.field().req);
+
+  /**
    * Los límites que el flujo puso a este campo: desde, hasta y qué días.
    *
    * Llegan del motor de flujos ya resueltos por el formulario. Aquí solo se
@@ -174,6 +194,60 @@ export class FieldHostComponent {
   /** La dirección de la imagen, si una regla la cambió. */
   readonly imagenDelFlujo = input<string | null>(null);
 
+  /**
+   * La nota de ayuda, si una regla la puso.
+   *
+   * `null` es «ninguna regla dijo nada» y entonces se enseña la del formulario;
+   * la cadena vacía sí es una decisión —«quítale la ayuda»— y por eso se
+   * distinguen con `??` y no con `||`.
+   */
+  readonly ayudaDelFlujo = input<string | null>(null);
+
+  /** El alto de un campo de texto largo, en líneas, si una regla lo decidió. */
+  readonly lineasDelFlujo = input<number | null>(null);
+
+  /**
+   * Lo que una regla le puso al teclado: entre qué números, entre cuántos
+   * caracteres y con qué patrón.
+   *
+   * Van juntas y no una entrada por cosa, igual que los límites de una fecha:
+   * son la misma clase de decisión —restricciones del editor— y repartirlas en
+   * cinco entradas más no habría dicho nada nuevo.
+   */
+  readonly entrada = input<{
+    minimo?: number;
+    maximo?: number;
+    minCaracteres?: number;
+    maxCaracteres?: number;
+    patron?: string;
+    patronMensaje?: string;
+  } | null>(null);
+
+  /**
+   * El flujo entero y el motor del formulario.
+   *
+   * Solo los usa la tabla de detalle: cada fila se diligencia con su propio
+   * motor y necesita las reglas que la tabla declara para lo de dentro, y lo
+   * que hay respondido fuera. Los demás campos ni los miran.
+   */
+  readonly flujo = input<Flujo | null>(null);
+
+  readonly motor = input<FormEngine | null>(null);
+
+  /** Cuántas filas admite una tabla, si una regla lo decidió. */
+  readonly maxFilasDelFlujo = input<number | null>(null);
+
+  /*
+   * Qué se puede hacer con las filas, si una regla lo decidió.
+   *
+   * `null` es «no lo decidió nadie», que no es lo mismo que `false`: el campo se
+   * comporta como diga el formulario, igual que cuando no hay flujo.
+   */
+  readonly agregarDelFlujo = input<boolean | null>(null);
+  readonly editarDelFlujo = input<boolean | null>(null);
+  readonly eliminarDelFlujo = input<boolean | null>(null);
+
+
   /** El enunciado que toca enseñar: el de la regla, si lo hay. */
   readonly enunciado = computed(() => {
     const f = this.field();
@@ -182,6 +256,78 @@ export class FieldHostComponent {
 
   /** La imagen que toca enseñar: la de la regla, si la hay. */
   readonly imagen = computed(() => this.imagenDelFlujo() || this.field().url);
+
+  /** La ayuda que toca enseñar: la de la regla, si alguna la puso. */
+  readonly ayuda = computed(() => this.ayudaDelFlujo() ?? this.field().hel ?? '');
+
+  /**
+   * El alto mínimo del editor de texto largo, en píxeles.
+   *
+   * Se traduce aquí y no en el motor porque son píxeles, y el motor no sabe de
+   * píxeles: él dice cuántas líneas y cada plataforma sabe lo que mide una
+   * suya. `null` deja el alto de siempre.
+   */
+  readonly altoDelEditor = computed(() => {
+    const lineas = this.lineasDelFlujo();
+    return lineas && lineas > 0 ? Math.round(lineas * 22) : null;
+  });
+
+  /**
+   * Qué está mal en lo respondido, según lo que el flujo pidió del teclado.
+   *
+   * Vacío cuando está bien — y también cuando el campo está sin responder: de
+   * eso ya se encarga el obligatorio, y decir «escribe al menos veinte
+   * caracteres» en un campo intacto es regañar antes de empezar.
+   *
+   * Se comprueba aquí y no en el motor por lo mismo que los límites de una
+   * fecha: el motor solo vuelve a mirar cuando algo se responde, y para
+   * entonces el campo ya se escribió entero. Esto avisa mientras se teclea.
+   */
+  readonly avisoDeEntrada = computed(() => {
+    const reglas = this.entrada();
+    const texto = this.text().trim();
+
+    if (!reglas || !texto) return '';
+
+    if (reglas.maxCaracteres !== undefined && texto.length > reglas.maxCaracteres) {
+      return `Caben ${reglas.maxCaracteres} caracteres y van ${texto.length}`;
+    }
+
+    if (reglas.minCaracteres !== undefined && texto.length < reglas.minCaracteres) {
+      return `Escribe al menos ${reglas.minCaracteres} caracteres`;
+    }
+
+    const numero = Number(texto.replace(',', '.'));
+
+    if (Number.isFinite(numero)) {
+      if (reglas.minimo !== undefined && numero < reglas.minimo) {
+        return `El mínimo es ${reglas.minimo}`;
+      }
+
+      if (reglas.maximo !== undefined && numero > reglas.maximo) {
+        return `El máximo es ${reglas.maximo}`;
+      }
+    }
+
+    /*
+     * El patrón se construye aquí cada vez, y no una y se guarda: el motor ya
+     * comprobó que compila, así que lo que queda es barato y no hay estado que
+     * mantener sincronizado con una regla que puede cambiar de patrón en la
+     * tecla siguiente.
+     */
+    if (reglas.patron) {
+      try {
+        if (!new RegExp(reglas.patron).test(texto)) {
+          return reglas.patronMensaje || 'No tiene el formato que se espera';
+        }
+      } catch {
+        // Un patrón que no compila no puede rechazar nada: el motor no lo
+        // habría anotado, y si llegara igual es mejor dejar responder.
+      }
+    }
+
+    return '';
+  });
 
   /**
    * La fecha mínima que se puede elegir.

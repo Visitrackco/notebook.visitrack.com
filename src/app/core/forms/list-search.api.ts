@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { firstValueFrom, timeout } from 'rxjs';
 
-import { environment } from '../../../environments/environment';
+import { apiBaseUrl } from '../config/api-base';
 import { ListDetail } from '../models/entities.model';
 
 /** Lo que espera `/searchList`. Los nombres son los del backend, sin traducir. */
@@ -55,7 +55,15 @@ export class ListSearchApi {
   private readonly http = inject(HttpClient);
 
   private get baseUrl(): string {
-    return environment.useLocalApi ? environment.localApiUrl : environment.apiUrl;
+    /*
+     * Por `apiBaseUrl` y no leyendo el entorno directamente.
+     *
+     * En modo publico —un formulario abierto desde un enlace, sin sesion— esa
+     * funcion antepone `/public/enlace/<token>`, que es donde vive la lista
+     * blanca de rutas que el servidor sirve sin pedir sesion. Ver
+     * `core/config/api-base.ts`.
+     */
+    return apiBaseUrl();
   }
 
   async search(

@@ -737,3 +737,85 @@
     display: none;
   }
 }
+
+/* ── La tira que ofrece encender las notificaciones ─────────────────────────
+ *
+ * Sobre el contenido y no dentro de él: es de la aplicación, no de la pantalla
+ * que se esté viendo, y tiene que seguir ahí al cambiar de sección.
+ *
+ * Con el color de la marca en un filo y no de fondo entero: no es una alerta
+ * —no ha pasado nada malo— es un ofrecimiento, y un bloque de color en lo alto
+ * de cada pantalla se lee como que algo va mal.
+ */
+.shell__aviso-push {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vt-space-3);
+  align-items: center;
+  margin: var(--vt-space-4) var(--vt-space-6) 0;
+  padding: var(--vt-space-3) var(--vt-space-4);
+  color: var(--vt-text);
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-rule);
+  border-left: 3px solid var(--vt-brand);
+  border-radius: var(--vt-radius);
+}
+
+.shell__aviso-push vt-icon {
+  color: var(--vt-brand);
+}
+
+.shell__aviso-push-texto {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.shell__aviso-push-texto strong {
+  font-size: var(--vt-text-sm);
+  font-weight: 600;
+}
+
+.shell__aviso-push-texto span {
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-muted);
+}
+
+.shell__aviso-push-si {
+  padding: 8px 18px;
+  color: var(--vt-text-on-primary);
+  background: var(--vt-brand);
+  border: 0;
+  border-radius: var(--vt-radius);
+  font: inherit;
+  font-size: var(--vt-text-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.shell__aviso-push-si:hover {
+  filter: brightness(0.9);
+}
+
+/* «Ahora no» en discreto: es una salida, no una opción a la par. */
+.shell__aviso-push-no {
+  padding: 8px 12px;
+  color: var(--vt-text-muted);
+  background: transparent;
+  border: 0;
+  font: inherit;
+  font-size: var(--vt-text-sm);
+  cursor: pointer;
+}
+
+.shell__aviso-push-no:hover {
+  color: var(--vt-text);
+}
+
+@media (max-width: 720px) {
+  .shell__aviso-push {
+    margin: var(--vt-space-3) var(--vt-space-2) 0;
+  }
+}

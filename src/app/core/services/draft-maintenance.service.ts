@@ -4,7 +4,6 @@ import { Router } from '@angular/router';
 import { SurveyAnswer } from '../models/entities.model';
 import { SurveyAnswerRepository } from '../repositories/survey-answer.repository';
 import { DataRevisionService } from '../sync/data-revision.service';
-import { AlertSoundService } from './alert-sound.service';
 import { AuthService } from './auth.service';
 import { DraftPolicyService } from './draft-policy.service';
 import { RetentionPolicyService } from './retention-policy.service';
@@ -51,7 +50,6 @@ export class DraftMaintenanceService {
   private readonly answers = inject(SurveyAnswerRepository);
   private readonly auth = inject(AuthService);
   private readonly toasts = inject(ToastService);
-  private readonly sound = inject(AlertSoundService);
   private readonly revisions = inject(DataRevisionService);
   private readonly router = inject(Router);
 
@@ -194,8 +192,6 @@ export class DraftMaintenanceService {
         run: () => void this.router.navigate(['/borradores']),
       },
     });
-
-    void this.sound.notify();
   }
 
   /**

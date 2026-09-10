@@ -54,6 +54,7 @@ const ASSET_COLUMNS: Record<string, string> = {
   MARKE: 'Make',
   MARCA: 'Make',
   MAKE: 'Make',
+  MARK: 'Make',
   BRAND: 'Make',
 
   MODEL: 'Model',
@@ -63,6 +64,10 @@ const ASSET_COLUMNS: Record<string, string> = {
   SERIE: 'SerialNumber',
   SERIALNUMBER: 'SerialNumber',
   SERIALNO: 'SerialNumber',
+  NUMEROSERIE: 'SerialNumber',
+  NUMERODESERIE: 'SerialNumber',
+  NROSERIE: 'SerialNumber',
+  SN: 'SerialNumber',
 
   NAME: 'Name',
   NOMBRE: 'Name',
@@ -71,6 +76,22 @@ const ASSET_COLUMNS: Record<string, string> = {
   DESCRIPTION: 'Description',
   DESCRIPCION: 'Description',
 };
+
+/**
+ * El sufijo de un `ASS_…`, sin lo que no distingue.
+ *
+ * Mayúsculas, sin tildes y sin guiones ni espacios: `ASS_MARKE`, `ass_marca`,
+ * `ASS_Nro_Serie` y `ASS_NÚMERO DE SERIE` apuntan al mismo sitio. El
+ * identificador lo escribe a mano quien diseña el formulario, y una letra de
+ * más dejaba el campo vacío sin decir por qué.
+ */
+function normalizar(sufijo: string): string {
+  return sufijo
+    .toUpperCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^A-Z0-9]/g, '');
+}
 
 /**
  * ¿El valor por defecto de este campo se hereda de otro registro?
@@ -126,10 +147,26 @@ export function resolveInheritedDefault(field: FormField, source: InheritedSourc
     return record ? text(record[direct.key]) : '';
   }
 
+  const origen = originOf(field);
+  const record = asRecord(source[origen]);
+  if (!record) return '';
+
+  /*
+   * Un campo del activo marcado con la bandera, pero cuyo identificador es el
+   * de una **columna**: `MAKE`, `MODELO`, `SERIAL`.
+   *
+   * Aquí solo se miraba dentro de `jsonValues`, así que la marca —que vive en
+   * su propia columna— no se encontraba nunca y el campo nacía vacío. Los
+   * `ASS_…` ya salen por arriba; esto cubre a los que el diseñador nombró sin
+   * el prefijo.
+   */
+  if (origen === 'AssetInfo') {
+    const deColumna = fromAsset(`ASS_${ref.toUpperCase()}`, record);
+    if (deColumna) return deColumna;
+  }
+
   // Un identificador cualquiera: es un campo del propio registro, guardado en
   // su `jsonValues`.
-  const record = asRecord(source[originOf(field)]);
-  if (!record) return '';
 
   const entry = fieldsOf(record['jsonValues']).find(
     (item) => String(item?.['id'] ?? '') === ref,
@@ -171,12 +208,29 @@ function fromAsset(token: string, assetInfo: unknown): string {
   const asset = asRecord(assetInfo);
   if (!asset) return '';
 
-  const columna = ASSET_COLUMNS[token.slice(4)];
-  if (columna) return text(asset[columna]);
+  /*
+   * La columna primero; si está vacía, los campos del tipo.
+   *
+   * `Make`, `Model` y `SerialNumber` son columnas del activo, pero un equipo
+   * dado de alta antes de que existieran las trae en blanco, y su marca vive
+   * donde vivía entonces: en los campos propios del tipo. Darlo por perdido al
+   * ver la columna vacía dejaba el campo heredado sin valor teniéndolo al lado.
+   */
+  const columna = ASSET_COLUMNS[normalizar(token.slice(4))];
 
-  // Un sufijo que no es de la tabla: será un campo propio del tipo de activo.
-  const entry = fieldsOf(asset['jsonValues']).find(
-    (item) => String(item?.['id'] ?? '').toUpperCase() === token,
+  if (columna) {
+    const deLaTabla = text(asset[columna]).trim();
+    if (deLaTabla) return deLaTabla;
+  }
+
+  // Vale el identificador tal cual, el sufijo suelto o el nombre de la columna:
+  // el diseñador de tipos pudo nombrarlo de cualquiera de las tres formas.
+  const acepta = new Set(
+    [token, token.slice(4), columna ?? ''].filter(Boolean).map(normalizar),
+  );
+
+  const entry = fieldsOf(asset['jsonValues']).find((item) =>
+    acepta.has(normalizar(String(item?.['id'] ?? ''))),
   );
 
   return entry ? text(entry['val']) : '';

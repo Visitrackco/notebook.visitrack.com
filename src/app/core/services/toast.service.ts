@@ -1,7 +1,56 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 
-/** Qué se está contando. Define el color de la marca y el icono. */
+import { SONIDO_DEL_TONO, SonidoDeAviso, TonoDeAviso } from '../forms/flujo-modelo';
+import { AlertSoundService } from './alert-sound.service';
+
+/** Qué se está contando. Define el color de la marca, el icono y el sonido. */
 export type ToastTone = 'info' | 'success' | 'warning' | 'error';
+
+/**
+ * Qué suena en cada clase de aviso.
+ *
+ * Que **todos** suenen, y no solo unos pocos elegidos a mano, es a propósito: en
+ * campo la pantalla se mira a ratos, y un mensaje que solo se ve es un mensaje
+ * que se pierde. El que tenga que salir callado lo pide con `sonido: 'ninguno'`.
+ *
+ * El aviso y el error comparten sonido porque son tres y no cuatro; ver
+ * `AlertSoundService` para el porqué.
+ */
+const SONIDO_DEL_TOAST: Record<ToastTone, SonidoDeAviso> = {
+  info: 'info',
+  success: 'ok',
+  warning: 'alerta',
+  error: 'alerta',
+};
+
+/**
+ * Cómo se ve en pantalla el tono que decidió una regla del flujo.
+ *
+ * Son dos vocabularios distintos a propósito: el del motor describe **qué clase
+ * de mensaje es** —lo decide quien diseña el flujo— y el de aquí describe cómo
+ * se pinta. Traducir en un solo sitio evita que cada pantalla se invente la
+ * suya.
+ */
+export function toneDelTono(tono: TonoDeAviso): ToastTone {
+  switch (tono) {
+    case 'ok':
+      return 'success';
+
+    case 'alerta':
+      return 'warning';
+
+    case 'error':
+      return 'error';
+
+    default:
+      return 'info';
+  }
+}
+
+/** El sonido que le toca a un tono del flujo. */
+export function sonidoDelTono(tono: TonoDeAviso): SonidoDeAviso {
+  return SONIDO_DEL_TONO[tono] ?? 'info';
+}
 
 /** Un aviso en pantalla. */
 export interface Toast {
@@ -19,6 +68,14 @@ export interface Toast {
 
   /** Cuánto se queda. `0` lo deja hasta que se cierre a mano. */
   duration: number;
+
+  /**
+   * Qué suena al salir. Vacío significa el que le toca al tono.
+   *
+   * `'ninguno'` lo deja mudo: para el que acompaña a otro que ya sonó, o el que
+   * se repite en cada página y acabaría cansando.
+   */
+  sonido?: SonidoDeAviso;
 }
 
 /** Cuánto dura por omisión. */
@@ -48,6 +105,8 @@ const DEFAULT_MS = 8000;
  */
 @Injectable({ providedIn: 'root' })
 export class ToastService {
+  private readonly sound = inject(AlertSoundService);
+
   private readonly items = signal<Toast[]>([]);
 
   readonly toasts = this.items.asReadonly();
@@ -63,9 +122,20 @@ export class ToastService {
       icon: input.icon ?? iconOf(input.tone),
       action: input.action,
       duration: input.duration ?? DEFAULT_MS,
+      sonido: input.sonido,
     };
 
     this.items.update((current) => [...current, toast]);
+
+    /*
+     * Suena, y no se espera a que suene.
+     *
+     * El aviso tiene que aparecer aunque el navegador no deje reproducir nada
+     * —pasa hasta que quien mira ha pulsado algo en la página— y aunque el
+     * archivo tarde: lo que informa es el texto, el sonido solo hace que se
+     * mire. Encadenarlos dejaría el mensaje esperando por el altavoz.
+     */
+    void this.sound.sonar(toast.sonido ?? SONIDO_DEL_TOAST[toast.tone]);
 
     if (toast.duration > 0) {
       setTimeout(() => this.dismiss(toast.id), toast.duration);
@@ -83,6 +153,11 @@ export class ToastService {
 
   error(title: string, detail?: string): void {
     this.show({ title, detail, tone: 'error' });
+  }
+
+  /** Para lo que no está mal pero hay que mirar. */
+  warning(title: string, detail?: string): void {
+    this.show({ title, detail, tone: 'warning' });
   }
 
   dismiss(id: number): void {

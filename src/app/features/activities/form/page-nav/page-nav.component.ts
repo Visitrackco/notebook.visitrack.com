@@ -43,6 +43,16 @@ export class PageNavComponent {
   /** Guardando: bloquea el botón para no enviar dos veces. */
   readonly saving = input(false);
 
+  /**
+   * Si una regla del flujo escondió el botón de guardar.
+   *
+   * Se esconde de verdad y no se deshabilita: un botón apagado invita a
+   * buscar qué falta para encenderlo, y aquí no falta nada — es que en esta
+   * actividad no se guarda. Para «falta algo» está `bloquear-guardado`, que sí
+   * deja intentarlo y explica qué corregir.
+   */
+  readonly saveHidden = input(false);
+
   readonly goTo = output<number>();
   readonly save = output<void>();
 

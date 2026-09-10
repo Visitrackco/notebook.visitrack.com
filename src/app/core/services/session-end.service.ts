@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Router } from '@angular/router';
 
+import { esModoPublico } from '../config/modo-publico';
 import { AuthService } from './auth.service';
 import { NotifyService } from './notify.service';
 import { SessionsApi } from './sessions.api';
@@ -65,6 +66,23 @@ export class SessionEndService {
    * @returns si este fue el que efectivamente cerró.
    */
   async handle(detail: string): Promise<boolean> {
+    /*
+     * En un enlace publico no hay sesion que cerrar, y cerrarla seria destruir
+     * el trabajo.
+     *
+     * La «sesion» de una pestaña de enlace es un usuario sembrado sin token: no
+     * caduca, no se cierra desde otro equipo y ningun 401 puede estar hablando
+     * de ella. Los que llegan hablan de otra cosa —una integracion que el
+     * servidor no autorizo, tipicamente— y tratarlos como el final de la sesion
+     * echaba a quien estaba diligenciando a la pantalla de inicio, con lo
+     * escrito a medias y sin ninguna forma de volver. Desde fuera se ve como si
+     * la pagina se hubiera recargado sola.
+     *
+     * Lo que corresponde con ese 401 es lo que ya hace la pantalla de la
+     * llamada: decir que no se pudo consultar y dejar reintentar.
+     */
+    if (esModoPublico()) return false;
+
     if (this.ending || !this.auth.isAuthenticated()) return false;
 
     /**

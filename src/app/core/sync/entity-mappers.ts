@@ -227,6 +227,11 @@ const mapSurvey: Mapper = (r, userId) => ({
   DeviceMaintType: n(r['DeviceMaintType']),
   DeviceMaintValue: n(r['DeviceMaintValue']),
   StatusEnabled: n(r['StatusEnabled']),
+  // Nulo o ausente es «nadie lo ha tocado» = si. `n()` lo pasaria a 0, que
+  // apagaria la creacion de actividades en todos los formularios de golpe.
+  CreateEnabled: r['CreateEnabled'] === null || r['CreateEnabled'] === undefined
+    ? 1
+    : n(r['CreateEnabled']),
   isStatusBar: n(r['isStatusBar']),
   JSONStatuses:
     typeof r['JSONStatuses'] === 'string'

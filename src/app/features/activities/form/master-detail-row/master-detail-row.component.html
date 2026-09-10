@@ -84,15 +84,44 @@
          dentro de una fila se responde lo mismo y con las mismas reglas, y
          cambiarles el aspecto haría pensar que son otra cosa. -->
     <div class="row__body">
-      @for (field of level.engine.visibleFields(); track field.id) {
+      <!-- La clave lleva el sello del campo: cuando una regla le reescribe el
+           valor, el control se rehace en vez de quedarse con lo que habia. Sin
+           esto, «poner el valor», «calcular» o «traer del registro» dejaban el
+           dato bien guardado y la pantalla mostrando lo de antes hasta cerrar y
+           volver a abrir la fila. Es lo mismo que hace el formulario de fuera. -->
+      @for (field of level.engine.visibleFields(); track field.id + ':' + selloDe(field.id)) {
+        <!-- Lo que el flujo de la fila decidio para este campo: el color de
+             fondo, el del texto, si queda bloqueado y el mensaje que lo
+             acompaña. Es lo mismo que hace el formulario de fuera: dentro de
+             una fila se responde igual, y una regla que pinta un campo tiene
+             que pintarlo aqui tambien. -->
+        @let deLaRegla = level.engine.estadoDeFlujo(field.id);
+
+        <!-- Los botones que la regla de la fila colgó de este campo. Dentro de
+             una fila se responde igual que fuera, así que se pintan igual. -->
+        @if (level.engine.botonesDe(field.id, 'antes'); as antes) {
+          @if (antes.length) {
+            <vt-flujo-botones [botones]="antes" (mostrar)="destapar($event)" />
+          }
+        }
+
         <div
           class="row__field"
           [class.row__field--invalid]="level.engine.showsError(field)"
+          [class.row__field--bloqueado]="deLaRegla?.soloLectura === true"
+          [class.row__field--pintado]="!!deLaRegla?.colorTexto"
+          [attr.inert]="deLaRegla?.soloLectura === true ? '' : null"
+          [style.background-color]="deLaRegla?.color || null"
+          [style.--vt-flujo-texto]="deLaRegla?.colorTexto || null"
           [id]="'row-field-' + field.id"
         >
           <vt-field-host
             [field]="field"
             [value]="level.engine.valueOf(field.id)"
+            [obligatorioDelFlujo]="deLaRegla?.obligatorio ?? null"
+            [limites]="limitesDe(deLaRegla)"
+            [textoDelFlujo]="deLaRegla?.texto ?? null"
+            [imagenDelFlujo]="deLaRegla?.imagen ?? null"
             [invalid]="level.engine.showsError(field)"
             [answerGuid]="level.answerGuid"
             [parentValue]="level.engine.parentValueOf(field)"
@@ -101,9 +130,34 @@
             (valueChange)="onValue(level, field, $event)"
             (descriptorsChange)="onDescriptors(level, field, $event)"
           />
+
+          @if (deLaRegla?.mensaje) {
+            <p class="row__field-aviso">{{ deLaRegla?.mensaje }}</p>
+          }
+
+          <!-- Y la gráfica, si la regla puso una. Dentro de una fila se
+               responde igual que fuera, así que se pinta igual. -->
+          @if (deLaRegla?.grafica; as grafica) {
+            <vt-flujo-grafica [grafica]="grafica" [destapada]="estaDestapada(grafica)" />
+          }
         </div>
+
+        @if (level.engine.botonesDe(field.id, 'despues'); as despues) {
+          @if (despues.length) {
+            <vt-flujo-botones [botones]="despues" (mostrar)="destapar($event)" />
+          }
+        }
       } @empty {
         <p class="row__empty">Este registro no tiene preguntas.</p>
+      }
+
+      <!-- Los botones que puso el flujo de la fila, debajo de sus campos. Una
+           fila es un formulario pequeño con su propio mundo: sus reglas ponen
+           sus botones, y no se mezclan con los de la actividad de fuera. -->
+      @if (level.engine.botonesSueltos(); as botones) {
+        @if (botones.length) {
+          <vt-flujo-botones [botones]="botones" (mostrar)="destapar($event)" />
+        }
       }
     </div>
 

@@ -119,6 +119,7 @@
   <div
     #editor
     class="rte__editor"
+    [style.min-height.px]="altoMinimo()"
     [attr.contenteditable]="readOnly() ? null : 'true'"
     [attr.data-placeholder]="placeholder() || 'Escribe aquí…'"
     [attr.aria-readonly]="readOnly()"

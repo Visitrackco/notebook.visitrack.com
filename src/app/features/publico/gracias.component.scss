@@ -1,0 +1,160 @@
+/*
+ * El final de un enlace público. Una sola cosa en pantalla, centrada: quien la
+ * ve acaba de terminar y lo único que necesita saber es si ya puede irse.
+ */
+
+.gr {
+  min-height: 100dvh;
+  display: flex;
+  background: var(--vt-bg);
+}
+
+.gr-centro {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 40px 24px;
+  text-align: center;
+  color: var(--vt-text-muted);
+}
+
+/* ── La marca de arriba ─────────────────────────────────────────────────── */
+
+.gr-marca {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 66px;
+  height: 66px;
+  border-radius: 50%;
+}
+
+/*
+ * Verde y rojo propios, no los tokens suaves del tema.
+ *
+ * Es lo primero y a veces lo único que se mira en esta pantalla: con los tonos
+ * apagados del resto de la aplicación hay que leer el texto para saber si salió
+ * bien, y entonces la marca no sirve de nada.
+ */
+.gr-marca--ok {
+  background: rgba(15, 123, 63, 0.12);
+  color: #0f7b3f;
+}
+
+.gr-marca--mal {
+  background: rgba(198, 40, 40, 0.12);
+  color: #c62828;
+}
+
+.gr-rueda {
+  width: 30px;
+  height: 30px;
+  border: 3px solid var(--vt-border);
+  border-top-color: var(--vt-brand);
+  border-radius: 50%;
+  animation: gr-gira 0.8s linear infinite;
+}
+
+@keyframes gr-gira {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gr-rueda { animation: none; }
+}
+
+/* ── Texto ──────────────────────────────────────────────────────────────── */
+
+.gr-titulo {
+  margin: 4px 0 0;
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--vt-text);
+}
+
+.gr-texto {
+  margin: 0;
+  max-width: 46ch;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.gr-detalle {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--vt-text-subtle);
+}
+
+/*
+ * La nota de qué pasa con lo que no subió, en pequeño y abajo.
+ *
+ * Es importante pero no es lo que hay que leer primero: puesta arriba compite
+ * con el estado, que es la respuesta a la pregunta que trae esta persona.
+ */
+.gr-nota {
+  margin: 8px 0 0;
+  max-width: 44ch;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--vt-text-subtle);
+}
+
+/* ── Botones ────────────────────────────────────────────────────────────── */
+
+.gr-botones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 6px;
+}
+
+.gr-boton {
+  padding: 11px 24px;
+  border: none;
+  border-radius: 10px;
+  background: var(--vt-brand);
+  color: var(--vt-text-on-primary);
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/*
+ * El boton solido se **oscurece** al pasar por encima, no se aclara.
+ *
+ * Con `brightness(1.06)` el color de marca se lavaba hacia un tono mas palido y
+ * de lejos se leia como un boton desactivado — justo al reves de lo que tiene
+ * que decir un hover. Bajar el brillo es ademas lo que se espera de un boton
+ * solido: parece que se hunde.
+ */
+.gr-boton:hover:not(:disabled) {
+  filter: brightness(0.9);
+}
+
+.gr-boton:disabled {
+  cursor: default;
+  opacity: 0.65;
+}
+
+/* Irse a medias es posible, pero no es lo que se propone. */
+.gr-boton--suave {
+  background: transparent;
+  color: var(--vt-text-muted);
+  font-weight: 500;
+  text-decoration: underline;
+}
+
+.gr-boton--suave:hover {
+  filter: none;
+  color: var(--vt-text);
+}

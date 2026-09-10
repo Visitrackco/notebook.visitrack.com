@@ -185,6 +185,8 @@ export class CommandPaletteComponent {
       make('Formularios', 'clipboard', '/formularios'),
       make('Borradores', 'pen', '/borradores'),
       make('Pendientes por subir', 'cloud-upload', '/pendientes'),
+      make('Correos del flujo', 'mail', '/correos-flujo'),
+      make('Notificaciones del flujo', 'send', '/avisos-flujo'),
       make('Ubicaciones', 'map-pin', '/ubicaciones'),
       make('Sincronización', 'refresh', '/sincronizacion'),
       make('Archivos', 'file', '/archivos'),

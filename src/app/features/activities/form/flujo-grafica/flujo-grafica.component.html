@@ -1,0 +1,164 @@
+<!--
+  Escondida hasta que un botón la pida.
+
+  No se dibuja «apagada» ni se deja el hueco: mientras nadie la pida, aquí no
+  hay nada. Un recuadro vacío esperando ocuparía sitio en mitad del formulario
+  y no diría qué falta para llenarlo.
+-->
+@if (seVe()) {
+  <figure class="grafica">
+    @if (titulo()) {
+      <figcaption class="grafica__titulo">{{ titulo() }}</figcaption>
+    }
+
+    @if (vacia()) {
+      <p class="grafica__vacia">Todavía no hay nada que mostrar aquí.</p>
+    } @else {
+      @switch (tipo()) {
+        <!-- ── Circular ──────────────────────────────────────────────────────── -->
+        @case ('circular') {
+          <div class="grafica__circular">
+            <!-- `aria-hidden`: el dibujo no dice nada que no esté escrito en la
+                 leyenda de al lado, y leerlo dos veces solo estorba. -->
+            <svg class="grafica__anillo" viewBox="0 0 100 100" aria-hidden="true">
+              @for (sector of sectores(); track $index) {
+                <path [attr.d]="sector.d" [style.fill]="sector.color" />
+              }
+            </svg>
+
+            <!-- Qué es cada color, con su número y su parte del total. Un anillo
+                 sin leyenda obliga a adivinar de qué es cada trozo. -->
+            <ul class="grafica__leyenda">
+              @for (dato of datos(); track $index) {
+                <li class="grafica__renglon">
+                  <span class="grafica__muestra" [style.background]="dato.color"></span>
+                  <span class="grafica__texto">{{ dato.txt }}</span>
+                  <span class="grafica__valor">
+                    {{ dato.etiqueta }}
+                    @if (porcentajeDe(dato.val); as pct) {
+                      <span class="grafica__pct">({{ pct }})</span>
+                    }
+                  </span>
+                </li>
+              }
+            </ul>
+          </div>
+        }
+
+        <!-- ── Líneas ────────────────────────────────────────────────────────── -->
+        @case ('lineas') {
+          <div class="grafica__conEjes">
+            @if (ejeY()) {
+              <span class="grafica__ejeY">{{ ejeY() }}</span>
+            }
+
+            <div class="grafica__area">
+              <svg
+                class="grafica__lineas"
+                [attr.viewBox]="'0 0 ' + anchoLienzo + ' ' + altoLienzo"
+                aria-hidden="true"
+              >
+                @for (y of guias(); track $index) {
+                  <line
+                    class="grafica__guia"
+                    x1="0"
+                    [attr.y1]="y"
+                    [attr.x2]="anchoLienzo"
+                    [attr.y2]="y"
+                  />
+                }
+
+                <polyline class="grafica__trazo" [attr.points]="puntos()" [style.stroke]="colorLinea()" />
+
+                <!-- Un punto por dato: con tres o cuatro, la línea sola no deja ver
+                     dónde cae cada uno. -->
+                @for (p of coordenadas(); track $index) {
+                  <circle [attr.cx]="p.x" [attr.cy]="p.y" r="3.5" [style.fill]="colorLinea()" />
+                }
+              </svg>
+
+              <!-- Las etiquetas van fuera del SVG: repartidas con maquetación normal
+                   se cortan solas y heredan el tipo de letra del formulario. -->
+              <div class="grafica__pies">
+                @for (dato of datos(); track $index) {
+                  <span class="grafica__pie">
+                    <span class="grafica__pie-txt">{{ dato.txt }}</span>
+                    <span class="grafica__pie-val">{{ dato.etiqueta }}</span>
+                  </span>
+                }
+              </div>
+
+              @if (ejeX()) {
+                <span class="grafica__ejeX">{{ ejeX() }}</span>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- ── Barras ────────────────────────────────────────────────────────── -->
+        @default {
+          <div class="grafica__conEjes">
+            @if (ejeY()) {
+              <span class="grafica__ejeY">{{ ejeY() }}</span>
+            }
+
+            <div class="grafica__area">
+              @if (orientacion() === 'vertical') {
+                <!--
+                  De pie.
+
+                  Otra maquetación entera y no la misma girada: aquí la etiqueta
+                  cabe solo lo ancho que sea su columna, así que va debajo y en
+                  dos líneas si hace falta, y el número va encima de la barra,
+                  que es donde se lee sin cruzar la vista. Girar la de tumbadas
+                  habría dejado los textos de canto.
+                -->
+                <ul class="grafica__columnas">
+                  @for (dato of datos(); track $index) {
+                    <li class="grafica__columna">
+                      <span class="grafica__valor">{{ dato.etiqueta }}</span>
+
+                      <span class="grafica__carrilAlto">
+                        <span
+                          class="grafica__rellenoAlto"
+                          [style.height]="proporcionDe(dato.val)"
+                          [style.background]="dato.color"
+                        ></span>
+                      </span>
+
+                      <span class="grafica__textoAbajo">{{ dato.txt }}</span>
+                    </li>
+                  }
+                </ul>
+              } @else {
+                <ul class="grafica__barras">
+                  @for (dato of datos(); track $index) {
+                    <li class="grafica__barra">
+                      <span class="grafica__texto">{{ dato.txt }}</span>
+
+                      <!-- El carril, para que se vea cuánto falta y no solo cuánto hay:
+                           una barra sola no dice si va por la mitad. -->
+                      <span class="grafica__carril">
+                        <span
+                          class="grafica__relleno"
+                          [style.width]="proporcionDe(dato.val)"
+                          [style.background]="dato.color"
+                        ></span>
+                      </span>
+
+                      <span class="grafica__valor">{{ dato.etiqueta }}</span>
+                    </li>
+                  }
+                </ul>
+              }
+
+              @if (ejeX()) {
+                <span class="grafica__ejeX">{{ ejeX() }}</span>
+              }
+            </div>
+          </div>
+        }
+      }
+    }
+  </figure>
+}

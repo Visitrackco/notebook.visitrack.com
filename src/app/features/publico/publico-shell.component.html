@@ -1,0 +1,43 @@
+<!--
+  El marco de un enlace público.
+
+  Un banner lateral con la marca de la compañía arriba y Visitrack abajo, y
+  nada más: ni menú, ni enlaces, ni contadores. Quien abre esto no viene a
+  navegar por Visitrack, viene a responder una cosa concreta — cualquier sitio
+  al que pudiera ir es un sitio donde no tiene nada que hacer.
+-->
+<div class="pub">
+  <aside class="pub__banner">
+    <!-- La marca de la compañía dueña del enlace. Es la que esta persona
+         reconoce: no está entrando a Visitrack, está respondiendo algo que le
+         pidió una empresa concreta. -->
+    <div class="pub__marca">
+      @if (logo(); as src) {
+        <img class="pub__logo" [src]="src" alt="" />
+      } @else {
+        <span class="pub__rotulo">{{ rotulo() }}</span>
+      }
+    </div>
+
+    <!--
+      De dónde sale la herramienta, al pie del banner y en pequeño.
+
+      Abajo y no arriba a propósito: arriba competiría con la marca de la
+      compañía, que es la que responde a «¿quién me está pidiendo esto?». Aquí
+      responde la otra pregunta, la de «¿qué es esta página?», que solo se hace
+      quien se queda mirando.
+    -->
+    <div class="pub__pie">
+      <img src="icon.png" width="16" height="16" alt="" />
+      <span>
+        <!-- El «con la tecnología de» se cae en pantallas estrechas; el nombre
+             se queda, que es lo que de verdad responde qué es esta página. -->
+        <span class="pub__pie-largo">Con la tecnología de </span><strong>Visitrack</strong>
+      </span>
+    </div>
+  </aside>
+
+  <main class="pub__cuerpo">
+    <router-outlet />
+  </main>
+</div>

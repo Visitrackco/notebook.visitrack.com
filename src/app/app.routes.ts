@@ -1,6 +1,8 @@
 import { Routes } from '@angular/router';
 
+import { esModoPublico } from './core/config/modo-publico';
 import { authGuard, guestGuard } from './core/guards/auth.guard';
+import { publicoGuard } from './core/guards/publico.guard';
 import { surveyGuard } from './core/guards/survey.guard';
 
 /**
@@ -35,11 +37,59 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./features/auth/loading/loading.component').then((m) => m.LoadingComponent),
   },
+  /**
+   * La puerta de un enlace público: `#/e/<guid>`.
+   *
+   * Fuera del armazón y **sin guardia de sesión**, que es toda la gracia: aquí
+   * llega alguien que no tiene cuenta. Va antes del `''` porque ese lo atrapa
+   * todo, y antes del `**` por lo mismo.
+   *
+   * Detrás del tramo va **solo el GUID de la fila** y nada más: ni el
+   * formulario, ni la compañía, ni quien la llena. Quien recibe el enlace no
+   * puede deducir de la dirección qué hay al otro lado — eso lo resuelve el
+   * servidor. Y el tramo es corto —`e`— porque estas direcciones se pegan en
+   * correos, se meten en códigos QR y a veces se dictan por teléfono.
+   */
+  {
+    path: 'e/:guid',
+    title: 'Formulario · Visitrack',
+    loadComponent: () =>
+      import('./features/publico/enlace-publico.component').then((m) => m.EnlacePublicoComponent),
+  },
   {
     path: '',
-    canActivate: [authGuard],
-    loadComponent: () => import('./layout/shell/shell.component').then((m) => m.ShellComponent),
+    canActivate: [authGuard, publicoGuard],
+    /**
+     * Qué armazón, según cómo se abrió esta pestaña.
+     *
+     * Las rutas hijas son **las mismas** en los dos casos, y eso no es un
+     * detalle: es lo que permite montar el mismo `ActivityDetailComponent` sin
+     * tocarlo, con sus rutas hijas de tablas de detalle, que arman su dirección
+     * de vuelta a partir de esta forma. Con un prefijo propio para lo público
+     * habría que cambiarlas, y con ello dejar de compartir el renderizador —que
+     * era justo lo que había que evitar.
+     *
+     * Lo único que cambia es el marco: sin barra lateral, sin sincronización,
+     * sin perfil. Ver `PublicoShellComponent`.
+     */
+    loadComponent: () =>
+      esModoPublico()
+        ? import('./features/publico/publico-shell.component').then((m) => m.PublicoShellComponent)
+        : import('./layout/shell/shell.component').then((m) => m.ShellComponent),
     children: [
+      /**
+       * El final de un enlace público.
+       *
+       * Cuelga del armazón como las demás para que sea el mismo marco, y no
+       * lleva `surveyGuard`: se llega aquí después de guardar, cuando ya no hay
+       * formulario que comprobar.
+       */
+      {
+        path: 'gracias',
+        title: 'Listo · Visitrack',
+        loadComponent: () =>
+          import('./features/publico/gracias.component').then((m) => m.GraciasComponent),
+      },
       {
         path: 'inicio',
         title: 'Inicio · Visitrack',
@@ -325,6 +375,22 @@ export const routes: Routes = [
         title: 'Pendientes por subir · Visitrack',
         loadComponent: () =>
           import('./features/pending/pending.component').then((m) => m.PendingComponent),
+      },
+      {
+        path: 'correos-flujo',
+        title: 'Correos del flujo · Visitrack',
+        loadComponent: () =>
+          import('./features/flow-emails/flow-emails.component').then(
+            (m) => m.FlowEmailsComponent,
+          ),
+      },
+      {
+        path: 'avisos-flujo',
+        title: 'Notificaciones del flujo · Visitrack',
+        loadComponent: () =>
+          import('./features/flow-pushes/flow-pushes.component').then(
+            (m) => m.FlowPushesComponent,
+          ),
       },
       {
         path: 'archivos',

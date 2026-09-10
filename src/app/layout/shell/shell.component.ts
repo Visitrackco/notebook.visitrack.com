@@ -7,6 +7,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { CompanyLogoService } from '../../core/services/company-logo.service';
 import { ConnectivityService } from '../../core/services/connectivity.service';
 import { PendingUploadService } from '../../core/sync/pending-upload.service';
+import { PushService } from '../../core/services/push.service';
 import { DispatchCounterService } from '../../core/services/dispatch-counter.service';
 import { DraftMaintenanceService } from '../../core/services/draft-maintenance.service';
 import { ShortcutsService } from '../../core/services/shortcuts.service';
@@ -55,6 +56,8 @@ export class ShellComponent {
   private readonly dispatches = inject(DispatchCounterService);
   private readonly draftMaintenance = inject(DraftMaintenanceService);
   private readonly pendingUploads = inject(PendingUploadService);
+  // Publico: la plantilla lee su estado para decidir si ofrece la tira.
+  readonly push = inject(PushService);
   private readonly counters = inject(MenuCountersService);
   readonly auth = inject(AuthService);
   readonly connectivity = inject(ConnectivityService);
@@ -158,6 +161,22 @@ export class ShellComponent {
         run: go('/pendientes'),
       },
       {
+        id: 'go-flow-emails',
+        keys: 'g c',
+        label: 'Correos del flujo',
+        group: 'Navegación',
+        run: go('/correos-flujo'),
+      },
+      {
+        // `g n` de notificación: `g p` ya es «pendientes» y `g a` sería
+        // ambiguo con «actividades».
+        id: 'go-flow-pushes',
+        keys: 'g n',
+        label: 'Notificaciones del flujo',
+        group: 'Navegación',
+        run: go('/avisos-flujo'),
+      },
+      {
         id: 'go-locations',
         keys: 'g u',
         label: 'Ubicaciones',
@@ -256,7 +275,25 @@ export class ShellComponent {
      */
     this.draftMaintenance.start();
 
+    /*
+     * Las notificaciones se ponen al día con el armazón.
+     *
+     * Aquí y no en el arranque porque este componente solo existe cuando hay
+     * sesión, y el token se registra **contra un usuario**. `refrescar` no pide
+     * permiso: si no lo hay, no hace nada — eso es cosa del botón del perfil.
+     *
+     * Refrescar en cada sesión es lo que evita el caso peor: Google rota los
+     * tokens por su cuenta, y quien tenga uno viejo cree tener las
+     * notificaciones activadas mientras lleva semanas sin recibir ninguna.
+     */
+    void this.push.refrescar().then(() => this.push.escuchar());
+
     this.registerShortcuts();
+  }
+
+  /** Enciende las notificaciones desde la tira. Ver `PushService`. */
+  async activarPush(): Promise<void> {
+    await this.push.activar();
   }
 
   toggleSidebar(): void {

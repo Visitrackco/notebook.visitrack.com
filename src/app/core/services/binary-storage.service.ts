@@ -1,4 +1,6 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, Injector, inject } from '@angular/core';
+
+import { esModoPublico } from '../config/modo-publico';
 
 import { DatabaseService } from '../database/database.service';
 import { FileValue } from '../forms/form-schema';
@@ -66,6 +68,16 @@ export class BinaryStorageService {
   private readonly revisions = inject(DataRevisionService);
   private readonly auth = inject(AuthService);
   private readonly settings = inject(SettingsRepository);
+
+  /**
+   * Para alcanzar la subida **sin inyectarla**.
+   *
+   * `BinaryUploadService` ya depende de este servicio —necesita leer los blobs
+   * para mandarlos—, así que inyectarlo aquí cerraría el círculo y Angular no
+   * podría construir ninguno de los dos. Se resuelve en el momento de usarlo,
+   * que es después de que ambos existan.
+   */
+  private readonly injector = inject(Injector);
 
   /**
    * El nivel de reducción de la cuenta.
@@ -166,6 +178,27 @@ export class BinaryStorageService {
     await this.binaries.put(resource);
     this.revisions.touchBinaries();
 
+    /*
+     * En un enlace publico, el archivo sale **ya**.
+     *
+     * Con sesion se sube al guardar, y eso esta bien: hay una cuenta, la cola
+     * sobrevive a cerrar la pestana y lo que quede a medias se recupera desde
+     * «Pendientes» cualquier otro dia.
+     *
+     * Aqui no hay nada de eso. No hay sesion con la que reconocer manana a
+     * quien lleno el formulario, ni pantalla desde donde reintentar, y quien
+     * abre un enlace cierra la pestana en cuanto ve «gracias». Un video de
+     * treinta segundos que empiece a subir en ese momento no llega.
+     *
+     * Subiendolo al capturarlo, la subida ocurre mientras la persona sigue
+     * respondiendo las preguntas siguientes — que es tiempo que de otro modo se
+     * desperdicia— y al llegar a Guardar casi siempre ya esta todo arriba.
+     *
+     * Vale para los cinco tipos, no solo para las fotos: por aqui pasan tambien
+     * la firma, el video, el audio y el archivo adjunto.
+     */
+    if (esModoPublico()) this.subirEnLinea(input.answerGuid);
+
     return {
       bin: guid,
       sig: input.sig ?? '',
@@ -176,6 +209,31 @@ export class BinaryStorageService {
       tim: now,
       tph: now,
     };
+  }
+
+  /**
+   * Manda a subir lo que quede pendiente de esta actividad.
+   *
+   * **No se espera.** Bloquear aqui dejaria la camara congelada hasta que la
+   * foto llegue al servidor, y con mala senal eso son segundos mirando una
+   * pantalla quieta: lo que se captura tiene que quedar guardado en el acto, y
+   * la subida ir por detras.
+   *
+   * Que falle no rompe nada. El archivo ya esta en la base con estado
+   * pendiente, asi que lo recoge la cola de siempre —la que corre en el armazon
+   * publico— y, en ultima instancia, el envio de la actividad, que no la deja
+   * salir hasta que sus archivos esten confirmados.
+   */
+  private subirEnLinea(answerGuid: string): void {
+    void (async () => {
+      try {
+        const { BinaryUploadService } = await import('../sync/binary-upload.service');
+
+        await this.injector.get(BinaryUploadService).uploadPending(answerGuid);
+      } catch (error) {
+        console.warn('[Binarios] no se pudo subir en linea; queda en la cola', error);
+      }
+    })();
   }
 
   /** Metadatos de un archivo. `null` si ya no está. */

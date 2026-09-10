@@ -1,5 +1,10 @@
 import { Injectable, inject, signal } from '@angular/core';
 
+import {
+  esModoPublico,
+  fondoDelEnlace,
+  guardarFondoDelEnlace,
+} from '../config/modo-publico';
 import { SETTING_KEYS, SettingsRepository } from '../repositories/settings.repository';
 
 /** Modo de color elegido por el usuario. */
@@ -9,12 +14,56 @@ export type ThemeMode = 'light' | 'dark' | 'system';
 const THEME_KEY = 'visitrack.theme';
 /** Clave del color de marca personalizado, en `localStorage`. */
 const BRAND_KEY = 'visitrack.brandColor';
+/** Clave del color de fondo de la página, en `localStorage`. */
+const FONDO_KEY = 'visitrack.fondoColor';
 
 /** Clave del color de marca en `appSettings`. */
 const BRAND_SETTING = 'brand_color';
+/** Clave del color de fondo en `appSettings`. */
+const FONDO_SETTING = 'fondo_color';
 
 /** Rojo corporativo. Es el punto de partida si nadie personaliza nada. */
 export const DEFAULT_BRAND = '#d32029';
+
+/**
+ * Lo claro que tiene que ser un fondo para admitirse.
+ *
+ * ## Por que solo se aceptan tonos claros
+ *
+ * Porque el fondo de la pagina es lo unico que cambia: todo lo que va encima
+ * —las tarjetas de las preguntas, los campos, los bordes, el menu— sigue con
+ * los tonos del tema, calculados para superficies claras. Un fondo oscuro deja
+ * tarjetas blancas flotando sobre negro y bordes que no se distinguen de nada.
+ *
+ * Podria arreglarse recalculando el tema entero a partir del color elegido, y
+ * no es lo que se pidio: se pidio elegir el papel, no rehacer la aplicacion.
+ *
+ * 0.55 de luminancia relativa (WCAG) deja pasar los pasteles —los sugeridos
+ * rondan 0.86— y hasta un gris claro (#d0d0d0, 0.63), y corta cualquier tono
+ * medio: un azul de marca se queda en 0.26 y el rojo corporativo en 0.15.
+ */
+const FONDO_LUMINANCIA_MINIMA = 0.55;
+
+/**
+ * Fondos sugeridos.
+ *
+ * Tonos muy claros —y un solo oscuro— a propósito: es el papel sobre el que se
+ * lee un formulario entero, no un color de marca. Un fondo saturado deja las
+ * tarjetas blancas vibrando encima y cansa a las tres preguntas.
+ *
+ * El primero es la cadena vacía y no un color: significa «el de la aplicación»,
+ * que es distinto de elegir un gris parecido — con el vacío, el modo oscuro
+ * sigue funcionando solo.
+ */
+export const FONDO_PRESETS: readonly { name: string; value: string }[] = [
+  { name: 'El de la aplicación', value: '' },
+  { name: 'Blanco', value: '#ffffff' },
+  { name: 'Arena', value: '#f5f1e8' },
+  { name: 'Menta', value: '#eaf4ee' },
+  { name: 'Cielo', value: '#eaf1f8' },
+  { name: 'Lavanda', value: '#f0edf7' },
+  { name: 'Rosa', value: '#fbeef0' },
+];
 
 /** Colores sugeridos en el selector del perfil. */
 export const BRAND_PRESETS: readonly { name: string; value: string }[] = [
@@ -59,6 +108,14 @@ export class ThemeService {
 
   readonly mode = signal<ThemeMode>(this.readMode());
   readonly brandColor = signal<string>(this.readBrand());
+
+  /**
+   * Color de fondo de la página. Cadena vacía = el de la aplicación.
+   *
+   * Vacío y no un gris concreto: así el modo oscuro sigue resolviéndose solo,
+   * que es lo que pasaría si se guardara «#f5f6f8» y alguien pasara a oscuro.
+   */
+  readonly fondoColor = signal<string>(this.readFondo());
 
   /**
    * El usuario ya eligió tema en esta sesión.
@@ -107,6 +164,74 @@ export class ThemeService {
     localStorage.setItem(BRAND_KEY, normalized);
     this.applyBrand();
     void this.persist(BRAND_SETTING, normalized);
+  }
+
+  /**
+   * Cambia el color de fondo de la página.
+   *
+   * Cadena vacía vuelve al de la aplicación, que es lo mismo que no haber
+   * elegido nunca: se borra la preferencia en vez de guardar un gris.
+   */
+  setFondoColor(hex: string): void {
+    const normalized = hex.trim() === '' ? '' : this.normalizeHex(hex);
+    if (normalized === null) return;
+
+    // Un tono oscuro se ignora en vez de aplicarse a medias: ver
+    // `FONDO_LUMINANCIA_MINIMA`. Quien llama avisa; aqui solo no se hace.
+    if (normalized && !this.esFondoClaro(normalized)) return;
+
+    this.userChanged = true;
+
+    this.fondoColor.set(normalized);
+
+    if (normalized) localStorage.setItem(FONDO_KEY, normalized);
+    else localStorage.removeItem(FONDO_KEY);
+
+    this.applyFondo();
+    void this.persist(FONDO_SETTING, normalized);
+  }
+
+  /**
+   * Pinta un fondo **sin guardarlo en ninguna parte**.
+   *
+   * Es para el fondo que trae un enlace público: es del enlace, no de quien lo
+   * abre. Guardarlo sería peor que inútil — `localStorage` se comparte entre
+   * todas las pestañas del mismo origen, así que abrir un enlace con fondo
+   * verde le cambiaría el fondo a la sesión que esa persona tenga abierta al
+   * lado. La base pública sí está aislada; `localStorage` no.
+   */
+  aplicarFondoDeEnlace(hex: string): void {
+    const normalized = this.normalizeHex(hex);
+    if (!normalized) return;
+
+    /*
+     * Tambien se comprueba lo que trae el enlace.
+     *
+     * Module ya no deja guardar un fondo oscuro, pero un enlace creado antes de
+     * esa regla puede tener uno, y quien lo abre no tiene forma de arreglarlo:
+     * se quedaria con un formulario ilegible y sin ningun ajuste a mano. Mejor
+     * el gris de siempre.
+     */
+    if (!this.esFondoClaro(normalized)) {
+      console.warn(
+        '[Enlace] el color de fondo es demasiado oscuro y se ignora:',
+        normalized,
+      );
+      return;
+    }
+
+    this.fondoColor.set(normalized);
+    this.applyFondo();
+
+    /*
+     * Y se apunta en la pestaña.
+     *
+     * El enlace solo se resuelve en `#/e/<guid>`; recargar la actividad no
+     * vuelve a pasar por ahí, así que sin esto el color se perdía en cada F5.
+     * Va en `sessionStorage` —no en `localStorage`— para que no se le cuele a
+     * la sesión que esa persona tenga abierta en otra pestaña.
+     */
+    guardarFondoDelEnlace(normalized);
   }
 
   /** Vuelve al rojo corporativo. */
@@ -160,6 +285,36 @@ export class ThemeService {
         }
       }
 
+      /*
+       * ── Color de fondo ──────────────────────────────────────────────────
+       *
+       * En una pestaña de enlace público esto no se toca: el fondo lo decide el
+       * enlace, y ni la preferencia personal de quien lo abre ni nada guardado
+       * en la base pueden pisarlo. Una lectura asíncrona que llegara tarde le
+       * cambiaría el color al formulario a media pantalla.
+       *
+       * Se salta **solo este bloque**, no lo que viene detrás: el color de
+       * marca sí se reconcilia igual en los dos modos.
+       */
+      if (!esModoPublico()) {
+        // Se mira si la clave **existe**, no si tiene valor: la cadena vacía es
+        // una elección («el de la aplicación») y no se guarda, así que aquí se
+        // distingue por la ausencia de la clave, igual que las otras dos.
+        if (localStorage.getItem(FONDO_KEY) !== null) {
+          await this.persist(FONDO_SETTING, this.fondoColor());
+        } else {
+          const stored = this.normalizeHex(
+            (await this.settings.getDeviceSetting(FONDO_SETTING)) ?? '',
+          );
+
+          if (!this.userChanged && stored) {
+            this.fondoColor.set(stored);
+            localStorage.setItem(FONDO_KEY, stored);
+            this.applyFondo();
+          }
+        }
+      }
+
       // ── Color de marca ──────────────────────────────────────────────────
       if (hasLocalBrand) {
         await this.persist(BRAND_SETTING, this.brandColor());
@@ -188,6 +343,19 @@ export class ThemeService {
     }
   }
 
+  /**
+   * ¿Este color sirve como fondo de pagina?
+   *
+   * Publico porque la pantalla que lo ofrece necesita poder decirlo **antes**
+   * de intentarlo: rechazar en silencio un color que alguien acaba de elegir se
+   * lee como que la aplicacion no responde.
+   */
+  esFondoClaro(hex: string): boolean {
+    const normalized = this.normalizeHex(hex);
+
+    return normalized ? this.luminancia(normalized) >= FONDO_LUMINANCIA_MINIMA : false;
+  }
+
   /** ¿Está el modo oscuro en efecto ahora mismo? */
   isDarkActive(): boolean {
     const mode = this.mode();
@@ -201,10 +369,47 @@ export class ThemeService {
   private apply(): void {
     this.applyMode();
     this.applyBrand();
+    this.applyFondo();
+  }
+
+  /**
+   * Escribe el fondo de la página.
+   *
+   * Una sola variable, `--vt-bg`, porque es de la que cuelga todo: el `body` la
+   * usa directamente y Material la recibe por `--mat-sys-background`. Sin valor
+   * se **quita** la propiedad en vez de escribir un gris, y así el CSS vuelve a
+   * mandar — incluido el fondo oscuro cuando se cambia de modo.
+   *
+   * ## Y **solo** esa variable
+   *
+   * Hubo una version que ademas forzaba `--vt-text` para que el texto
+   * contrastara con el fondo elegido. Fue un error con consecuencias visibles:
+   * `--vt-text` no es el texto de la pagina, es el de **todo** —incluido el que
+   * va dentro de las tarjetas blancas de cada pregunta—, asi que ponerlo en
+   * blanco por un fondo oscuro dejaba los campos ilegibles.
+   *
+   * El contraste se garantiza de otra forma: no admitiendo fondos oscuros. Ver
+   * `FONDO_LUMINANCIA_MINIMA`.
+   */
+  private applyFondo(): void {
+    const root = document.documentElement;
+    const fondo = this.fondoColor();
+
+    if (!fondo) {
+      root.style.removeProperty('--vt-bg');
+      return;
+    }
+
+    root.style.setProperty('--vt-bg', fondo);
   }
 
   private applyMode(): void {
     document.documentElement.setAttribute('data-theme', this.mode());
+
+    // El texto sobre el fondo elegido depende del modo, así que se recalcula
+    // al cambiarlo. Sin esto, pasar a oscuro con un fondo claro puesto dejaba
+    // el texto blanco sobre blanco.
+    this.applyFondo();
 
     // Tiñe la barra del navegador en móviles para que no rompa el conjunto.
     const meta = document.querySelector('meta[name="theme-color"]');
@@ -256,18 +461,27 @@ export class ThemeService {
    * texto oscuro en los tonos medios, donde el blanco empieza a costar.
    */
   private readableOn(hex: string): string {
-    const channel = (value: number): number => {
+    return this.luminancia(hex) > 0.55 ? '#14161a' : '#ffffff';
+  }
+
+  /**
+   * Luminancia relativa de WCAG, entre 0 (negro) y 1 (blanco).
+   *
+   * No basta con promediar los canales: el ojo es mucho mas sensible al verde
+   * que al azul, y un amarillo y un azul con el mismo promedio RGB se ven con
+   * claridades muy distintas.
+   */
+  private luminancia(hex: string): number {
+    const canal = (value: number): number => {
       const c = value / 255;
       return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
     };
 
-    const r = channel(parseInt(hex.slice(1, 3), 16));
-    const g = channel(parseInt(hex.slice(3, 5), 16));
-    const b = channel(parseInt(hex.slice(5, 7), 16));
+    const r = canal(parseInt(hex.slice(1, 3), 16));
+    const g = canal(parseInt(hex.slice(3, 5), 16));
+    const b = canal(parseInt(hex.slice(5, 7), 16));
 
-    const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-
-    return luminance > 0.55 ? '#14161a' : '#ffffff';
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
   }
 
   /**
@@ -288,6 +502,23 @@ export class ThemeService {
 
   private readBrand(): string {
     return this.normalizeHex(localStorage.getItem(BRAND_KEY) ?? '') ?? DEFAULT_BRAND;
+  }
+
+  /**
+   * El fondo con el que arranca la aplicación.
+   *
+   * En una pestaña de enlace público manda **el del enlace**, que se apuntó al
+   * abrirlo: es del enlace y no de quien lo abre, así que no tiene por qué
+   * mirar la preferencia personal de nadie —ni dejarse pisar por ella—.
+   *
+   * Leerlo aquí, y no esperar a resolver el enlace, es lo que hace que un F5 en
+   * mitad del formulario no muestre un fogonazo gris antes de recuperar el
+   * color: para cuando se pinta el primer fotograma ya está puesto.
+   */
+  private readFondo(): string {
+    if (esModoPublico()) return this.normalizeHex(fondoDelEnlace()) ?? '';
+
+    return this.normalizeHex(localStorage.getItem(FONDO_KEY) ?? '') ?? '';
   }
 
   /** Valida y normaliza un color hex. Devuelve `null` si no lo es. */

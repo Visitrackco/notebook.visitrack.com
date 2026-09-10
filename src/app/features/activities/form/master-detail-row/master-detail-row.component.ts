@@ -7,6 +7,8 @@ import { HintComponent } from '../../../../shared/components/hint/hint.component
 import { IconComponent } from '../../../../shared/components/icon/icon.component';
 import { ToTopComponent } from '../../../../shared/components/to-top/to-top.component';
 import { FieldHostComponent } from '../fields/field-host.component';
+import { FlujoBotonesComponent } from '../flujo-botones/flujo-botones.component';
+import { FlujoGraficaComponent } from '../flujo-grafica/flujo-grafica.component';
 import { MissingEntry } from '../required-dialog/required-dialog.component';
 import { MasterDetailPanelsService } from './master-detail-panels.service';
 import { MasterDetailStackService, RowLevel } from './master-detail-stack.service';
@@ -32,7 +34,14 @@ import { MasterDetailStackService, RowLevel } from './master-detail-stack.servic
 @Component({
   selector: 'vt-master-detail-row',
   standalone: true,
-  imports: [FieldHostComponent, HintComponent, IconComponent, ToTopComponent],
+  imports: [
+    FieldHostComponent,
+    FlujoBotonesComponent,
+    FlujoGraficaComponent,
+    HintComponent,
+    IconComponent,
+    ToTopComponent,
+  ],
   templateUrl: './master-detail-row.component.html',
   styleUrl: './master-detail-row.component.scss',
 })
@@ -49,6 +58,26 @@ export class MasterDetailRowComponent implements OnDestroy {
 
   /** Se está avisando de que faltan obligatorios. */
   readonly asking = signal(false);
+
+  /*
+   * Las gráficas que un botón destapó, mientras la fila esté abierta.
+   *
+   * Se van al cerrarla, y está bien que sea así: abrir una fila es empezar de
+   * nuevo con ese registro, y encontrarse destapado lo que se destapó en la
+   * fila anterior sería enseñar el resumen de otra cosa. Ver el mismo apartado
+   * en `FormRunnerComponent`, donde se explica por qué esto no vive en el motor.
+   */
+  private readonly destapadas = signal<ReadonlySet<string>>(new Set());
+
+  destapar(nombres: string[]): void {
+    this.destapadas.set(new Set([...this.destapadas(), ...nombres]));
+  }
+
+  estaDestapada(grafica: { id?: string }): boolean {
+    const nombre = (grafica?.id ?? '').trim();
+
+    return !!nombre && this.destapadas().has(nombre);
+  }
 
   constructor() {
     /**
@@ -103,6 +132,31 @@ export class MasterDetailRowComponent implements OnDestroy {
 
   onValue(level: RowLevel, field: FormField, value: FieldValue): void {
     level.engine.setValue(field, value);
+  }
+
+  /**
+   * Los límites que una regla puso a un campo de la fila, si puso alguno.
+   *
+   * `null` cuando no hay ninguno, para que el campo no tenga que distinguir
+   * entre «sin límites» y «con límites vacíos». Es el mismo criterio que en el
+   * formulario de fuera.
+   */
+  limitesDe(estado: { desde?: string; hasta?: string; dias?: string } | undefined) {
+    if (!estado?.desde && !estado?.hasta && !estado?.dias) return null;
+
+    return { desde: estado.desde, hasta: estado.hasta, dias: estado.dias };
+  }
+
+  /**
+   * El sello de un campo, para la clave del `@for`.
+   *
+   * Sale del nivel que se está viendo: los de debajo quedan inertes y no se
+   * miran. Angular no deja usar la variable del `@for` de niveles dentro de una
+   * expresión de `track` —solo `field`, `$index` y lo del componente—, así que
+   * el nivel se resuelve aquí.
+   */
+  selloDe(fieldId: string): number {
+    return this.current()?.engine.selloDe(fieldId) ?? 0;
   }
 
   onDescriptors(level: RowLevel, field: FormField, values: ResolvedDescriptor[]): void {

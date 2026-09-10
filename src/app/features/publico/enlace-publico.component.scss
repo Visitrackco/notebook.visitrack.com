@@ -1,0 +1,166 @@
+/*
+ * La puerta de un enlace público.
+ *
+ * Todo centrado y con una sola cosa en pantalla: quien llega aquí no viene de
+ * ningún menú y no tiene contexto. Una pantalla con dos sitios donde mirar
+ * hace dudar de cuál es el que hay que tocar.
+ */
+
+.ep {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--vt-bg);
+}
+
+.ep-centro {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px 24px;
+  text-align: center;
+  color: var(--vt-text-muted);
+}
+
+.ep-titulo {
+  margin: 6px 0 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--vt-text);
+}
+
+.ep-texto {
+  margin: 0;
+  max-width: 46ch;
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+/* ── La rueda de espera ─────────────────────────────────────────────────── */
+
+.ep-rueda {
+  width: 26px;
+  height: 26px;
+  border: 3px solid var(--vt-border);
+  border-top-color: var(--vt-brand);
+  border-radius: 50%;
+  animation: ep-gira 0.8s linear infinite;
+}
+
+@keyframes ep-gira {
+  to { transform: rotate(360deg); }
+}
+
+/* Sin movimiento la rueda se queda quieta: lo que dice que se está esperando es
+   el texto, que se lee con o sin animación. */
+@media (prefers-reduced-motion: reduce) {
+  .ep-rueda { animation: none; }
+}
+
+/* ── Lo que quedó sin terminar ──────────────────────────────────────────── */
+
+.ep-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(420px, 100%);
+  margin-top: 8px;
+}
+
+/*
+ * Cada respuesta a medias, como una fila tocable entera.
+ *
+ * Toda la fila y no un botón dentro: en un teléfono, un objetivo del ancho de
+ * la pantalla se acierta sin mirar, y esta es la acción que se quiere que se
+ * acierte.
+ */
+.ep-fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--vt-border);
+  border-radius: 12px;
+  background: var(--vt-surface);
+  color: var(--vt-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ep-fila:hover {
+  border-color: var(--vt-brand);
+  /* Y un punto mas oscura: en un telefono, un cambio de borde de un pixel no
+     se ve, y esta fila es la accion principal de esa pantalla. */
+  background: var(--vt-surface-2);
+}
+
+.ep-fila-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ep-fila-nombre {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ep-fila-fecha {
+  font-size: 0.8rem;
+  color: var(--vt-text-subtle);
+}
+
+/* ── Botones ────────────────────────────────────────────────────────────── */
+
+.ep-boton {
+  margin-top: 6px;
+  padding: 11px 22px;
+  border: none;
+  border-radius: 10px;
+  background: var(--vt-brand);
+  color: var(--vt-text-on-primary);
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/*
+ * El boton solido se **oscurece** al pasar por encima, no se aclara.
+ *
+ * Con `brightness(1.06)` el color de marca se lavaba hacia un tono mas palido y
+ * de lejos se leia como un boton desactivado — justo al reves de lo que tiene
+ * que decir un hover. Bajar el brillo es ademas lo que se espera de un boton
+ * solido: parece que se hunde.
+ */
+.ep-boton:hover {
+  filter: brightness(0.9);
+}
+
+/*
+ * «Empezar de nuevo» va en discreto.
+ *
+ * De las dos salidas de esa pantalla, continuar es la buena casi siempre:
+ * empezar de cero deja atrás trabajo que ya se hizo. Las dos con el mismo peso
+ * visual harían que la mitad de la gente eligiera la que pierde algo.
+ */
+.ep-boton--suave {
+  background: transparent;
+  color: var(--vt-text-muted);
+  text-decoration: underline;
+  font-weight: 500;
+}
+
+.ep-boton--suave:hover {
+  filter: none;
+  color: var(--vt-text);
+}

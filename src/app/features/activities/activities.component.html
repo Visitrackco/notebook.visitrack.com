@@ -268,17 +268,26 @@
           <button mat-stroked-button type="button" (click)="clearFilters()">Ver todas</button>
         } @else {
           <h2>Todavía no hay actividades</h2>
-          <p>Crea la primera para empezar a diligenciar este formulario.</p>
-          <button
-            mat-flat-button
-            type="button"
-            class="acts__cta"
-            (click)="createActivity()"
-            [disabled]="creating()"
-          >
-            <vt-icon name="clipboard" [size]="17" />
-            Nueva actividad
-          </button>
+          @if (puedeCrear()) {
+            <p>Crea la primera para empezar a diligenciar este formulario.</p>
+            <button
+              mat-flat-button
+              type="button"
+              class="acts__cta"
+              (click)="createActivity()"
+              [disabled]="creating()"
+            >
+              <vt-icon name="clipboard" [size]="17" />
+              Nueva actividad
+            </button>
+          } @else {
+            <!-- Sin el botón hay que decir por qué: si no, parece que falta un
+                 permiso o que la pantalla está a medias. -->
+            <p>
+              Este formulario <strong>solo recibe consignas</strong>: las
+              actividades llegan despachadas, no se crean desde aquí.
+            </p>
+          }
         }
       </div>
     } @else {
@@ -405,13 +414,16 @@
     }
 
     <!-- Botón flotante: acompaña el desplazamiento en listas largas, donde un
-         botón en la cabecera quedaría fuera de pantalla justo cuando hace falta. -->
+         botón en la cabecera quedaría fuera de pantalla justo cuando hace falta.
+         No se pinta si el formulario solo recibe consignas. -->
+    @if (puedeCrear()) {
     <button type="button" class="acts__fab" (click)="createActivity()" [disabled]="creating()">
       <span class="acts__fab-icon">
         <vt-icon name="clipboard" [size]="19" />
       </span>
       <span class="acts__fab-label">{{ creating() ? 'Creando…' : 'Nueva actividad' }}</span>
     </button>
+    }
 
     <vt-confirm-dialog
       [open]="removing()"

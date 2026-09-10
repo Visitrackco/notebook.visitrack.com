@@ -10,7 +10,13 @@ import { AuthService } from '../../core/services/auth.service';
 import { CompanyLogoService } from '../../core/services/company-logo.service';
 import { ConnectivityService } from '../../core/services/connectivity.service';
 import { DeviceService } from '../../core/services/device.service';
-import { BRAND_PRESETS, ThemeMode, ThemeService } from '../../core/services/theme.service';
+import { PushService } from '../../core/services/push.service';
+import {
+  BRAND_PRESETS,
+  FONDO_PRESETS,
+  ThemeMode,
+  ThemeService,
+} from '../../core/services/theme.service';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { SessionsComponent } from './sessions/sessions.component';
 
@@ -40,8 +46,12 @@ export class ProfileComponent {
   readonly connectivity = inject(ConnectivityService);
   readonly theme = inject(ThemeService);
 
+  /** Publico: la plantilla lee su estado y su explicacion. */
+  readonly push = inject(PushService);
+
   /** Colores sugeridos para el selector de marca. */
   readonly brandPresets = BRAND_PRESETS;
+  readonly fondoPresets = FONDO_PRESETS;
 
   /** Opciones del modo de color. */
   readonly themeModes: { value: ThemeMode; label: string; icon: string }[] = [
@@ -184,9 +194,48 @@ export class ProfileComponent {
     this.setBrandColor((event.target as HTMLInputElement).value);
   }
 
+  /**
+   * Activa las notificaciones de este navegador.
+   *
+   * Tiene que salir de un clic: el navegador no concede el permiso de otra
+   * forma. Ver `PushService`.
+   */
+  async activarNotificaciones(): Promise<void> {
+    await this.push.activar();
+  }
+
   resetBrandColor(): void {
     this.theme.resetBrandColor();
     this.showFeedback('Se restauró el color original.');
+  }
+
+  /**
+   * Cambia el fondo de la página.
+   *
+   * La cadena vacía es una elección válida —«el de la aplicación»— y por eso el
+   * aviso distingue los dos casos: decir «fondo actualizado» al volver al gris
+   * hace dudar de si se aplicó algo.
+   */
+  setFondoColor(color: string): void {
+    /*
+     * Un tono oscuro se rechaza, y se dice por que.
+     *
+     * El servicio ya no lo aplica, pero callarse se leeria como que la
+     * aplicacion no responde al toque. Solo el fondo cambia: todo lo que va
+     * encima —tarjetas, campos, bordes— sigue con los tonos del tema, pensados
+     * para superficies claras.
+     */
+    if (color && !this.theme.esFondoClaro(color)) {
+      this.showFeedback('Ese color es demasiado oscuro: los campos no se leerían encima.');
+      return;
+    }
+
+    this.theme.setFondoColor(color);
+    this.showFeedback(color ? 'Fondo actualizado.' : 'Se restauró el fondo original.');
+  }
+
+  onCustomFondo(event: Event): void {
+    this.setFondoColor((event.target as HTMLInputElement).value);
   }
 
   /** Pide al navegador que no borre los datos locales si falta espacio. */

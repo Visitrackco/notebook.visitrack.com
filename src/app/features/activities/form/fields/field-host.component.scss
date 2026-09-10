@@ -281,6 +281,17 @@
   color: var(--vt-danger);
 }
 
+/* Lo que el flujo pidió del teclado y todavía no se cumple.
+   Va fuera del `mat-form-field` porque su hueco de mensajes solo se enciende
+   con un control de formulario, y estos campos se enlazan a mano. */
+.fld__aviso {
+  margin: -8px 0 4px;
+  font-family: var(--vt-font);
+  font-size: var(--vt-text-xs);
+  font-weight: 600;
+  color: var(--vt-danger);
+}
+
 /* ── Imagen de referencia ──────────────────────────────────────────────────── */
 
 .fld__figure {

@@ -175,6 +175,14 @@ export interface Survey extends SyncableEntity {
   DeviceMaintValue: number;
 
   StatusEnabled: number;
+  /**
+   * Si el formulario deja crear actividades a mano.
+   *
+   * Apagado, solo recibe consignas: sigue funcionando cuando alguien se lo
+   * despacha, pero deja de ofrecerse en «nueva actividad». Nulo en el servidor
+   * es «nadie lo ha tocado», y eso se lee como 1.
+   */
+  CreateEnabled: number;
   isStatusBar: number;
   /** Estados de despacho permitidos. Vacío = todos. */
   JSONStatuses: string;

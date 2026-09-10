@@ -1,0 +1,54 @@
+<div class="botones">
+  @for (boton of botones(); track boton.titulo) {
+    <div class="botones__uno">
+      <!--
+        Mientras una consulta suya está en vuelo, el botón no se vuelve a pulsar.
+
+        No es solo cosmética: la llamada ya está apuntada por su llave, así que
+        un segundo toque no lanzaría nada — se quedaría sin respuesta y sin
+        explicación, que se lee como un botón roto.
+      -->
+      <button
+        type="button"
+        class="botones__boton"
+        [class.botones__boton--apagado]="boton.soloLectura || enVuelo(boton).length"
+        [disabled]="boton.soloLectura || enVuelo(boton).length > 0"
+        (click)="pulsar(boton)"
+      >
+        {{ boton.titulo }}
+      </button>
+
+      <!-- En un renglón propio: `.botones__uno` apila, así que sueltos la rueda
+           y el texto caerían uno debajo del otro. -->
+      @if (esperando(boton); as queEspera) {
+        <p class="botones__trabajando" role="status">
+          <span class="botones__girando" aria-hidden="true"></span>
+          <span>{{ queEspera }}</span>
+        </p>
+      }
+
+      <!--
+        Lo que el botón anuncia y todavía no se entrega.
+
+        Va escrito y a la vista, no en un tooltip ni detrás de un icono: quien lo
+        pulsa se iría convencido de que avisó a alguien, y eso no se descubre
+        hasta que el aviso hace falta. Un botón que dice que manda un correo y no
+        lo manda es peor que un botón que no existe.
+      -->
+      @if (pendienteDe(boton); as pendiente) {
+        <p class="botones__pendiente">
+          <span class="botones__marca">Pendiente</span>
+          {{ pendiente }}
+        </p>
+      }
+
+      <!-- Y si eso era lo único que hacía, pulsarlo no hace nada. Mejor decirlo
+           antes que dejar que alguien lo pulse tres veces esperando algo. -->
+      @if (hacePendienteSolo(boton)) {
+        <p class="botones__pendiente botones__pendiente--nada">
+          Pulsarlo todavía no hace nada.
+        </p>
+      }
+    </div>
+  }
+</div>

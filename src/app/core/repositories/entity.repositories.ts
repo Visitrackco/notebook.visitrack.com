@@ -526,6 +526,53 @@ export class ListRepository extends BaseRepository<ListDefinition> {
   }
 }
 
+/**
+ * ¿Este registro está eliminado?
+ *
+ * La marca llega de dos formas según por dónde entró —`1` desde la
+ * sincronización y `'1'` desde el propio dispositivo—, y comparando solo contra
+ * el número los eliminados que venían como texto se colaban en los selectores.
+ * Es el mismo criterio que ya usaban los activos, que sí comparan contra `'1'`.
+ */
+function estaEliminado(valor: unknown): boolean {
+  return valor === 1 || valor === '1' || valor === true;
+}
+
+/**
+ * Un ítem de lista, una sola vez.
+ *
+ * ## Por qué hay copias
+ *
+ * `ListsDet` se guarda por `ID`, no por `GUID`, así que una sincronización que
+ * vuelva a traer el mismo ítem lo inserta otra vez con un `ID` nuevo. No es una
+ * hipótesis: la app tiene una limpieza para justo esto —«borra todo salvo el
+ * `MIN(ID)` de cada `GUID`»— y aquí no había nada equivalente.
+ *
+ * ## Por qué se descarta al recorrer y no al final
+ *
+ * El tope de la consulta cuenta lo que el cursor deja pasar. Filtrando después,
+ * las copias se llevaban parte del cupo y **faltaban ítems de verdad**: la lista
+ * salía a medias y con repetidos a la vez, que es como se ve desde fuera.
+ * Descartándolas dentro del recorrido, el tope cuenta ítems distintos.
+ *
+ * Devuelve una función con memoria, así que hay que pedir una **por consulta**:
+ * reutilizarla dejaría fuera todo lo que ya se vio en la anterior.
+ */
+function sinRepetidos<T extends { GUID?: unknown; ID?: unknown }>(): (d: T) => boolean {
+  const vistos = new Set<string>();
+
+  return (d: T) => {
+    // Sin `GUID` no hay con qué comparar: pasa, que es mejor que perderlo.
+    const guid = String(d?.GUID ?? '').trim();
+    if (!guid) return true;
+
+    if (vistos.has(guid)) return false;
+
+    vistos.add(guid);
+    return true;
+  };
+}
+
 @Injectable({ providedIn: 'root' })
 export class ListDetailRepository extends BaseRepository<ListDetail> {
   protected readonly storeName = 'ListsDet';
@@ -537,10 +584,12 @@ export class ListDetailRepository extends BaseRepository<ListDetail> {
    * traerlos todos para pintar un desplegable congelaría la pestaña.
    */
   async findByList(userId: number, listId: string, limit?: number): Promise<ListDetail[]> {
+    const unico = sinRepetidos<ListDetail>();
+
     return this.query({
       index: 'byListID',
       range: listId,
-      filter: (d) => sameUser(d.UserID, userId) && d.IsDeleted !== 1,
+      filter: (d) => sameUser(d.UserID, userId) && !estaEliminado(d.IsDeleted) && unico(d),
       limit,
     });
   }
@@ -554,7 +603,7 @@ export class ListDetailRepository extends BaseRepository<ListDetail> {
       range: listId,
       filter: (d) =>
         sameUser(d.UserID, userId) &&
-        d.IsDeleted !== 1 &&
+        !estaEliminado(d.IsDeleted) &&
         (!needle ||
           d.Name?.toLowerCase().includes(needle) ||
           d.Value?.toLowerCase().includes(needle)),
@@ -579,10 +628,12 @@ export class ListDetailRepository extends BaseRepository<ListDetail> {
    * ya identifica de forma única a sus hijos.
    */
   async findByParent(userId: number, parentGuid: string): Promise<ListDetail[]> {
+    const unico = sinRepetidos<ListDetail>();
+
     return this.query({
       index: 'byParentGUID',
       range: parentGuid,
-      filter: (d) => sameUser(d.UserID, userId) && d.IsDeleted !== 1,
+      filter: (d) => sameUser(d.UserID, userId) && !estaEliminado(d.IsDeleted) && unico(d),
     });
   }
 
@@ -592,11 +643,16 @@ export class ListDetailRepository extends BaseRepository<ListDetail> {
     parentGuid: string,
     listId: string,
   ): Promise<ListDetail[]> {
+    const unico = sinRepetidos<ListDetail>();
+
     return this.query({
       index: 'byParentGUID',
       range: parentGuid,
       filter: (d) =>
-        sameUser(d.UserID, userId) && d.IsDeleted !== 1 && String(d.ListID) === String(listId),
+        sameUser(d.UserID, userId) &&
+        !estaEliminado(d.IsDeleted) &&
+        String(d.ListID) === String(listId) &&
+        unico(d),
     });
   }
 
@@ -607,21 +663,50 @@ export class ListDetailRepository extends BaseRepository<ListDetail> {
    * ubicación de la actividad, no al catálogo entero. Es lo que hace que en una
    * sede solo aparezcan sus propios equipos.
    */
-  async findByLocation(userId: number, locationId: string): Promise<ListDetail[]> {
+  async findByLocation(
+    userId: number,
+    locationId: string,
+
+    /**
+     * La lista de la que salen.
+     *
+     * Iba sin ella, y era el fallo: se recorrían **todos** los ítems del
+     * usuario quedándose con los de esa ubicación, vinieran de la lista que
+     * vinieran. Con una actividad que tuviera sede, cualquier tabla se
+     * consultaba así, y una lista cuyos ítems no están atados a una ubicación
+     * —un catálogo corriente— devolvía cero: el selector enseñaba el nombre de
+     * la lista y ni un registro.
+     *
+     * Sus tres hermanas —`findByAsset`, `findByOwner`, `findByParentInList`—
+     * siempre acotaron por lista; esta se quedó fuera.
+     */
+    listId?: string,
+  ): Promise<ListDetail[]> {
+    const unico = sinRepetidos<ListDetail>();
+
     return this.query({
       index: 'byUserID',
       range: userId,
-      filter: (d) => d.IsDeleted !== 1 && String(d.LocationID) === String(locationId),
+      filter: (d) =>
+        !estaEliminado(d.IsDeleted) &&
+        String(d.LocationID) === String(locationId) &&
+        (!listId || String(d.ListID) === String(listId)) &&
+        unico(d),
     });
   }
 
   /** Ítems de una lista asociados a un activo. */
   async findByAsset(userId: number, assetId: string, listId: string): Promise<ListDetail[]> {
+    const unico = sinRepetidos<ListDetail>();
+
     return this.query({
       index: 'byListID',
       range: listId,
       filter: (d) =>
-        sameUser(d.UserID, userId) && d.IsDeleted !== 1 && String(d.AssetID) === String(assetId),
+        sameUser(d.UserID, userId) &&
+        !estaEliminado(d.IsDeleted) &&
+        String(d.AssetID) === String(assetId) &&
+        unico(d),
     });
   }
 
@@ -632,11 +717,16 @@ export class ListDetailRepository extends BaseRepository<ListDetail> {
    * cada ítem. Sin este filtro, cada persona vería los registros de las demás.
    */
   async findByOwner(userId: number, listId: string, ownerId: string): Promise<ListDetail[]> {
+    const unico = sinRepetidos<ListDetail>();
+
     return this.query({
       index: 'byListID',
       range: listId,
       filter: (d) =>
-        sameUser(d.UserID, userId) && d.IsDeleted !== 1 && String(d.ListDetGUID) === String(ownerId),
+        sameUser(d.UserID, userId) &&
+        !estaEliminado(d.IsDeleted) &&
+        String(d.ListDetGUID) === String(ownerId) &&
+        unico(d),
     });
   }
 }

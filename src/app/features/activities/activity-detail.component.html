@@ -14,15 +14,26 @@
          actividad se trata —y la única salida— es lo que hace que la gente
          recurra al botón atrás del navegador. -->
     <header class="detail__bar">
-      <button
-        type="button"
-        class="detail__back"
-        (click)="leave()"
-        matTooltip="Volver a las actividades"
-        aria-label="Volver a las actividades"
-      >
-        <vt-icon name="chevron" [size]="20" />
-      </button>
+      <!--
+        Volver, salvo en un enlace público.
+
+        Ahí no hay a dónde: quien abrió el enlace no vino de ningún listado, y
+        el botón lo llevaba a una pantalla de actividades que no es suya. Una
+        salida que no lleva a ninguna parte es peor que no tener salida, porque
+        se pulsa. Lo que sí puede hacer al terminar —llenar otra— está en la
+        pantalla de cierre.
+      -->
+      @if (!esPublico) {
+        <button
+          type="button"
+          class="detail__back"
+          (click)="leave()"
+          matTooltip="Volver a las actividades"
+          aria-label="Volver a las actividades"
+        >
+          <vt-icon name="chevron" [size]="20" />
+        </button>
+      }
 
       <div class="detail__heading">
         <h1>{{ survey()?.Title }}</h1>
@@ -36,6 +47,28 @@
           }
         </p>
       </div>
+
+      <!--
+        Desplegar la ubicación y el activo.
+
+        Vive en la cabecera fija —no encima de las fichas— porque la cabecera es
+        lo único que se queda a la vista al desplazarse: con el botón abajo,
+        plegar el contexto lo dejaba irrecuperable sin volver arriba del todo.
+      -->
+      @if (hayContexto()) {
+        <button
+          type="button"
+          class="detail__context-toggle"
+          [class.detail__context-toggle--open]="contextoAbierto()"
+          (click)="toggleContexto()"
+          [matTooltip]="contextoAbierto() ? 'Ocultar dónde y sobre qué' : 'Ver dónde y sobre qué'"
+          [attr.aria-expanded]="contextoAbierto()"
+          aria-label="Ubicación y activo"
+        >
+          <vt-icon name="map-pin" [size]="16" />
+          <vt-icon name="chevron" [size]="14" class="detail__context-caret" />
+        </button>
+      }
 
       <!-- Estado de despacho, sincronización y autoguardado en la misma línea:
            las tres señales que se consultan de reojo mientras se diligencia. -->
@@ -79,7 +112,7 @@
          atadas a una sede o un equipo que no son los que se inspeccionaron, y
          eso llega a Visitrack como un registro válido que nadie cuestiona. Para
          otra ubicación o otro activo, la actividad es otra. -->
-    @if (location() || asset()) {
+    @if ((location() || asset()) && contextoAbierto()) {
       <div class="detail__context">
         @if (location(); as loc) {
           <article class="detail__entity detail__entity--location">

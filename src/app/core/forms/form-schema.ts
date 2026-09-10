@@ -579,6 +579,23 @@ export function isEmptyValue(value: unknown): boolean {
 
   if (typeof value === 'object') {
     if ('bin' in value) return !(value as { bin?: unknown }).bin;
+
+    /*
+     * Una ubicación borrada no queda en nada: queda en nada **escrito**.
+     *
+     * Al eliminar las coordenadas, lo que se guarda es `{lat: '', lng: ''}` —así
+     * lo escribe la app, y así llega lo que se sincroniza—. El objeto sigue
+     * teniendo sus dos claves, así que contando claves el campo pasaba por
+     * respondido: en pantalla decía «Capturar ubicación» y al guardar no se
+     * exigía, aunque fuera obligatorio. Lo que vale es si hay coordenadas, no
+     * si hay objeto.
+     */
+    if ('lat' in value || 'lng' in value) {
+      const punto = value as { lat?: unknown; lng?: unknown };
+
+      return String(punto.lat ?? '').trim() === '' || String(punto.lng ?? '').trim() === '';
+    }
+
     return Object.keys(value).length === 0;
   }
 

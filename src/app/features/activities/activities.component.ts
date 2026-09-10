@@ -175,6 +175,16 @@ export class ActivitiesComponent {
 
   readonly loading = signal(true);
   readonly survey = signal<Survey | null>(null);
+
+  /**
+   * Si este formulario deja crear actividades a mano.
+   *
+   * Apagado, solo recibe consignas: se sigue diligenciando cuando alguien se lo
+   * despacha, pero no se puede arrancar una desde aquí. Nulo o ausente es
+   * «nadie lo ha tocado», y eso es que sí — mismo criterio que la columna del
+   * servidor, que se añadió como NULL a propósito.
+   */
+  readonly puedeCrear = computed(() => this.survey()?.CreateEnabled !== 0);
   readonly all = signal<ActivityCard[]>([]);
   readonly creating = signal(false);
   readonly feedback = signal('');
@@ -637,6 +647,15 @@ export class ActivitiesComponent {
   async createActivity(): Promise<void> {
     const survey = this.survey();
     if (!survey || this.creating()) return;
+
+    /*
+     * Y aunque el boton no se pinte.
+     *
+     * A esto tambien se llega por teclado, por una ruta guardada o por un ajuste
+     * que cambio mientras la pantalla estaba abierta. Esconder el boton es lo
+     * que se ve; esta linea es la que de verdad lo impide.
+     */
+    if (!this.puedeCrear()) return;
 
     this.creating.set(true);
     this.feedback.set('');

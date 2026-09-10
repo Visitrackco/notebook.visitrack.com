@@ -1,5 +1,7 @@
 import { computed, signal } from '@angular/core';
 
+import { environment } from '../../../environments/environment';
+
 import {
   ActiveSection,
   AnswerField,
@@ -27,7 +29,7 @@ import {
   resolveInheritedDefault,
   valoresDelEntorno,
 } from './inherited-defaults';
-import { Campo, Encargo, EstadoCampo, Flujo, Momento, Resultado, ESTADO_DE_LA_ACTIVIDAD } from './flujo-modelo';
+import { Ambito, Animacion, Aviso, BotonPintado, Campo, Encargo, EstadoCampo, Flujo, HerenciaDeActividad, LlamadaPintada, Momento, Resultado, ESTADO_DE_LA_ACTIVIDAD, PREFIJO_INTEGRACION } from './flujo-modelo';
 import {
   camposDeLaRegla,
   camposDeLasReglas,
@@ -81,6 +83,45 @@ export interface FormEngineInput {
    * formulario se comporta como siempre.
    */
   flujo?: Flujo | null;
+
+  /**
+   * Sobre qué decide el flujo aquí: la actividad, o **una fila** de una tabla.
+   *
+   * El formulario de una fila es un formulario pequeño con su propio mundo, y
+   * corre las reglas que su tabla declara. Sin esto, el sub-formulario se
+   * evaluaba con las reglas de la actividad —una regla que habla de
+   * «Observaciones» decidía a la vez sobre la de arriba y sobre las de dentro—
+   * o, lo que pasaba de verdad, no corría ninguna regla.
+   */
+  ambito?: Ambito;
+
+  /** La tabla cuyas filas se diligencian aquí, cuando [ambito] es `fila`. */
+  tabla?: string;
+
+  /**
+   * El registro del que nació la fila, cuando [ambito] es `fila`.
+   *
+   * Es lo que hace posible el llenado automático: la acción `heredar` saca de
+   * aquí la ciudad de la sede o el precio del ítem. Lleva `LocationInfo`,
+   * `AssetInfo` e `itemsInfo` tal como los guarda la fila.
+   */
+  origenDeLaFila?: Record<string, unknown>;
+
+  /**
+   * Lo que hay respondido **fuera** de la fila, para poder mirarlo desde dentro.
+   *
+   * Dentro de una fila el mundo es la fila, y eso es lo que se quiere: dos
+   * campos que se llaman igual dentro y fuera son lo normal. Pero hace falta
+   * poder mirar hacia arriba —«si el tipo de servicio es Garantía, en cada fila
+   * esconde el precio»—, y para eso los de fuera entran con `FORMULARIO:`
+   * delante, que no puede chocar con ninguno de la fila.
+   *
+   * Llegan ya con el prefijo puesto, resueltos por quien tiene el formulario.
+   */
+  valoresDeFuera?: Record<string, unknown>;
+
+  /** Los campos de fuera, con el mismo prefijo. Para comparar por texto. */
+  camposDeFuera?: Record<string, Campo>;
 }
 
 /**
@@ -156,6 +197,21 @@ export class FormEngine {
   /** Las reglas que aplican, si el formulario tiene flujo. */
   private readonly flujo: Flujo | null;
 
+  /** Sobre qué decide el flujo: la actividad, o una fila de una tabla. */
+  private readonly ambito: Ambito;
+
+  /** La tabla cuyas filas se diligencian aquí, cuando [ambito] es `fila`. */
+  private readonly tabla: string;
+
+  /** El registro del que nació la fila. Lo usa `heredar`. */
+  private readonly origenDeLaFila: Record<string, unknown>;
+
+  /** Lo respondido fuera de la fila, con `FORMULARIO:` delante. */
+  private readonly valoresDeFuera: Record<string, unknown>;
+
+  /** Los campos de fuera, con el mismo prefijo. */
+  private readonly camposDeFuera: Record<string, Campo>;
+
   /** Lo que el flujo decidió sobre cada campo, por `id` de campo. */
   private readonly estadoFlujo = signal(new Map<string, EstadoCampo>());
 
@@ -180,8 +236,8 @@ export class FormEngine {
     return this.sellos()[id] ?? 0;
   }
 
-  /** Los avisos que hay que enseñar, con las mismas llaves que lo demás. */
-  private readonly avisosPorMomento = signal<Record<string, readonly string[]>>({});
+  /** Los avisos que hay que enseñar, por la regla que los pide. Ver [archivarPorRegla]. */
+  private readonly avisosPorRegla = signal<Record<string, readonly Aviso[]>>({});
 
   /**
    * Todo lo que el flujo quiere avisar ahora mismo, sin repetir.
@@ -189,14 +245,430 @@ export class FormEngine {
    * Es una señal para que la pantalla reaccione en cuanto aparezca uno: un aviso
    * que llega tarde ya no informa de nada.
    */
-  readonly avisosDelFlujo = computed<string[]>(() => {
-    const porMomento = this.avisosPorMomento();
+  readonly avisosDelFlujo = computed<Aviso[]>(() => {
+    const porRegla = this.avisosPorRegla();
 
-    return [...new Set(this.enOrden(Object.keys(porMomento)).flatMap((k) => porMomento[k] ?? []))];
+    /*
+     * Sin repetir **por texto**, no por objeto.
+     *
+     * Un `Set` de avisos no quitaría ninguno: dos avisos con el mismo texto son
+     * objetos distintos y el `Set` los deja pasar a los dos. Lo que se repite es
+     * el mensaje, y es el mensaje lo que no hay que enseñar dos veces.
+     */
+    const vistos = new Set<string>();
+
+    return Object.values(porRegla)
+      .flat()
+      .filter((aviso) => {
+        if (vistos.has(aviso.texto)) return false;
+
+        vistos.add(aviso.texto);
+        return true;
+      });
   });
+
+  /** Las animaciones que pide el flujo, guardadas igual que los avisos. */
+  private readonly animacionesPorRegla = signal<Record<string, readonly Animacion[]>>({});
+
+  /**
+   * Las lluvias de caritas que el flujo quiere ahora mismo, sin repetir.
+   *
+   * Ojo con lo que significa «ahora mismo»: esto es un **estado**, no un aviso
+   * de que haya que lanzar algo. El flujo se recalcula con cada tecla y la misma
+   * animación vuelve a salir en esta lista mientras su condición siga
+   * cumpliéndose. Quien la lea tiene que lanzarla cuando **aparece** y no
+   * volver a lanzarla mientras siga ahí. Ver `FormRunnerComponent`.
+   *
+   * Se comparan por su JSON y no por la regla que las pidió: una misma regla
+   * puede cambiar de emojis entre una evaluación y la siguiente —porque su
+   * tramo cambió— y eso sí es una animación distinta.
+   */
+  readonly animacionesDelFlujo = computed<Animacion[]>(() => {
+    const porRegla = this.animacionesPorRegla();
+    const vistas = new Set<string>();
+    const salida: Animacion[] = [];
+
+    for (const llave of Object.keys(porRegla)) {
+      for (const animacion of porRegla[llave] ?? []) {
+        const identidad = JSON.stringify(animacion);
+        if (vistas.has(identidad)) continue;
+
+        vistas.add(identidad);
+        salida.push(animacion);
+      }
+    }
+
+    return salida;
+  });
+
+  /** Los botones que pide el flujo, guardados igual que los avisos. */
+  private readonly botonesPorRegla = signal<Record<string, readonly BotonPintado[]>>({});
+
+  /**
+   * Los botones que hay que dibujar debajo de los campos, sin repetir.
+   *
+   * Sin repetir **por título**, que es lo mismo que hace el motor dentro de una
+   * evaluación: dos momentos distintos pueden pedir el botón de «Ver el
+   * resumen», y dibujarlo dos veces no da a elegir nada, da a dudar. Gana el
+   * último momento, igual que en todo lo demás.
+   */
+  readonly botonesDelFlujo = computed<BotonPintado[]>(() => {
+    const porRegla = this.botonesPorRegla();
+    const porTitulo = new Map<string, BotonPintado>();
+
+    for (const llave of Object.keys(porRegla)) {
+      for (const boton of porRegla[llave] ?? []) porTitulo.set(boton.titulo, boton);
+    }
+
+    return [...porTitulo.values()];
+  });
+
+  /**
+   * Los botones que van **debajo de todos los campos**: los que no eligieron uno.
+   *
+   * Es lo que se dibuja al final del formulario, junto a guardar.
+   */
+  readonly botonesSueltos = computed<BotonPintado[]>(() =>
+    this.botonesDelFlujo().filter((b) => !this.idDelCampoDelBoton(b)),
+  );
+
+  /**
+   * El `id` interno del campo del que cuelga un botón, o vacío.
+   *
+   * Vacío tanto si no eligió campo como si eligió uno que **ya no está en el
+   * formulario** —renombrado, borrado, o de otra versión del esquema—. Los dos
+   * casos acaban igual: el botón se dibuja al final. Descartarlo lo hacía
+   * desaparecer del todo, y desde fuera eso se lee como que los botones no
+   * funcionan; al final se ve, aunque no sea donde se pidió.
+   */
+  private idDelCampoDelBoton(boton: BotonPintado): string {
+    const apiId = (boton.campo ?? '').trim();
+    if (!apiId) return '';
+
+    return this.idPorApiId.get(apiId) ?? '';
+  }
+
+  /**
+   * Los botones colgados de un campo, por el `id` interno de ese campo.
+   *
+   * La traduccion de `apiId` a `id` se hace **aqui** y no en la plantilla porque
+   * `idPorApiId` es de este motor: la pantalla habla de campos por su `id` y la
+   * regla los nombra por su `apiId`, y resolverlo en cada `@for` seria repetir
+   * la misma busqueda por cada campo de cada pagina.
+   */
+  readonly botonesPorCampo = computed<Map<string, { antes: BotonPintado[]; despues: BotonPintado[] }>>(
+    () => {
+      const salida = new Map<string, { antes: BotonPintado[]; despues: BotonPintado[] }>();
+
+      for (const boton of this.botonesDelFlujo()) {
+        // Sin campo, o con uno que ya no está en el formulario: no es de nadie,
+        // y lo recoge `botonesSueltos` para dibujarlo al final.
+        const id = this.idDelCampoDelBoton(boton);
+        if (!id) continue;
+
+        const suyos = salida.get(id) ?? { antes: [], despues: [] };
+        suyos[boton.donde === 'antes' ? 'antes' : 'despues'].push(boton);
+        salida.set(id, suyos);
+      }
+
+      return salida;
+    },
+  );
+
+  /** Los botones de un lado de un campo, o nada. */
+  botonesDe(id: string, lado: 'antes' | 'despues'): BotonPintado[] {
+    return this.botonesPorCampo().get(id)?.[lado] ?? [];
+  }
+
+  // ── Llamadas a un servicio externo ────────────────────────────────────────
+
+  private readonly integracionesPorRegla = signal<Record<string, readonly LlamadaPintada[]>>({});
+
+  /**
+   * Lo que ha respondido cada llamada, por su llave.
+   *
+   * Es lo que se le devuelve al motor con `INTEGRACION:` delante. El motor no
+   * llama a nadie: mira lo que le entra por los valores, igual que mira el
+   * estado de la actividad, así que la respuesta tiene que entrarle por ahí.
+   *
+   * Es una señal para que lo que se pinta se entere cuando llega.
+   */
+  private readonly respuestasDeIntegracion = signal<Record<string, unknown>>({});
+
+  /**
+   * Las llaves que ya se marcaron alguna vez.
+   *
+   * **Es la mitad del cerrojo contra el bucle.** La otra mitad la pone el motor
+   * —la llave es lo que la llamada pide, no cuándo se pidió— y esta remata:
+   * aunque el motor volviera a pedir la misma llave, de aquí no sale una segunda
+   * petición. Solo se olvida al reintentar a mano.
+   */
+  private readonly marcadas = new Set<string>();
+
+  /** Cuántas llamadas lleva hechas cada regla con esta actividad abierta. */
+  private readonly cuantasLleva = new Map<string, number>();
+
+  /**
+   * Cuántas llamadas puede hacer una regla antes de que se corte.
+   *
+   * El último cerrojo, para el caso que los otros dos no cubren: una regla cuya
+   * respuesta alimenta su propia entrada cambia la llave en cada vuelta. Al
+   * llegar al tope se deja de llamar **y se dice**.
+   */
+  static readonly topeDeLlamadasPorRegla = 20;
+
+  /**
+   * Todas las llamadas que el flujo quiere ahora mismo, sin repetir.
+   *
+   * ## Se agrupa por regla, **no** por llave
+   *
+   * Y es justo lo contrario de lo que parece obvio. La llave es *lo que la
+   * llamada pide* —la integracion mas sus entradas ya resueltas— asi que cambia
+   * en cuanto se responde uno de los campos que alimentan la consulta. Pero las
+   * decisiones se guardan por `momento:campo`, y esos cajones no se recalculan
+   * entre si: el de «al abrir» conserva la llamada tal como se resolvio con el
+   * formulario todavia vacio.
+   *
+   * Agrupando por llave, esas dos versiones de **la misma** llamada sobrevivian
+   * juntas, y eso se veia de dos formas que parecian dos fallos distintos:
+   *
+   *   1. **Dos botones**, uno debajo del otro, para una sola accion.
+   *   2. **La respuesta no escribia el campo.** Al pulsar el de arriba —el
+   *      viejo— la respuesta se guardaba bajo su llave, mientras que la
+   *      reevaluacion miraba la llave nueva, que seguia en `pendiente`. Las
+   *      salidas no se aplicaban nunca y desde fuera parecia que el servicio no
+   *      hubiera contestado.
+   *
+   * La regla es la identidad estable: dos versiones de la misma regla son la
+   * misma llamada, contada dos veces. Se queda la ultima, que es la que se
+   * resolvio con lo que hay respondido ahora — y `enOrden` garantiza que el
+   * cajon reevaluado mas recientemente se lea al final.
+   *
+   * Sin regla se cae a la llave, que es lo que habia: una llamada que no sabe
+   * de quien es no se puede agrupar mejor que por lo que pide.
+   */
+  readonly integracionesDelFlujo = computed<LlamadaPintada[]>(() => {
+    const archivadas = this.integracionesPorRegla();
+    const porLlamada = new Map<string, LlamadaPintada>();
+
+    for (const llave of Object.keys(archivadas)) {
+      for (const una of archivadas[llave] ?? []) {
+        porLlamada.set(una.regla ? `${una.regla}|${una.integracion}` : una.llave, una);
+      }
+    }
+
+    return [...porLlamada.values()];
+  });
+
+  /** Las que hay que marcar ahora: pendientes, que salen solas y sin marcar. */
+  llamadasQueSalenSolas(): LlamadaPintada[] {
+    return this.integracionesDelFlujo().filter(
+      (una) =>
+        una.estado === 'pendiente' && una.disparo === 'cambio' && !this.marcadas.has(una.llave),
+    );
+  }
+
+  /** ¿Hay alguna en vuelo de las que hacen esperar al formulario? */
+  readonly hayLlamadaSincronaEnVuelo = computed<boolean>(() =>
+    this.integracionesDelFlujo().some((una) => una.estado === 'vuelo' && una.modo === 'sincrona'),
+  );
+
+  /** Las que van debajo de todos los campos. Ver [botonesSueltos]. */
+  readonly llamadasSueltas = computed<LlamadaPintada[]>(() =>
+    this.integracionesDelFlujo().filter((una) => !this.idDelCampoDeLaLlamada(una)),
+  );
+
+  /**
+   * El `id` interno del campo del que cuelga una llamada, o vacío.
+   *
+   * Vacío tanto si no eligió campo como si eligió uno que ya no está: los dos
+   * acaban igual, dibujándose al final, que es lo mismo que hacen los botones.
+   */
+  private idDelCampoDeLaLlamada(una: LlamadaPintada): string {
+    const apiId = (una.campo ?? '').trim();
+    if (!apiId) return '';
+
+    return this.idPorApiId.get(apiId) ?? '';
+  }
+
+  private readonly llamadasPorCampo = computed<
+    Map<string, { antes: LlamadaPintada[]; despues: LlamadaPintada[] }>
+  >(() => {
+    const salida = new Map<string, { antes: LlamadaPintada[]; despues: LlamadaPintada[] }>();
+
+    for (const una of this.integracionesDelFlujo()) {
+      const id = this.idDelCampoDeLaLlamada(una);
+      if (!id) continue;
+
+      const suyas = salida.get(id) ?? { antes: [], despues: [] };
+      suyas[una.donde === 'antes' ? 'antes' : 'despues'].push(una);
+      salida.set(id, suyas);
+    }
+
+    return salida;
+  });
+
+  /** Las llamadas de un lado de un campo, o nada. */
+  llamadasDe(id: string, lado: 'antes' | 'despues'): LlamadaPintada[] {
+    return this.llamadasPorCampo().get(id)?.[lado] ?? [];
+  }
+
+  /** ¿Se puede marcar, o su regla ya llamó demasiadas veces? */
+  sePuedeLlamar(una: LlamadaPintada): boolean {
+    return (this.cuantasLleva.get(una.regla) ?? 0) < FormEngine.topeDeLlamadasPorRegla;
+  }
+
+  /**
+   * Apunta que una llamada salió. Devuelve `false` si no debía salir.
+   *
+   * Se marca **antes** de llamar y no después: entre pedir y que conteste hay
+   * evaluaciones de por medio, y si la llave no estuviera ya apuntada, cada una
+   * volvería a pedir la misma llamada.
+   */
+  marcar(una: LlamadaPintada): boolean {
+    if (!una?.llave) return false;
+    if (this.marcadas.has(una.llave)) return false;
+    if (!this.sePuedeLlamar(una)) return false;
+
+    this.marcadas.add(una.llave);
+    this.cuantasLleva.set(una.regla, (this.cuantasLleva.get(una.regla) ?? 0) + 1);
+    this.respuestasDeIntegracion.update((r) => ({ ...r, [una.llave]: { estado: 'vuelo' } }));
+
+    return true;
+  }
+
+  /** Lo que respondió el servicio, para que el motor lo escriba en los campos. */
+  respondio(llave: string, datos: unknown): void {
+    if (!llave) return;
+
+    this.respuestasDeIntegracion.update((r) => ({ ...r, [llave]: { estado: 'ok', datos } }));
+  }
+
+  /**
+   * Y lo que pasó cuando no respondió.
+   *
+   * El mensaje viene redactado del intermediario y se guarda tal cual: es texto
+   * pensado para enseñárselo a quien está diligenciando, y volver a redactarlo
+   * aquí daría dos versiones del mismo fallo.
+   */
+  fallo(
+    llave: string,
+    error: { codigo?: string; mensaje?: string; reintentable?: boolean },
+  ): void {
+    if (!llave) return;
+
+    this.respuestasDeIntegracion.update((r) => ({
+      ...r,
+      [llave]: {
+        estado: 'error',
+        ...(error.codigo ? { codigo: error.codigo } : {}),
+        ...(error.mensaje ? { mensaje: error.mensaje } : {}),
+        ...(error.reintentable ? { reintentable: true } : {}),
+      },
+    }));
+  }
+
+  /**
+   * Vuelve a dejar una llamada por hacer. Es el «reintentar», y también lo que
+   * pide un botón al pulsarlo: pulsarlo otra vez es pedirla otra vez.
+   *
+   * El tope por regla no se toca: reintentar a mano cuenta como llamada, que es
+   * lo que impide convertir el botón en un bucle a pulsaciones.
+   */
+  /**
+   * Vuelve a evaluar porque llegó noticia de una integración.
+   *
+   * El campo que «cambió» es `INTEGRACION:<integración>`, que es como las reglas
+   * que llaman a ese servicio se nombran a sí mismas —ver `camposDeLaRegla` en
+   * el motor—. Así solo se reevalúan las reglas que de verdad esperaban esta
+   * noticia, en vez de todas.
+   */
+  avisarDeLaIntegracion(integracion: string): void {
+    if (!integracion) return;
+
+    this.correrFlujo('cambia', PREFIJO_INTEGRACION + integracion);
+  }
+
+  /**
+   * Olvida la respuesta de una llamada que **ha dejado de pedirse**.
+   *
+   * ## Que se veia sin esto
+   *
+   * Pulsar el boton, que el servicio conteste y llene el campo. Escribir otro
+   * valor a mano encima. Cambiar el radio para que la condicion deje de
+   * cumplirse, y volver a activarla. Entonces:
+   *
+   *   - el campo volvia solo al valor que trajo el servicio, borrando lo
+   *     escrito a mano, y
+   *   - el boton ya no se llamaba como se configuro, sino «Volver a consultar».
+   *
+   * Las dos cosas son el mismo sintoma. La respuesta se guarda por llave y
+   * sobrevivia a que la llamada desapareciera, asi que al reaparecer volvia con
+   * su `ok` y sus datos de antes: el motor los veia entrar por los valores y
+   * reescribia el campo, y la pantalla, viendo `ok`, rotulaba el boton como una
+   * reconsulta.
+   *
+   * Reactivar una condicion es empezar de cero, no continuar lo de antes. Sin
+   * respuesta guardada la llamada vuelve como `pendiente`, con su titulo, y no
+   * toca nada hasta que alguien la pulse.
+   *
+   * ## Lo que no se olvida
+   *
+   * Lo que esta **en vuelo**. Su llave puede quedarse fuera un instante —basta
+   * con que cambie una de sus entradas mientras viaja— y borrar ahi la marca
+   * dejaria salir una segunda peticion para lo mismo, que es justo el bucle que
+   * `marcadas` existe para cerrar. Se queda hasta que conteste.
+   */
+  private olvidarLlamadasQueYaNoSePiden(
+    porMomento: Record<string, readonly LlamadaPintada[]>,
+  ): void {
+    const pedidas = new Set<string>();
+
+    for (const lista of Object.values(porMomento)) {
+      for (const una of lista) pedidas.add(una.llave);
+    }
+
+    const respuestas = this.respuestasDeIntegracion();
+    const sobran = Object.keys(respuestas).filter(
+      (llave) =>
+        !pedidas.has(llave) &&
+        (respuestas[llave] as { estado?: string })?.estado !== 'vuelo',
+    );
+
+    if (!sobran.length) return;
+
+    for (const llave of sobran) this.marcadas.delete(llave);
+
+    this.respuestasDeIntegracion.update((r) => {
+      const resto = { ...r };
+      for (const llave of sobran) delete resto[llave];
+
+      return resto;
+    });
+  }
+
+  reintentar(llave: string): void {
+    this.marcadas.delete(llave);
+
+    this.respuestasDeIntegracion.update((r) => {
+      const resto = { ...r };
+      delete resto[llave];
+
+      return resto;
+    });
+  }
 
   /** Lo que decidió cada momento por separado. Ver [correrFlujo]. */
   private readonly porMomento = new Map<string, Map<string, EstadoCampo>>();
+
+  /**
+   * Qué reglas decidieron lo que hay en cada cajón de `porMomento`.
+   *
+   * Sin esto no se puede saber de quién es cada decisión: el cajón guarda cómo
+   * quedó cada campo, no quién lo dejó así. Y hace falta saberlo para olvidar
+   * solo lo de las reglas que se acaban de reevaluar. Ver [olvidarLoViejoDe].
+   */
+  private readonly reglasPorMomento = new Map<string, Set<string>>();
 
   /**
    * Lo que pidió cada momento por su cuenta. Ver [correrFlujo].
@@ -241,6 +713,22 @@ export class FormEngine {
   });
   private readonly bloqueosPorMomento = new Map<string, readonly string[]>();
 
+  /*
+   * Lo que el flujo decide sobre la actividad entera, por momento.
+   *
+   * Se acumula igual que los bloqueos —y no en una sola bandera— porque cada
+   * momento se vuelve a evaluar por su cuenta: sin separarlos, lo que decidió
+   * «al abrir» desaparecía en cuanto alguien escribía y se volvía a correr «al
+   * cambiar».
+   */
+  private readonly edicionPorMomento = new Map<string, readonly string[]>();
+  private readonly guardarOcultoPorMomento = new Map<string, boolean>();
+  private readonly guardarIgualPorMomento = new Map<string, boolean>();
+  private readonly descriptivosPorMomento = new Map<
+    string,
+    readonly { campo: string; lab: string; val: string }[]
+  >();
+
   /**
    * Junta lo que decidió cada momento, del más general al más concreto.
    *
@@ -279,37 +767,132 @@ export class FormEngine {
    *
    * Así que cuando una regla se evalúa, lo que decidió antes se tira: sus
    * decisiones viven en la última pasada que la miró, y en ninguna otra.
+   *
+   * ## Y por qué se mira regla por regla, y no campo por campo
+   *
+   * «Lo que decidieron **estas** reglas» es literal. Olvidando todo lo que
+   * hubiera sobre un campo del que las reglas de ahora hablan, una regla ajena
+   * perdía su decisión sin haber cambiado nada: dos reglas distintas sobre el
+   * mismo campo —una «al cambiar» que lo deja opcional y otra «al guardar» que
+   * lo exige cuando el total pasa de cien— y al guardar se borraba la primera
+   * aunque la segunda **no se cumpliera**. El campo volvía a exigirse, y con él
+   * la queja de un obligatorio que el flujo había liberado.
+   *
+   * Por eso cada cajón guarda también de quién es lo que tiene: se olvida solo
+   * lo de las reglas que están en los dos sitios.
    */
   private olvidarLoViejoDe(momento: Momento, campoQueCambio: string | undefined, llave: string): void {
-    const evaluadas = (this.flujo?.reglas ?? []).filter((regla) => {
-      if (regla.activa === false) return false;
-      if (regla.general) return momento === 'guardar';
-      if (!regla.cuando?.includes(momento)) return false;
-
-      // Sin campo que cambie —al abrir, al guardar— se evalúan todas. Con él,
-      // solo las suyas, que es el mismo criterio que usa el motor.
-      if (!campoQueCambio) return true;
-
-      const suyos = camposDeLaRegla(regla);
-      return suyos.length === 0 || suyos.includes(campoQueCambio);
-    });
-
-    if (!evaluadas.length) return;
-
-    const decididos = new Set<string>();
-
-    for (const regla of evaluadas) {
-      for (const apiId of camposQueDecideLaRegla(regla)) {
-        const id = this.idPorApiId.get(apiId);
-        decididos.add(id ?? apiId);
-      }
-    }
+    const ahora = this.reglasDe(momento, campoQueCambio);
+    if (!ahora.size) return;
 
     for (const [otra, mapa] of this.porMomento) {
       if (otra === llave) continue;
 
-      for (const id of decididos) mapa.delete(id);
+      // De aquel cajón solo se tira lo que decidieron las reglas que se acaban
+      // de reevaluar. Lo de las demás sigue siendo suyo y sigue valiendo.
+      const antes = this.reglasPorMomento.get(otra);
+      if (!antes?.size) continue;
+
+      const comunes = [...ahora].filter((id) => antes.has(id));
+      if (!comunes.length) continue;
+
+      for (const id of this.camposQueDeciden(new Set(comunes))) mapa.delete(id);
     }
+
+    this.olvidarEncargosViejosDe(ahora, llave);
+  }
+
+  /**
+   * Y lo mismo con los encargos: una regla que se acaba de reevaluar ya no vale
+   * por lo que pidio en otro momento.
+   *
+   * Sin esto, un llenar-tabla disparado al abrir se quedaba pedido para
+   * siempre: al cambiar una respuesta solo se reevalua el momento cambia, el
+   * cajon de abrir no se toca, y su encargo seguia ahi aunque la condicion ya
+   * no se cumpliera. El sintoma es exacto: la tabla se llena bien y luego no
+   * hay forma de que se vacie.
+   *
+   * Se mira por regla y no por tipo de encargo: si esa regla acaba de decidir,
+   * lo que decidio ahora es lo que vale, en el momento que sea.
+   */
+  private olvidarEncargosViejosDe(ahora: Set<string>, llave: string): void {
+    const porMomento = this.encargosPorMomento();
+    let toco = false;
+    const limpio: Record<string, readonly Encargo[]> = {};
+
+    for (const [otra, lista] of Object.entries(porMomento)) {
+      if (otra === llave) {
+        limpio[otra] = lista;
+        continue;
+      }
+
+      const antes = this.reglasPorMomento.get(otra);
+
+      if (!antes?.size) {
+        limpio[otra] = lista;
+        continue;
+      }
+
+      const quedan = lista.filter((e) => {
+        const regla = String(e.regla ?? '');
+
+        // Sin regla no se sabe de quien es: se conserva, que es lo prudente.
+        if (!regla) return true;
+
+        return !(ahora.has(regla) && antes.has(regla));
+      });
+
+      if (quedan.length !== lista.length) toco = true;
+
+      limpio[otra] = quedan;
+    }
+
+    if (toco) this.encargosPorMomento.set(limpio);
+  }
+
+  /**
+   * Las reglas que se evalúan en un momento, por su identificador.
+   *
+   * Es el mismo criterio que usa el motor: las generales solo al guardar, las
+   * demás según su `cuando`, y con un campo que cambia solo las que preguntan
+   * por él. Una regla sin condiciones no es de nadie y entra siempre.
+   */
+  private reglasDe(momento: Momento, campoQueCambio: string | undefined): Set<string> {
+    const salida = new Set<string>();
+
+    for (const regla of this.flujo?.reglas ?? []) {
+      if (regla.activa === false) continue;
+
+      if (regla.general) {
+        if (momento !== 'guardar') continue;
+      } else if (!regla.cuando?.includes(momento)) {
+        continue;
+      }
+
+      if (campoQueCambio) {
+        const suyos = camposDeLaRegla(regla);
+        if (suyos.length && !suyos.includes(campoQueCambio)) continue;
+      }
+
+      salida.add(String(regla.id ?? ''));
+    }
+
+    return salida;
+  }
+
+  /** Los campos sobre los que deciden estas reglas, por su `id` interno. */
+  private camposQueDeciden(reglas: Set<string>): Set<string> {
+    const salida = new Set<string>();
+
+    for (const regla of this.flujo?.reglas ?? []) {
+      if (!reglas.has(String(regla.id ?? ''))) continue;
+
+      for (const apiId of camposQueDecideLaRegla(regla)) {
+        salida.add(this.idPorApiId.get(apiId) ?? apiId);
+      }
+    }
+
+    return salida;
   }
 
   /**
@@ -321,6 +904,68 @@ export class FormEngine {
    * respondiendo: si dos reglas dicen cosas distintas del mismo campo, manda la
    * del campo que se contestó después.
    */
+  /**
+   * Guarda lo que el flujo pide, **por la regla que lo pide**.
+   *
+   * ## Por qué la regla y no el momento, ni «momento:campo»
+   *
+   * Porque una evaluación es **parcial**: al responder un campo solo se miran
+   * las reglas que preguntan por él (`esSuya`, en el motor). Así que ninguna de
+   * las dos llaves de antes podía estar bien:
+   *
+   * - **`momento:campo`** guardaba lo que pide una regla bajo el campo que
+   *   *disparó* la evaluación. Y los disparadores crecen —si una regla escribe
+   *   en otro campo, ese campo se suma—, así que lo que pedía la regla de «Tipo
+   *   de gestión» podía acabar archivado bajo `cambia:IMAGEN` y no limpiarse
+   *   jamás: el botón no se iba nunca y la lluvia salía una sola vez.
+   *
+   * - **Solo el momento** reemplazaba el cajón entero con una lista parcial, así
+   *   que lo que pedía una regla desaparecía en cuanto se escribía en un campo
+   *   que no era el suyo.
+   *
+   * Por regla no hay ambigüedad: se retira lo de las reglas que **se miraron** y
+   * ya no lo piden, y lo de una regla a la que nadie preguntó se queda donde
+   * estaba. Que se miró o no lo dice el motor en `Resultado.evaluadas`, que
+   * existe justo para esto: `disparadas` solo trae las que **cumplen**, y la que
+   * hay que limpiar es precisamente la que dejó de cumplir.
+   *
+   * Lo que no lleva regla —no debería haberlo— cae en un cajón sin nombre y se
+   * reemplaza cada vez que se produce.
+   */
+  private archivarPorRegla<T extends { regla?: string }>(
+    anterior: Record<string, readonly T[]>,
+    ahora: readonly T[],
+    evaluadas: readonly string[],
+  ): Record<string, readonly T[]> {
+    const agrupado = new Map<string, T[]>();
+
+    for (const item of ahora) {
+      const regla = item.regla ?? '';
+      const lista = agrupado.get(regla);
+
+      if (lista) lista.push(item);
+      else agrupado.set(regla, [item]);
+    }
+
+    const salida: Record<string, readonly T[]> = { ...anterior };
+
+    // Se miró y ya no lo pide: fuera.
+    for (const regla of evaluadas) {
+      if (!agrupado.has(regla)) delete salida[regla];
+    }
+
+    /*
+     * Y lo que sí se pide se reemplaza **en su sitio**.
+     *
+     * Asignar una clave que ya existe conserva su posición, así que los botones
+     * no bailan por la pantalla cada vez que se responde algo. Borrar y volver a
+     * poner los mandaría al final.
+     */
+    for (const [regla, items] of agrupado) salida[regla] = items;
+
+    return salida;
+  }
+
   private enOrden(llaves: string[]): string[] {
     return [
       ...llaves.filter((k) => k === 'abrir'),
@@ -331,6 +976,15 @@ export class FormEngine {
 
   /** Motivos por los que el flujo impide guardar. Vacío = se puede. */
   readonly bloqueosDeFlujo = signal<readonly string[]>([]);
+
+  /** Motivos por los que el flujo no deja editar la actividad. Vacío = se puede. */
+  readonly edicionBloqueada = signal<readonly string[]>([]);
+
+  /** Si el flujo pidió esconder el botón de guardar. */
+  readonly guardarOculto = signal(false);
+
+  /** Si el flujo cerró la salida de «guardar de todos modos». */
+  readonly guardarIgualBloqueado = signal(false);
 
   /** Página a la que el flujo pidió ir, si alguna regla lo pidió. */
   readonly paginaDeFlujo = signal<number | null>(null);
@@ -347,6 +1001,11 @@ export class FormEngine {
     this.derived = derivedFieldsOf(this.pages);
     this.readOnly = input.readOnly ?? false;
     this.flujo = input.flujo ?? null;
+    this.ambito = input.ambito ?? 'actividad';
+    this.tabla = input.tabla ?? '';
+    this.origenDeLaFila = input.origenDeLaFila ?? {};
+    this.valoresDeFuera = input.valoresDeFuera ?? {};
+    this.camposDeFuera = input.camposDeFuera ?? {};
 
     const stored = parseAnswerFields(input.answers);
     const initial = this.buildInitialValues(stored);
@@ -377,6 +1036,53 @@ export class FormEngine {
        */
       this.correrFlujo('abrir');
     }
+  }
+
+  /**
+   * Los campos que alguna regla lee o escribe.
+   *
+   * En caché porque el flujo no cambia mientras la actividad está abierta, y
+   * recorrer todas las reglas en cada tecla sería cambiar un desperdicio por
+   * otro más pequeño.
+   */
+  private leidosYEscritos: Set<string> | null = null;
+
+  /**
+   * ¿Le importa a alguna regla que este campo cambie?
+   *
+   * Lo escrito cuenta tanto como lo leído: si una regla le pone valor a un
+   * campo, ese campo acaba de cambiar tanto como si lo hubiera respondido
+   * alguien, y sus propias reglas tienen que correr. Es lo que encadena «si
+   * marco A, pon B» con la regla de B.
+   */
+  private leImporta(campo: string): boolean {
+    if (!this.flujo) return false;
+
+    if (!this.leidosYEscritos) {
+      /*
+       * Por `camposDeLaRegla` y no por `camposDeLasReglas`.
+       *
+       * Aquel solo mira las condiciones; este mira además lo que preguntan los
+       * botones y **las entradas de una llamada a un servicio**, que es lo que
+       * hace que responder la cedula despierte a la regla que consulta el
+       * padron. El conjunto solo puede crecer, asi que nada de lo que ya
+       * funcionaba deja de hacerlo: como mucho se evalua alguna vez de mas.
+       */
+      this.leidosYEscritos = new Set([
+        ...this.flujo.reglas.flatMap((r) => camposDeLaRegla(r)),
+        ...this.flujo.reglas.flatMap((r) => camposQueDecideLaRegla(r)),
+      ]);
+    }
+
+    /*
+     * Una regla sin campos vale para cualquier cosa que se responda.
+     *
+     * Es el caso de las incondicionales y de las que solo cambian el estado: no
+     * preguntan por nadie, así que no se puede descartar nada.
+     */
+    if (!this.leidosYEscritos.size) return true;
+
+    return this.leidosYEscritos.has(campo);
   }
 
   /**
@@ -419,9 +1125,31 @@ export class FormEngine {
 
         this.camposPorApiId.set(apiId, {
           apiId,
+          id: field.id,
           fty: field.fty,
           opt: field.opt as any,
           pagina: indice + 1,
+
+          /*
+           * La direccion que pinta un campo de tipo imagen.
+           *
+           * No se responde: la trae el formulario. Sin pasarla, el motor leia el
+           * valor —vacio— y una regla que quisiera mandar esa foto en un aviso
+           * salia sin ninguna, callando.
+           */
+          url: (field as any).url,
+
+          /*
+           * El sub-formulario de una tabla, para que las reglas puedan hablar
+           * de lo que hay dentro.
+           *
+           * Una fila guarda sus respuestas por `id` y una regla las pide por
+           * `apiId`; sin el esquema de la fila no hay forma de saber cuál es
+           * cuál. Va aquí y no al vuelo porque el esquema no cambia mientras se
+           * diligencia, y recorrerlo en cada tecla es justo lo que este índice
+           * existe para evitar.
+           */
+          detalle: [],
         });
 
         this.idPorApiId.set(apiId, field.id);
@@ -442,7 +1170,18 @@ export class FormEngine {
   private correrFlujo(momento: Momento, campoQueCambio?: string): void {
     if (!this.flujo?.reglas?.length) return;
 
-
+    /*
+     * Un campo que a ninguna regla le importa no paga nada.
+     *
+     * Antes se evaluaba el flujo entero en cada tecla de cualquier campo: se
+     * armaba el mapa de valores, se copiaba el entorno y se recorrían todas las
+     * reglas para que el motor acabara descartándolas por su cuenta. En un
+     * formulario de cien campos con dos reglas, eso se pagaba cien veces.
+     *
+     * Solo aplica «al cambiar»: al abrir y al guardar no hay un campo concreto
+     * y tienen que correr todas. Es el mismo atajo que ya hacía la app.
+     */
+    if (campoQueCambio && !this.leImporta(campoQueCambio)) return;
 
     // El motor trabaja con `apiId`; los valores viven aquí por `id`.
     const actuales = this.values();
@@ -456,7 +1195,16 @@ export class FormEngine {
      * un campo del formulario se llamara igual, mande el del formulario, que es
      * lo que el usuario está respondiendo delante.
      */
-    const valores: Record<string, unknown> = { ...valoresDelEntorno(this.inherits) };
+    /*
+     * Lo de fuera va primero, y lo de dentro encima.
+     *
+     * Van con `FORMULARIO:` delante, asi que no pueden pisarse; el orden es por
+     * claridad, no por necesidad.
+     */
+    const valores: Record<string, unknown> = {
+      ...valoresDelEntorno(this.inherits),
+      ...this.valoresDeFuera,
+    };
 
     /*
      * El estado de la actividad, como si fuera un campo más.
@@ -466,6 +1214,18 @@ export class FormEngine {
      * para que el motor no tenga que saber nada especial sobre él.
      */
     valores[ESTADO_DE_LA_ACTIVIDAD] = this.estadoActividad();
+
+    /*
+     * Y lo que hayan respondido los servicios externos.
+     *
+     * Entra como un valor más, con `INTEGRACION:` delante, por lo mismo que el
+     * estado de la actividad: el motor no llama a nadie ni debe hacerlo —tiene
+     * que dar el mismo resultado en el simulador, donde no hay red— así que la
+     * respuesta tiene que entrarle por donde le entra todo lo demás.
+     */
+    for (const [llave, respuesta] of Object.entries(this.respuestasDeIntegracion())) {
+      valores[PREFIJO_INTEGRACION + llave] = respuesta;
+    }
 
     for (const [apiId, id] of this.idPorApiId) {
       valores[apiId] = actuales.get(id) ?? null;
@@ -478,7 +1238,29 @@ export class FormEngine {
      * un campo que no conoce se compara como texto — que es justo lo que hay
      * que hacer con el nombre de una sede o la marca de un equipo.
      */
-    const campos = Object.fromEntries(this.camposPorApiId);
+    const campos = { ...this.camposDeFuera, ...Object.fromEntries(this.camposPorApiId) };
+
+    /*
+     * La imagen que un campo **esta enseñando ahora**, no la de su definicion.
+     *
+     * Un campo de tipo imagen pinta una direccion, y esa direccion la puede
+     * haber cambiado una regla con `poner-imagen` — que es el caso corriente:
+     * el flujo decide que foto toca segun lo respondido.
+     *
+     * Sin esto, una regla que quisiera mandar esa foto en un aviso leia la
+     * direccion original del formulario, o ninguna. El motor no puede
+     * resolverlo por su cuenta: `poner-imagen` puede haber corrido en **otro
+     * momento** —al cambiar— y la evaluacion de ahora no lo sabe. Quien si lo
+     * sabe es esta clase, que es la que combina los momentos para pintar.
+     */
+    const puestoPorElFlujo = this.estadoFlujo();
+
+    for (const [apiId, id] of this.idPorApiId) {
+      const puesta = String(puestoPorElFlujo.get(id)?.imagen ?? '').trim();
+      if (!puesta || !campos[apiId]) continue;
+
+      campos[apiId] = { ...campos[apiId], url: puesta };
+    }
 
     /*
      * Sin opciones a propósito: comoTexto traduce identificadores a nombres
@@ -501,6 +1283,15 @@ export class FormEngine {
       // —«dentro de dos días»— y se pasa en vez de leerlo dentro para que el
       // motor siga dando el mismo resultado en el simulador que aquí.
       ahora: ahoraLocal(),
+
+      // Y con qué se arma la dirección de un archivo, para `{FOTO.url}` en el
+      // cuerpo de un correo. Se pasa en vez de escribirla en el motor por lo
+      // mismo que la hora: el simulador tiene que dar el mismo resultado.
+      urlDeBinarios: environment.binariesUrl,
+
+      ambito: this.ambito,
+      tabla: this.tabla,
+      origen: this.origenDeLaFila,
     });
 
     const porId = new Map<string, EstadoCampo>();
@@ -557,14 +1348,24 @@ export class FormEngine {
      * de A, aunque A fuera lo último que se contestó.
      */
     this.porMomento.delete(llave);
+    this.reglasPorMomento.delete(llave);
     this.bloqueosPorMomento.delete(llave);
+    this.edicionPorMomento.delete(llave);
+    this.guardarOcultoPorMomento.delete(llave);
+    this.guardarIgualPorMomento.delete(llave);
+    this.descriptivosPorMomento.delete(llave);
 
     // Y lo que estas mismas reglas hubieran decidido en otra pasada deja de
     // valer: acaban de decidir otra vez. Ver [olvidarLoViejoDe].
     this.olvidarLoViejoDe(momento, campoQueCambio, llave);
 
+    this.reglasPorMomento.set(llave, this.reglasDe(momento, campoQueCambio));
     this.porMomento.set(llave, porId);
     this.bloqueosPorMomento.set(llave, resultado.bloqueos);
+    this.edicionPorMomento.set(llave, resultado.edicionBloqueada ?? []);
+    this.guardarOcultoPorMomento.set(llave, !!resultado.guardarOculto);
+    this.guardarIgualPorMomento.set(llave, !!resultado.guardarIgualBloqueado);
+    this.descriptivosPorMomento.set(llave, resultado.descriptivos ?? []);
 
     /*
      * Lo que hay que hacer con la actividad, para que lo recoja la pantalla.
@@ -580,13 +1381,56 @@ export class FormEngine {
 
     this.encargosPorMomento.set({ ...encargos, [llave]: resultado.encargos ?? [] });
 
-    const avisos = { ...this.avisosPorMomento() };
-    delete avisos[llave];
+    /*
+     * Los avisos, las caritas, los botones y las llamadas van **por regla**.
+     *
+     * No por momento ni por «momento:campo»: ver [archivarPorRegla] para el
+     * porqué, que es el mismo para las cuatro y no es evidente.
+     */
+    const evaluadas = resultado.evaluadas ?? [];
 
-    this.avisosPorMomento.set({ ...avisos, [llave]: resultado.avisos ?? [] });
+    this.avisosPorRegla.set(
+      this.archivarPorRegla(this.avisosPorRegla(), resultado.avisos ?? [], evaluadas),
+    );
+
+    this.animacionesPorRegla.set(
+      this.archivarPorRegla(this.animacionesPorRegla(), resultado.animaciones ?? [], evaluadas),
+    );
+
+    this.botonesPorRegla.set(
+      this.archivarPorRegla(this.botonesPorRegla(), resultado.botones ?? [], evaluadas),
+    );
+
+    /*
+     * Las llamadas, igual — y aquí importa el doble.
+     *
+     * Un botón de API que no se va cuando su condición deja de cumplirse invita
+     * a consultar algo que ya no viene al caso; y uno que desaparece mientras
+     * alguien escribe en otro campo parece una aplicación rota. Las dos cosas
+     * pasaban, cada una con una de las llaves que se probaron antes.
+     */
+    const vigentes = this.archivarPorRegla(
+      this.integracionesPorRegla(),
+      resultado.integraciones ?? [],
+      evaluadas,
+    );
+
+    this.integracionesPorRegla.set(vigentes);
+    this.olvidarLlamadasQueYaNoSePiden(vigentes);
 
     this.estadoFlujo.set(this.combinarMomentos());
     this.bloqueosDeFlujo.set([...new Set([...this.bloqueosPorMomento.values()].flat())]);
+
+    /*
+     * Basta con que **un** momento lo pida.
+     *
+     * Se combinan con `some` y no con el último que corrió: una regla de «al
+     * abrir» que esconde el botón tiene que seguir escondiéndolo mientras
+     * alguien escribe, y al evaluar «al cambiar» esa regla ni se mira.
+     */
+    this.edicionBloqueada.set([...new Set([...this.edicionPorMomento.values()].flat())]);
+    this.guardarOculto.set([...this.guardarOcultoPorMomento.values()].some(Boolean));
+    this.guardarIgualBloqueado.set([...this.guardarIgualPorMomento.values()].some(Boolean));
     /*
      * Y si una regla pidió ir a otra página, se va.
      *
@@ -640,10 +1484,26 @@ export class FormEngine {
       acabo[apiId] = `"${comoTexto(resultado.valoresFinales?.[apiId], campos[apiId])}"`;
     }
 
-    console.debug('[flujo]', momento, {
+    console.log(`[flujo] ${momento} · ${this.ambito}${this.tabla ? ' de ' + this.tabla : ''}`, {
       cambió: campoQueCambio ?? '(ninguno)',
       leyó: leido,
       acabó: acabo,
+
+      /*
+       * Todas las reglas del flujo, con lo que decide si corren o no.
+       *
+       * Enseñar solo las del momento escondía la mitad de los porqués: una
+       * regla que no se ejecuta puede estar apagada, ser de otro momento, o ser
+       * de otro ámbito —de la actividad estando en una fila, o de otra tabla—.
+       * Con las tres cosas delante se ve cuál es en un vistazo.
+       */
+      todasLasReglas: (this.flujo?.reglas ?? []).map(
+        (r) =>
+          `${r.id}: ${r.nombre ?? ''} · cuando=[${(r.cuando ?? []).join('|')}]` +
+          ` · ámbito=${r.ambito ?? 'actividad'}${r.md ? '(' + r.md + ')' : ''}` +
+          `${r.activa === false ? ' · APAGADA' : ''}`,
+      ),
+
       reglasCargadas: (this.flujo?.reglas ?? [])
         .filter((r) => r.cuando?.includes(momento))
         .map((r) => `${r.id}: ${r.nombre ?? ''}${r.activa === false ? ' (apagada)' : ''}`),
@@ -656,6 +1516,42 @@ export class FormEngine {
       bloqueos: resultado.bloqueos,
       estado: this.estadoDelFlujo(),
     });
+  }
+
+  /** Los campos inexistentes ya avisados. Ver [escribirLoQueElFlujoPuso]. */
+  private readonly camposQueNoExisten = new Set<string>();
+
+  /**
+   * Escribe un valor en un campo, como si lo hubiera puesto una regla.
+   *
+   * Lo usa el botón de calificar: la nota la calculó el motor al armarlo, y al
+   * pulsarlo hay que dejarla en su campo.
+   *
+   * ## Por qué reutiliza el mismo camino
+   *
+   * Porque escribir un campo no es asignar una variable: hay que traducir el
+   * valor a como lo guarda ese tipo de campo —una opción de un radio no se
+   * guarda como su texto—, rehacer los que se pintan a partir de opciones, y
+   * recalcular los derivados. Todo eso ya está resuelto en
+   * `escribirLoQueElFlujoPuso`, y una segunda copia se habría separado.
+   *
+   * Devuelve si de verdad escribió. `false` cuando el campo no existe o no
+   * admite ese valor: son los dos casos en los que una regla tampoco lo tocaría.
+   */
+  escribirValorDeUnBoton(apiId: string, valor: unknown): boolean {
+    const campos = { ...this.camposDeFuera, ...Object.fromEntries(this.camposPorApiId) };
+
+    if (!this.idPorApiId.get(apiId)) {
+      console.warn(`[FormEngine] el botón quiere escribir en «${apiId}», que no es ningún campo.`);
+      return false;
+    }
+
+    const antes = this.values();
+
+    this.escribirLoQueElFlujoPuso({ [apiId]: { valor } as EstadoCampo }, campos);
+
+    // Si el mapa no cambió, no se escribió: el campo no admitía ese valor.
+    return this.values() !== antes;
   }
 
   private escribirLoQueElFlujoPuso(
@@ -671,7 +1567,30 @@ export class FormEngine {
       if (estado.valor === undefined) continue;
 
       const id = this.idPorApiId.get(apiId);
-      if (!id) continue;
+
+      /*
+       * Una regla que nombra un campo que este formulario no tiene.
+       *
+       * Se saltaba en silencio, y ese silencio costaba caro: la regla se
+       * dispara, el motor decide el valor, y el campo no aparece —exactamente
+       * igual que si la regla no se hubiera cumplido—. Es el caso de una salida
+       * de integración apuntando a un identificador con una errata.
+       *
+       * Se avisa **una vez por campo**: esto corre en cada tecla, y repetirlo
+       * llenaría la consola hasta tapar lo demás.
+       */
+      if (!id) {
+        if (!this.camposQueNoExisten.has(apiId)) {
+          this.camposQueNoExisten.add(apiId);
+
+          console.warn(
+            `[FormEngine] el flujo quiere escribir en «${apiId}», que no es ningún campo ` +
+            'de este formulario. Revisa el identificador en la regla.',
+          );
+        }
+
+        continue;
+      }
 
       /*
        * El valor, con la forma que ese campo guarda.
@@ -759,6 +1678,65 @@ export class FormEngine {
     this.sections.set(this.deriveSections(this.values()));
   }
 
+  /**
+   * Le dice al motor cómo es el sub-formulario de una tabla.
+   *
+   * ## Por qué no se sabe de antemano
+   *
+   * El formulario de una fila **no está en el campo**: sale de la configuración
+   * de su lista, y esa se consulta a la base. El índice de campos se arma al
+   * montar, cuando eso todavía no ha llegado, así que la tabla entra sin saber
+   * qué lleva dentro y quien lo resuelve —el formulario, con
+   * `MasterDetailSourceService`— lo trae después.
+   *
+   * Sin esto, una regla que dice `DETALLE:EQUIPOS:ESTADO` no encuentra el `id`
+   * con el que la fila guardó su respuesta y lee siempre en blanco.
+   */
+  registrarDetalle(apiId: string, paginas: readonly FormPage[]): void {
+    const campo = this.camposPorApiId.get(apiId);
+    if (!campo) return;
+
+    campo.detalle = paginas.flatMap((pagina) =>
+      pagina.fie.map((field) => ({
+        apiId: (field.apiId ?? '').toString().trim() || field.id,
+        id: field.id,
+        fty: field.fty,
+        opt: field.opt as any,
+      })),
+    );
+  }
+
+  /**
+   * Lo respondido en este formulario, con `FORMULARIO:` delante.
+   *
+   * Es lo que se le pasa al motor de cada fila para que sus reglas puedan mirar
+   * hacia arriba. Con el prefijo puesto no puede chocar con un campo de la
+   * fila, que es el caso normal: dos campos que se llaman igual dentro y fuera.
+   */
+  readonly valoresParaLasFilas = computed<Record<string, unknown>>(() => {
+    const valores = this.values();
+    const salida: Record<string, unknown> = {};
+
+    for (const [apiId, id] of this.idPorApiId) {
+      salida[`FORMULARIO:${apiId}`] = valores.get(id) ?? null;
+    }
+
+    return salida;
+  });
+
+  /** Los campos de este formulario, con el mismo prefijo. */
+  readonly camposParaLasFilas = computed<Record<string, Campo>>(() => {
+    const salida: Record<string, Campo> = {};
+
+    for (const [apiId, campo] of this.camposPorApiId) {
+      if (campo.esPagina) continue;
+
+      salida[`FORMULARIO:${apiId}`] = { ...campo, apiId: `FORMULARIO:${apiId}` };
+    }
+
+    return salida;
+  });
+
   /** Cómo dejó el flujo a un campo. `undefined` si no dijo nada de él. */
   estadoDeFlujo(fieldId: string): EstadoCampo | undefined {
     return this.estadoFlujo().get(fieldId);
@@ -782,6 +1760,30 @@ export class FormEngine {
     if (dijo !== undefined) return dijo;
 
     return isFieldVisible(field, active);
+  }
+
+  /**
+   * Los descriptivos que el flujo quiere en el título.
+   *
+   * Se acumulan por momento como todo lo demás: uno pedido «al cambiar» tiene
+   * que seguir valiendo cuando se evalúa «al guardar», donde esa regla ni se
+   * mira.
+   */
+  descriptivosDeFlujo(): { campo: string; lab: string; val: string }[] {
+    const vistos = new Set<string>();
+    const salida: { campo: string; lab: string; val: string }[] = [];
+
+    for (const lista of this.descriptivosPorMomento.values()) {
+      for (const d of lista) {
+        const clave = `${d.campo}|${d.lab}`;
+        if (vistos.has(clave)) continue;
+
+        vistos.add(clave);
+        salida.push(d);
+      }
+    }
+
+    return salida;
   }
 
   /** Se evalúa el flujo con el momento «al guardar», y se dice si deja. */
@@ -817,8 +1819,115 @@ export class FormEngine {
       .map((e) => ({ ...(e.valor as Record<string, unknown>), regla: e.regla }));
   }
 
-  formulariosQuePideElFlujo(): string[] {
-    const destinos = new Set<string>();
+  /**
+   * Los correos que el flujo quiere mandar, **ya escritos**.
+   *
+   * Vienen con las variables resueltas y escapadas: quien los apunta no tiene
+   * que volver a leer el formulario, y quien los manda —el servidor— no sabría
+   * hacerlo. Ver `CorreoPedido` en el motor.
+   *
+   * Solo los del momento «al guardar», por lo mismo que las consignas: mandar
+   * mientras alguien escribe sería un correo por cada tecla. Los de un botón no
+   * salen por aquí — van dentro del propio botón, y se apuntan al pulsarlo.
+   */
+  correosQuePideElFlujo(): Record<string, unknown>[] {
+    return (this.encargosPorMomento()['guardar'] ?? [])
+      .filter((e) => e.que === 'enviar-correo' && e.valor && typeof e.valor === 'object')
+      .map((e) => ({ ...(e.valor as Record<string, unknown>) }));
+  }
+
+  /**
+   * Las notificaciones que el flujo quiere mandar, **ya escritas**.
+   *
+   * Gemela de `correosQuePideElFlujo`, y con el mismo recorte al momento «al
+   * guardar»: avisar mientras alguien escribe sería un aviso por cada tecla, y
+   * un push que ya sonó en el teléfono de otro no se puede retirar.
+   *
+   * Ver `PushPedido` en el motor. Los de un botón no salen por aquí — van
+   * dentro del propio botón, y se apuntan al pulsarlo.
+   */
+  pushesQuePideElFlujo(): Record<string, unknown>[] {
+    return (this.encargosPorMomento()['guardar'] ?? [])
+      .filter((e) => e.que === 'enviar-push' && e.valor && typeof e.valor === 'object')
+      .map((e) => ({ ...(e.valor as Record<string, unknown>) }));
+  }
+
+  /**
+   * Las tablas que una regla quiere llenar, y con qué.
+   *
+   * A diferencia de crear una actividad, esto **sí** se atiende en cualquier
+   * momento: una fila creada de más se puede borrar, y lo que se pide aquí es
+   * justo que la tabla se llene sola al responder algo —«si es una revisión
+   * completa, mete estos ocho equipos»—. Esperar al guardado dejaría a quien
+   * responde mirando una tabla vacía que solo se llena al final.
+   */
+  tablasQueLlenaElFlujo(): {
+    tabla: string;
+    items: { id: string; txt: string }[];
+    modo: string;
+    /** Qué regla la pidió. Es lo que deja marcar la fila y saber de quién es. */
+    regla: string;
+  }[] {
+    const salida: {
+      tabla: string;
+      items: { id: string; txt: string }[];
+      modo: string;
+      regla: string;
+    }[] = [];
+
+    for (const encargo of this.encargosDeFlujo()) {
+      if (encargo.que !== 'llenar-tabla') continue;
+
+      const v = encargo.valor as Record<string, unknown>;
+      if (!v || typeof v !== 'object') continue;
+
+      const items = ((v['items'] as any[]) ?? []).map((i) => ({
+        id: String(i?.id ?? ''),
+        txt: String(i?.txt ?? ''),
+      }));
+
+      if (!items.length) continue;
+
+      salida.push({
+        tabla: String(v['tabla'] ?? ''),
+        items,
+        modo: String(v['modo'] ?? 'agregar'),
+        regla: String(encargo.regla ?? ''),
+      });
+    }
+
+    return salida;
+  }
+
+  /** El campo de una tabla por el nombre con el que la nombra una regla. */
+  campoDeTabla(apiId: string): FormField | null {
+    for (const page of this.pages) {
+      for (const field of page.fie) {
+        if (field.fty !== 'masterdetail') continue;
+
+        const suyo = (field.apiId ?? '').toString().trim() || field.id;
+        if (suyo === apiId) return field;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Las actividades que el flujo quiere abrir, con lo que cada una hereda.
+   *
+   * El motor deja el encargo con **el formulario a secas** cuando la regla no
+   * hereda nada —que es como están escritas casi todas las que ya corren— y con
+   * una [HerenciaDeActividad] cuando sí. Aquí se desarman las dos formas para
+   * que quien crea la actividad no tenga que distinguirlas.
+   *
+   * Sin repetir: dos reglas que piden exactamente la misma actividad piden una.
+   * Las que piden el mismo formulario con herencias distintas son dos, y las
+   * dos tienen razón: son dos trabajos distintos.
+   */
+  actividadesQuePideElFlujo(): HerenciaDeActividad[] {
+    const salida: HerenciaDeActividad[] = [];
+    const vistas = new Set<string>();
 
     /*
      * Solo lo pedido «al guardar», y a propósito.
@@ -832,11 +1941,21 @@ export class FormEngine {
     for (const encargo of this.encargosPorMomento()['guardar'] ?? []) {
       if (encargo.que !== 'crear-actividad') continue;
 
-      const valor = String(encargo.valor ?? '').trim();
-      if (valor) destinos.add(valor);
+      const crudo = encargo.valor;
+
+      const config: HerenciaDeActividad =
+        crudo && typeof crudo === 'object'
+          ? (crudo as HerenciaDeActividad)
+          : { formulario: String(crudo ?? '').trim() };
+
+      if (!config.formulario) continue;
+      if (vistas.has(JSON.stringify(config))) continue;
+
+      vistas.add(JSON.stringify(config));
+      salida.push(config);
     }
 
-    return [...destinos];
+    return salida;
   }
 
 
@@ -877,7 +1996,7 @@ export class FormEngine {
   });
 
   /** Obligatorios sin responder, en todo el formulario. */
-  readonly missing = computed(() => {
+  readonly missing = computed<{ field: FormField; page: number; note?: string }[]>(() => {
     const base = findMissingRequired(this.pages, this.values(), this.sections());
     const flujo = this.estadoFlujo();
 
@@ -889,7 +2008,10 @@ export class FormEngine {
 
     // Lo que el flujo dejó opcional u oculto deja de faltar, y lo que hizo
     // obligatorio se suma aunque el esquema no lo pidiera.
-    const salida = base.filter((entrada) => {
+    // Tipada a mano porque a lo filtrado se le suma después lo que incumple un
+    // patrón, que sí lleva motivo: sin la anotación, el tipo lo pondría el
+    // primer `filter` y ahí `note` todavía no existe.
+    const salida: { field: FormField; page: number; note?: string }[] = base.filter((entrada) => {
       const estado = flujo.get(entrada.field.id);
       if (estado?.visible === false) return false;
       if (estado?.obligatorio === false) return false;
@@ -912,8 +2034,65 @@ export class FormEngine {
       }
     });
 
+    /*
+     * Y lo respondido que no cuadra con el patrón que pidió una regla.
+     *
+     * Va **en esta lista** y no en un aviso aparte: es la única que impide
+     * guardar, la que sale en el resumen de «te falta esto» y la que lleva al
+     * campo al pulsarla. Un segundo camino en paralelo habría dejado dos
+     * maneras de que la actividad no se cierre, y solo una de ellas contada.
+     *
+     * El motivo es el mensaje de la propia regla, en `note`, que es lo que ya
+     * hacía la tabla de detalle a medias: sin él, el resumen diría el nombre de
+     * un campo que a la vista está respondido.
+     */
+    this.pages.forEach((page, indice) => {
+      for (const field of page.fie) {
+        if (yaEstan.has(field.id)) continue;
+
+        const motivo = this.incumpleElPatron(field);
+        if (!motivo) continue;
+        if (!this.visibleConFlujo(field, active)) continue;
+
+        salida.push({ field, page: indice, note: motivo });
+      }
+    });
+
     return salida;
   });
+
+  /**
+   * Lo que hay que corregir en un campo por el patrón de una regla, o vacío.
+   *
+   * ## Qué se decide aquí y qué no
+   *
+   * Aquí, solo si **lo escrito cuadra**. Si el patrón se exige o no ya lo
+   * respondió el motor en `patronExigido`, que además tiene en cuenta que un
+   * campo vacío no incumple nada. Volver a decidirlo aquí sería saberse de
+   * memoria el valor por omisión de `exigir`, y eso es justo lo que el motor
+   * evita para que los tres clientes no se desincronicen.
+   *
+   * Un patrón que no compila no rechaza nada: el motor no lo habría anotado, y
+   * si llegara igual —de un flujo guardado antes de que se comprobara— es mejor
+   * dejar guardar que dejar a alguien atascado sin nada que corregir.
+   */
+  private incumpleElPatron(field: FormField): string {
+    const estado = this.estadoFlujo().get(field.id);
+
+    if (!estado?.patron || estado.patronExigido !== true) return '';
+
+    const valor = this.valueOf(field.id);
+    const texto = (typeof valor === 'string' ? valor : '').trim();
+    if (!texto) return '';
+
+    try {
+      if (new RegExp(estado.patron).test(texto)) return '';
+    } catch {
+      return '';
+    }
+
+    return estado.patronMensaje || 'No tiene el formato que se espera';
+  }
 
   /** ¿Está todo lo obligatorio respondido? */
   readonly isComplete = computed(() => this.missing().length === 0);
@@ -960,13 +2139,37 @@ export class FormEngine {
     return this.values().get(id) ?? null;
   }
 
+  /**
+   * ¿Se exige este campo, contando lo que el flujo decidió?
+   *
+   * El flujo manda sobre el esquema, igual que con la visibilidad: para eso
+   * existen las acciones «obligatorio» y «opcional». Se pregunta aquí y no solo
+   * al validar porque **lo que se ve tiene que decir lo mismo que lo que se
+   * exige**: el asterisco y el rojo salían del esquema, así que un campo que
+   * una regla acababa de liberar seguía marcado en rojo y uno que una regla
+   * exigía no llevaba ninguna marca — y al guardar aparecía en la lista de lo
+   * que falta, sin que nada en pantalla lo hubiera anunciado.
+   */
+  esObligatorio(field: FormField): boolean {
+    const dijo = this.estadoFlujo().get(field.id)?.obligatorio;
+
+    return dijo ?? !!field.req;
+  }
+
   /** ¿Hay que señalar este campo como pendiente? */
   showsError(field: FormField): boolean {
-    if (!field.req) return false;
     // Antes de intentar guardar solo se señala lo que el usuario ya tocó:
     // teñir de rojo un formulario recién abierto es acusarle de un error que
     // todavía no ha tenido ocasión de cometer.
     if (!this.submitted() && !this.touched().has(field.id)) return false;
+
+    // Un patrón que se exige y no cuadra tiñe igual que un obligatorio sin
+    // responder: las dos cosas impiden guardar, así que las dos tienen que
+    // verse en pantalla de la misma manera. Un campo que sale en la lista de lo
+    // que falta y no está marcado obliga a buscarlo a ojo.
+    if (this.incumpleElPatron(field)) return true;
+
+    if (!this.esObligatorio(field)) return false;
 
     return isEmptyValue(this.valueOf(field.id));
   }
