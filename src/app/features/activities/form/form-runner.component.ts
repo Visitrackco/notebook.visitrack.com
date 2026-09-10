@@ -1040,6 +1040,65 @@ export class FormRunnerComponent {
   private readonly binaryVerify = inject(BinaryVerifyService);
 
   /**
+   * Con qué se corta cada llamada que está en vuelo, por su llave.
+   *
+   * Se guarda por llave y no una sola para todas porque pueden estar en vuelo
+   * varias a la vez: cancelar una no tiene por qué llevarse por delante la
+   * otra, aunque hoy el botón del velo las pare todas.
+   */
+  private readonly cortes = new Map<
+    string,
+    { corte: AbortController; llamada: LlamadaPintada }
+  >();
+
+  /** ¿Se puede cancelar algo ahora mismo? Lo pregunta el velo. */
+  sePuedeCancelar(): boolean {
+    return this.cortes.size > 0;
+  }
+
+  /**
+   * Deja de esperar a los servicios que estén en vuelo.
+   *
+   * ## Por qué existe
+   *
+   * Porque una consulta puede tardar un minuto entero —el tope lo pone quien
+   * configuró el flujo— y durante ese rato el formulario está quieto. Quien
+   * está en campo con el cliente delante no siempre puede permitirse esperar, y
+   * sin una salida lo que hace es cerrar la aplicación y perder lo escrito.
+   *
+   * ## Qué deja detrás
+   *
+   * La llamada vuelve a **pendiente**, no a error: no ha fallado nada, se
+   * decidió no esperar. Así el botón vuelve a poder pulsarse y no queda ningún
+   * aviso rojo diciendo que algo salió mal.
+   */
+  cancelarLaEspera(): void {
+    const engine = this.engine();
+    if (!engine) return;
+
+    const avisar = new Set<string>();
+
+    for (const [llave, { corte, llamada }] of this.cortes) {
+      corte.abort();
+
+      // Se olvida lo que hubiera apuntado: la llamada vuelve a estar por hacer.
+      engine.reintentar(llave);
+      avisar.add(llamada.integracion);
+    }
+
+    this.cortes.clear();
+
+    /*
+     * Y se repinta, nombrando cada integración.
+     *
+     * `reintentar` borra la respuesta, pero lo que la pantalla dibuja es lo que
+     * dejó **la última evaluación**: sin volver a evaluar, el velo se quedaría
+     * puesto y el botón apagado hasta que alguien tocara otro campo.
+     */
+    for (const cual of avisar) engine.avisarDeLaIntegracion(cual);
+  }
+
+  /**
    * Marca las llamadas que el flujo dejó pedidas y que salen solas.
    *
    * ## Por qué esto no se convierte en un bucle
@@ -1108,12 +1167,20 @@ export class FormRunnerComponent {
    * formulario, se trata como «todavía no está» y quien pulsó lo vuelve a
    * intentar.
    */
-  private async ponerLasFotosEnLinea(llamada: LlamadaPintada): Promise<boolean> {
+  private async ponerLasFotosEnLinea(
+    llamada: LlamadaPintada,
+    corte?: AbortSignal,
+  ): Promise<boolean> {
     const guid = String(this.answer()?.GUID ?? '');
     if (!guid) return true;
 
     try {
-      return await this.binaryVerify.ensureBinariesOnline(guid, llamada.binarios ?? []);
+      return await this.binaryVerify.ensureBinariesOnline(
+        guid,
+        llamada.binarios ?? [],
+        undefined,
+        corte,
+      );
     } catch (error) {
       console.warn('[flujo] no se pudo confirmar la foto de la llamada', error);
 
@@ -1172,7 +1239,26 @@ export class FormRunnerComponent {
      * aquí con un fallo escrito en castellano, en vez de gastar la consulta
      * para que conteste que la imagen no vale.
      */
-    if (llamada.binarios?.length && !(await this.ponerLasFotosEnLinea(llamada))) {
+    const corte = new AbortController();
+    this.cortes.set(llamada.llave, { corte, llamada });
+
+    try {
+      await this.laLlamadaEntera(engine, llamada, corte.signal);
+    } finally {
+      this.cortes.delete(llamada.llave);
+    }
+  }
+
+  /** El viaje de una llamada, ya marcada y con su corte a mano. */
+  private async laLlamadaEntera(
+    engine: FormEngine,
+    llamada: LlamadaPintada,
+    corte: AbortSignal,
+  ): Promise<void> {
+    if (llamada.binarios?.length && !(await this.ponerLasFotosEnLinea(llamada, corte))) {
+      // Cancelar no deja rastro de fallo: se decidió no esperar, no falló nada.
+      if (corte.aborted) return;
+
       engine.fallo(llamada.llave, {
         codigo: 'foto-no-esta-en-linea',
         mensaje:
@@ -1195,7 +1281,17 @@ export class FormRunnerComponent {
       llamada.integracion,
       llamada.entradas ?? {},
       llamada.segundos,
+      corte,
     );
+
+    /*
+     * Se canceló mientras viajaba: la llamada vuelve a estar por hacer.
+     *
+     * `cancelarLaEspera` ya la devolvió a pendiente; escribir aquí el fallo la
+     * dejaría en rojo diciendo que el servicio no respondió, que no es lo que
+     * pasó.
+     */
+    if (corte.aborted) return;
 
     if (r.ok) {
       // Un archivo se guarda aparte y al motor solo le llega su ficha: ver

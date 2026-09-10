@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { firstValueFrom, timeout } from 'rxjs';
+import { EMPTY, firstValueFrom, fromEvent, takeUntil, timeout } from 'rxjs';
 
 import { apiBaseUrlDirecta, cabeceraDeEnlace } from '../config/api-base';
 import { SEGUNDOS_DE_LLAMADA } from './flujo-modelo';
@@ -143,6 +143,16 @@ export const CODIGOS_DEL_INTERMEDIARIO = [
 export const CODIGO_SIN_CONEXION = 'sin-conexion';
 
 /**
+ * Cuando fue **quien diligencia** el que decidio parar.
+ *
+ * Se distingue de un fallo a proposito: no hay nada roto que arreglar ni nada
+ * que reintentar solo, y por eso quien lo recibe devuelve la llamada a
+ * «pendiente» en vez de pintar un error rojo. Cancelar y que quedara un aviso
+ * de fallo se leeria como que algo salio mal.
+ */
+export const CODIGO_CANCELADO = 'cancelado';
+
+/**
  * El cliente del intermediario de integraciones.
  *
  * ## Qué no sabe
@@ -213,6 +223,9 @@ export class IntegracionesApi {
     integracionId: string,
     entradas: Record<string, string>,
     segundos = SEGUNDOS_DE_LLAMADA,
+
+    /** Para poder parar la espera. Ver [CODIGO_CANCELADO]. */
+    corte?: AbortSignal,
   ): Promise<RespuestaDeIntegracion> {
     /*
      * Sin red no se marca.
@@ -231,7 +244,7 @@ export class IntegracionesApi {
       };
     }
 
-    return this.intentar(integracionId, entradas, segundos);
+    return this.intentar(integracionId, entradas, segundos, corte);
   }
 
   /** La llamada, y la lectura de lo que conteste. */
@@ -239,7 +252,10 @@ export class IntegracionesApi {
     integracionId: string,
     entradas: Record<string, string>,
     segundos: number,
+    corte?: AbortSignal,
   ): Promise<RespuestaDeIntegracion> {
+    if (corte?.aborted) return this.cancelada();
+
     try {
       const respuesta = await firstValueFrom(
         this.http
@@ -255,7 +271,20 @@ export class IntegracionesApi {
             { integracionId: Number(integracionId) || integracionId, entradas },
             { headers: { 'Content-Type': 'application/json', ...cabeceraDeEnlace() } },
           )
-          .pipe(timeout((segundos + IntegracionesApi.MARGEN_SEGUNDOS) * 1000)),
+          .pipe(
+            timeout((segundos + IntegracionesApi.MARGEN_SEGUNDOS) * 1000),
+
+            /*
+             * Y se corta si lo piden.
+             *
+             * `takeUntil` **cancela la peticion de verdad**: al desuscribirse,
+             * el cliente de Angular aborta la conexion, asi que no se queda un
+             * viaje en curso consumiendo la red de alguien que ya dijo que no
+             * lo queria. Al cortar, el observable se completa sin emitir y
+             * `firstValueFrom` lanza `EmptyError` — que es lo que se lee abajo.
+             */
+            takeUntil(corte ? fromEvent(corte, 'abort') : EMPTY),
+          ),
       );
 
       if (respuesta?.ok === true) {
@@ -287,6 +316,12 @@ export class IntegracionesApi {
         reintentable: error['reintentable'] === true,
       };
     } catch (error: unknown) {
+      // Se corto la espera: el observable se completo sin emitir. No es un
+      // fallo, es una decision de quien estaba delante.
+      if (corte?.aborted || (error as { name?: string })?.name === 'EmptyError') {
+        return this.cancelada();
+      }
+
       /*
        * Un fallo del servicio de un tercero llega como **200** con `ok:false`,
        * así que llegar hasta aquí es otra cosa: el intermediario no está, se
@@ -324,6 +359,16 @@ export class IntegracionesApi {
         reintentable: true,
       };
     }
+  }
+
+  /** Lo que se devuelve cuando se corto la espera. */
+  private cancelada(): RespuestaDeIntegracion {
+    return {
+      ok: false,
+      codigo: CODIGO_CANCELADO,
+      mensaje: 'Se canceló la consulta.',
+      reintentable: true,
+    };
   }
 
   /**

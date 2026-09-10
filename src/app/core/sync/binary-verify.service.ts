@@ -149,6 +149,15 @@ export class BinaryVerifyService {
     answerGuid: string,
     guids: readonly string[],
     attempts = DEFAULT_ATTEMPTS,
+
+    /**
+     * Para poder dejar de esperar.
+     *
+     * La espera entre rondas llega a cuarenta segundos, asi que sin esto
+     * «cancelar» tardaria casi un minuto en notarse — y quien lo pulsa
+     * concluiria, con razon, que el boton de cancelar tampoco funciona.
+     */
+    corte?: AbortSignal,
   ): Promise<boolean> {
     const buscados = new Set(guids.filter(Boolean));
     if (!buscados.size) return true;
@@ -167,6 +176,8 @@ export class BinaryVerifyService {
       (await this.binaries.findByAnswer(answerGuid)).filter((b) => buscados.has(b.GUID));
 
     for (let attempt = 0; attempt < attempts; attempt++) {
+      if (corte?.aborted) return false;
+
       const pending = (await suyos()).filter(blocks);
       if (pending.length === 0) return true;
 
@@ -190,11 +201,11 @@ export class BinaryVerifyService {
 
       // Última ronda: no tiene sentido esperar para no volver a preguntar.
       if (attempt < attempts - 1) {
-        await wait(BACKOFF_MS[Math.min(attempt, BACKOFF_MS.length - 1)]);
+        await esperarOCortar(BACKOFF_MS[Math.min(attempt, BACKOFF_MS.length - 1)], corte);
       }
     }
 
-    return false;
+    return !corte?.aborted && (await suyos()).filter(blocks).length === 0;
   }
 
   /**
@@ -336,3 +347,27 @@ function empty(): VerifyOutcome {
 function wait(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+/**
+ * Espera, o deja de esperar en cuanto lo pidan.
+ *
+ * Se limpia el temporizador y el oyente en los dos caminos: dejar vivo un
+ * `setTimeout` de cuarenta segundos por cada cancelacion es una fuga pequeña
+ * que en una jornada de campo deja de ser pequeña.
+ */
+function esperarOCortar(ms: number, corte?: AbortSignal): Promise<void> {
+  if (!corte) return wait(ms);
+  if (corte.aborted) return Promise.resolve();
+
+  return new Promise<void>((resolve) => {
+    const listo = () => {
+      clearTimeout(reloj);
+      corte.removeEventListener('abort', listo);
+      resolve();
+    };
+
+    const reloj = setTimeout(listo, ms);
+    corte.addEventListener('abort', listo, { once: true });
+  });
+}
+

@@ -103,6 +103,24 @@
           <span class="runner__velo-rueda" aria-hidden="true"></span>
           <p class="runner__velo-titulo">{{ rotuloDeLaEspera(eng) }}</p>
           <p class="runner__velo-nota">Un momento, se está llenando el formulario.</p>
+
+          <!--
+            Y una salida.
+
+            Una consulta puede tardar hasta un minuto —el tope lo pone quien
+            configuro el flujo— y durante ese rato el formulario esta quieto.
+            Quien esta en campo con el cliente delante no siempre puede
+            esperar, y sin una salida lo que hace es cerrar la aplicacion y
+            perder lo escrito.
+
+            El velo no recibe toques (`pointer-events: none`), asi que el boton
+            los recupera por su cuenta: sin eso se veria y no se podria pulsar.
+          -->
+          @if (sePuedeCancelar()) {
+            <button type="button" class="runner__velo-cancelar" (click)="cancelarLaEspera()">
+              Cancelar la consulta
+            </button>
+          }
         </div>
       </div>
     }

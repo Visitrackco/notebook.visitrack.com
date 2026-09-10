@@ -669,6 +669,26 @@ vt-page-nav {
   background: color-mix(in srgb, var(--vt-bg) 72%, transparent);
 }
 
+.runner__velo-cancelar {
+  /* El velo entero tiene `pointer-events: none` para no comerse un clic que se
+     creia dar sobre la pagina. El boton los recupera: si no, se veria y no se
+     podria pulsar, que es peor que no ofrecerlo. */
+  pointer-events: auto;
+
+  padding: var(--vt-space-2) var(--vt-space-4);
+  font: inherit;
+  color: var(--vt-text-muted);
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--vt-border);
+  border-radius: var(--vt-radius-sm);
+}
+
+.runner__velo-cancelar:hover {
+  color: var(--vt-text);
+  border-color: var(--vt-text-muted);
+}
+
 .runner__velo-caja {
   display: flex;
   flex-direction: column;
