@@ -6324,6 +6324,38 @@ export function llaveDeLlamada(id: string, entradas: Record<string, string>): st
   return [id, ...partes].join('|');
 }
 
+/**
+ * Los binarios que las entradas de una llamada llevan consigo.
+ *
+ * Se recorre igual que [entradasDeLaLlamada] —la misma preferencia de `de`
+ * sobre `valor`— porque son la misma lista mirada por otro lado: alli se saca
+ * la direccion, aqui el identificador del archivo que hay detras.
+ *
+ * Suelta y exportada para poder probarla, y porque quien ejecuta la necesita
+ * sin resolver la llamada entera.
+ */
+export function binariosDeLaLlamada(
+  config: LlamadaAServicio,
+  valores: Record<ApiId, unknown>,
+  campos: Record<ApiId, Campo>,
+): string[] {
+  const salida: string[] = [];
+
+  for (const entrada of config.entradas ?? []) {
+    if (!entrada || typeof entrada !== 'object') continue;
+
+    const de = String(entrada.de ?? '').trim();
+    if (!de || !esDeArchivo(campos[de]?.fty)) continue;
+
+    const guid = guidDelBinario(leerValor(de, valores, campos));
+
+    // Sin repetir: dos entradas de la misma foto son un archivo, no dos.
+    if (guid && !salida.includes(guid)) salida.push(guid);
+  }
+
+  return salida;
+}
+
 /** Lo que se le manda al servicio, ya leído del formulario. */
 function entradasDeLaLlamada(
   config: LlamadaAServicio,
@@ -6454,6 +6486,10 @@ export function armarLlamada(
   const entradas = entradasDeLaLlamada(config, valores, campos, urlDeBinarios);
   const llave = llaveDeLlamada(integracion, entradas);
 
+  // Cuales de esas entradas son archivos, para que quien ejecuta se asegure de
+  // que estan en linea antes de mandar su direccion. Ver `LlamadaPintada`.
+  const binarios = binariosDeLaLlamada(config, valores, campos);
+
   // Dónde va el botón, si es de los que se pulsan. Se lee igual que en
   // `armarBoton`, y lo de siempre —debajo de todos, después del campo— no se
   // anota.
@@ -6468,6 +6504,7 @@ export function armarLlamada(
     modo,
     segundos,
     entradas,
+    ...(binarios.length ? { binarios } : {}),
     ...(campo ? { campo } : {}),
     ...(antes ? { donde: 'antes' as LadoDelCampo } : {}),
     regla,

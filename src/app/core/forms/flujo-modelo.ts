@@ -1472,6 +1472,29 @@ export interface LlamadaPintada {
   /** Lo que se le manda, ya leído del formulario. */
   entradas: Record<string, string>;
 
+  /**
+   * Los binarios que sus entradas llevan, por si hay que ponerlos en linea.
+   *
+   * ## Por que hace falta decirlo
+   *
+   * Una entrada que apunta a un campo de fotografia manda **la direccion** de
+   * la foto, y esa direccion solo existe cuando el archivo ya esta en el
+   * almacen. Recien tomada, la foto vive en el telefono o en el navegador: la
+   * direccion se puede escribir, pero todavia no lleva a ninguna parte.
+   *
+   * Llamar al servicio ahi es mandarle a alguien de fuera una direccion que no
+   * resuelve. Lo que contesto la primera vez fue «Unable to process input
+   * image», porque lo que habia detras no era una fotografia.
+   *
+   * El motor no sube nada ni sabe de red — tiene que dar el mismo resultado en
+   * el simulador—, asi que **dice cuales son** y quien ejecuta se encarga de
+   * garantizarlos antes de llamar.
+   *
+   * Vacio o ausente cuando ninguna entrada sale de un archivo, que es lo
+   * corriente.
+   */
+  binarios?: string[];
+
   /** Junto a qué campo va el botón, y de qué lado. Ver [BotonPintado]. */
   campo?: ApiId;
   donde?: LadoDelCampo;

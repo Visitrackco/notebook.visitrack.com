@@ -124,6 +124,80 @@ export class BinaryVerifyService {
   }
 
   /**
+   * Deja en línea **unos archivos concretos**, no toda la actividad.
+   *
+   * ## Para qué
+   *
+   * Para una llamada a un servicio cuya entrada apunta a un campo de
+   * fotografía. Lo que viaja es **la dirección** de la foto, y esa dirección
+   * solo lleva a alguna parte cuando el archivo ya está en el bucket: recién
+   * tomada, la foto vive solo en el navegador. Llamar ahí es mandarle a alguien
+   * de fuera una dirección que no resuelve, y lo que contesta el analizador de
+   * imágenes es que eso no es una fotografía.
+   *
+   * ## Por qué no vale [ensureAnswerOnline]
+   *
+   * Porque espera a **todas** las fotos de la actividad. Pulsar un botón que
+   * consulta una sola foto no debe quedarse esperando a las otras once que se
+   * tomaron antes y que a ese servicio no le importan: se sentiría como un
+   * botón colgado, y con mala señal serían minutos.
+   *
+   * Devuelve `true` cuando todas las nombradas están confirmadas — y también
+   * cuando no hay ninguna que esperar, que es lo corriente.
+   */
+  async ensureBinariesOnline(
+    answerGuid: string,
+    guids: readonly string[],
+    attempts = DEFAULT_ATTEMPTS,
+  ): Promise<boolean> {
+    const buscados = new Set(guids.filter(Boolean));
+    if (!buscados.size) return true;
+
+    const user = this.auth.currentUser();
+    if (!user) return false;
+
+    /*
+     * Se miran solo los archivos de esta actividad que estén entre los pedidos.
+     *
+     * Un GUID que no aparece no se espera: puede ser una foto de otra
+     * actividad, o un campo que se respondió con una dirección escrita a mano.
+     * Bloquear por algo que no tenemos sería no dejar llamar nunca.
+     */
+    const suyos = async () =>
+      (await this.binaries.findByAnswer(answerGuid)).filter((b) => buscados.has(b.GUID));
+
+    for (let attempt = 0; attempt < attempts; attempt++) {
+      const pending = (await suyos()).filter(blocks);
+      if (pending.length === 0) return true;
+
+      // Lo que ni siquiera salió del navegador se sube antes de preguntar por
+      // ello: el servidor no puede confirmar algo que nunca recibió.
+      if (pending.some((binary) => binary.BinaryState === BinaryState.Pending)) {
+        await this.uploads.uploadPending(answerGuid);
+      }
+
+      const outcome = await this.verify(
+        (await suyos()).filter(isUnconfirmed),
+        answerGuid,
+        user.CompanyID,
+      );
+
+      // Sin verificación en el servidor no hay nada que esperar: se da por
+      // bueno lo que el servidor dijo haber recibido, igual que al enviar.
+      if (outcome.notImplemented) return true;
+
+      if ((await suyos()).filter(blocks).length === 0) return true;
+
+      // Última ronda: no tiene sentido esperar para no volver a preguntar.
+      if (attempt < attempts - 1) {
+        await wait(BACKOFF_MS[Math.min(attempt, BACKOFF_MS.length - 1)]);
+      }
+    }
+
+    return false;
+  }
+
+  /**
    * Pregunta al servidor por un conjunto de archivos y anota lo que responda.
    *
    * Los que el servidor no tiene se devuelven al estado inicial para que la

@@ -63,6 +63,7 @@ import {
 } from '../../../core/forms/flujo-motor';
 import { createBlankRow, createRow, readRows } from '../../../core/forms/master-detail';
 import { PendingUploadService } from '../../../core/sync/pending-upload.service';
+import { BinaryVerifyService } from '../../../core/sync/binary-verify.service';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
 import { ToTopComponent } from '../../../shared/components/to-top/to-top.component';
 import { FieldHostComponent } from './fields/field-host.component';
@@ -1034,6 +1035,10 @@ export class FormRunnerComponent {
 
   private readonly integraciones = inject(IntegracionesApi);
 
+  // Para dejar en el bucket las fotos que una llamada va a nombrar, antes de
+  // nombrarlas. Ver [ponerLasFotosEnLinea].
+  private readonly binaryVerify = inject(BinaryVerifyService);
+
   /**
    * Marca las llamadas que el flujo dejó pedidas y que salen solas.
    *
@@ -1074,6 +1079,29 @@ export class FormRunnerComponent {
     await this.marcarUna(engine, llamada);
   }
 
+  /**
+   * Sube y confirma las fotos que una llamada va a nombrar.
+   *
+   * Devuelve `true` cuando todas están en línea — y también cuando no había
+   * ninguna que esperar, que es lo corriente.
+   *
+   * Nunca lanza hacia arriba: que la verificación falle no puede tumbar el
+   * formulario, se trata como «todavía no está» y quien pulsó lo vuelve a
+   * intentar.
+   */
+  private async ponerLasFotosEnLinea(llamada: LlamadaPintada): Promise<boolean> {
+    const guid = String(this.answer()?.GUID ?? '');
+    if (!guid) return true;
+
+    try {
+      return await this.binaryVerify.ensureBinariesOnline(guid, llamada.binarios ?? []);
+    } catch (error) {
+      console.warn('[flujo] no se pudo confirmar la foto de la llamada', error);
+
+      return false;
+    }
+  }
+
   private async marcarUna(engine: FormEngine, llamada: LlamadaPintada): Promise<void> {
     /*
      * Que se pase del tope no se traga.
@@ -1107,6 +1135,42 @@ export class FormRunnerComponent {
      * Es lo mismo que hace la app en `_marcarUna`, y por lo mismo.
      */
     engine.avisarDeLaIntegracion(llamada.integracion);
+
+    /*
+     * Y sus fotos, en el bucket, **antes** de llamar.
+     *
+     * Una entrada que sale de un campo de fotografía manda la dirección de la
+     * foto, y esa dirección solo lleva a alguna parte cuando el archivo ya está
+     * en línea: recién tomada, la foto vive solo aquí. Llamar antes es mandarle
+     * a alguien de fuera una dirección que no resuelve — y lo que contestó el
+     * analizador de imágenes fue «Unable to process input image», hablando de
+     * la fotografía cuando lo que pasaba era que nunca le llegó ninguna.
+     *
+     * Se hace con la llamada ya en vuelo, así que el botón está apagado y el
+     * velo puesto: la espera se ve, que es lo que la hace tolerable.
+     *
+     * Y si no se consigue —sin señal, o el archivo no llega a subir— se para
+     * aquí con un fallo escrito en castellano, en vez de gastar la consulta
+     * para que conteste que la imagen no vale.
+     */
+    if (llamada.binarios?.length && !(await this.ponerLasFotosEnLinea(llamada))) {
+      engine.fallo(llamada.llave, {
+        codigo: 'foto-no-esta-en-linea',
+        mensaje:
+          'La fotografía todavía no está en el servidor, así que el servicio no puede verla. '
+          + 'Comprueba la conexión y vuelve a intentarlo.',
+        reintentable: true,
+      });
+
+      this.toasts.show({
+        title: 'La fotografía todavía no se ha subido. Vuelve a intentarlo con señal.',
+        tone: 'warning',
+      });
+
+      engine.avisarDeLaIntegracion(llamada.integracion);
+
+      return;
+    }
 
     const r = await this.integraciones.ejecutar(
       llamada.integracion,
