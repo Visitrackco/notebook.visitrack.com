@@ -657,7 +657,44 @@ export function evaluar(flujo: Flujo, contexto: Contexto): Resultado {
   const generales =
     contexto.momento === 'guardar' && !enFila ? vivas.filter((r) => r.general) : [];
 
-  const reglas = vivas.filter((r) => !r.general && r.cuando?.includes(contexto.momento));
+  /*
+   * Y las que **están esperando la respuesta de un servicio**, corran cuando
+   * corran.
+   *
+   * ## Qué se veía sin esto
+   *
+   * Una regla de «al guardar» que llama a un servicio. Se pulsa Guardar, la
+   * llamada sale, el servicio contesta bien — y no pasaba nada: ni se escribían
+   * las salidas, ni corría `alResponder`, ni se evaluaba ningún tramo. Desde
+   * fuera se veía como un flujo que ignora lo que acaba de pedir.
+   *
+   * La noticia de que un servicio contestó llega **como un cambio**, porque el
+   * campo que cambió es `INTEGRACION:<id>`. Y una regla de «al guardar» no
+   * escucha «al cambiar», así que el filtro de arriba la dejaba fuera: la
+   * respuesta se quedaba guardada sin que nadie la mirara. Con «al abrir» era
+   * peor todavía, porque el momento «abrir» no vuelve nunca — la respuesta no
+   * se leía jamás.
+   *
+   * ## Por qué se corrigen aquí y no esperando al momento bueno
+   *
+   * Porque `cuando` dice **cuándo empieza** una regla, no cuándo se le permite
+   * recibir lo que ella misma pidió. Una regla que llamó a un servicio está,
+   * por definición, esperando su respuesta: hacerla esperar al siguiente
+   * guardado sería dejar a medias la evaluación que ella empezó, y el guardado
+   * está parado esperando justo eso.
+   *
+   * No se cuela ninguna otra: `esSuya` exige que la regla nombre el disparador,
+   * y `INTEGRACION:<id>` solo lo nombran las reglas que llaman a ese servicio.
+   */
+  const disparo = String(contexto.campoQueCambio ?? '');
+  const porUnaIntegracion = disparo.startsWith(PREFIJO_INTEGRACION);
+
+  const reglas = vivas.filter(
+    (r) =>
+      !r.general
+      && (r.cuando?.includes(contexto.momento)
+        || (porUnaIntegracion && camposDeLaRegla(r).includes(disparo))),
+  );
 
   /*
    * Cada campo dispara **sus** reglas, no todas.
