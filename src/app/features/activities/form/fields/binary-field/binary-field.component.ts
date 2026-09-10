@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 
 import { BinaryResource, BinaryState, BinaryType } from '../../../../../core/models/sync.model';
+import { BinaryResourceRepository } from '../../../../../core/repositories/binary.repository';
 import {
   BinaryStorageService,
   BinaryValue,
@@ -262,9 +263,33 @@ export class BinaryFieldComponent implements OnDestroy {
     }
   });
 
+  /**
+   * Solo para enterarse de que un archivo cambió de estado.
+   *
+   * Lo que se lee sigue saliendo de [BinaryStorageService]; de aquí se mira
+   * únicamente [BinaryResourceRepository.revision].
+   */
+  private readonly binaries = inject(BinaryResourceRepository);
+
   constructor() {
     effect(() => {
       const guid = this.value()?.bin ?? '';
+
+      /*
+       * Y se vuelve a leer cuando cambia el estado de **cualquier** archivo.
+       *
+       * El rótulo de debajo —«Pendiente de subir», «En servidor», «En línea»—
+       * se leía una sola vez, al pintar. La foto se subía y se confirmaba y el
+       * campo seguía diciendo que estaba pendiente hasta que alguien cambiara
+       * de página y volviera.
+       *
+       * Se mira el contador de todos y no el de esta foto porque el
+       * repositorio no lleva la cuenta por archivo, y llevarla costaría más de
+       * lo que ahorra: releer una fila de la base cuando otra cambia es
+       * barato, y una actividad no tiene mil fotos.
+       */
+      this.binaries.revision();
+
       void this.loadPreview(guid);
     });
   }

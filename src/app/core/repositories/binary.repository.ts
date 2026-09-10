@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
 
 import { BinaryResource, BinaryState } from '../models/sync.model';
 import { BaseRepository } from './base.repository';
@@ -22,6 +22,51 @@ export const BLOCKING_STATES: readonly BinaryState[] = [BinaryState.Pending, Bin
 @Injectable({ providedIn: 'root' })
 export class BinaryResourceRepository extends BaseRepository<BinaryResource> {
   protected readonly storeName = 'BinariesResources';
+
+  /**
+   * Cambia cada vez que se escribe un archivo, para que la pantalla se entere.
+   *
+   * ## Qué se veía sin esto
+   *
+   * Un campo de fotografía dice debajo en qué va: «Pendiente de subir», «En
+   * servidor», «En línea». Ese rótulo se leía **una sola vez**, al pintar el
+   * campo, así que la foto se subía y se confirmaba y el campo seguía diciendo
+   * «Pendiente de subir» hasta que alguien cambiara de página y volviera.
+   *
+   * Y ahora importa más que antes: una llamada a un servicio pone la foto en
+   * línea ella sola, justo debajo de ese rótulo. Que diga lo contrario de lo
+   * que acaba de pasar es peor que no decir nada.
+   *
+   * Es un número que solo sirve para avisar de que hay algo nuevo; lo que vale
+   * se vuelve a leer de la base. Va aquí, en el repositorio, porque es el único
+   * sitio por el que pasan todas las escrituras — subida, verificación,
+   * reintento— y así ninguna se puede olvidar de avisar.
+   */
+  readonly revision = signal(0);
+
+  /** Se anota que hubo cambios. Ver [revision]. */
+  private anotarCambio(): void {
+    this.revision.update((n) => n + 1);
+  }
+
+  override async put(item: BinaryResource): Promise<IDBValidKey> {
+    const clave = await super.put(item);
+    this.anotarCambio();
+
+    return clave;
+  }
+
+  override async putMany(items: readonly BinaryResource[]): Promise<number> {
+    const cuantos = await super.putMany(items);
+    if (cuantos) this.anotarCambio();
+
+    return cuantos;
+  }
+
+  override async delete(id: IDBValidKey): Promise<void> {
+    await super.delete(id);
+    this.anotarCambio();
+  }
 
   /** Todos los archivos de una actividad. */
   async findByAnswer(answerGuid: string): Promise<BinaryResource[]> {
