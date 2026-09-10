@@ -473,6 +473,51 @@ export class FormEngine {
     this.integracionesDelFlujo().some((una) => una.estado === 'vuelo' && una.modo === 'sincrona'),
   );
 
+  /**
+   * ¿Hay alguna en vuelo, de la clase que sea?
+   *
+   * Es lo que decide si **se ve** que se está esperando. La de arriba decide
+   * otra cosa distinta: si además se apaga el formulario.
+   *
+   * Una asíncrona no para el trabajo —para eso es asíncrona— pero sí tiene que
+   * verse: sin ningún indicio, pulsar un botón y que no pase nada durante diez
+   * segundos se lee como un botón roto, y la gente lo pulsa otra vez. El velo
+   * no se come los clics (`pointer-events: none`), así que enseñarlo no impide
+   * seguir respondiendo.
+   */
+  readonly hayLlamadaEnVuelo = computed<boolean>(() =>
+    this.integracionesDelFlujo().some((una) => una.estado === 'vuelo'),
+  );
+
+  /**
+   * La versión **de ahora** de una llamada, con los valores que hay puestos.
+   *
+   * ## Qué se veía sin esto
+   *
+   * Un botón que analiza una fotografía. Se toma una foto, se pulsa, contesta.
+   * Se cambia la foto por otra y se vuelve a pulsar — y salía otra vez el
+   * resultado de la primera: al servicio le llegaba la foto vieja.
+   *
+   * La llamada que el botón tiene en la mano es la que armó **la última
+   * evaluación de su regla**, y una regla de «al abrir» no se vuelve a evaluar
+   * porque alguien cambie un campo. Así que el botón se quedaba con una foto
+   * congelada en el momento de abrir la actividad, sin nada que lo delatara.
+   *
+   * Se busca por regla e integración, no por llave: la llave lleva dentro las
+   * entradas, así que **cambia justo cuando cambia lo que buscamos**. Es la
+   * misma clave con la que [integracionesDelFlujo] las archiva.
+   *
+   * Si no aparece ninguna se devuelve la que se dio: es lo que ya se hacía, y
+   * quedarse sin llamar sería peor que llamar con lo de antes.
+   */
+  laDeAhora(llamada: LlamadaPintada): LlamadaPintada {
+    const vigente = this.integracionesDelFlujo().find(
+      (una) => una.regla === llamada.regla && una.integracion === llamada.integracion,
+    );
+
+    return vigente ?? llamada;
+  }
+
   /** Las que van debajo de todos los campos. Ver [botonesSueltos]. */
   readonly llamadasSueltas = computed<LlamadaPintada[]>(() =>
     this.integracionesDelFlujo().filter((una) => !this.idDelCampoDeLaLlamada(una)),

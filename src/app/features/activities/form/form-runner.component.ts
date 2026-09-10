@@ -1074,9 +1074,28 @@ export class FormRunnerComponent {
     const engine = this.engine();
     if (!engine) return;
 
-    engine.reintentar(llamada.llave);
+    /*
+     * Con lo que hay en los campos **ahora**, no con lo de la última evaluación.
+     *
+     * Se cambia la fotografía y se vuelve a pulsar: al servicio le llegaba la
+     * foto vieja. La llamada que el botón tiene en la mano la armó la última
+     * evaluación de su regla, y una regla de «al abrir» no se vuelve a evaluar
+     * porque alguien cambie un campo — así que el botón se quedaba con una foto
+     * congelada en el momento de abrir, sin nada que lo delatara.
+     *
+     * Se reevalúa nombrando la integración: eso despierta a la regla que la
+     * llama sea cual sea su `cuando`, y vuelve a armar la llamada leyendo los
+     * campos. Ver [laDeAhora].
+     */
+    engine.avisarDeLaIntegracion(llamada.integracion);
 
-    await this.marcarUna(engine, llamada);
+    const vigente = engine.laDeAhora(llamada);
+
+    // Se pide otra vez a propósito, así que se olvida lo que respondiera antes
+    // —y se olvida el de **esta**, que puede no ser el mismo de antes.
+    engine.reintentar(vigente.llave);
+
+    await this.marcarUna(engine, vigente);
   }
 
   /**

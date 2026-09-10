@@ -97,7 +97,7 @@
       Guardar ya estaba impedido por el motor mientras haya cualquier llamada
       en vuelo, sincrona o asincrona; esto solo lo hace visible.
     -->
-    @if (eng.hayLlamadaSincronaEnVuelo()) {
+    @if (eng.hayLlamadaEnVuelo()) {
       <div class="runner__velo" role="status" aria-live="polite">
         <div class="runner__velo-caja">
           <span class="runner__velo-rueda" aria-hidden="true"></span>
