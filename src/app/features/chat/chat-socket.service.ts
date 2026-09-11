@@ -4,6 +4,7 @@ import { Socket, io } from 'socket.io-client';
 
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../../core/services/auth.service';
+import { AlertSoundService } from '../../core/services/alert-sound.service';
 import { ToastService } from '../../core/services/toast.service';
 import { MensajeDeSala } from './chat.api';
 
@@ -39,6 +40,7 @@ export interface PresenciaDeUno {
 export class ChatSocketService {
   private readonly auth = inject(AuthService);
   private readonly toasts = inject(ToastService);
+  private readonly sonido = inject(AlertSoundService);
   private readonly router = inject(Router);
   private readonly destroy = inject(DestroyRef);
 
@@ -159,6 +161,7 @@ export class ChatSocketService {
 
     this.socket.on('mensaje', (m: MensajeDeSala) => {
       this.mensaje.set(m);
+      this.sonarSiEsDeOtro(m);
       this.avisarSiNoEstasEnLaSala(m);
     });
 
@@ -205,6 +208,31 @@ export class ChatSocketService {
       tone: 'info',
       action: { label: 'Abrir', run: () => void this.router.navigate(['/chat', m.salaId]) },
     });
+  }
+
+  /**
+   * Suena cuando llega un mensaje de otra persona.
+   *
+   * ## Por que suena siempre y no solo fuera de la sala
+   *
+   * Porque en un chat de trabajo la pantalla casi nunca esta delante: se tiene
+   * abierta a un lado mientras se hace otra cosa. El sonido es lo que hace que
+   * un mensaje se lea en el momento y no media hora despues, que es la
+   * diferencia entre un chat que sirve y uno que la gente deja de mirar.
+   *
+   * **Lo propio no suena.** Obvio de decir y facil de olvidar: sin esto, cada
+   * cosa que escribes te suena a ti.
+   *
+   * El servicio ya espacia los sonidos iguales, asi que cinco mensajes seguidos
+   * no suenan como un atropello. Y no se espera a que suene: que el navegador
+   * no deje reproducir —pasa hasta que alguien toca la pagina— no puede
+   * impedir que el mensaje se pinte.
+   */
+  private sonarSiEsDeOtro(m: MensajeDeSala): void {
+    const yo = Number(this.auth.currentUser()?.UserID ?? 0);
+    if (m.userId === yo) return;
+
+    void this.sonido.notify();
   }
 
   /** Se olvida lo pendiente de una sala al entrar en ella. */

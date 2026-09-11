@@ -69,6 +69,18 @@ export class ChatComponent {
 
   constructor() {
     void this.cargarSalas();
+    /*
+     * La zona horaria, una vez.
+     *
+     * Si falla se queda en cero, o sea UTC: preferible ensenar la hora de
+     * Greenwich que restar horas al azar, porque lo primero se nota y lo
+     * segundo se lee como correcto estando mal.
+     */
+    void this.api
+      .zona()
+      .then((z) => this.desfase.set(Number(z?.minutos ?? 0)))
+      .catch(() => undefined);
+
 
     /*
      * La sala de la dirección.
@@ -399,10 +411,37 @@ export class ChatComponent {
     return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
   }
 
+  /** La zona de quien mira, en minutos respecto a UTC. Ver `aLaHora`. */
+  private readonly desfase = signal(0);
+
+  /**
+   * La hora de un mensaje, en la zona de quien mira.
+   *
+   * ## Por que no se usa la hora del navegador
+   *
+   * Porque esa es la del **aparato**, no la de la persona. Quien viaja, quien
+   * tiene el portatil mal configurado o quien entra desde un equipo prestado
+   * veria las horas movidas — y en un chat eso se confunde con que el mensaje
+   * llego tarde, que es justo lo que no puede pasar.
+   *
+   * El servidor guarda en UTC y dice cuantos minutos hay que sumar segun el
+   * `UTCCode` de la persona, con su horario de verano si lo tiene. Aqui solo se
+   * suma y se pinta.
+   *
+   * Se formatea con `getUTCHours` **despues** de haber sumado el desfase: usar
+   * `getHours` volveria a aplicar la zona del navegador encima y correria la
+   * hora dos veces, que es el fallo clasico de esto.
+   */
   aLaHora(cuando: string): string {
     if (!cuando) return '';
 
-    return new Date(cuando).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
+    const t = new Date(cuando);
+    if (Number.isNaN(t.getTime())) return '';
+
+    const suya = new Date(t.getTime() + this.desfase() * 60_000);
+    const dos = (n: number) => String(n).padStart(2, '0');
+
+    return `${dos(suya.getUTCHours())}:${dos(suya.getUTCMinutes())}`;
   }
 
   /** La inicial de una sala, para su bola. */

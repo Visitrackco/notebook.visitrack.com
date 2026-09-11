@@ -96,6 +96,22 @@ export class ChatApi {
     );
   }
 
+  /**
+   * La zona horaria de quien pregunta, en minutos respecto a UTC.
+   *
+   * Sale del catalogo de la plataforma —el `UTCCode` de la persona— y no del
+   * reloj del navegador, que es el del aparato. Se pide una vez y con ella se
+   * pintan todas las horas.
+   */
+  zona(): Promise<{ minutos: number; codigo: string; nombre: string }> {
+    return firstValueFrom(
+      this.http.get<{ minutos: number; codigo: string; nombre: string }>(
+        `${this.base}/zona`,
+        { headers: this.cabeceras },
+      ),
+    );
+  }
+
   miembros(salaId: number): Promise<MiembroDeSala[]> {
     return firstValueFrom(
       this.http.get<MiembroDeSala[]>(`${this.base}/salas/${salaId}/miembros`, {
