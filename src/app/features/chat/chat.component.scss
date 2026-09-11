@@ -372,3 +372,24 @@
     display: block;
   }
 }
+
+/* Quien escribe, encima de la barra. Ocupa su renglón siempre: si apareciera y
+   desapareciera, la conversación daría un salto cada vez que alguien teclea. */
+.chat__escribiendo {
+  min-height: 1.1rem;
+  padding: 0 var(--vt-space-3);
+  margin: 0;
+  font-size: 0.73rem;
+  font-style: italic;
+  color: var(--vt-text-muted);
+}
+
+/* Cuántos tienen esta sala abierta. Solo cuando hay más de uno: «1 mirando»
+   eres tú, y eso no es información. */
+.chat__mirando {
+  padding: 0 0.4rem;
+  font-size: 0.68rem;
+  color: #1e7e34;
+  background: rgb(30 126 52 / 12%);
+  border-radius: 999px;
+}

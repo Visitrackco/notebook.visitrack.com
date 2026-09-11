@@ -91,6 +91,17 @@ export class ChatSocketService {
 
     return false;
   }
+
+  /** Quien esta escribiendo ahora mismo, por sala. */
+  readonly escribiendo = signal<Record<number, string[]>>({});
+
+  /** Quien tiene abierta cada sala y la esta mirando. */
+  readonly mirando = signal<Record<number, number[]>>({});
+
+  /** Cuanto se deja puesto un «esta escribiendo» sin noticias. Ver `escuchar`. */
+  private static readonly OLVIDO_MS = 4000;
+
+  private readonly relojes = new Map<string, ReturnType<typeof setTimeout>>();
   constructor() {
     /*
      * Se conecta con la sesión y se corta cuando se cierra.
@@ -166,6 +177,16 @@ export class ChatSocketService {
     });
 
     this.socket.on('presencia:uno', (p: PresenciaDeUno) => this.presencia.set(p));
+
+    this.socket.on(
+      'escribiendo',
+      (e: { salaId: number; userId: number; nombre: string; escribiendo: boolean }) =>
+        this.apuntarEscribiendo(e.salaId, e.userId, e.nombre, e.escribiendo),
+    );
+
+    this.socket.on('mirando', (m: { salaId: number; userIds: number[] }) =>
+      this.mirando.update((antes) => ({ ...antes, [m.salaId]: m.userIds ?? [] })),
+    );
   }
 
   private desconectar(): void {
@@ -232,6 +253,20 @@ export class ChatSocketService {
     const yo = Number(this.auth.currentUser()?.UserID ?? 0);
     if (m.userId === yo) return;
 
+    /*
+     * **Solo si no estoy en esa sala.**
+     *
+     * Teniendo la conversacion delante, el mensaje aparece solo: el sonido no
+     * anade nada y en una charla viva suena cada pocos segundos, que es lo que
+     * hace que alguien silencie la pestana entera — y entonces tampoco se entera
+     * de lo que si importaba.
+     *
+     * Se mira la direccion y no una bandera de la pantalla: es la misma
+     * comprobacion que decide si sale el aviso, y tenerla en un solo sitio evita
+     * que un dia digan cosas distintas.
+     */
+    if (this.router.url.startsWith(`/chat/${m.salaId}`)) return;
+
     void this.sonido.notify();
   }
 
@@ -291,6 +326,65 @@ export class ChatSocketService {
         );
       },
     );
+  }
+
+  /**
+   * Apunta que alguien escribe, y lo olvida solo.
+   *
+   * ## Por que se olvida por tiempo y no solo cuando lo dicen
+   *
+   * Porque el aviso de «ya no escribo» puede no llegar nunca: se cierra la
+   * pestana, se va la red, se cae el socket. Sin caducidad, esa persona se
+   * queda escribiendo para siempre — el estado que mas desconfianza genera,
+   * porque es visiblemente falso y nadie puede quitarlo.
+   *
+   * Cada aviso reinicia su propio reloj, asi que mientras se teclee se mantiene
+   * y a los pocos segundos de parar se cae solo.
+   */
+  private apuntarEscribiendo(salaId: number, userId: number, nombre: string, activo: boolean): void {
+    const llave = `${salaId}:${userId}`;
+
+    clearTimeout(this.relojes.get(llave));
+    this.relojes.delete(llave);
+
+    const quitar = () =>
+      this.escribiendo.update((antes) => {
+        const suyos = (antes[salaId] ?? []).filter((n) => n !== nombre);
+
+        if (!suyos.length) {
+          const resto = { ...antes };
+          delete resto[salaId];
+
+          return resto;
+        }
+
+        return { ...antes, [salaId]: suyos };
+      });
+
+    if (!activo) {
+      quitar();
+
+      return;
+    }
+
+    this.escribiendo.update((antes) => {
+      const suyos = antes[salaId] ?? [];
+
+      return suyos.includes(nombre) ? antes : { ...antes, [salaId]: [...suyos, nombre] };
+    });
+
+    this.relojes.set(llave, setTimeout(quitar, ChatSocketService.OLVIDO_MS));
+  }
+
+  /**
+   * Dice que estoy escribiendo. Se puede llamar en cada tecla.
+   *
+   * El servidor no guarda nada y lo reparte a los demas; el coste de mandarlo
+   * de mas es un paquete diminuto, y el de mandarlo de menos es que el aviso
+   * parpadee.
+   */
+  avisarQueEscribo(salaId: number, escribiendo: boolean): void {
+    this.socket?.emit('escribiendo', { salaId, escribiendo });
   }
   /** Pide la lista entera de quién está en una sala. */
   pedirPresencia(salaId: number): void {

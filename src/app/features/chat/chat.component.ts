@@ -59,6 +59,25 @@ export class ChatComponent {
   readonly texto = signal('');
   readonly conectado = this.socket.conectado;
 
+  /**
+   * Quien esta escribiendo en la sala abierta.
+   *
+   * Se lee de lo que trae el socket y se filtra por la sala de ahora: el
+   * servicio guarda todas las salas porque el aviso llega estes donde estes.
+   */
+  readonly escribiendoAqui = computed(() => {
+    const sala = this.abierta();
+
+    return sala ? (this.socket.escribiendo()[sala.id] ?? []) : [];
+  });
+
+  /** Cuantos estan mirando esta misma conversacion ahora. */
+  readonly mirandoAqui = computed(() => {
+    const sala = this.abierta();
+
+    return sala ? (this.socket.mirando()[sala.id] ?? []).length : 0;
+  });
+
   private readonly caja = viewChild<ElementRef<HTMLDivElement>>('caja');
 
   /** Quién soy, para saber de qué lado va cada burbuja. */
@@ -311,6 +330,39 @@ export class ChatComponent {
       this.toasts.show({ title: 'No se pudo abrir el archivo.', tone: 'error' });
     }
   }
+
+  /**
+   * Avisa de que se esta escribiendo, sin mandar uno por tecla.
+   *
+   * Se manda el primero y despues como mucho uno cada dos segundos. Sin esa
+   * pausa, escribir una frase manda treinta paquetes para decir lo mismo — y
+   * con la sala llena eso es trafico de mas en todos los aparatos.
+   *
+   * Y se dice que se dejo de escribir cuando la casilla se queda vacia: es lo
+   * que pasa al enviar, y sin eso el aviso se quedaria puesto hasta caducar.
+   */
+  alEscribirTexto(valor: string): void {
+    this.texto.set(valor);
+
+    const sala = this.abierta();
+    if (!sala) return;
+
+    if (!valor.trim()) {
+      this.socket.avisarQueEscribo(sala.id, false);
+      this.ultimoAviso = 0;
+
+      return;
+    }
+
+    const ahora = Date.now();
+    if (ahora - this.ultimoAviso < 2000) return;
+
+    this.ultimoAviso = ahora;
+    this.socket.avisarQueEscribo(sala.id, true);
+  }
+
+  /** Cuando se avisó por última vez. Ver [alEscribirTexto]. */
+  private ultimoAviso = 0;
 
   alTeclear(evento: KeyboardEvent): void {
     // Con Mayús salta de línea. `keydown.enter` de Angular dispara también con
