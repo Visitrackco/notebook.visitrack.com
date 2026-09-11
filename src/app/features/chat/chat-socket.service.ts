@@ -58,6 +58,37 @@ export class ChatSocketService {
   /** Cuántos sin leer en total. Lo mira la navegación. */
   readonly sinLeer = signal(0);
 
+
+  /** El token con el que se monto la conexion de ahora. Ver [mismoToken]. */
+  private tokenPuesto: string | null = null;
+
+  /**
+   * Si el token es el mismo con el que ya se conecto.
+   *
+   * ## Por que hace falta
+   *
+   * El efecto se dispara con **cada cambio de la sesion**, y la sesion se
+   * vuelve a escribir por cosas que no son entrar ni salir: al rehidratarla al
+   * arrancar, al renovar el token, al refrescar el usuario. Cada una de esas
+   * deja un objeto nuevo aunque el token sea el mismo.
+   *
+   * Y si en alguno de esos instantes la sesion pasa por nula —cosa que ocurre
+   * al rehidratar— el efecto llamaba a `desconectar()`, que tira el socket a
+   * medio saludo. La peticion que ya iba en camino llegaba con un `sid` que el
+   * servidor acababa de olvidar, y contestaba **«Session ID unknown»**. Desde
+   * fuera parecia un problema del servidor, y el servidor estaba bien: se
+   * comprobo con doce saludos seguidos contra produccion, los doce correctos.
+   *
+   * Comparando el valor y no la identidad del objeto, la conexion se monta una
+   * vez y solo se rehace cuando de verdad cambia quien eres.
+   */
+  private mismoToken(token: string): boolean {
+    if (this.tokenPuesto === token) return true;
+
+    this.tokenPuesto = token;
+
+    return false;
+  }
   constructor() {
     /*
      * Se conecta con la sesión y se corta cuando se cierra.
@@ -68,7 +99,11 @@ export class ChatSocketService {
      * sobrevive a cerrar sesión con la sesión de quien acaba de salir.
      */
     effect(() => {
-      const token = this.auth.currentUser()?.Token;
+      const token = this.auth.currentUser()?.Token ?? '';
+
+      // `conectar` y `desconectar` solo se llaman cuando el token **cambia de
+      // verdad**. Ver `mismoToken`.
+      if (this.mismoToken(token)) return;
 
       if (token) this.conectar(token);
       else this.desconectar();
@@ -133,6 +168,7 @@ export class ChatSocketService {
   private desconectar(): void {
     this.socket?.disconnect();
     this.socket = null;
+    this.tokenPuesto = null;
 
     this.conectado.set(false);
     this.sinLeerPorSala.set({});
