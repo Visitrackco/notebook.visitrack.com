@@ -177,7 +177,14 @@ export class ChatComponent {
       this.gente.set(gente);
       this.ultimoVisto = mensajes.at(-1)?.seq ?? 0;
 
-      // La presencia la tiene el socket, no la base: se pide aparte.
+      /*
+       * El socket entra en la sala, ademas de la presencia.
+       *
+       * Al conectar ya se entro en las salas de entonces; esto cubre las que
+       * cambiaron desde entonces y deja constancia en la consola de cuantas
+       * conexiones hay dentro. Ver `entrarALaSala`.
+       */
+      this.socket.entrarALaSala(sala.id);
       this.socket.pedirPresencia(sala.id);
 
       await this.marcarLeidoTodo();

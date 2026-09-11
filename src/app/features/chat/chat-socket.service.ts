@@ -236,6 +236,34 @@ export class ChatSocketService {
     return String(m.texto ?? '').slice(0, 90) || 'mensaje nuevo';
   }
 
+
+  /**
+   * Entra en la sala y dice cuantos hay dentro.
+   *
+   * ## Por que se pide al abrir, si ya se entro al conectar
+   *
+   * Porque al conectar se entra en las salas **de ese momento**. Si te agregan
+   * despues, o la conexion se rehizo antes de que la sala existiera, te quedas
+   * conectado y fuera: el chat parece vivo y no llega nada. Pidiendolo tambien
+   * aqui, el caso corriente —abro la sala, hablo— repara ese hueco solo.
+   *
+   * La cuenta se escribe en la consola **del navegador** a proposito. Los
+   * registros del servidor van a la maquina y bajo IIS no se ven desde ningun
+   * sitio; aqui se leen donde esta quien prueba. Un «0» dice que no entro y un
+   * «2» dice que el reparto tiene a quien llegar.
+   */
+  entrarALaSala(salaId: number): void {
+    this.socket?.emit(
+      'sala:entrar',
+      { salaId },
+      (r: { dentro?: boolean; conexiones?: number }) => {
+        console.log(
+          `[chat] sala ${salaId}: ${r?.dentro ? 'dentro' : 'FUERA'} · ` +
+            `${r?.conexiones ?? 0} conexiones en la sala`,
+        );
+      },
+    );
+  }
   /** Pide la lista entera de quién está en una sala. */
   pedirPresencia(salaId: number): void {
     this.socket?.emit('presencia:pedir', { salaId });
