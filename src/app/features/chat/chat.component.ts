@@ -15,6 +15,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast.service';
 import { ChatSocketService } from './chat-socket.service';
+import { TOPE_DE_SEGUNDOS, VozEnVivoService } from './voz-en-vivo.service';
 import { ChatApi, MensajeDeSala, MiembroDeSala, SalaResumen } from './chat.api';
 
 /**
@@ -47,6 +48,27 @@ export class ChatComponent {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly ruta = inject(ActivatedRoute);
+  private readonly voz = inject(VozEnVivoService);
+
+  readonly TOPE_DE_SEGUNDOS = TOPE_DE_SEGUNDOS;
+
+  /** Si este navegador puede transmitir y oír en vivo. Ver `VozEnVivoService`. */
+  readonly hayVoz = this.voz.sePuede();
+
+  /** Si estoy transmitiendo, y cuánto llevo. */
+  readonly hablandoYo = this.voz.hablando;
+  readonly segundosHablando = this.voz.segundos;
+
+  /** Si se está oyendo a alguien. */
+  readonly oyendoVoz = this.voz.oyendo;
+
+  /** Quién tiene la palabra, si no soy yo. */
+  readonly hablaOtro = computed(() => {
+    const sala = this.abierta();
+    const quien = this.socket.hablando();
+
+    return sala && quien && quien.salaId === sala.id && quien.userId !== this.yoId ? quien : null;
+  });
 
   readonly salas = signal<SalaResumen[]>([]);
   readonly abierta = signal<SalaResumen | null>(null);
@@ -156,6 +178,38 @@ export class ChatComponent {
     });
 
     /*
+     * Lo que llega de una transmisión de voz.
+     *
+     * El reproductor se prepara al empezar y no al recibir la primera porción:
+     * montarlo entonces ya es tarde y se pierde el principio, que en un walkie
+     * suele ser el nombre de a quién se llama.
+     */
+    effect(() => {
+      const v = this.socket.vozEmpieza();
+      if (!v) return;
+
+      untracked(() => {
+        if (this.abierta()?.id === v.salaId) this.voz.empiezaAOir(v.id);
+      });
+    });
+
+    effect(() => {
+      const v = this.socket.vozTrozo();
+      if (!v) return;
+
+      untracked(() => {
+        if (this.abierta()?.id === v.salaId) this.voz.oyeTrozo(v.id, v.trozo);
+      });
+    });
+
+    effect(() => {
+      const v = this.socket.vozFin();
+      if (!v) return;
+
+      untracked(() => this.voz.terminaDeOir(v.id));
+    });
+
+    /*
      * Al recuperar la conexión, se pide lo que falta.
      *
      * El socket solo trae lo que llega **mientras está conectado**. Sin esto,
@@ -217,6 +271,16 @@ export class ChatComponent {
        */
       this.socket.entrarALaSala(sala.id);
       this.socket.pedirPresencia(sala.id);
+
+      /*
+       * Se corta lo que sonara de la sala anterior y se engancha a esta.
+       *
+       * Si alguien está hablando ahora mismo, el servidor manda la cabecera y
+       * se oye desde ya; sin esto habría que esperar a la siguiente
+       * transmisión, que es justo cuando te estaban llamando.
+       */
+      this.voz.cortarLoQueSuena();
+      this.socket.engancharmeALaVoz(sala.id);
 
       await this.marcarLeidoTodo();
       this.bajarDelTodo();
@@ -363,6 +427,64 @@ export class ChatComponent {
 
   /** Cuando se avisó por última vez. Ver [alEscribirTexto]. */
   private ultimoAviso = 0;
+
+  // ── El walkie-talkie ──────────────────────────────────────────────────────
+
+  /**
+   * Empieza a transmitir. Se oye mientras hablas.
+   *
+   * El turno se pide al servidor y **se espera su respuesta** antes de abrir el
+   * micrófono: lo que se transmite sale en el acto, así que grabando antes de
+   * tenerlo, lo primero que dijeras se perdería o se mezclaría con quien ya
+   * estaba hablando.
+   */
+  async empezarAHablar(): Promise<void> {
+    const sala = this.abierta();
+    if (!sala || this.hablandoYo()) return;
+
+    if (!this.hayVoz) {
+      this.toasts.show({
+        title: 'Este navegador no puede transmitir voz. Prueba con Chrome o Edge.',
+        tone: 'warning',
+      });
+
+      return;
+    }
+
+    const r = await this.socket.empezarAHablar(sala.id);
+
+    if (!r.ok) {
+      this.toasts.show({
+        title: r.motivo ? `No se puede hablar: ${r.motivo}.` : 'No se pudo hablar.',
+        tone: 'info',
+      });
+
+      return;
+    }
+
+    const pudo = await this.voz.empezar(
+      (trozo) => this.socket.mandarTrozoDeVoz(sala.id, trozo),
+      () =>
+        this.toasts.show({
+          title: `Se cortó a los ${TOPE_DE_SEGUNDOS} segundos.`,
+          tone: 'info',
+        }),
+    );
+
+    if (!pudo) {
+      this.socket.terminarDeHablar(sala.id);
+      this.toasts.show({ title: 'No se pudo usar el micrófono.', tone: 'error' });
+    }
+  }
+
+  /** Soltar: se cierra la transmisión. No hay nada que mandar, ya salió todo. */
+  dejarDeHablar(): void {
+    const sala = this.abierta();
+    if (!sala || !this.hablandoYo()) return;
+
+    this.voz.parar();
+    this.socket.terminarDeHablar(sala.id);
+  }
 
   alTeclear(evento: KeyboardEvent): void {
     // Con Mayús salta de línea. `keydown.enter` de Angular dispara también con

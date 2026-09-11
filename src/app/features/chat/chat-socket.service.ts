@@ -60,6 +60,14 @@ export class ChatSocketService {
   /** Cuántos sin leer en total. Lo mira la navegación. */
   readonly sinLeer = signal(0);
 
+  /** Quien tiene la palabra, para el walkie-talkie. */
+  readonly hablando = signal<{ salaId: number; userId: number; nombre: string } | null>(null);
+
+  /** Lo que llega de una transmision de voz. Lo recoge la pantalla. */
+  readonly vozEmpieza = signal<{ salaId: number; id: string; nombre: string } | null>(null);
+  readonly vozTrozo = signal<{ salaId: number; id: string; trozo: ArrayBuffer } | null>(null);
+  readonly vozFin = signal<{ salaId: number; id: string } | null>(null);
+
 
   /** El token con el que se monto la conexion de ahora. Ver [mismoToken]. */
   private tokenPuesto: string | null = null;
@@ -183,6 +191,24 @@ export class ChatSocketService {
       (e: { salaId: number; userId: number; nombre: string; escribiendo: boolean }) =>
         this.apuntarEscribiendo(e.salaId, e.userId, e.nombre, e.escribiendo),
     );
+
+    // El walkie-talkie. Ver `VozEnVivoService`: aqui solo se recoge lo que
+    // llega; quien decide que hacer con ello es la pantalla.
+    this.socket.on('turno:habla', (t: { salaId: number; userId: number; nombre: string }) =>
+      this.hablando.set(t),
+    );
+    this.socket.on('turno:libre', () => this.hablando.set(null));
+    this.socket.on('turno:ocupado', (t: { salaId: number; userId: number; nombre: string }) =>
+      this.hablando.set(t),
+    );
+
+    this.socket.on('voz:empieza', (v: { salaId: number; id: string; nombre: string }) =>
+      this.vozEmpieza.set(v),
+    );
+    this.socket.on('voz:trozo', (v: { salaId: number; id: string; trozo: ArrayBuffer }) =>
+      this.vozTrozo.set(v),
+    );
+    this.socket.on('voz:fin', (v: { salaId: number; id: string }) => this.vozFin.set(v));
 
     this.socket.on('mirando', (m: { salaId: number; userIds: number[] }) =>
       this.mirando.update((antes) => ({ ...antes, [m.salaId]: m.userIds ?? [] })),
@@ -386,6 +412,48 @@ export class ChatSocketService {
   avisarQueEscribo(salaId: number, escribiendo: boolean): void {
     this.socket?.emit('escribiendo', { salaId, escribiendo });
   }
+  /**
+   * Pide empezar a transmitir. Contesta si se pudo.
+   *
+   * El turno lo da el servidor, asi que esto puede decir que no — y decirlo
+   * **antes** de abrir el microfono es lo que evita hablar medio mensaje para
+   * nada, o encima de quien ya estaba hablando.
+   */
+  empezarAHablar(salaId: number): Promise<{ ok: boolean; motivo?: string }> {
+    return new Promise((resolver) => {
+      if (!this.socket) {
+        resolver({ ok: false, motivo: 'sin conexión' });
+
+        return;
+      }
+
+      this.socket.emit('voz:empezar', { salaId }, (r: { ok: boolean; motivo?: string }) =>
+        resolver(r ?? { ok: false }),
+      );
+    });
+  }
+
+  /** Una porcion de audio, segun se graba. */
+  mandarTrozoDeVoz(salaId: number, trozo: ArrayBuffer): void {
+    this.socket?.emit('voz:trozo', { salaId, trozo });
+  }
+
+  /** Deja de transmitir. */
+  terminarDeHablar(salaId: number): void {
+    this.socket?.emit('voz:fin', { salaId });
+  }
+
+  /**
+   * Pide engancharse a lo que ya se este transmitiendo.
+   *
+   * Sin esto, quien abre la sala a mitad de una frase recibe porciones que no
+   * puede decodificar —le falta la cabecera— y no oye nada hasta la siguiente
+   * transmision, que en un walkie es justo cuando te estaban llamando.
+   */
+  engancharmeALaVoz(salaId: number): void {
+    this.socket?.emit('voz:engancharme', { salaId });
+  }
+
   /** Pide la lista entera de quién está en una sala. */
   pedirPresencia(salaId: number): void {
     this.socket?.emit('presencia:pedir', { salaId });

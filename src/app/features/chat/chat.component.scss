@@ -393,3 +393,69 @@
   background: rgb(30 126 52 / 12%);
   border-radius: 999px;
 }
+
+/* ── El walkie-talkie ──────────────────────────────────────────────────── */
+
+/*
+  Mantener pulsado para hablar.
+
+  Mismo tamaño y forma que el de enviar, pero en neutro: hablar y escribir son
+  dos maneras de lo mismo, y una no tiene por qué gritar más que la otra. Se
+  tiñe solo mientras transmite, que es cuando importa verlo.
+*/
+.chat__hablar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  font-size: 0.95rem;
+  color: var(--vt-text-muted);
+  cursor: pointer;
+  background: var(--vt-bg);
+  border: 1px solid var(--vt-border);
+  border-radius: 50%;
+
+  /* Al mantener pulsado, el móvil selecciona el icono o saca el menú de
+     copiar: las dos cosas interrumpen justo lo que se está haciendo. */
+  user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: none;
+}
+
+.chat__hablar--hablando {
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+  background: #c0392b;
+  border-color: #c0392b;
+  animation: chat-latido 1s ease-in-out infinite;
+}
+
+@keyframes chat-latido {
+  50% {
+    opacity: 0.65;
+  }
+}
+
+/* Apagado y no escondido: un botón que desaparece y vuelve hace dudar de si
+   estaba ahí. */
+.chat__hablar:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.chat__hablando {
+  padding: 0.3rem var(--vt-space-3);
+  margin: 0;
+  font-size: 0.75rem;
+  color: #b26b00;
+  background: #fff7e6;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat__hablar--hablando {
+    animation: none;
+  }
+}

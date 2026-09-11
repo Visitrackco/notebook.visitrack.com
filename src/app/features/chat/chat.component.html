@@ -144,6 +144,11 @@
         sitio siempre —aunque este vacio— para que la conversacion no de un
         salto cada vez que alguien empieza a teclear.
       -->
+      <!-- Alguien tiene la palabra: se dice, para que nadie hable encima. -->
+      @if (hablaOtro(); as quien) {
+        <p class="chat__hablando" aria-live="polite">🔊 Está hablando {{ quien.nombre }}…</p>
+      }
+
       <p class="chat__escribiendo" aria-live="polite">
         @if (escribiendoAqui(); as quienes) {
           @if (quienes.length === 1) {
@@ -177,6 +182,34 @@
           (ngModelChange)="alEscribirTexto($event)"
           (keydown)="alTeclear($event)"
         ></textarea>
+
+        <!--
+          Mantener pulsado para hablar.
+
+          `pointerdown`/`pointerup` cubren ratón y dedo con un par de eventos, y
+          `pointerleave` está porque arrastrar el dedo fuera del botón **no**
+          dispara `pointerup` sobre él: sin eso la transmisión se queda abierta
+          hasta que el servidor la corte, y la sala muda mientras tanto.
+        -->
+        @if (hayVoz) {
+          <button
+            type="button"
+            class="chat__hablar"
+            [class.chat__hablar--hablando]="hablandoYo()"
+            [disabled]="!!hablaOtro()"
+            [title]="
+              hablaOtro()
+                ? 'Está hablando otra persona'
+                : 'Mantén pulsado para hablar (hasta ' + TOPE_DE_SEGUNDOS + ' s)'
+            "
+            aria-label="Mantener pulsado para hablar"
+            (pointerdown)="empezarAHablar()"
+            (pointerup)="dejarDeHablar()"
+            (pointerleave)="dejarDeHablar()"
+          >
+            {{ hablandoYo() ? segundosHablando() + 's' : '🎙' }}
+          </button>
+        }
 
         <button
           type="button"
