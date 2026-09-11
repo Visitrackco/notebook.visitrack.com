@@ -1,0 +1,177 @@
+<div class="chat">
+  <!-- ── Las salas ──────────────────────────────────────────────────────── -->
+  <aside class="chat__salas" [class.chat__salas--plegada]="abierta()">
+    <header class="chat__salas-cab">
+      <h2>Chat</h2>
+
+      <!--
+        Si la conexión en vivo está caída, dicho.
+
+        Sin esto, con el socket abajo los mensajes nuevos no aparecen solos y no
+        hay forma de saber si es que nadie ha escrito. Lo escrito se guarda
+        igual y se ve al volver a entrar en la sala.
+      -->
+      @if (!conectado()) {
+        <span class="chat__sin-vivo" title="Los mensajes nuevos no llegarán solos">
+          Sin conexión en vivo
+        </span>
+      }
+    </header>
+
+    @if (cargandoSalas()) {
+      <p class="chat__nada">Buscando tus salas…</p>
+    } @else {
+      <ul class="chat__lista">
+        @for (sala of salas(); track sala.id) {
+          <li>
+            <button
+              type="button"
+              class="chat__sala"
+              [class.chat__sala--abierta]="abierta()?.id === sala.id"
+              (click)="abrir(sala)"
+            >
+              <span class="chat__bola" aria-hidden="true">{{ inicialDe(sala.nombre) }}</span>
+
+              <span class="chat__sala-texto">
+                <span class="chat__sala-nombre">{{ sala.nombre }}</span>
+                <span class="chat__sala-pie">
+                  {{ sala.ultimoTexto || (sala.miembros + ' personas') }}
+                </span>
+              </span>
+
+              @if (sala.sinLeer > 0) {
+                <span class="chat__sinleer">{{ sala.sinLeer }}</span>
+              }
+            </button>
+          </li>
+        } @empty {
+          <!--
+            No es un error: es que nadie te ha metido en ninguna.
+
+            Y se dice quién puede hacerlo, porque lo primero que se piensa ante
+            una lista vacía es que la aplicación no cargó.
+          -->
+          <li class="chat__nada">
+            No estás en ninguna sala todavía. Quien administre una puede agregarte desde Module.
+          </li>
+        }
+      </ul>
+    }
+  </aside>
+
+  <!-- ── La conversación ────────────────────────────────────────────────── -->
+  <section class="chat__abierta">
+    @if (abierta(); as sala) {
+      <header class="chat__cab">
+        <!-- En pantalla estrecha la lista se pliega, así que hace falta cómo
+             volver. En ancha no se pinta: la lista está ahí al lado. -->
+        <button type="button" class="chat__volver" (click)="abierta.set(null)" aria-label="Volver a las salas">‹</button>
+
+        <div class="chat__cab-texto">
+          <h3>{{ sala.nombre }}</h3>
+
+          <p class="chat__gente">
+            @for (uno of gente(); track uno.userId) {
+              <span
+                class="chat__uno"
+                [attr.data-estado]="uno.estado ?? 'desconectado'"
+                [title]="comoSeVe(uno.estado)"
+              >
+                <span class="chat__punto"></span>{{ uno.nombre }}
+              </span>
+            }
+          </p>
+        </div>
+      </header>
+
+      <div class="chat__mensajes" #caja>
+        @if (cargandoSala()) {
+          <p class="chat__nada">Abriendo la sala…</p>
+        }
+
+        @for (m of mensajes(); track m.clientId || m.seq) {
+          <article class="chat__mensaje" [class.chat__mensaje--mio]="esMio(m)">
+            <div class="chat__burbuja" [class.chat__burbuja--enviando]="m.enviando">
+              @if (!esMio(m)) {
+                <span class="chat__autor">{{ m.autor }}</span>
+              }
+
+              @if (m.texto) {
+                <p class="chat__texto">{{ m.texto }}</p>
+              }
+
+              @for (a of m.adjuntos; track a.id) {
+                @if (m.tipo === 'voz') {
+                  <button type="button" class="chat__nota" (click)="abrirAdjunto(a.id)">
+                    ▶ Nota de voz · {{ m.segundos }}s
+                  </button>
+                } @else {
+                  <div class="chat__adjunto">
+                    <span class="chat__adjunto-nombre">{{ a.nombre }}</span>
+                    <span class="chat__adjunto-peso">{{ comoPesa(a.tamano) }}</span>
+
+                    <!-- Ver y descargar son intenciones distintas. La dirección
+                         se pide al pulsar porque caduca en cinco minutos. -->
+                    <button type="button" (click)="abrirAdjunto(a.id)">Ver</button>
+                    <button type="button" (click)="abrirAdjunto(a.id, true)">Descargar</button>
+                  </div>
+                }
+              }
+
+              <span class="chat__hora">
+                {{ m.enviando ? 'Enviando…' : aLaHora(m.creadoEn) }}
+              </span>
+            </div>
+          </article>
+        } @empty {
+          @if (!cargandoSala()) {
+            <p class="chat__nada">Todavía no hay nada. Escribe lo primero.</p>
+          }
+        }
+      </div>
+
+      <footer class="chat__escribir">
+        <!-- Escondido por CSS y no con `hidden`: `hidden` lo saca también del
+             tabulador, y entonces con teclado no hay forma de adjuntar. -->
+        <label class="chat__clip" title="Compartir una foto o un archivo">
+          <input
+            type="file"
+            class="chat__clip-entrada"
+            accept="image/*,application/pdf"
+            aria-label="Compartir una foto o un archivo"
+            (change)="adjuntar($event)"
+          />
+          📎
+        </label>
+
+        <textarea
+          class="chat__campo"
+          rows="1"
+          placeholder="Escribe un mensaje…"
+          title="Enter manda el mensaje. Mayús+Enter salta de línea."
+          [ngModel]="texto()"
+          (ngModelChange)="texto.set($event)"
+          (keydown)="alTeclear($event)"
+        ></textarea>
+
+        <button
+          type="button"
+          class="chat__enviar"
+          aria-label="Enviar"
+          [disabled]="!texto().trim()"
+          (click)="enviar()"
+        >
+          ➤
+        </button>
+      </footer>
+    } @else {
+      <p class="chat__nada chat__nada--centro">
+        @if (hayAlgo()) {
+          Elige una sala para ver la conversación.
+        } @else {
+          Cuando te agreguen a una sala, aparecerá aquí.
+        }
+      </p>
+    }
+  </section>
+</div>

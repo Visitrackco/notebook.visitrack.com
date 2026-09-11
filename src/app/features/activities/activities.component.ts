@@ -4,6 +4,7 @@ import { MatChipListboxChange, MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router, RouterLink } from '@angular/router';
 
+import { resolveCatalogOwnerId } from '../../core/config/company-rules';
 import {
   ANSWER_STATE,
   ANSWER_STATES,
@@ -477,7 +478,17 @@ export class ActivitiesComponent {
     const user = this.auth.currentUser();
     if (!user) return new Map();
 
-    const statuses = await this.dispatch.findByUser(Number(user.UserID) || 0);
+    /*
+     * Bajo el dueño del catálogo, no bajo quien mira.
+     *
+     * Con `user.UserID` a secas —la compañía que comparte catálogo los tiene
+     * guardados en otra cuenta— este mapa salía vacío, y entonces cada ficha se
+     * quedaba sin `dispatchName` y la plantilla escondía el estado. La
+     * actividad estaba escrita en su estado nuevo y en la lista no se veía
+     * nada: ni el que puso un flujo ni el que se eligió a mano. Es la misma
+     * salvedad que ya hacen `activity-detail` y `ActivityService`.
+     */
+    const statuses = await this.dispatch.findByUser(resolveCatalogOwnerId(user));
     return new Map(statuses.map((status) => [String(status.DispatchID), status]));
   }
 

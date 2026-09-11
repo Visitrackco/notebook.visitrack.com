@@ -18,6 +18,11 @@ export const environment = {
    */
   binariesUrl: 'https://and.visitrack.com/WebResource.aspx',
 
+  /* Module, que es donde vive el chat. Ver `environment.ts`.
+     (Este archivo hoy no lo usa el build: `angular.json` no tiene
+     `fileReplacements`. Se mantiene al día igualmente.) */
+  moduleUrl: 'https://module.visitrack.com',
+
   requestTimeout: 30,
   syncIntervalMinutes: 15,
 

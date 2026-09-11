@@ -4,6 +4,7 @@ import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/rou
 import { environment } from '../../../environments/environment';
 import { NAVIGATION, NavItem } from '../../core/config/navigation';
 import { AuthService } from '../../core/services/auth.service';
+import { ChatSocketService } from '../../features/chat/chat-socket.service';
 import { CompanyLogoService } from '../../core/services/company-logo.service';
 import { ConnectivityService } from '../../core/services/connectivity.service';
 import { PendingUploadService } from '../../core/sync/pending-upload.service';
@@ -59,6 +60,19 @@ export class ShellComponent {
   // Publico: la plantilla lee su estado para decidir si ofrece la tira.
   readonly push = inject(PushService);
   private readonly counters = inject(MenuCountersService);
+
+  /*
+   * El chat, conectado desde el armazon y no desde su pantalla.
+   *
+   * Se inyecta **aqui** aunque esta pantalla no lo use: un servicio de raiz no
+   * existe hasta que alguien lo pide, y si solo lo pidiera la pantalla del chat
+   * la conexion solo viviria mientras se estuviera dentro. Entonces un mensaje
+   * que llega mientras diligencias un formulario no se notaria hasta ir a
+   * mirar, que es justo lo que hace que un chat de trabajo no se use.
+   *
+   * Es publico porque la navegacion lee `sinLeer` para el punto del menu.
+   */
+  readonly chat = inject(ChatSocketService);
   readonly auth = inject(AuthService);
   readonly connectivity = inject(ConnectivityService);
 

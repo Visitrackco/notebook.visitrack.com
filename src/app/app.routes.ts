@@ -206,6 +206,24 @@ export const routes: Routes = [
        * tres formularios hay que mirar en tres sitios.
        */
       {
+        /*
+         * El chat, con la sala en la direccion.
+         *
+         * `/chat/12` abre la doce. Es lo que permite que el aviso de dentro y
+         * la notificacion del telefono lleven a una sala concreta: con seis
+         * salas, «tienes un mensaje» sin decir donde obliga a abrirlas una a
+         * una. `/chat` a secas sigue llevando a la lista.
+         */
+        path: 'chat',
+        loadComponent: () =>
+          import('./features/chat/chat.component').then((m) => m.ChatComponent),
+      },
+      {
+        path: 'chat/:salaId',
+        loadComponent: () =>
+          import('./features/chat/chat.component').then((m) => m.ChatComponent),
+      },
+      {
         path: 'consignas',
         title: 'Mis consignas · Visitrack',
         loadComponent: () =>

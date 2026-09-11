@@ -50,6 +50,21 @@ export const NAVIGATION: NavSection[] = [
     title: 'Operación',
     items: [
       {
+        /*
+         * El chat no pide permiso: la puerta es estar en una sala.
+         *
+         * `permission` se omite a propósito —el propio contrato de `NavItem`
+         * dice que entonces lo ve cualquiera autenticado—. Quien no esté en
+         * ninguna sala entra y ve que no está en ninguna, que es la respuesta
+         * correcta; a quién se mete lo decide quien administra la sala.
+         */
+        key: 'chat',
+        label: 'Chat',
+        route: '/chat',
+        icon: 'message-circle',
+        description: 'Salas de tu equipo, con archivos y notas de voz',
+      },
+      {
         key: 'dispatches',
         label: 'Mis consignas',
         route: '/consignas',

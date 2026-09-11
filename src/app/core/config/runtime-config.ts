@@ -35,6 +35,10 @@ const OVERRIDABLE = {
   platformUrl: 'string',
   localApiUrl: 'string',
   binariesUrl: 'string',
+
+  // Donde vive el chat. Se puede cambiar desde fuera como las demas: en una
+  // instalacion propia Module no esta en la direccion de siempre.
+  moduleUrl: 'string',
   useLocalApi: 'boolean',
   requestTimeout: 'number',
   syncIntervalMinutes: 'number',

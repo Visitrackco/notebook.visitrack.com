@@ -42,6 +42,16 @@ export const environment = {
    */
   binariesUrl: 'https://and.visitrack.com/WebResource.aspx',
 
+  /**
+   * Module, que es donde vive el chat.
+   *
+   * Es **otro backend**: el resto de esta aplicación habla con `apiUrl`
+   * —cloud-server— y el chat es lo único que sale hacia aquí. Module reconoce
+   * nuestra sesión porque comparte base de datos y tiene la llave de
+   * cloud-server en una variable aparte; ver `sesion-de-campo.ts` allí.
+   */
+  moduleUrl: 'https://module.visitrack.com',
+
   /** Segundos antes de dar por perdida una petición. */
   requestTimeout: 30,
 
