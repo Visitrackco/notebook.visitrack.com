@@ -601,6 +601,11 @@
 
 .shell__content {
   flex: 1;
+
+  /* Sin esto, un hijo que quiera desplazarse por dentro no puede encogerse por
+     debajo de su contenido y estira la página en su lugar. Es lo mismo que ya
+     hace `min-width: 0` unas líneas más arriba, por el otro eje. */
+  min-height: 0;
   padding: var(--vt-space-6);
 }
 

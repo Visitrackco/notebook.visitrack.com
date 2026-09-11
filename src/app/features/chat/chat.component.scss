@@ -1,15 +1,24 @@
 /*
-  El componente ocupa lo que le den.
+  Alto fijo: **solo se desplazan los mensajes**.
 
-  Angular envuelve todo componente en su etiqueta, que nace `display: inline` y
-  sin altura: un `height: 100%` de dentro medido contra eso da cero.
-  `min-height: 0` es lo que permite que la caja de mensajes se encoja y se
-  desplace en vez de estirar la página entera.
+  `height: 100%` no servía aquí. El contenedor del armazón (`.shell__content`)
+  crece con su contenido, así que un 100% medido contra él no acota nada: la
+  conversación estiraba la página entera y acababa desplazándose todo —la lista
+  de salas, la cabecera de la sala y la barra de escribir incluidas—, que es
+  justo lo que no se quiere en un chat.
+
+  Se calcula contra la ventana, descontando la barra superior y el aire que el
+  armazón pone alrededor. Es lo único que da una altura **definitiva**, y sin
+  una definitiva el `overflow` de la caja de mensajes no tiene contra qué
+  decidir.
+
+  `100dvh` y no `100vh` por el móvil: la barra del navegador se encoge al
+  desplazar, y con `vh` la barra de escribir queda debajo del borde.
 */
 :host {
   display: block;
   min-height: 0;
-  height: 100%;
+  height: calc(100dvh - var(--vt-topbar-height, 0px) - (var(--vt-space-6, 1.5rem) * 2));
 }
 
 .chat {
