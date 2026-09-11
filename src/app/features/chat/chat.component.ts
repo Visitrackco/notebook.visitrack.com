@@ -15,7 +15,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast.service';
 import { ChatSocketService } from './chat-socket.service';
-import { TOPE_DE_SEGUNDOS, VozEnVivoService } from './voz-en-vivo.service';
+import { FORMATO, TOPE_DE_SEGUNDOS, VozEnVivoService } from './voz-en-vivo.service';
 import { ChatApi, MensajeDeSala, MiembroDeSala, SalaResumen } from './chat.api';
 
 /**
@@ -189,7 +189,18 @@ export class ChatComponent {
       if (!v) return;
 
       untracked(() => {
-        if (this.abierta()?.id === v.salaId) this.voz.empiezaAOir(v.id);
+        if (this.abierta()?.id !== v.salaId) return;
+
+        /*
+         * Solo lo que este navegador sabe decodificar.
+         *
+         * Todos los clientes mandan sonido en crudo, pero durante un despliegue
+         * puede quedar uno viejo transmitiendo en `webm`. Intentar oírlo daría
+         * ruido blanco a todo volumen, que es bastante peor que silencio.
+         */
+        if (v.formato && v.formato !== FORMATO) return;
+
+        this.voz.empiezaAOir(v.id);
       });
     });
 

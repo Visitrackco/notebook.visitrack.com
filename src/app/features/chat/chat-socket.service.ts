@@ -7,6 +7,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { AlertSoundService } from '../../core/services/alert-sound.service';
 import { ToastService } from '../../core/services/toast.service';
 import { MensajeDeSala } from './chat.api';
+import { FORMATO } from './voz-en-vivo.service';
 
 /** Cómo se ve a alguien en una sala. */
 export interface PresenciaDeUno {
@@ -64,7 +65,14 @@ export class ChatSocketService {
   readonly hablando = signal<{ salaId: number; userId: number; nombre: string } | null>(null);
 
   /** Lo que llega de una transmision de voz. Lo recoge la pantalla. */
-  readonly vozEmpieza = signal<{ salaId: number; id: string; nombre: string } | null>(null);
+  readonly vozEmpieza = signal<{
+    salaId: number;
+    id: string;
+    nombre: string;
+
+    /** En qué viene el audio. Ver `FORMATO`. */
+    formato?: string;
+  } | null>(null);
   readonly vozTrozo = signal<{ salaId: number; id: string; trozo: ArrayBuffer } | null>(null);
   readonly vozFin = signal<{ salaId: number; id: string } | null>(null);
 
@@ -202,8 +210,10 @@ export class ChatSocketService {
       this.hablando.set(t),
     );
 
-    this.socket.on('voz:empieza', (v: { salaId: number; id: string; nombre: string }) =>
-      this.vozEmpieza.set(v),
+    this.socket.on(
+      'voz:empieza',
+      (v: { salaId: number; id: string; nombre: string; formato?: string }) =>
+        this.vozEmpieza.set(v),
     );
     this.socket.on('voz:trozo', (v: { salaId: number; id: string; trozo: ArrayBuffer }) =>
       this.vozTrozo.set(v),
@@ -419,7 +429,10 @@ export class ChatSocketService {
    * **antes** de abrir el microfono es lo que evita hablar medio mensaje para
    * nada, o encima de quien ya estaba hablando.
    */
-  empezarAHablar(salaId: number): Promise<{ ok: boolean; motivo?: string }> {
+  empezarAHablar(
+    salaId: number,
+    formato = FORMATO,
+  ): Promise<{ ok: boolean; motivo?: string }> {
     return new Promise((resolver) => {
       if (!this.socket) {
         resolver({ ok: false, motivo: 'sin conexión' });
@@ -427,8 +440,17 @@ export class ChatSocketService {
         return;
       }
 
-      this.socket.emit('voz:empezar', { salaId }, (r: { ok: boolean; motivo?: string }) =>
-        resolver(r ?? { ok: false }),
+      /*
+       * En qué viene el audio, dicho al empezar.
+       *
+       * El servidor no lo entiende —reparte bytes— pero se lo pasa a quien
+       * escucha, que sí lo necesita: a la misma sala pueden entrar un navegador
+       * y un teléfono, y no tienen por qué capturar igual.
+       */
+      this.socket.emit(
+        'voz:empezar',
+        { salaId, formato },
+        (r: { ok: boolean; motivo?: string }) => resolver(r ?? { ok: false }),
       );
     });
   }

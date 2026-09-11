@@ -4,14 +4,34 @@ import { Injectable, signal } from '@angular/core';
 export const TOPE_DE_SEGUNDOS = 20;
 
 /**
- * Cada cuánto sale una porción de audio.
+ * Cómo viaja el audio, dicho a quien escucha.
+ *
+ * Sonido en crudo: enteros de 16 bits con signo, un solo canal, en el orden de
+ * bytes de la máquina —que en todo lo que existe hoy es el pequeño primero—.
+ * Viaja en el aviso de que alguien empieza a hablar porque de esto depende cómo
+ * se decodifica, y un teléfono y un navegador podrían no mandar lo mismo.
+ */
+export const FORMATO = 'pcm16';
+
+/**
+ * A cuántas muestras por segundo.
+ *
+ * Dieciséis mil es el estándar de la voz: por encima solo se gana lo que hace
+ * falta para música, y cada paso de calidad se paga en tráfico sobre una red
+ * móvil. A esta frecuencia un cuarto de segundo de voz son ocho kilobytes.
+ */
+const FRECUENCIA = 16000;
+
+/**
+ * Cuánto sonido se junta antes de mandarlo.
  *
  * Es el compromiso de todo esto. Más corto llega antes pero multiplica los
- * paquetes y la cabecera de cada uno pesa más que el sonido que lleva; más
- * largo ahorra tráfico y se nota como retraso al hablar. Un cuarto de segundo
- * es lo que usan las aplicaciones que hacen esto, y en una red mala aguanta.
+ * paquetes, y la cabecera de cada uno acaba pesando más que el sonido que
+ * lleva; más largo ahorra tráfico y se nota como retraso al hablar. Cuatro mil
+ * noventa y seis muestras son unos 256 ms, que es lo que usan las aplicaciones
+ * que hacen esto y lo que aguanta una red mala.
  */
-const CADA_MS = 250;
+const MUESTRAS = 4096;
 
 /**
  * Cuánto se acumula antes de empezar a sonar.
@@ -20,37 +40,57 @@ const CADA_MS = 250;
  * audio se corta. Con medio segundo se absorbe el vaivén normal de una red sin
  * que la conversación se sienta lenta.
  */
-const COLCHON_MS = 500;
+const COLCHON = 0.5;
 
-/** El formato que se graba. Ver `sePuede`. */
-const FORMATO = 'audio/webm;codecs=opus';
+/**
+ * Si se pierde más que esto, se vuelve a empezar en vez de acumular retraso.
+ *
+ * Cuando la red se atasca y luego suelta todo de golpe, las porciones se
+ * agendan una detrás de otra y la voz acaba sonando varios segundos tarde: se
+ * oye entera, pero ya no sirve para hablar. Pasado este margen se descarta lo
+ * atrasado y se sigue desde ahora — en un walkie vale más perderse media
+ * palabra que responder a destiempo.
+ */
+const RETRASO_MAXIMO = 2;
+
+/** El `AudioContext` de Safari, que todavía va con prefijo. */
+type ConAudio = typeof globalThis & {
+  AudioContext?: typeof AudioContext;
+  webkitAudioContext?: typeof AudioContext;
+};
+
+function claseDeAudio(): typeof AudioContext | undefined {
+  const w = globalThis as ConAudio;
+
+  return w.AudioContext ?? w.webkitAudioContext;
+}
 
 /**
  * El walkie-talkie en vivo: se oye **mientras** se habla.
  *
  * ## Cómo funciona, y por qué así
  *
- * Se graba en porciones de un cuarto de segundo que salen por el socket según
- * se generan, y quien escucha las va pegando en un reproductor que ya está
- * sonando. La latencia queda alrededor de un segundo: el colchón, la red y lo
- * que tarde el navegador en decodificar.
+ * Se captura sonido en crudo en porciones de un cuarto de segundo que salen por
+ * el socket según se generan, y quien escucha las agenda una detrás de otra en
+ * su tarjeta de sonido. La latencia queda alrededor de un segundo: el colchón,
+ * la red y poco más.
  *
- * ## La cabecera
+ * ## Por qué en crudo y no comprimido
  *
- * Lo que graba el navegador es un contenedor, no sonido suelto: **la primera
- * porción lleva la cabecera** —qué códec, a qué frecuencia— y las siguientes
- * solo traen audio. Por eso el servidor guarda esa primera y se la manda a
- * quien llegue tarde. Sin ella, lo que recibe no se puede decodificar y no
- * suena nada, sin ningún error que lo explique.
+ * Porque **es lo único que hablan todos**. Antes esto grababa `webm/opus` con
+ * `MediaRecorder` y lo pegaba con `MediaSource`, y eso traía dos problemas que
+ * no se arreglan por separado:
  *
- * ## Dónde no funciona
+ * - **Safari no puede.** Ni grabar `webm` ni reproducirlo sobre la marcha. La
+ *   función entera quedaba fuera en todos los iPhone.
+ * - **El teléfono tampoco.** La aplicación de campo graba con las herramientas
+ *   del sistema, que no producen fragmentos de `webm` pegables. Con el chat en
+ *   el móvil, un formato que solo entienden dos navegadores deja de servir.
  *
- * En Safari. No admite `audio/webm` ni en grabación ni en `MediaSource`, y no
- * hay un formato que sirva para las dos cosas en todos los navegadores. Ahí
- * `sePuede()` devuelve `false` y quien llama se queda con la nota de voz de
- * siempre —grabar y mandar al soltar—, que funciona en todas partes. Eso es
- * deliberado: media función en todos lados vale más que la función entera en
- * unos pocos.
+ * En crudo no hay contenedor, ni cabecera, ni códec: cada porción vale por sí
+ * sola y cualquiera la entiende. Cuesta tráfico —unos 32 kB por segundo— y a
+ * cambio funciona en todas partes, que para veinte segundos de voz es el
+ * cambio que compensa.
  */
 @Injectable({ providedIn: 'root' })
 export class VozEnVivoService {
@@ -61,37 +101,33 @@ export class VozEnVivoService {
   /** Si está sonando alguien. */
   readonly oyendo = signal(false);
 
-  private grabadora: MediaRecorder | null = null;
+  // ── Lo que se habla ───────────────────────────────────────────────────────
+
+  private micro: MediaStream | null = null;
+  private ctxHabla: AudioContext | null = null;
+  private nodo: ScriptProcessorNode | null = null;
   private reloj: ReturnType<typeof setInterval> | null = null;
   private corte: ReturnType<typeof setTimeout> | null = null;
 
   // ── Lo que se oye ─────────────────────────────────────────────────────────
 
-  private audio: HTMLAudioElement | null = null;
-  private fuente: MediaSource | null = null;
-  private buffer: SourceBuffer | null = null;
-  private readonly cola: ArrayBuffer[] = [];
+  private ctxOye: AudioContext | null = null;
+  private cursor = 0;
   private transmision = '';
 
   /**
    * Si este navegador puede hacerlo.
    *
-   * Se pregunta por las dos mitades —grabar y reproducir sobre la marcha—
-   * porque tener una sin la otra no sirve de nada: se podría hablar y no oír, o
-   * al revés.
+   * Se pregunta por las dos mitades —capturar y reproducir— porque tener una
+   * sin la otra no sirve de nada: se podría hablar y no oír, o al revés.
+   *
+   * Con sonido en crudo esto es que sí en todo lo que no sea un navegador de
+   * hace diez años, Safari incluido.
    */
   sePuede(): boolean {
     if (typeof window === 'undefined') return false;
 
-    const graba =
-      !!navigator.mediaDevices?.getUserMedia &&
-      typeof MediaRecorder !== 'undefined' &&
-      MediaRecorder.isTypeSupported?.(FORMATO);
-
-    const suena =
-      typeof MediaSource !== 'undefined' && MediaSource.isTypeSupported?.(FORMATO);
-
-    return !!graba && !!suena;
+    return !!navigator.mediaDevices?.getUserMedia && !!claseDeAudio();
   }
 
   // ── Hablar ────────────────────────────────────────────────────────────────
@@ -107,23 +143,61 @@ export class VozEnVivoService {
     if (this.hablando() || !this.sePuede()) return false;
 
     try {
-      const pista = await navigator.mediaDevices.getUserMedia({ audio: true });
+      this.micro = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          // Lo que trae cualquier aparato de manos libres, y lo que hace que se
+          // entienda dentro de un coche o de una nave.
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
 
-      this.grabadora = new MediaRecorder(pista, { mimeType: FORMATO });
+      const Audio = claseDeAudio()!;
 
-      this.grabadora.ondataavailable = (e) => {
-        if (!e.data?.size) return;
+      /*
+       * El contexto ya va a la frecuencia de salida.
+       *
+       * Pedirla aquí deja que el navegador remuestree por su cuenta lo que
+       * entregue el micrófono —que suele ser 44.100 o 48.000— con su propio
+       * código, que está mucho mejor hecho que cualquier cosa que se escriba a
+       * mano aquí y no cuesta nada.
+       */
+      this.ctxHabla = new Audio({ sampleRate: FRECUENCIA });
+      await this.ctxHabla.resume();
 
-        // `arrayBuffer()` es asíncrono: las porciones podrían adelantarse entre
-        // sí. Se encadenan para que salgan en el orden en que se grabaron, que
-        // es lo único que permite pegarlas al otro lado.
-        this.enOrden = this.enOrden
-          .then(() => e.data.arrayBuffer())
-          .then((datos) => alTrozo(datos))
-          .catch(() => undefined);
+      const fuente = this.ctxHabla.createMediaStreamSource(this.micro);
+
+      /*
+       * `ScriptProcessorNode`, que está marcado como obsoleto desde hace años.
+       *
+       * Su relevo —`AudioWorklet`— corre en otro hilo y va mejor, pero necesita
+       * cargarse desde un archivo aparte, y las páginas de esta aplicación se
+       * sirven con una política que no deja traer código suelto. Para voz en
+       * mono a 16 kHz la diferencia no se oye, y esto funciona hoy en todos los
+       * navegadores. El día que haya que cambiarlo, solo cambia este trozo.
+       */
+      this.nodo = this.ctxHabla.createScriptProcessor(MUESTRAS, 1, 1);
+
+      this.nodo.onaudioprocess = (e) => {
+        alTrozo(aEnteros(e.inputBuffer.getChannelData(0)));
       };
 
-      this.grabadora.start(CADA_MS);
+      /*
+       * Y se conecta a un silencio, no a los altavoces.
+       *
+       * Un `ScriptProcessorNode` solo se ejecuta si su salida llega a algún
+       * sitio, así que hay que enchufarlo. Enchufarlo a los altavoces
+       * devolvería el micrófono por ellos: acoplamiento y pitido en cuanto
+       * alguien hable sin auriculares.
+       */
+      const mudo = this.ctxHabla.createGain();
+      mudo.gain.value = 0;
+
+      fuente.connect(this.nodo);
+      this.nodo.connect(mudo);
+      mudo.connect(this.ctxHabla.destination);
+
       this.hablando.set(true);
       this.segundos.set(0);
 
@@ -133,7 +207,7 @@ export class VozEnVivoService {
        * Y se corta solo al llegar al tope.
        *
        * Quien habla no mira el contador: está hablando. Sin esto, un botón que
-       * se queda pulsado en un bolsillo transmite hasta que se acabe la
+       * se queda encendido en un bolsillo transmite hasta que se acabe la
        * batería, y de paso deja la sala muda para todos los demás.
        */
       this.corte = setTimeout(() => {
@@ -143,41 +217,34 @@ export class VozEnVivoService {
 
       return true;
     } catch {
-      this.limpiarGrabacion();
+      this.parar();
 
       return false;
     }
   }
 
-  /** Encadena las porciones para que salgan en orden. Ver `empezar`. */
-  private enOrden: Promise<void> = Promise.resolve();
-
   /** Deja de transmitir. */
   parar(): void {
-    const grabadora = this.grabadora;
-    if (!grabadora) return;
-
-    try {
-      grabadora.stop();
-    } catch {
-      // Ya estaba parada.
-    }
-
-    // El micrófono se suelta siempre: dejarlo abierto deja encendido el
-    // indicador de grabación del navegador y del sistema, y eso alarma con
-    // razón.
-    for (const via of grabadora.stream?.getTracks() ?? []) via.stop();
-
-    this.limpiarGrabacion();
-  }
-
-  private limpiarGrabacion(): void {
     if (this.reloj) clearInterval(this.reloj);
     if (this.corte) clearTimeout(this.corte);
 
     this.reloj = null;
     this.corte = null;
-    this.grabadora = null;
+
+    if (this.nodo) {
+      this.nodo.onaudioprocess = null;
+      this.nodo.disconnect();
+      this.nodo = null;
+    }
+
+    // El micrófono se suelta siempre: dejarlo abierto deja encendido el
+    // indicador de grabación del navegador y del sistema, y eso alarma con
+    // razón.
+    for (const via of this.micro?.getTracks() ?? []) via.stop();
+    this.micro = null;
+
+    void this.ctxHabla?.close().catch(() => undefined);
+    this.ctxHabla = null;
 
     this.hablando.set(false);
     this.segundos.set(0);
@@ -195,117 +262,134 @@ export class VozEnVivoService {
   empiezaAOir(id: string): void {
     this.cortarLoQueSuena();
 
+    const Audio = claseDeAudio();
+    if (!Audio) return;
+
     this.transmision = id;
-    this.fuente = new MediaSource();
-    this.audio = new Audio(URL.createObjectURL(this.fuente));
+    this.ctxOye = new Audio({ sampleRate: FRECUENCIA });
 
-    this.fuente.addEventListener('sourceopen', () => {
-      try {
-        this.buffer = this.fuente!.addSourceBuffer(FORMATO);
-        this.buffer.addEventListener('updateend', () => this.vaciarCola());
+    /*
+     * El contexto puede nacer dormido.
+     *
+     * Los navegadores no dejan sonar nada hasta que la persona ha tocado la
+     * página. Quien está en el chat ya la ha tocado, pero si no, esto falla en
+     * silencio y no hay nada que hacer al respecto salvo no reventar.
+     */
+    void this.ctxOye.resume().catch(() => undefined);
 
-        this.vaciarCola();
-      } catch {
-        this.cortarLoQueSuena();
-      }
-    });
-
+    this.cursor = 0;
     this.oyendo.set(true);
   }
 
-  /** Una porción que llega. Se pega a lo que ya está sonando. */
+  /** Una porción que llega. Se agenda detrás de lo que ya está sonando. */
   oyeTrozo(id: string, trozo: ArrayBuffer): void {
     /*
      * Lo de otra transmisión se tira.
      *
-     * Pasa al soltar y volver a pulsar enseguida: llegan porciones de la
-     * anterior cuando ya empezó la siguiente. Pegarlas mezclaría dos voces en
-     * un mismo flujo y no se entendería ninguna.
+     * Pasa al parar y volver a hablar enseguida: llegan porciones de la
+     * anterior cuando ya empezó la siguiente. Agendarlas mezclaría dos voces en
+     * el mismo hilo y no se entendería ninguna.
      */
     if (id !== this.transmision) return;
 
-    this.cola.push(trozo);
-    this.vaciarCola();
+    const ctx = this.ctxOye;
+    if (!ctx || !trozo.byteLength) return;
+
+    try {
+      const muestras = aDecimales(trozo);
+      const bloque = ctx.createBuffer(1, muestras.length, FRECUENCIA);
+
+      /*
+       * Se copia sobre el canal, y no con `copyToChannel`.
+       *
+       * Hace lo mismo, pero `copyToChannel` exige que el `Float32Array` venga
+       * de un `ArrayBuffer` y no de cualquier cosa parecida, y ese matiz del
+       * comprobador de tipos cambia entre versiones. Esto no depende de eso.
+       */
+      bloque.getChannelData(0).set(muestras);
+
+      const ahora = ctx.currentTime;
+
+      // Lo atrasado se descarta en vez de agendarse detrás. Ver `RETRASO_MAXIMO`.
+      if (this.cursor < ahora || this.cursor > ahora + RETRASO_MAXIMO) {
+        this.cursor = ahora + COLCHON;
+      }
+
+      const fuente = ctx.createBufferSource();
+      fuente.buffer = bloque;
+      fuente.connect(ctx.destination);
+      fuente.start(this.cursor);
+
+      this.cursor += bloque.duration;
+    } catch {
+      // Una porción que no encaja no puede dejar muda la transmisión entera: se
+      // descarta y se sigue con la siguiente.
+    }
   }
 
   /** La transmisión terminó: se deja sonar lo que queda y se cierra. */
   terminaDeOir(id: string): void {
     if (id !== this.transmision) return;
 
-    this.finPedido = true;
-    this.vaciarCola();
-  }
-
-  private finPedido = false;
-
-  /**
-   * Mete en el reproductor lo que haya en la cola.
-   *
-   * De una en una: `SourceBuffer` solo admite una porción a la vez y avisa con
-   * `updateend` cuando puede recibir la siguiente. Empujar sin esperar lanza un
-   * error y corta el audio.
-   */
-  private vaciarCola(): void {
-    const buffer = this.buffer;
-    if (!buffer || buffer.updating) return;
-
-    const trozo = this.cola.shift();
-
-    if (!trozo) {
-      // Nada pendiente: si ya se pidió el final, se cierra.
-      if (this.finPedido && this.fuente?.readyState === 'open') {
-        try {
-          this.fuente.endOfStream();
-        } catch {
-          // Ya estaba cerrado.
-        }
-      }
-
-      return;
-    }
-
-    try {
-      buffer.appendBuffer(trozo);
-    } catch {
-      // Una porción que no encaja no puede dejar muda la transmisión entera:
-      // se descarta y se sigue con la siguiente.
-      this.vaciarCola();
-
-      return;
-    }
-
     /*
-     * Se empieza a sonar cuando hay colchón.
+     * Se espera a que termine lo agendado.
      *
-     * `play()` en la primera porción suena medio segundo y se queda esperando:
-     * el audio se entrecorta desde el principio y parece que la red va mal
-     * cuando lo que falta es margen.
+     * Cerrar el contexto ahora cortaría el último segundo, que es el que
+     * normalmente lleva el final de la frase. Lo que falta por sonar se sabe
+     * exacto: es lo que va del cursor a ahora.
      */
-    const audio = this.audio;
+    const falta = Math.max(0, this.cursor - (this.ctxOye?.currentTime ?? 0));
 
-    if (audio?.paused && (this.fuente?.duration ?? 0) * 1000 >= COLCHON_MS) {
-      void audio.play().catch(() => undefined);
-    }
+    this.transmision = '';
+    this.oyendo.set(false);
+
+    const ctx = this.ctxOye;
+    this.ctxOye = null;
+
+    setTimeout(() => void ctx?.close().catch(() => undefined), (falta + 0.2) * 1000);
   }
 
   /** Corta lo que esté sonando y suelta todo. */
   cortarLoQueSuena(): void {
-    this.cola.length = 0;
-    this.finPedido = false;
     this.transmision = '';
+    this.cursor = 0;
 
-    try {
-      this.audio?.pause();
-
-      if (this.audio?.src) URL.revokeObjectURL(this.audio.src);
-    } catch {
-      // Da igual: se está soltando.
-    }
-
-    this.audio = null;
-    this.buffer = null;
-    this.fuente = null;
+    void this.ctxOye?.close().catch(() => undefined);
+    this.ctxOye = null;
 
     this.oyendo.set(false);
   }
+}
+
+/** De lo que da la tarjeta —decimales de -1 a 1— a enteros de 16 bits. */
+function aEnteros(muestras: Float32Array): ArrayBuffer {
+  const salida = new Int16Array(muestras.length);
+
+  for (let i = 0; i < muestras.length; i++) {
+    /*
+     * Se recorta antes de convertir.
+     *
+     * Un valor por encima de uno —que pasa al hablar pegado al micrófono— se
+     * saldría del entero y daría la vuelta al signo: en vez de saturar, el
+     * sonido chasquea. Recortarlo suena a saturado, que es lo que la persona
+     * espera cuando grita.
+     */
+    const v = Math.max(-1, Math.min(1, muestras[i]));
+
+    salida[i] = v < 0 ? v * 0x8000 : v * 0x7fff;
+  }
+
+  return salida.buffer as ArrayBuffer;
+}
+
+/** Y al revés, para poder reproducirlo. */
+function aDecimales(trozo: ArrayBuffer): Float32Array {
+  const enteros = new Int16Array(trozo);
+  const salida = new Float32Array(enteros.length);
+
+  for (let i = 0; i < enteros.length; i++) {
+    salida[i] = enteros[i] / (enteros[i] < 0 ? 0x8000 : 0x7fff);
+  }
+
+  return salida;
 }
