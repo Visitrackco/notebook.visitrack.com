@@ -7,7 +7,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { AlertSoundService } from '../../core/services/alert-sound.service';
 import { ToastService } from '../../core/services/toast.service';
 import { MensajeDeSala } from './chat.api';
-import { FORMATO } from './voz-en-vivo.service';
+import { FORMATO, VozEnVivoService } from './voz-en-vivo.service';
 
 /** Cómo se ve a alguien en una sala. */
 export interface PresenciaDeUno {
@@ -40,6 +40,7 @@ export interface PresenciaDeUno {
 @Injectable({ providedIn: 'root' })
 export class ChatSocketService {
   private readonly auth = inject(AuthService);
+  private readonly voz = inject(VozEnVivoService);
   private readonly toasts = inject(ToastService);
   private readonly sonido = inject(AlertSoundService);
   private readonly router = inject(Router);
@@ -210,15 +211,38 @@ export class ChatSocketService {
       this.hablando.set(t),
     );
 
+    /*
+     * El audio se oye **aqui**, no en la pantalla del chat.
+     *
+     * Un walkie que solo suena con la sala abierta no es un walkie: quien esta
+     * en otra pantalla —o con la pestana de fondo— no se enteraba de que le
+     * estaban llamando. Este servicio vive en la raiz de la aplicacion, asi que
+     * suena estes donde estes mientras la pestana este viva.
+     *
+     * La pantalla del chat sigue recibiendo las senales para pintar «esta
+     * hablando fulano»; lo que ya no hace es reproducir.
+     */
     this.socket.on(
       'voz:empieza',
-      (v: { salaId: number; id: string; nombre: string; formato?: string }) =>
-        this.vozEmpieza.set(v),
+      (v: { salaId: number; id: string; nombre: string; formato?: string }) => {
+        this.vozEmpieza.set(v);
+
+        // Solo lo que este navegador sabe decodificar: durante un despliegue
+        // puede quedar un cliente viejo mandando `webm`, y oirlo daria ruido
+        // blanco a todo volumen.
+        if (!v.formato || v.formato === FORMATO) this.voz.empiezaAOir(v.id);
+      },
     );
-    this.socket.on('voz:trozo', (v: { salaId: number; id: string; trozo: ArrayBuffer }) =>
-      this.vozTrozo.set(v),
-    );
-    this.socket.on('voz:fin', (v: { salaId: number; id: string }) => this.vozFin.set(v));
+
+    this.socket.on('voz:trozo', (v: { salaId: number; id: string; trozo: ArrayBuffer }) => {
+      this.vozTrozo.set(v);
+      this.voz.oyeTrozo(v.id, v.trozo);
+    });
+
+    this.socket.on('voz:fin', (v: { salaId: number; id: string }) => {
+      this.vozFin.set(v);
+      this.voz.terminaDeOir(v.id);
+    });
 
     this.socket.on('mirando', (m: { salaId: number; userIds: number[] }) =>
       this.mirando.update((antes) => ({ ...antes, [m.salaId]: m.userIds ?? [] })),

@@ -51,6 +51,19 @@ export class ChatComponent {
   private readonly voz = inject(VozEnVivoService);
 
   readonly TOPE_DE_SEGUNDOS = TOPE_DE_SEGUNDOS;
+  /** Lo fuerte que se esta hablando, para mover el circulo. Ver `VozEnVivoService`. */
+  readonly nivelDeVoz = this.voz.nivel;
+
+  /**
+   * Lo que queda de los veinte segundos.
+   *
+   * Se cuenta hacia atras y no hacia adelante: lo que hace falta saber mientras
+   * se habla es cuanto queda para que se corte, no cuanto se lleva dicho.
+   */
+  readonly quedanSegundos = computed(() =>
+    Math.max(0, TOPE_DE_SEGUNDOS - this.segundosHablando()),
+  );
+
 
   /** Si este navegador puede transmitir y oír en vivo. Ver `VozEnVivoService`. */
   readonly hayVoz = this.voz.sePuede();
@@ -188,41 +201,17 @@ export class ChatComponent {
      * montarlo entonces ya es tarde y se pierde el principio, que en un walkie
      * suele ser el nombre de a quién se llama.
      */
-    effect(() => {
-      const v = this.socket.vozEmpieza();
-      if (!v) return;
-
-      untracked(() => {
-        if (this.abierta()?.id !== v.salaId) return;
-
-        /*
-         * Solo lo que este navegador sabe decodificar.
-         *
-         * Todos los clientes mandan sonido en crudo, pero durante un despliegue
-         * puede quedar uno viejo transmitiendo en `webm`. Intentar oírlo daría
-         * ruido blanco a todo volumen, que es bastante peor que silencio.
-         */
-        if (v.formato && v.formato !== FORMATO) return;
-
-        this.voz.empiezaAOir(v.id);
-      });
-    });
-
-    effect(() => {
-      const v = this.socket.vozTrozo();
-      if (!v) return;
-
-      untracked(() => {
-        if (this.abierta()?.id === v.salaId) this.voz.oyeTrozo(v.id, v.trozo);
-      });
-    });
-
-    effect(() => {
-      const v = this.socket.vozFin();
-      if (!v) return;
-
-      untracked(() => this.voz.terminaDeOir(v.id));
-    });
+    /*
+     * El audio de una transmision **ya no se maneja aqui**.
+     *
+     * Lo reproduce `ChatSocketService`, que vive en la raiz de la aplicacion.
+     * Mientras esto estuvo en la pantalla del chat, el walkie solo se oia con
+     * la sala abierta — o sea, casi nunca: quien esta trabajando esta en otra
+     * pantalla, y es justo a quien hay que poder llamar.
+     *
+     * Lo que si sigue aqui es pintar quien tiene la palabra, que sale de
+     * `hablando` y de `turno:habla`.
+     */
 
     /*
      * Al recuperar la conexión, se pide lo que falta.

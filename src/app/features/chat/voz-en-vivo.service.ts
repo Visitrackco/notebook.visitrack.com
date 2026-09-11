@@ -101,6 +101,17 @@ export class VozEnVivoService {
   /** Si está sonando alguien. */
   readonly oyendo = signal(false);
 
+  /**
+   * Que tan fuerte se esta hablando, de 0 a 1.
+   *
+   * Se mide aqui porque el sonido pasa por aqui y por ningun otro sitio, y asi
+   * se mide una vez aunque lo miren tres pantallas. Es lo que mueve el circulo
+   * de la pantalla de transmision: sin una senal del microfono, esa pantalla
+   * diria «transmitiendo» igual con el microfono tapado, que es justo el error
+   * que no puede pasar desapercibido.
+   */
+  readonly nivel = signal(0);
+
   // ── Lo que se habla ───────────────────────────────────────────────────────
 
   private micro: MediaStream | null = null;
@@ -180,7 +191,10 @@ export class VozEnVivoService {
       this.nodo = this.ctxHabla.createScriptProcessor(MUESTRAS, 1, 1);
 
       this.nodo.onaudioprocess = (e) => {
-        alTrozo(aEnteros(e.inputBuffer.getChannelData(0)));
+        const muestras = e.inputBuffer.getChannelData(0);
+
+        this.medirElNivel(muestras);
+        alTrozo(aEnteros(muestras));
       };
 
       /*
@@ -223,6 +237,34 @@ export class VozEnVivoService {
     }
   }
 
+  /**
+   * Mide lo fuerte que viene esa porcion, para pintarla. Ver `nivel`.
+   *
+   * Se toma el valor medio en valor absoluto y no el pico: el pico salta con
+   * cualquier golpe y hace parpadear el circulo sin relacion con lo que se esta
+   * diciendo. La media sube y baja con la voz.
+   *
+   * Y se sube de golpe pero se baja despacio, que es lo que hace que se mueva
+   * como se oye en vez de temblar entre silaba y silaba.
+   */
+  private medirElNivel(muestras: Float32Array): void {
+    let suma = 0;
+    let cuantas = 0;
+
+    // Una de cada ocho: cuatro mil cuentas por porcion en vez de treinta y dos
+    // mil, cuatro veces por segundo. Para mover un circulo no se nota.
+    for (let i = 0; i < muestras.length; i += 8) {
+      suma += Math.abs(muestras[i]);
+      cuantas++;
+    }
+
+    if (!cuantas) return;
+
+    const crudo = Math.min(1, (suma / cuantas) * 6);
+
+    this.nivel.set(crudo > this.nivel() ? crudo : this.nivel() * 0.75 + crudo * 0.25);
+  }
+
   /** Deja de transmitir. */
   parar(): void {
     if (this.reloj) clearInterval(this.reloj);
@@ -248,6 +290,7 @@ export class VozEnVivoService {
 
     this.hablando.set(false);
     this.segundos.set(0);
+    this.nivel.set(0);
   }
 
   // ── Oír ───────────────────────────────────────────────────────────────────

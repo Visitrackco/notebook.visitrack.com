@@ -151,13 +151,58 @@
 
       <p class="chat__escribiendo" aria-live="polite">
         @if (escribiendoAqui(); as quienes) {
-          @if (quienes.length === 1) {
-            {{ quienes[0] }} está escribiendo…
-          } @else if (quienes.length > 1) {
-            {{ quienes.length }} personas están escribiendo…
+          @if (quienes.length) {
+            <span class="chat__puntos" aria-hidden="true">
+              <span class="chat__punto-escribe"></span>
+              <span class="chat__punto-escribe"></span>
+              <span class="chat__punto-escribe"></span>
+            </span>
+
+            @if (quienes.length === 1) {
+              {{ quienes[0] }} está escribiendo
+            } @else {
+              {{ quienes.length }} personas están escribiendo
+            }
           }
         }
       </p>
+
+      <!--
+        La pantalla de mientras se habla.
+
+        Es una pantalla y no un botón encendido porque hablar por un walkie es
+        una cosa de una en una: mientras dura no hay nada más que hacer y sí hay
+        algo que mirar —cuánto queda y si el micrófono está cogiendo la voz—. Un
+        botón en una esquina no contesta ninguna de las dos, y el error que se
+        paga es caro: creer que estás transmitiendo cuando no, o al revés.
+
+        Tapa lo de detrás también por eso: con el micrófono abierto no se puede
+        andar tocando otra cosa sin querer.
+      -->
+      @if (hablandoYo()) {
+        <div class="vt-hablando" role="dialog" aria-label="Transmitiendo">
+          <p class="vt-hablando__donde">Transmitiendo a {{ sala.nombre }}</p>
+
+          <!-- El círculo respira con la voz: los anillos se abren al hablar y
+               se quedan pegados en silencio. Es un medidor de nivel leído de un
+               vistazo y sin números. -->
+          <div class="vt-hablando__circulo" [style.--nivel]="nivelDeVoz()">
+            <span class="vt-hablando__onda"></span>
+            <span class="vt-hablando__onda"></span>
+            <span class="vt-hablando__onda"></span>
+            <span class="vt-hablando__micro">🎙</span>
+          </div>
+
+          <p class="vt-hablando__cuenta" [class.vt-hablando__cuenta--poco]="quedanSegundos() <= 5">
+            {{ quedanSegundos() }}
+          </p>
+          <p class="vt-hablando__unidad">segundos</p>
+
+          <button type="button" class="vt-hablando__parar" (click)="alternarHabla()">
+            Terminar
+          </button>
+        </div>
+      }
 
       <footer class="chat__escribir">
         <!-- Escondido por CSS y no con `hidden`: `hidden` lo saca también del

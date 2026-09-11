@@ -459,3 +459,149 @@
     animation: none;
   }
 }
+
+/* ── La pantalla de mientras se habla ───────────────────────────────────────
+   Ver el comentario de `.vt-hablando` en la plantilla. */
+.vt-hablando {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  background: var(--surface-0, #fff);
+}
+
+.vt-hablando__donde {
+  margin: 0 0 1.4rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.vt-hablando__circulo {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 260px;
+  height: 260px;
+}
+
+.vt-hablando__micro {
+  display: grid;
+  place-items: center;
+  width: 96px;
+  height: 96px;
+  font-size: 2.2rem;
+  color: #fff;
+  background: var(--vt-primary, #c62828);
+  border-radius: 50%;
+
+  /* El halo crece con la voz. Es lo que hace que se note que el micrófono está
+     cogiendo algo, sin poner un número. */
+  box-shadow: 0 0 calc(18px + 26px * var(--nivel, 0)) rgba(198, 40, 40, 0.45);
+}
+
+.vt-hablando__onda {
+  position: absolute;
+  border: 2px solid var(--vt-primary, #c62828);
+  border-radius: 50%;
+  opacity: 0;
+  animation: vt-onda 2.2s linear infinite;
+
+  /* Hasta dónde llegan lo decide la voz: en silencio se quedan pegadas al
+     círculo, al hablar se abren. */
+  width: calc(104px + 150px * var(--nivel, 0));
+  height: calc(104px + 150px * var(--nivel, 0));
+}
+
+/* Cada una un tercio por detrás: se lee como ondas saliendo y no como un aro
+   que late. */
+.vt-hablando__onda:nth-child(2) { animation-delay: -0.73s; }
+.vt-hablando__onda:nth-child(3) { animation-delay: -1.46s; }
+
+@keyframes vt-onda {
+  0%   { transform: scale(0.42); opacity: 0.55; }
+  100% { transform: scale(1);    opacity: 0; }
+}
+
+/* Quien no quiera animaciones no las tiene. El círculo sigue creciendo con la
+   voz, que es la información; lo que se va es el movimiento continuo. */
+@media (prefers-reduced-motion: reduce) {
+  .vt-hablando__onda { animation: none; opacity: 0.25; }
+}
+
+.vt-hablando__cuenta {
+  margin: 1.6rem 0 0;
+  font-size: 3.2rem;
+  font-weight: 300;
+  line-height: 1;
+  color: var(--text-strong, #1f2937);
+}
+
+/* Los últimos cinco en rojo: es cuando hay que ir cerrando la frase. */
+.vt-hablando__cuenta--poco { color: var(--vt-primary, #c62828); }
+
+.vt-hablando__unidad {
+  margin: 0.2rem 0 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.vt-hablando__parar {
+  margin-top: 2rem;
+  padding: 0.85rem 2.6rem;
+  font: inherit;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  background: var(--vt-primary, #c62828);
+  border: 0;
+  border-radius: 999px;
+}
+
+/* ── «Está escribiendo», con puntos ────────────────────────────────────────
+   Se anima porque lo que dice es que algo está pasando **ahora**, y un texto
+   quieto no distingue eso de un dato guardado. Los puntos que suben por turno
+   se entienden sin leerlos, que es lo único que se hace con un aviso que dura
+   dos segundos. */
+.chat__escribiendo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 1.25rem;
+  padding: 0 var(--vt-space-3, 0.9rem);
+  margin: 0;
+  font-size: 0.73rem;
+  font-style: normal;
+  color: var(--text-muted);
+}
+
+.chat__puntos {
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+}
+
+.chat__punto-escribe {
+  width: 5px;
+  height: 5px;
+  background: var(--vt-primary, #c62828);
+  border-radius: 50%;
+  opacity: 0.45;
+  animation: vt-teclea 1.1s ease-in-out infinite;
+}
+
+.chat__punto-escribe:nth-child(2) { animation-delay: 0.16s; }
+.chat__punto-escribe:nth-child(3) { animation-delay: 0.32s; }
+
+@keyframes vt-teclea {
+  0%, 60%, 100% { transform: translateY(0);     opacity: 0.45; }
+  30%           { transform: translateY(-3px);  opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat__punto-escribe { animation: none; opacity: 0.7; }
+}
