@@ -74,7 +74,7 @@ import {
   IntegracionesApi,
   comoSeVeLaRespuesta,
 } from '../../../core/forms/integraciones.api';
-import { LlamadaPintada } from '../../../core/forms/flujo-modelo';
+import { Aviso, LlamadaPintada } from '../../../core/forms/flujo-modelo';
 import { FlujoGraficaComponent } from './flujo-grafica/flujo-grafica.component';
 import { PageNavComponent } from './page-nav/page-nav.component';
 import { MasterDetailPanelsService } from './master-detail-row/master-detail-panels.service';
@@ -617,34 +617,7 @@ export class FormRunnerComponent {
     effect(() => {
       const ahora = this.engine()?.avisosDelFlujo() ?? [];
 
-      untracked(() => {
-        for (const aviso of ahora) {
-          if (this.avisosDichos.has(aviso.texto)) continue;
-
-          this.avisosDichos.add(aviso.texto);
-
-          /*
-           * El color y el sonido los eligió la regla, no esta pantalla.
-           *
-           * Antes salían todos iguales —del mismo gris y en silencio— y había
-           * que leerlos para saber si acababa de pasar algo grave o te estaban
-           * recordando llevar el casco. Quien sabe eso es quien escribió la
-           * regla, y ahora puede decirlo.
-           */
-          this.toasts.show({
-            title: aviso.texto,
-            tone: toneDelTono(aviso.tono),
-            sonido: aviso.sonido,
-          });
-        }
-
-        // Se olvida por texto, que es con lo que se recordó.
-        const vigentes = new Set(ahora.map((aviso) => aviso.texto));
-
-        for (const dicho of [...this.avisosDichos]) {
-          if (!vigentes.has(dicho)) this.avisosDichos.delete(dicho);
-        }
-      });
+      untracked(() => this.decirLosAvisosNuevos(ahora));
     });
 
     /*
@@ -2916,6 +2889,54 @@ export class FormRunnerComponent {
     this.resolverEleccion?.(null);
   }
 
+  /**
+   * Enseña los avisos que todavía no se han dicho.
+   *
+   * ## Por qué es un método y no vive dentro del `effect`
+   *
+   * Porque al guardar hace falta llamarlo **a mano**. Un `effect` de Angular no
+   * corre en el acto: se encola y se ejecuta cuando el navegador vuelve del
+   * trabajo que esté haciendo. Al guardar, entre que el flujo deja el aviso y
+   * que el efecto podría correr, `commit` ya ha seguido —escribe, cambia el
+   * estado y sale de la pantalla—, así que el aviso de una regla de «al
+   * guardar» no llegaba a verse nunca.
+   *
+   * Se notaba justo al lado de un cambio de estado pedido por el mismo tramo:
+   * el estado cambiaba —eso es un encargo que `commit` ejecuta él mismo— y el
+   * mensaje no salía. Desde fuera parecía que el tramo hacía una cosa de las
+   * dos.
+   */
+  private decirLosAvisosNuevos(avisos: readonly Aviso[]): void {
+    for (const aviso of avisos) {
+      if (this.avisosDichos.has(aviso.texto)) continue;
+
+      this.avisosDichos.add(aviso.texto);
+
+      /*
+       * El color y el sonido los eligió la regla, no esta pantalla.
+       *
+       * Antes salían todos iguales —del mismo gris y en silencio— y había que
+       * leerlos para saber si acababa de pasar algo grave o te estaban
+       * recordando llevar el casco. Quien sabe eso es quien escribió la regla,
+       * y ahora puede decirlo.
+       */
+      this.toasts.show({
+        title: aviso.texto,
+        tone: toneDelTono(aviso.tono),
+        sonido: aviso.sonido,
+      });
+    }
+
+    // Se olvida por texto, que es con lo que se recordó. Uno que deja de
+    // pedirse se olvida, y si su regla vuelve a cumplirse se enseña otra vez:
+    // eso sí es información nueva.
+    const vigentes = new Set(avisos.map((aviso) => aviso.texto));
+
+    for (const dicho of [...this.avisosDichos]) {
+      if (!vigentes.has(dicho)) this.avisosDichos.delete(dicho);
+    }
+  }
+
   private async commit(incomplete = false): Promise<void> {
     const answer = this.answer();
     if (answer.ID == null) return;
@@ -2951,6 +2972,15 @@ export class FormRunnerComponent {
       await this.esperarLasLlamadasDelGuardado(engineAlGuardar);
 
       const bloqueos = engineAlGuardar.revisarFlujoAlGuardar();
+
+      /*
+       * Y lo que la regla quiso decir, **antes** de seguir.
+       *
+       * Aquí y no en el `effect`: ver [decirLosAvisosNuevos]. A partir de esta
+       * línea `commit` escribe, cambia el estado y sale de la pantalla, y para
+       * entonces ya no hay quien enseñe nada.
+       */
+      this.decirLosAvisosNuevos(engineAlGuardar.avisosDelFlujo());
 
       if (bloqueos.length) {
         this.feedback.set(bloqueos.join(' · '));
