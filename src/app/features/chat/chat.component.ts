@@ -113,13 +113,17 @@ export class ChatComponent {
     /*
      * La zona horaria, una vez.
      *
-     * Si falla se queda en cero, o sea UTC: preferible ensenar la hora de
-     * Greenwich que restar horas al azar, porque lo primero se nota y lo
-     * segundo se lee como correcto estando mal.
+     * Solo se toma si el servidor **resolvio un codigo**. Sin esa condicion,
+     * los minutos de una zona que no se pudo averiguar —que llegan como cero—
+     * se tomaban como la zona cero, o sea UTC, y a todo el que no tuviera zona
+     * apuntada le corrian las horas sin que nada lo dijera. Si no hay codigo se
+     * queda en `null` y manda la del aparato. Ver `aLaHora`.
      */
     void this.api
       .zona()
-      .then((z) => this.desfase.set(Number(z?.minutos ?? 0)))
+      .then((z) => {
+        if (z?.codigo) this.desfase.set(Number(z.minutos ?? 0));
+      })
       .catch(() => undefined);
 
 
@@ -626,8 +630,14 @@ export class ChatComponent {
     return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
   }
 
-  /** La zona de quien mira, en minutos respecto a UTC. Ver `aLaHora`. */
-  private readonly desfase = signal(0);
+  /**
+   * Minutos que hay que sumarle a UTC para la zona de quien mira.
+   *
+   * `null` mientras no se sepa, que **no** es lo mismo que cero: cero es una
+   * zona de verdad —Londres en invierno— y `null` es «la plataforma no lo tiene
+   * apuntado». Ver `aLaHora`.
+   */
+  private readonly desfase = signal<number | null>(null);
 
   /**
    * La hora de un mensaje, en la zona de quien mira.
@@ -653,8 +663,24 @@ export class ChatComponent {
     const t = new Date(cuando);
     if (Number.isNaN(t.getTime())) return '';
 
-    const suya = new Date(t.getTime() + this.desfase() * 60_000);
     const dos = (n: number) => String(n).padStart(2, '0');
+    const minutos = this.desfase();
+
+    /*
+     * Sin zona apuntada, la del aparato.
+     *
+     * Aqui se pintaba UTC, con el argumento de que era preferible a inventarse
+     * una. Pero la del aparato no es inventada: es donde esta el equipo en el
+     * que se esta mirando, y acierta casi siempre. UTC no acierta casi nunca —a
+     * quien esta en Colombia le corria cinco horas— y encima se lee como un
+     * dato correcto.
+     *
+     * La de la plataforma sigue mandando cuando existe: es la unica que acierta
+     * tambien con quien viaja o entra desde un equipo prestado.
+     */
+    if (minutos === null) return `${dos(t.getHours())}:${dos(t.getMinutes())}`;
+
+    const suya = new Date(t.getTime() + minutos * 60_000);
 
     return `${dos(suya.getUTCHours())}:${dos(suya.getUTCMinutes())}`;
   }
