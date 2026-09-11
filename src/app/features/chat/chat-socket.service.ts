@@ -99,7 +99,23 @@ export class ChatSocketService {
       // cuela en el registro del servidor y en el de cualquier proxy.
       auth: { token, cliente: 'web' },
 
-      transports: ['websocket', 'polling'],
+      /*
+       * Primero polling y despues, si se puede, WebSocket.
+       *
+       * Es el orden de fabrica de socket.io y hay que dejarlo. Poniendo
+       * `['websocket', 'polling']` se intenta el WebSocket **de entrada**, y
+       * donde hay un proxy que no reenvia la cabecera `Upgrade` —IIS sin el
+       * modulo, o cualquier intermediario de una red corporativa— eso falla con
+       * «WebSocket is closed before the connection is established» y la
+       * pantalla se queda diciendo que no hay conexion en vivo.
+       *
+       * Con el orden bueno, el saludo entra por peticiones normales, que pasan
+       * por cualquier sitio, y la conexion **se sube sola** a WebSocket cuando
+       * el camino lo permite. Poder caerse a polling es justo la razon por la
+       * que se eligio socket.io en vez de `ws` pelado; forzar el orden anulaba
+       * lo unico que se vino a buscar.
+       */
+      transports: ['polling', 'websocket'],
     });
 
     this.socket.on('connect', () => this.conectado.set(true));
