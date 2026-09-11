@@ -438,6 +438,30 @@ export class ChatComponent {
    * tenerlo, lo primero que dijeras se perdería o se mezclaría con quien ya
    * estaba hablando.
    */
+  /**
+   * El boton del walkie: se pulsa para empezar y se vuelve a pulsar para parar.
+   *
+   * ## Por que no es mantener pulsado
+   *
+   * Porque mantener obliga a tener el dedo o el raton quieto encima mientras se
+   * habla, y hablar es justo cuando se esta mirando otra cosa —una foto, un
+   * formulario, la calle—. Al minimo desvio se soltaba y la frase se cortaba a
+   * la mitad sin que nadie lo notara hasta que el otro contestaba «no te oi».
+   *
+   * Con pulsar y volver a pulsar, la transmision dura lo que se quiera decir. Y
+   * si se olvida cerrarla, se corta sola al llegar al tope, que es lo que evita
+   * que un boton pulsado en un bolsillo deje la sala muda.
+   */
+  alternarHabla(): void {
+    if (this.hablandoYo()) {
+      this.dejarDeHablar();
+
+      return;
+    }
+
+    void this.empezarAHablar();
+  }
+
   async empezarAHablar(): Promise<void> {
     const sala = this.abierta();
     if (!sala || this.hablandoYo()) return;
@@ -464,11 +488,17 @@ export class ChatComponent {
 
     const pudo = await this.voz.empezar(
       (trozo) => this.socket.mandarTrozoDeVoz(sala.id, trozo),
-      () =>
+      () => {
+        // El servidor aguanta el turno cinco segundos mas que el tope, por si
+        // el aviso se pierde. Mandarlo aqui devuelve la palabra en el acto en
+        // vez de dejar a la sala esperando a que caduque.
+        this.socket.terminarDeHablar(sala.id);
+
         this.toasts.show({
           title: `Se cortó a los ${TOPE_DE_SEGUNDOS} segundos.`,
           tone: 'info',
-        }),
+        });
+      },
     );
 
     if (!pudo) {

@@ -157,6 +157,38 @@ messaging.onBackgroundMessage((payload) => {
 });
 
 /**
+ * El destino del aviso, siempre completo.
+ *
+ * ## Por que no vale la direccion tal como llega
+ *
+ * Porque quien manda el aviso escribe un destino de la aplicacion —`chat/12`—,
+ * sin la barra de delante. Abriendo una ventana nueva eso funciona: se resuelve
+ * contra la raiz del sitio. Pero cuando **ya hay una pestana abierta** —que es
+ * la mitad de las veces— se resuelve contra la direccion que esa pestana tenga
+ * puesta, y desde `/formularios/3` el aviso del chat llevaba a
+ * `/formularios/chat/12`, que no existe: la notificacion se abria en una
+ * pantalla en blanco.
+ *
+ * Resolviendolo aqui contra el origen las dos vias acaban en el mismo sitio, y
+ * quien manda el aviso puede seguir escribiendo el destino como le resulta
+ * natural.
+ *
+ * Vacio sigue siendo vacio: sin destino, tocar el aviso solo trae la pestana al
+ * frente. Ver el comentario de abajo.
+ */
+function aDondeVa(enlace) {
+  if (!enlace) return '';
+
+  try {
+    return new URL(enlace, self.registration.scope).href;
+  } catch (e) {
+    // Una direccion que no se puede leer no puede impedir abrir el aviso: se
+    // trae la pestana al frente y ya.
+    return '';
+  }
+}
+
+/**
  * Al tocar el aviso.
  *
  * Si ya hay una pestaña de Visitrack abierta se **reutiliza** en vez de abrir
@@ -181,7 +213,7 @@ self.addEventListener('notificationclick', (evento) => {
    * Sin enlace, tocarla solo trae la pestana al frente — que es exactamente lo
    * que uno espera de un aviso que no dice a donde ir.
    */
-  const enlace = datos.enlace || '';
+  const enlace = aDondeVa(datos.enlace);
 
   evento.waitUntil(
     /*
