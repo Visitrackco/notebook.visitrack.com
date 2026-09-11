@@ -1507,6 +1507,9 @@ export class FormEngine {
     // Lo que leyó de cada campo por el que preguntan las reglas: es lo que dice
     // si una regla no se dispara porque su condición no se cumple o porque el
     // valor no llegó.
+    // Si esta evaluación viene de que un servicio contestó. Ver `reglasCargadas`.
+    const porUnaIntegracion = String(campoQueCambio ?? '').startsWith(PREFIJO_INTEGRACION);
+
     const leido: Record<string, string> = {};
 
     for (const apiId of camposDeLasReglas(this.flujo)) {
@@ -1549,9 +1552,34 @@ export class FormEngine {
           `${r.activa === false ? ' · APAGADA' : ''}`,
       ),
 
+      /*
+       * Las que de verdad se han considerado, y por qué.
+       *
+       * No basta con filtrar por `cuando`: una regla que llamó a un servicio se
+       * evalúa **cuando llega su respuesta**, corra en el momento que corra —el
+       * porqué está en el motor, junto al filtro—. Listando solo las del
+       * momento, el rastro se contradecía a sí mismo: enseñaba una regla en
+       * `seDispararon` que no aparecía en `reglasCargadas`, y quien lo leyera
+       * concluiría que el rastro está roto o que el motor hace cosas raras.
+       *
+       * Y se dice **por qué** entró cada una: «(la despertó INTEGRACION:432)»
+       * es justo el dato que hay que ver para entender que no está corriendo
+       * fuera de su momento por error.
+       */
       reglasCargadas: (this.flujo?.reglas ?? [])
-        .filter((r) => r.cuando?.includes(momento))
-        .map((r) => `${r.id}: ${r.nombre ?? ''}${r.activa === false ? ' (apagada)' : ''}`),
+        .filter(
+          (r) =>
+            r.cuando?.includes(momento)
+            || (porUnaIntegracion && camposDeLaRegla(r).includes(campoQueCambio ?? '')),
+        )
+        .map(
+          (r) =>
+            `${r.id}: ${r.nombre ?? ''}`
+            + `${r.activa === false ? ' (apagada)' : ''}`
+            + `${
+              !r.cuando?.includes(momento) ? ` (la despertó ${campoQueCambio})` : ''
+            }`,
+        ),
       seDispararon: resultado.disparadas,
       campos: Object.keys(resultado.campos),
       escribieron: resultado.escrituras,
