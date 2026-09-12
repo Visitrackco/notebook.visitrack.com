@@ -212,6 +212,13 @@
   margin-bottom: var(--vt-space-3);
 }
 
+.chat__masarriba {
+  padding: 0.4rem 0;
+  font-size: 0.72rem;
+  color: var(--vt-text-muted);
+  text-align: center;
+}
+
 .chat__mensaje--mio {
   justify-content: flex-end;
 }

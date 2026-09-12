@@ -5,6 +5,15 @@ import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../../core/services/auth.service';
 
+/**
+ * Cuántos mensajes por tanda.
+ *
+ * Treinta y no los cincuenta de antes: abrir una sala tiene que ser inmediato,
+ * y lo que hay más arriba se pide al subir. Con salas de meses, traerlo todo de
+ * golpe era una espera al abrir para leer casi siempre los últimos cuatro.
+ */
+export const POR_TANDA = 30;
+
 /** Una sala en la lista. */
 export interface SalaResumen {
   id: number;
@@ -134,11 +143,40 @@ export class ChatApi {
   // ── Mensajes ──────────────────────────────────────────────────────────────
 
   /** Los últimos de una sala. Es abrirla. */
-  ultimos(salaId: number): Promise<MensajeDeSala[]> {
+  ultimos(salaId: number, cuantos = POR_TANDA): Promise<MensajeDeSala[]> {
     return firstValueFrom(
-      this.http.get<MensajeDeSala[]>(`${this.base}/salas/${salaId}/mensajes`, {
-        headers: this.cabeceras,
-      }),
+      this.http.get<MensajeDeSala[]>(
+        `${this.base}/salas/${salaId}/mensajes?cuantos=${cuantos}`,
+        { headers: this.cabeceras },
+      ),
+    );
+  }
+
+  /**
+   * La tanda que hay justo **antes** de un mensaje. Es subir en la conversación.
+   *
+   * ## Por qué se calcula aquí y no lo resuelve el servidor
+   *
+   * Porque no hace falta: `Seq` lo reparte el servidor con `UltimoSeq + 1` por
+   * sala y nada borra mensajes, así que es denso. «Los treinta anteriores al
+   * 412» es la ventana `desde = 381, cuantos = 30`, y eso el endpoint de
+   * ponerse al día ya lo sabe hacer. Añadir un `?antes=` al servidor habría
+   * sido una segunda forma de pedir lo mismo.
+   *
+   * El tope se recorta contra el principio para no volver a pedir lo que ya
+   * está pintado: con `primerSeq = 10`, una ventana de treinta traería los
+   * nueve de antes **y los que ya se ven**.
+   */
+  anteriores(salaId: number, primerSeq: number, cuantos = POR_TANDA): Promise<MensajeDeSala[]> {
+    const cabe = Math.min(cuantos, Math.max(0, primerSeq - 1));
+
+    if (cabe <= 0) return Promise.resolve([]);
+
+    return firstValueFrom(
+      this.http.get<MensajeDeSala[]>(
+        `${this.base}/salas/${salaId}/mensajes?desde=${primerSeq - 1 - cabe}&cuantos=${cabe}`,
+        { headers: this.cabeceras },
+      ),
     );
   }
 

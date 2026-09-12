@@ -90,9 +90,23 @@
         </div>
       </header>
 
-      <div class="chat__mensajes" #caja>
+      <div class="chat__mensajes" #caja (scroll)="alDesplazar()">
         @if (cargandoSala()) {
           <p class="chat__nada">Abriendo la sala…</p>
+        }
+
+        <!--
+          Lo de más arriba se trae al llegar al borde, no con un botón.
+
+          El renglón dice lo que está pasando —y que se acabó la conversación
+          cuando se acaba—, porque sin él subir hasta el tope y ver que no pasa
+          nada se lee como que ya no hay más. Ocupa sitio arriba solo mientras
+          tiene algo que decir.
+        -->
+        @if (cargandoArriba()) {
+          <p class="chat__masarriba">Trayendo lo anterior…</p>
+        } @else if (mensajes().length && !hayMasArriba() && !cargandoSala()) {
+          <p class="chat__masarriba">Aquí empieza la conversación.</p>
         }
 
         @for (m of mensajes(); track m.clientId || m.seq) {

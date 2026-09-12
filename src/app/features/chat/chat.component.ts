@@ -19,7 +19,7 @@ import { IconComponent } from '../../shared/components/icon/icon.component';
 import { PdfPreviewComponent } from '../../shared/components/pdf-preview/pdf-preview.component';
 import { ChatSocketService } from './chat-socket.service';
 import { FORMATO, TOPE_DE_SEGUNDOS, VozEnVivoService } from './voz-en-vivo.service';
-import { ChatApi, MensajeDeSala, MiembroDeSala, SalaResumen } from './chat.api';
+import { ChatApi, MensajeDeSala, MiembroDeSala, POR_TANDA, SalaResumen } from './chat.api';
 
 /**
  * El chat en el diligenciador.
@@ -64,6 +64,12 @@ export class ChatComponent {
 
   /** GUID de la actividad que se está mirando. Vacío = visor cerrado. */
   readonly actividadVista = signal('');
+
+  /** Queda conversación más arriba. Falso cuando se llegó al principio. */
+  readonly hayMasArriba = signal(false);
+
+  /** Trayendo la tanda de arriba. Evita pedirla dos veces en el mismo tirón. */
+  readonly cargandoArriba = signal(false);
 
   readonly TOPE_DE_SEGUNDOS = TOPE_DE_SEGUNDOS;
   /** Lo fuerte que se esta hablando, para mover el circulo. Ver `VozEnVivoService`. */
@@ -264,6 +270,8 @@ export class ChatComponent {
     this.cargandoSala.set(true);
     this.mensajes.set([]);
     this.gente.set([]);
+    this.hayMasArriba.set(false);
+    this.cargandoArriba.set(false);
 
     // La dirección refleja dónde estás: así se puede compartir el enlace de una
     // sala y recargar sin acabar en la lista.
@@ -280,6 +288,10 @@ export class ChatComponent {
       this.mensajes.set(mensajes);
       this.gente.set(gente);
       this.ultimoVisto = mensajes.at(-1)?.seq ?? 0;
+
+      // Hay más arriba salvo que lo primero que se ve sea el primer mensaje de
+      // la sala. `Seq` empieza en 1, así que el 1 es el principio de todo.
+      this.hayMasArriba.set((mensajes[0]?.seq ?? 1) > 1);
 
       /*
        * El socket entra en la sala, ademas de la presencia.
@@ -615,6 +627,80 @@ export class ChatComponent {
       await this.api.marcarLeido(sala.id, ultimo);
     } catch {
       // Lo peor que pasa es que el contador vuelva a salir al recargar.
+    }
+  }
+
+  /**
+   * Al llegar arriba, la tanda anterior.
+   *
+   * El umbral no es cero sino un dedo de margen: esperando al borde exacto, con
+   * desplazamiento suave o con rueda rápida el navegador se pasa de largo y la
+   * carga no se dispara nunca.
+   */
+  alDesplazar(): void {
+    const caja = this.caja()?.nativeElement;
+    if (!caja || caja.scrollTop > 80) return;
+
+    void this.traerAnteriores();
+  }
+
+  /**
+   * Trae los de más arriba y **deja la vista donde estaba**.
+   *
+   * Esto último es lo que hace que se pueda leer hacia atrás. Metiendo treinta
+   * mensajes por encima sin tocar nada, el contenido empuja hacia abajo lo que
+   * se estaba mirando y la conversación da un salto: el ojo pierde el renglón y
+   * hay que buscarlo. Se apunta cuánto medía la caja antes y se le devuelve
+   * exactamente lo que creció.
+   */
+  private async traerAnteriores(): Promise<void> {
+    const sala = this.abierta();
+
+    if (!sala || this.cargandoArriba() || !this.hayMasArriba()) return;
+
+    const primero = this.mensajes().find((m) => !m.enviando)?.seq ?? 0;
+    if (primero <= 1) {
+      this.hayMasArriba.set(false);
+      return;
+    }
+
+    this.cargandoArriba.set(true);
+
+    const caja = this.caja()?.nativeElement;
+    const altoAntes = caja?.scrollHeight ?? 0;
+    const dondeAntes = caja?.scrollTop ?? 0;
+
+    try {
+      const tanda = await this.api.anteriores(sala.id, primero, POR_TANDA);
+
+      if (!tanda.length) {
+        this.hayMasArriba.set(false);
+        return;
+      }
+
+      this.mensajes.update((lista) => {
+        // Se descarta lo que ya esté: un tirón de rueda puede pedir la misma
+        // tanda dos veces, y un mensaje repetido en la conversación se lee como
+        // que alguien lo escribió dos veces.
+        const yaEstan = new Set(lista.map((m) => m.seq));
+        const nuevos = tanda.filter((m) => !yaEstan.has(m.seq));
+
+        return [...nuevos, ...lista].sort((a, b) => a.seq - b.seq);
+      });
+
+      this.hayMasArriba.set((tanda[0]?.seq ?? 1) > 1);
+
+      // Después de pintar, no ahora: en este instante los nuevos todavía no
+      // ocupan sitio y la cuenta daría cero.
+      setTimeout(() => {
+        const ahora = this.caja()?.nativeElement;
+        if (ahora) ahora.scrollTop = ahora.scrollHeight - altoAntes + dondeAntes;
+      });
+    } catch {
+      // Sin ruido: se queda donde estaba y el siguiente empujón lo reintenta.
+      // Un aviso por cada roce con el borde de arriba sería insoportable.
+    } finally {
+      this.cargandoArriba.set(false);
     }
   }
 
