@@ -3,6 +3,7 @@ import { RouterOutlet } from '@angular/router';
 
 import { DatabaseService } from './core/database/database.service';
 import { ThemeService } from './core/services/theme.service';
+import { AvisoQueFlotaComponent } from './features/chat/aviso-que-flota.component';
 import { LluviaEmojisComponent } from './shared/components/lluvia-emojis/lluvia-emojis.component';
 import { ToastsComponent } from './shared/components/toasts/toasts.component';
 
@@ -17,7 +18,7 @@ import { ToastsComponent } from './shared/components/toasts/toasts.component';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [LluviaEmojisComponent, RouterOutlet, ToastsComponent],
+  imports: [AvisoQueFlotaComponent, LluviaEmojisComponent, RouterOutlet, ToastsComponent],
   template: `
     @if (db.upgradeBlocked()) {
       <div class="app-blocked">
@@ -54,6 +55,16 @@ import { ToastsComponent } from './shared/components/toasts/toasts.component';
       el desplazamiento de la página. Ver LluviaEmojisComponent.
     -->
     <vt-lluvia-emojis />
+
+    <!--
+      El aviso de un mensaje de chat, subiendo desde el costado.
+
+      Aquí y no dentro del chat: es justo cuando no se tiene esa pantalla delante
+      cuando hace falta enterarse. Y sin condición de ruta, porque estando en el
+      chat sigue valiendo — avisa de **las otras** salas, que el servicio ya se
+      encarga de filtrar la que está en la dirección.
+    -->
+    <vt-aviso-que-flota />
   `,
   styles: [
     `

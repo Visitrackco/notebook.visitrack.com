@@ -5,7 +5,7 @@ import { Socket, io } from 'socket.io-client';
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../../core/services/auth.service';
 import { AlertSoundService } from '../../core/services/alert-sound.service';
-import { ToastService } from '../../core/services/toast.service';
+import { AvisoQueFlotaService } from './aviso-que-flota.service';
 import { MensajeDeSala } from './chat.api';
 import { FORMATO, VozEnVivoService } from './voz-en-vivo.service';
 
@@ -41,7 +41,7 @@ export interface PresenciaDeUno {
 export class ChatSocketService {
   private readonly auth = inject(AuthService);
   private readonly voz = inject(VozEnVivoService);
-  private readonly toasts = inject(ToastService);
+  private readonly avisos = inject(AvisoQueFlotaService);
   private readonly sonido = inject(AlertSoundService);
   private readonly router = inject(Router);
   private readonly destroy = inject(DestroyRef);
@@ -270,12 +270,24 @@ export class ChatSocketService {
    *
    * Al tocarlo se abre la sala. Un aviso que solo informa obliga a buscar de
    * qué sala hablaba, y con seis salas eso es peor que no avisar.
+   *
+   * ## Por qué ya no es un toast de la pila general
+   *
+   * Porque se apilaba sin tope y con la misma caja que «se cayó la
+   * sincronización»: cinco mensajes seguidos eran cinco rectángulos ocupando
+   * media columna ocho segundos cada uno, y para distinguir un mensaje de un
+   * error de guardado había que leerlos. Ahora sube una burbuja con la inicial
+   * de quien escribió, de una en una y en orden — ver `AvisoQueFlotaService`,
+   * que es donde están la cola y las duraciones.
+   *
+   * El contador de sin leer se sigue subiendo aquí: es lo que pinta la marca del
+   * menú y no depende de que el aviso llegue a verse.
    */
   private avisarSiNoEstasEnLaSala(m: MensajeDeSala): void {
     const yo = Number(this.auth.currentUser()?.UserID ?? 0);
     if (m.userId === yo) return;
 
-    if (this.router.url.startsWith(`/chat/${m.salaId}`)) return;
+    if (this.estoyEnLaSala(m.salaId)) return;
 
     this.sinLeerPorSala.update((antes) => ({
       ...antes,
@@ -284,11 +296,25 @@ export class ChatSocketService {
 
     this.sinLeer.update((n) => n + 1);
 
-    this.toasts.show({
-      title: `${m.autor}: ${this.comoSeLee(m)}`,
-      tone: 'info',
-      action: { label: 'Abrir', run: () => void this.router.navigate(['/chat', m.salaId]) },
-    });
+    this.avisos.encolar(m);
+  }
+
+  /**
+   * Si la sala que se tiene delante es esa.
+   *
+   * ## Por qué la dirección exacta y no `startsWith`
+   *
+   * Porque estaba con `startsWith('/chat/' + salaId)` y `/chat/12` empieza por
+   * `/chat/1`: teniendo abierta la doce, los mensajes de la sala uno no sonaban
+   * ni se anunciaban, y desde dentro no había forma de notarlo — solo silencio.
+   * La sala es el último tramo de la dirección, así que se compara entero.
+   *
+   * En un solo sitio a propósito: es la misma comprobación que decide el sonido
+   * y la que decide el aviso, y tenerla dos veces es lo que deja que un día
+   * digan cosas distintas.
+   */
+  private estoyEnLaSala(salaId: number): boolean {
+    return this.router.url.split(/[?#]/)[0] === `/chat/${salaId}`;
   }
 
   /**
@@ -323,9 +349,9 @@ export class ChatSocketService {
      *
      * Se mira la direccion y no una bandera de la pantalla: es la misma
      * comprobacion que decide si sale el aviso, y tenerla en un solo sitio evita
-     * que un dia digan cosas distintas.
+     * que un dia digan cosas distintas. Ver `estoyEnLaSala`.
      */
-    if (this.router.url.startsWith(`/chat/${m.salaId}`)) return;
+    if (this.estoyEnLaSala(m.salaId)) return;
 
     void this.sonido.notify();
   }
@@ -344,21 +370,6 @@ export class ChatSocketService {
       return resto;
     });
   }
-
-  /**
-   * Cómo se lee un mensaje en un aviso.
-   *
-   * Un adjunto no tiene texto, y un aviso vacío se ve como un fallo. Se dice
-   * que llegó algo y de qué clase, que es lo que decide si vale la pena dejar
-   * lo que estás haciendo.
-   */
-  private comoSeLee(m: MensajeDeSala): string {
-    if (m.tipo === 'voz') return `nota de voz (${m.segundos}s)`;
-    if (m.tipo === 'archivo') return m.adjuntos?.[0]?.nombre ?? 'ha compartido un archivo';
-
-    return String(m.texto ?? '').slice(0, 90) || 'mensaje nuevo';
-  }
-
 
   /**
    * Entra en la sala y dice cuantos hay dentro.

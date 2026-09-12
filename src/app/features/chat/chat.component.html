@@ -65,7 +65,7 @@
       <header class="chat__cab">
         <!-- En pantalla estrecha la lista se pliega, así que hace falta cómo
              volver. En ancha no se pinta: la lista está ahí al lado. -->
-        <button type="button" class="chat__volver" (click)="abierta.set(null)" aria-label="Volver a las salas">‹</button>
+        <button type="button" class="chat__volver" (click)="volverALaLista()" aria-label="Volver a las salas">‹</button>
 
         <div class="chat__cab-texto">
           <h3>{{ sala.nombre }}</h3>

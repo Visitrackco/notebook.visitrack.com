@@ -265,6 +265,23 @@ export class ChatComponent {
     }
   }
 
+  /**
+   * Se cierra la conversación y se vuelve a la lista.
+   *
+   * ## Por qué también cambia la dirección
+   *
+   * Porque la dirección es lo único que dice en qué sala estás: es lo que mira
+   * el socket para callar el tono y el aviso flotante de esa sala. Cerrándola
+   * solo con `abierta.set(null)`, la dirección se quedaba en `/chat/5` con la
+   * lista delante, y esa sala —la que se acababa de leer, o sea la que más
+   * importa— dejaba de avisar hasta abrir otra o recargar.
+   */
+  volverALaLista(): void {
+    this.abierta.set(null);
+
+    void this.router.navigate(['/chat']);
+  }
+
   async abrir(sala: SalaResumen, navegar = true): Promise<void> {
     this.abierta.set(sala);
     this.cargandoSala.set(true);
