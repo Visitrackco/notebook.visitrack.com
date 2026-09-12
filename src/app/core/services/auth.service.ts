@@ -1,4 +1,4 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, Injector, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
@@ -7,6 +7,7 @@ import { RolePermissionRepository } from '../repositories/entity.repositories';
 import { UserRepository } from '../repositories/user.repository';
 import { ApiError, ApiService } from './api.service';
 import { CompanyLogoService } from './company-logo.service';
+import { ZonaHorariaService } from './zona-horaria.service';
 import { ConnectivityService } from './connectivity.service';
 import { DeviceService } from './device.service';
 
@@ -41,6 +42,15 @@ export interface LoginResult {
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly api = inject(ApiService);
+
+  /*
+   * El inyector, para pedir `ZonaHorariaService` solo al cerrar sesión.
+   *
+   * Pedirlo aquí arriba sería una dependencia circular: ese servicio pregunta
+   * por el usuario en sesión, o sea por este. Con el inyector la cadena se
+   * resuelve en el momento de usarla, que es una vez y al final de todo.
+   */
+  private readonly injector = inject(Injector);
   private readonly users = inject(UserRepository);
   private readonly roles = inject(RolePermissionRepository);
   private readonly device = inject(DeviceService);
@@ -457,6 +467,11 @@ export class AuthService {
     await this.users.closeSession();
     this.currentUser.set(null);
     this.logo.clear();
+
+    // La zona era de quien se va. Dejándola puesta, a la siguiente cuenta que
+    // entre se le pintarían las horas con la zona de la anterior hasta que el
+    // servidor contestara. Ver `ZonaHorariaService`.
+    this.injector.get(ZonaHorariaService).olvidar();
   }
 
   /**

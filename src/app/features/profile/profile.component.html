@@ -406,9 +406,28 @@
               <dt>Teléfono</dt>
               <dd>{{ user.Phone || '—' }}</dd>
             </div>
+            <!--
+              La zona, y **con cuál se está pintando**.
+
+              El código a secas no dice nada útil: se puede tener «MXC»
+              apuntado y estar viendo las horas de Colombia porque el código no
+              llegó a traducirse a un desfase. Eso pasó, y desde fuera es
+              indistinguible de que el arreglo no funcione. Así que se enseñan
+              las tres cosas: el código, el desfase que se está usando y de
+              dónde salió.
+            -->
             <div>
               <dt>Zona horaria</dt>
-              <dd>{{ user.UTCCode || '—' }}</dd>
+              <dd>
+                {{ user.UTCCode || '—' }}
+                <span class="zona-detalle">
+                  · {{ zona.comoSeLee() }}
+                  @if (zona.nombre()) {
+                    ({{ zona.nombre() }})
+                  }
+                  · según {{ zona.origen() }}
+                </span>
+              </dd>
             </div>
             <div>
               <dt>Idioma</dt>

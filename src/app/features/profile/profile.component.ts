@@ -19,6 +19,7 @@ import {
 } from '../../core/services/theme.service';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { SessionsComponent } from './sessions/sessions.component';
+import { ZonaHorariaService } from '../../core/services/zona-horaria.service';
 
 /**
  * Perfil del usuario: sus datos, el estado del almacenamiento local, las
@@ -45,6 +46,10 @@ export class ProfileComponent {
   readonly auth = inject(AuthService);
   readonly connectivity = inject(ConnectivityService);
   readonly theme = inject(ThemeService);
+
+  // Con qué hora se están pintando las fechas, para poder mirarlo en vez de
+  // deducirlo. Ver `ZonaHorariaService`.
+  readonly zona = inject(ZonaHorariaService);
 
   /** Publico: la plantilla lee su estado y su explicacion. */
   readonly push = inject(PushService);

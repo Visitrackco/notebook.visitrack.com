@@ -842,3 +842,10 @@
   color: var(--vt-text-muted);
   background: var(--vt-surface-3);
 }
+
+/* El desfase que se está usando, al lado del código. Apagado: es la
+   explicación del dato de al lado, no un dato más. */
+.zona-detalle {
+  color: var(--vt-text-muted);
+  font-size: 0.85em;
+}
