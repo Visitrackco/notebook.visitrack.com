@@ -2,8 +2,13 @@ import { Component, computed, effect, inject, input, signal, untracked } from '@
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
-import { Asset, LocationForm } from '../../core/models/entities.model';
-import { AssetRepository, LocationRepository } from '../../core/repositories/entity.repositories';
+import { Asset, EntityType, LocationForm } from '../../core/models/entities.model';
+import {
+  AssetRepository,
+  AssetTypeRepository,
+  LocationRepository,
+  LocationTypeRepository,
+} from '../../core/repositories/entity.repositories';
 import { ActivityHistoryStateService } from '../../core/services/activity-history-state.service';
 import {
   ActivityHistoryApi,
@@ -24,6 +29,16 @@ interface Target {
   kind: 'ubicación' | 'activo';
   id: string;
   name: string;
+
+  /**
+   * El nombre de su tipo: «Subestación», «Extintor ABC».
+   *
+   * Sin esto, dos sedes que se llaman parecido —«Bodega Norte» y «Bodega
+   * Norte 2»— son indistinguibles en la lista, y elegir la equivocada no da
+   * ningún error: devuelve la historia de otra cosa, que se lee como si fuera
+   * la buena. El tipo es lo que las separa de un vistazo.
+   */
+  typeName: string;
 }
 
 /**
@@ -62,6 +77,10 @@ export class ActivityHistoryComponent {
   private readonly api = inject(ActivityHistoryApi);
   private readonly locations = inject(LocationRepository);
   private readonly assets = inject(AssetRepository);
+
+  // Los catálogos de tipos, para poder decir de qué es cada cosa. Ver `Target`.
+  private readonly locationTypes = inject(LocationTypeRepository);
+  private readonly assetTypes = inject(AssetTypeRepository);
   private readonly auth = inject(AuthService);
   private readonly state = inject(ActivityHistoryStateService);
 
@@ -124,12 +143,29 @@ export class ActivityHistoryComponent {
 
   /** Sobre qué se está consultando ahora mismo. */
   readonly target = computed<Target | null>(() => {
+    /*
+     * Embebida, el tipo no se enseña.
+     *
+     * Ahí la pantalla cuelga de la ficha de la entidad, que ya lo tiene escrito
+     * arriba con todo lo demás. Repetirlo dos veces en la misma pantalla no
+     * aclara nada y quita sitio a la consulta.
+     */
     if (this.assetId()) {
-      return { kind: 'activo', id: String(this.assetId()), name: this.entityName() };
+      return {
+        kind: 'activo',
+        id: String(this.assetId()),
+        name: this.entityName(),
+        typeName: '',
+      };
     }
 
     if (this.locationId()) {
-      return { kind: 'ubicación', id: String(this.locationId()), name: this.entityName() };
+      return {
+        kind: 'ubicación',
+        id: String(this.locationId()),
+        name: this.entityName(),
+        typeName: '',
+      };
     }
 
     return this.picked();
@@ -290,7 +326,9 @@ export class ActivityHistoryComponent {
     this.result.set(saved.result);
 
     if (saved.target) {
-      this.picked.set(saved.target);
+      // El tipo puede faltar en una instantánea guardada antes de que
+      // existiera. Ver `HistorySnapshot.target`.
+      this.picked.set({ ...saved.target, typeName: saved.target.typeName ?? '' });
       this.search.set(saved.target.name);
     }
 
@@ -355,15 +393,24 @@ export class ActivityHistoryComponent {
     const userId = Number(user.UserID);
     const needle = term.toLowerCase();
 
-    const [locations, assets] = await Promise.all([
+    const [locations, assets, tiposDeSede, tiposDeEquipo] = await Promise.all([
       this.locations.search(userId, term),
       this.assets.findByUser(userId),
+      this.locationTypes.findByUser(userId),
+      this.assetTypes.findByUser(userId),
     ]);
+
+    const catalogoDeSedes = porClave(tiposDeSede);
+    const catalogoDeEquipos = porClave(tiposDeEquipo);
 
     const fromLocations: Target[] = locations.slice(0, 10).map((location: LocationForm) => ({
       kind: 'ubicación',
       id: String(location.LocationID ?? ''),
       name: location.Name ?? '',
+      typeName: nombreDelTipo(location.typeTitle, catalogoDeSedes, [
+        location.LocationTypeGUID,
+        location.LocationTypeGD,
+      ]),
     }));
 
     const fromAssets: Target[] = assets
@@ -373,6 +420,10 @@ export class ActivityHistoryComponent {
         kind: 'activo',
         id: String(asset.AssetID ?? ''),
         name: asset.Name ?? '',
+        typeName: nombreDelTipo(asset.typeTitle, catalogoDeEquipos, [
+          asset.AssetTypeGUID,
+          asset.AssetTypeGD,
+        ]),
       }));
 
     this.suggestions.set([...fromAssets, ...fromLocations].filter((entry) => entry.id));
@@ -509,4 +560,53 @@ function monthsAgo(months: number): string {
   date.setMonth(date.getMonth() - months);
 
   return date.toISOString().slice(0, 10);
+}
+
+
+/**
+ * El catálogo de tipos, indexado por todo lo que puede apuntarle.
+ *
+ * Por GUID **y** por identificador. Las entidades guardan la referencia de las
+ * dos formas según de dónde vengan —lo que baja el sync trae una, lo que se
+ * crea en el equipo trae la otra— y un mapa con una sola de las dos deja la
+ * mitad de las fichas diciendo «Sin tipo» sin que se vea por qué.
+ */
+function porClave(tipos: EntityType[]): Map<string, EntityType> {
+  const mapa = new Map<string, EntityType>();
+
+  for (const tipo of tipos) {
+    for (const clave of [tipo.GUID, tipo.ID]) {
+      const llave = String(clave ?? '').trim();
+      if (llave) mapa.set(llave, tipo);
+    }
+  }
+
+  return mapa;
+}
+
+/**
+ * Cómo se llama el tipo de una entidad.
+ *
+ * Primero lo que trae escrito el propio registro, que es lo que baja el sync;
+ * si no, se busca en el catálogo por cualquiera de sus referencias.
+ *
+ * Y si no aparece, «Sin tipo» y no una cadena vacía: un hueco donde deberían
+ * ir dos palabras se lee como que la pantalla se rompió.
+ */
+function nombreDelTipo(
+  escrito: string | undefined,
+  catalogo: Map<string, EntityType>,
+  referencias: (string | undefined)[],
+): string {
+  const suyo = (escrito ?? '').trim();
+  if (suyo) return suyo;
+
+  for (const referencia of referencias) {
+    const llave = String(referencia ?? '').trim();
+    const tipo = llave ? catalogo.get(llave) : undefined;
+
+    if (tipo?.Name) return tipo.Name;
+  }
+
+  return 'Sin tipo';
 }

@@ -118,8 +118,32 @@
   }
 }
 
-.hst__suggestion-name {
+/* Nombre y tipo, uno sobre otro. El `min-width: 0` es lo que deja que el
+   nombre largo se recorte en vez de empujar la etiqueta de la derecha fuera. */
+.hst__suggestion-texto {
+  display: flex;
   flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+  text-align: left;
+}
+
+/* El tipo: más pequeño y apagado. Es de qué es la cosa, no cuál es. */
+.hst__suggestion-type {
+  overflow: hidden;
+  color: var(--vt-text-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Ya no crece: de eso se encarga el bloque que lo envuelve con el tipo. Y se
+   recorta, para que un nombre largo no empuje la etiqueta fuera de la fila. */
+.hst__suggestion-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .hst__suggestion-kind {

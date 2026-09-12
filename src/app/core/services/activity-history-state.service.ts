@@ -8,7 +8,20 @@ export interface HistorySnapshot {
   key: string;
 
   /** Entidad elegida en la pantalla propia; nula cuando venía fija. */
-  target: { kind: 'ubicación' | 'activo'; id: string; name: string } | null;
+  /*
+   * El tipo viaja con la entidad: al volver de una actividad la línea de
+   * arriba se vuelve a pintar tal cual estaba, y sin él diría «Sin tipo» de
+   * repente en algo que hace un momento sí lo decía.
+   *
+   * Es opcional porque una instantánea guardada antes de que existiera este
+   * campo tiene que seguir sirviendo — al recuperarla se rellena.
+   */
+  target: {
+    kind: 'ubicación' | 'activo';
+    id: string;
+    name: string;
+    typeName?: string;
+  } | null;
 
   from: string;
   to: string;
