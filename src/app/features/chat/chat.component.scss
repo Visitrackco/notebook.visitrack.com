@@ -261,6 +261,62 @@
   opacity: 0.75;
 }
 
+/*
+ * Una actividad compartida.
+ *
+ * Toda la tarjeta es el botón, no un enlace pequeño dentro de ella: es lo único
+ * que se puede hacer con este mensaje, y un blanco grande se acierta a la
+ * primera con el dedo. El fondo se saca de `currentcolor` para que funcione
+ * igual sobre la burbuja blanca y sobre la propia, que es roja: un gris fijo se
+ * veía como un parche encima del color de marca.
+ */
+.chat__actividad {
+  display: flex;
+  gap: 0.55rem;
+  align-items: center;
+  width: 100%;
+  min-width: 15rem;
+  padding: 0.5rem 0.6rem;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  background: color-mix(in srgb, currentcolor 12%, transparent);
+  border: 0;
+  border-radius: var(--vt-radius-sm);
+}
+
+.chat__actividad-icono {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+}
+
+.chat__actividad-texto {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+
+  strong {
+    font-size: 0.85rem;
+  }
+
+  small {
+    font-size: 0.7rem;
+    opacity: 0.75;
+  }
+}
+
+.chat__actividad-ver {
+  flex-shrink: 0;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.75rem;
+  border: 1px solid currentcolor;
+  border-radius: var(--vt-radius-sm);
+  opacity: 0.8;
+}
+
 .chat__adjunto,
 .chat__nota {
   display: flex;

@@ -247,6 +247,19 @@
 
           <!-- Acciones -->
           <div class="bin__tools">
+            <!-- Compartir va antes de descargar: es lo que se hace con un
+                 archivo que le sirve a otro. Bajarlo al computador y después
+                 buscarlo para reenviarlo por otro sitio es el camino largo del
+                 mismo viaje. -->
+            <button
+              type="button"
+              class="bin__tool"
+              (click)="share(entry)"
+              title="Enviar una copia a una sala del chat"
+            >
+              <vt-icon name="message-circle" [size]="17" />
+            </button>
+
             <button type="button" class="bin__tool" (click)="download(entry)" title="Descargar">
               <vt-icon name="download" [size]="17" />
             </button>
@@ -305,3 +318,5 @@
     (close)="closeViewer()"
   />
 }
+
+<vt-compartir-en-sala [que]="compartiendo()" (cerrado)="compartiendo.set(null)" />

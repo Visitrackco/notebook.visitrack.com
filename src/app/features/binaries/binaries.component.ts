@@ -24,6 +24,10 @@ import { DataRevisionService } from '../../core/sync/data-revision.service';
 import { PendingUploadService } from '../../core/sync/pending-upload.service';
 import { ConnectivityService } from '../../core/services/connectivity.service';
 import { IconComponent } from '../../shared/components/icon/icon.component';
+import {
+  CompartirEnSalaComponent,
+  ParaCompartir,
+} from '../chat/compartir-en-sala/compartir-en-sala.component';
 import { AudioPlayerComponent } from '../activities/form/fields/audio-player/audio-player.component';
 import { MediaViewerComponent } from '../activities/form/fields/media-viewer/media-viewer.component';
 import { DatabaseService } from '../../core/database/database.service';
@@ -55,7 +59,12 @@ const PAGE_SIZE = 12;
 @Component({
   selector: 'vt-binaries',
   standalone: true,
-  imports: [AudioPlayerComponent, IconComponent, MediaViewerComponent],
+  imports: [
+    AudioPlayerComponent,
+    CompartirEnSalaComponent,
+    IconComponent,
+    MediaViewerComponent,
+  ],
   templateUrl: './binaries.component.html',
   styleUrl: './binaries.component.scss',
 })
@@ -112,6 +121,9 @@ export class BinariesComponent implements OnDestroy {
 
   /** Archivo abierto en el visor. */
   readonly viewing = signal<BinaryEntry | null>(null);
+
+  /** Lo que se está mandando a una sala del chat. `null` = diálogo cerrado. */
+  readonly compartiendo = signal<ParaCompartir | null>(null);
 
   readonly stats = computed(() => this.audit.stats(this.all()));
 
@@ -339,6 +351,33 @@ export class BinariesComponent implements OnDestroy {
     link.href = url;
     link.download = `${entry.resource.GUID}.${entry.resource.Ext || 'bin'}`;
     link.click();
+  }
+
+  /**
+   * Manda una copia del archivo a una sala del chat.
+   *
+   * Va **el contenido** y no un enlace a donde vive: este archivo está en
+   * IndexedDB de este navegador, y aunque estuviera en el servidor de binarios,
+   * ahí se limpia cuando su actividad se cierra. Un mensaje que apunta a algo
+   * borrado es peor que no haberlo mandado; subido al chat, la conversación se
+   * sostiene sola.
+   */
+  async share(entry: BinaryEntry): Promise<void> {
+    const blob = await this.storage.loadBlob(entry.resource.GUID);
+
+    if (!blob) {
+      this.feedback.set('El archivo ya no está en este dispositivo.');
+      return;
+    }
+
+    this.compartiendo.set({
+      clase: 'archivo',
+      blob,
+      // El mismo nombre con que se descarga: lo que llega a la sala se
+      // reconoce después en la lista de aquí, que es donde se rastrea.
+      nombre: `${entry.resource.GUID}.${entry.resource.Ext || 'bin'}`,
+      titulo: `${this.typeOf(entry).label} · ${entry.answerTitle}`,
+    });
   }
 
   /** Abre el archivo a tamaño grande, cargándolo si aún no estaba. */

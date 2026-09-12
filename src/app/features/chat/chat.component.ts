@@ -12,8 +12,11 @@ import {
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
+import { ActivityService } from '../../core/services/activity.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast.service';
+import { IconComponent } from '../../shared/components/icon/icon.component';
+import { PdfPreviewComponent } from '../../shared/components/pdf-preview/pdf-preview.component';
 import { ChatSocketService } from './chat-socket.service';
 import { FORMATO, TOPE_DE_SEGUNDOS, VozEnVivoService } from './voz-en-vivo.service';
 import { ChatApi, MensajeDeSala, MiembroDeSala, SalaResumen } from './chat.api';
@@ -37,7 +40,7 @@ import { ChatApi, MensajeDeSala, MiembroDeSala, SalaResumen } from './chat.api';
 @Component({
   selector: 'vt-chat',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, IconComponent, PdfPreviewComponent],
   templateUrl: './chat.component.html',
   styleUrl: './chat.component.scss',
 })
@@ -49,6 +52,18 @@ export class ChatComponent {
   private readonly router = inject(Router);
   private readonly ruta = inject(ActivatedRoute);
   private readonly voz = inject(VozEnVivoService);
+
+  /**
+   * De dónde sale la dirección del PDF de una actividad compartida.
+   *
+   * Del mismo sitio que la del listado y no de una copia escrita aquí: el
+   * dominio de exportación ya cambió dos veces esta semana, y con dos lugares
+   * donde se arma la dirección solo se corrige uno.
+   */
+  private readonly actividades = inject(ActivityService);
+
+  /** GUID de la actividad que se está mirando. Vacío = visor cerrado. */
+  readonly actividadVista = signal('');
 
   readonly TOPE_DE_SEGUNDOS = TOPE_DE_SEGUNDOS;
   /** Lo fuerte que se esta hablando, para mover el circulo. Ver `VozEnVivoService`. */
@@ -389,6 +404,24 @@ export class ChatComponent {
   }
 
   /** Abre o descarga un adjunto pidiendo su dirección en ese momento. */
+  /** Abre el PDF de una actividad compartida. */
+  verActividad(guid: string): void {
+    const limpio = (guid ?? '').trim();
+
+    // Sin GUID no hay documento que pedir: el generador contestaría con un
+    // error y el visor se quedaría en blanco, que se lee como que falló la red.
+    if (!limpio) {
+      this.toasts.show({ title: 'Ese mensaje no trae una actividad válida.', tone: 'error' });
+      return;
+    }
+
+    this.actividadVista.set(limpio);
+  }
+
+  urlDeActividad(guid: string): string {
+    return this.actividades.pdfUrl(guid);
+  }
+
   async abrirAdjunto(adjuntoId: number, descargar = false): Promise<void> {
     try {
       const { url } = await this.api.direccionDe(adjuntoId, descargar);

@@ -102,7 +102,25 @@
                 <span class="chat__autor">{{ m.autor }}</span>
               }
 
-              @if (m.texto) {
+              <!--
+                Una actividad compartida se pinta como tarjeta, no como texto.
+
+                Su `texto` es el GUID a secas, y un GUID en una burbuja no le
+                dice nada a quien lo lee: parece un mensaje roto. La tarjeta
+                dice qué es y ofrece lo único que se quiere hacer con ella.
+              -->
+              @if (m.tipo === 'actividad') {
+                <button type="button" class="chat__actividad" (click)="verActividad(m.texto)">
+                  <span class="chat__actividad-icono"><vt-icon name="file" [size]="18" /></span>
+
+                  <span class="chat__actividad-texto">
+                    <strong>Actividad</strong>
+                    <small>Compartida en el chat</small>
+                  </span>
+
+                  <span class="chat__actividad-ver">Ver PDF</span>
+                </button>
+              } @else if (m.texto) {
                 <p class="chat__texto">{{ m.texto }}</p>
               }
 
@@ -277,3 +295,18 @@
     }
   </section>
 </div>
+
+<!--
+  El PDF de una actividad compartida, dentro de la aplicación.
+
+  Abrirlo en otra pestaña sacaría de la conversación justo cuando lo que se
+  quiere es volver a ella para comentarlo. Descargar sigue estando, dentro del
+  propio visor: es una intención distinta y se decide después de mirarlo.
+-->
+@if (actividadVista(); as guid) {
+  <vt-pdf-preview
+    [url]="urlDeActividad(guid)"
+    titulo="Actividad compartida"
+    (cerrado)="actividadVista.set('')"
+  />
+}

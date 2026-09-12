@@ -1,0 +1,160 @@
+/**
+ * Elegir sala para compartir.
+ *
+ * Una lista de filas grandes y nada más: se abre sobre la pantalla en la que se
+ * estaba y se cierra en cuanto se elige, así que cualquier cosa añadida aquí
+ * —buscador, pestañas, descripciones— estorba en el único gesto que tiene.
+ */
+
+.csala {
+  padding: 0;
+  margin: auto;
+  color: var(--vt-text);
+  background: transparent;
+  border: 0;
+
+  &::backdrop {
+    background: rgb(12 14 18 / 55%);
+    backdrop-filter: blur(2px);
+  }
+}
+
+.csala__panel {
+  display: flex;
+  flex-direction: column;
+  width: min(420px, calc(100vw - 2rem));
+  max-height: min(560px, calc(100vh - 4rem));
+  padding: var(--vt-space-4);
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-border);
+  border-radius: var(--vt-radius-lg);
+  box-shadow: 0 24px 60px -20px rgb(12 14 18 / 45%);
+}
+
+.csala__cab {
+  display: flex;
+  gap: var(--vt-space-3);
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--vt-space-3);
+
+  h2 {
+    font-size: 1rem;
+    line-height: 1.3;
+  }
+
+  /* Qué se está mandando. Con tres salas en la cabeza, «compartir» a secas no
+     dice el qué, y se manda a la sala equivocada. */
+  p {
+    margin-top: 2px;
+    overflow: hidden;
+    font-size: 0.78rem;
+    color: var(--vt-text-muted);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.csala__cerrar {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  color: var(--vt-text-subtle);
+  background: var(--vt-surface-3);
+  border: 0;
+  border-radius: 50%;
+
+  &:hover:not(:disabled) {
+    color: var(--vt-text);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+  }
+}
+
+.csala__lista {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.csala__sala {
+  display: flex;
+  gap: var(--vt-space-3);
+  align-items: center;
+  width: 100%;
+  padding: var(--vt-space-2) var(--vt-space-3);
+  color: var(--vt-text);
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: var(--vt-radius);
+
+  &:hover:not(:disabled) {
+    background: var(--vt-surface-3);
+  }
+
+  &:disabled {
+    opacity: 0.55;
+  }
+}
+
+.csala__bola {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--vt-on-brand);
+  background: var(--vt-brand);
+  border-radius: 50%;
+}
+
+.csala__texto {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.csala__nombre {
+  overflow: hidden;
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.csala__pie {
+  font-size: 0.72rem;
+  color: var(--vt-text-muted);
+}
+
+.csala__yendo {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  color: var(--vt-text-muted);
+}
+
+.csala__nada {
+  padding: var(--vt-space-4);
+  font-size: 0.82rem;
+  color: var(--vt-text-muted);
+  text-align: center;
+}
+
+.csala__reintentar {
+  margin-top: var(--vt-space-3);
+  padding: 6px 14px;
+  color: var(--vt-text);
+  background: var(--vt-surface-3);
+  border: 1px solid var(--vt-border);
+  border-radius: var(--vt-radius-sm);
+}

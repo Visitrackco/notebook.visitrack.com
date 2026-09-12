@@ -6,6 +6,7 @@ import { IconComponent } from '../../../shared/components/icon/icon.component';
 export type ActivityAction =
   | 'open'
   | 'pdf'
+  | 'share'
   | 'reprocess'
   | 'reassign'
   | 'copy'

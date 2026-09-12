@@ -39,7 +39,18 @@ export interface MensajeDeSala {
   seq: number;
   userId: number;
   autor: string;
-  tipo: 'texto' | 'archivo' | 'voz';
+
+  /**
+   * Qué clase de mensaje es.
+   *
+   * En `actividad`, `texto` **es el GUID de la actividad y nada más**: la
+   * dirección de su PDF la arma quien lo abre, con el dominio de exportación
+   * que tenga puesto ese día. Guardando la dirección, el dominio se congelaría
+   * dentro de cada mensaje — y ya cambió dos veces esta semana, así que lo
+   * compartido hace un mes dejaría de abrirse. Por eso el GUID nunca se pinta:
+   * para quien lee no significa nada, es materia prima de la dirección.
+   */
+  tipo: 'texto' | 'archivo' | 'voz' | 'actividad';
   texto: string;
   segundos: number;
   clientId: string;
@@ -149,7 +160,7 @@ export class ChatApi {
     salaId: number,
     datos: {
       texto?: string;
-      tipo?: 'texto' | 'archivo' | 'voz';
+      tipo?: 'texto' | 'archivo' | 'voz' | 'actividad';
       clientId?: string;
       segundos?: number;
       adjuntos?: FichaDeAdjunto[];

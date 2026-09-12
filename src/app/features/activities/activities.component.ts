@@ -38,6 +38,10 @@ import { Descriptor, descriptorsMatch, parseAnswerTitles } from '../../shared/ut
 import { SeedPalette, seedGradient, seedPalette } from '../../shared/utils/seed-color';
 import { Colleague } from '../../core/services/reassign.service';
 import { ToastService } from '../../core/services/toast.service';
+import {
+  CompartirEnSalaComponent,
+  ParaCompartir,
+} from '../chat/compartir-en-sala/compartir-en-sala.component';
 import { ReassignDialogComponent } from './reassign-dialog/reassign-dialog.component';
 import {
   ActionItem,
@@ -102,6 +106,7 @@ type SortField = 'UpdatedOn' | 'CreatedOn';
   standalone: true,
   imports: [
     ActivityActionsComponent,
+    CompartirEnSalaComponent,
     ConfirmDialogComponent,
     IconComponent,
     MatButtonModule,
@@ -139,6 +144,9 @@ export class ActivitiesComponent {
   /** La actividad cuyo PDF se está viendo. `null` = vista previa cerrada. */
   readonly pdfCard = signal<ActivityCard | null>(null);
 
+  /** Lo que se está mandando a una sala. `null` = diálogo cerrado. */
+  readonly compartiendo = signal<ParaCompartir | null>(null);
+
   /** Mientras se comprueba contra el servidor. */
   readonly checking = signal(false);
 
@@ -163,8 +171,18 @@ export class ActivitiesComponent {
    */
   readonly pdfTitulo = computed(() => {
     const card = this.pdfCard();
-    if (!card) return 'Actividad';
+    return card ? this.pdfTituloDe(card) : 'Actividad';
+  });
 
+  /**
+   * Cómo se nombra una actividad fuera del listado.
+   *
+   * Separado del `computed` porque lo usan dos sitios con orígenes distintos:
+   * la vista previa mira `pdfCard` y el diálogo de compartir la actividad
+   * elegida. Duplicar la regla dejaba la sala recibiendo un nombre y el visor
+   * otro para lo mismo.
+   */
+  pdfTituloDe(card: ActivityCard): string {
     const desc = card.descriptors
       .slice(0, 2)
       .map((d) => d.val)
@@ -172,7 +190,7 @@ export class ActivitiesComponent {
       .join('  ·  ');
 
     return desc || `Actividad ${card.shortGuid}`;
-  });
+  }
 
   readonly loading = signal(true);
   readonly survey = signal<Survey | null>(null);
@@ -331,6 +349,28 @@ export class ActivitiesComponent {
         label: 'Descargar PDF',
         hint: 'Abre el informe en otra pestaña',
         icon: 'file',
+        tone: 'neutral',
+        disabledReason:
+          answer.IsUpload === '1' ? undefined : 'Disponible cuando la actividad haya subido',
+      });
+
+      /*
+       * Y mandarla a una sala del chat, justo detrás de verla.
+       *
+       * Dentro de este mismo `if` a propósito: lo que llega a la sala es el
+       * identificador y lo que se abre al otro lado es el PDF, así que un
+       * formulario que no lo genera no tiene nada que compartir.
+       *
+       * Con la misma condición de `IsUpload`, y no por prudencia general: el
+       * PDF lo arma el servidor de exportación leyendo lo que hay **en
+       * Visitrack**. Compartiendo una que todavía no subió, quien la abre se
+       * encuentra un documento vacío y da por hecho que el chat está roto.
+       */
+      items.push({
+        id: 'share',
+        label: 'Enviar al chat',
+        hint: 'Compartirla en una sala',
+        icon: 'message-circle',
         tone: 'neutral',
         disabledReason:
           answer.IsUpload === '1' ? undefined : 'Disponible cuando la actividad haya subido',
@@ -604,6 +644,13 @@ export class ActivitiesComponent {
         break;
       case 'pdf':
         this.downloadPdf(card);
+        break;
+      case 'share':
+        this.compartiendo.set({
+          clase: 'actividad',
+          guid: card.answer.GUID,
+          titulo: this.pdfTituloDe(card),
+        });
         break;
       case 'reprocess':
         await this.reprocessBinaries(card);

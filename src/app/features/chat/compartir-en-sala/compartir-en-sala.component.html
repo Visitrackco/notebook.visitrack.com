@@ -1,0 +1,64 @@
+<dialog #dialog class="csala" (click)="alPulsarElVelo($event)" (close)="cerrado.emit()">
+  <div class="csala__panel">
+    <header class="csala__cab">
+      <div>
+        <h2>Compartir en una sala</h2>
+        @if (que(); as q) {
+          <p>{{ q.titulo }}</p>
+        }
+      </div>
+
+      <button
+        type="button"
+        class="csala__cerrar"
+        aria-label="Cerrar"
+        [disabled]="!!enviandoA()"
+        (click)="cerrar()"
+      >
+        <vt-icon name="close" [size]="18" />
+      </button>
+    </header>
+
+    @if (cargando()) {
+      <p class="csala__nada">Buscando tus salas…</p>
+    } @else if (error()) {
+      <div class="csala__nada">
+        <p>{{ error() }}</p>
+        <button type="button" class="csala__reintentar" (click)="traerSalas()">Reintentar</button>
+      </div>
+    } @else {
+      <ul class="csala__lista">
+        @for (sala of salas(); track sala.id) {
+          <li>
+            <button
+              type="button"
+              class="csala__sala"
+              [disabled]="!!enviandoA()"
+              (click)="elegir(sala)"
+            >
+              <span class="csala__bola" aria-hidden="true">{{ inicialDe(sala.nombre) }}</span>
+
+              <span class="csala__texto">
+                <span class="csala__nombre">{{ sala.nombre }}</span>
+                <span class="csala__pie">{{ sala.miembros }} personas</span>
+              </span>
+
+              @if (enviandoA() === sala.nombre) {
+                <span class="csala__yendo">Enviando…</span>
+              } @else {
+                <vt-icon name="send" [size]="17" />
+              }
+            </button>
+          </li>
+        } @empty {
+          <!-- No es un error: es que nadie te ha metido en ninguna. Y se dice
+               quién puede hacerlo, porque ante una lista vacía lo primero que
+               se piensa es que la aplicación no cargó. -->
+          <li class="csala__nada">
+            No estás en ninguna sala todavía. Quien administre una puede agregarte desde Module.
+          </li>
+        }
+      </ul>
+    }
+  </div>
+</dialog>

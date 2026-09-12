@@ -478,3 +478,7 @@
     (cerrado)="pdfCard.set(null)"
   />
 }
+
+<!-- Elegir a qué sala va. Vive fuera del panel de acciones porque ese se cierra
+     al elegir una: el diálogo tiene que sobrevivirle. -->
+<vt-compartir-en-sala [que]="compartiendo()" (cerrado)="compartiendo.set(null)" />
