@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
 import { environment } from '../../../environments/environment';
@@ -78,6 +78,20 @@ export class ShellComponent {
 
   readonly navigation = NAVIGATION;
 
+  private readonly vigilarElChat = effect(() => {
+    const ahora = this.chatCount();
+    const subio = ahora > this.chatAntes;
+
+    this.chatAntes = ahora;
+
+    if (!subio) return;
+
+    if (this.relojDelRebote) clearTimeout(this.relojDelRebote);
+
+    this.chatRebota.set(true);
+    this.relojDelRebote = setTimeout(() => this.chatRebota.set(false), 700);
+  });
+
   /** Actividades en cola, para el distintivo del menú. */
   readonly pendingCount = this.pendingUploads.pendingCount;
 
@@ -87,6 +101,31 @@ export class ShellComponent {
   /** Actividades creadas y archivos sin confirmar, para el menú. */
   readonly activityCount = this.counters.activities;
   readonly pendingFiles = this.counters.pendingFiles;
+
+  /** Mensajes de chat sin leer, para su distintivo. */
+  readonly chatCount = this.chat.sinLeer;
+
+  /**
+   * Si el distintivo del chat tiene que dar un salto ahora mismo.
+   *
+   * ## Por qué se mueve
+   *
+   * Porque un número que cambia sin avisar no se ve. Quien está mirando una
+   * lista de actividades no mira la barra lateral, y el «3» que pasa a «4» en
+   * una esquina no le llama la atención de ninguna manera. Medio segundo de
+   * movimiento es lo único que hace que se mire ahí — y es lo que separa un
+   * chat que se contesta de uno que se revisa cuando alguien se acuerda.
+   *
+   * ## Y solo cuando sube
+   *
+   * Repintar no es lo mismo que llegar un mensaje: la barra se reconstruye al
+   * navegar, y un distintivo que salta en cada clic se vuelve ruido en un
+   * minuto. Al entrar al chat el contador baja, y bajar tampoco es noticia.
+   */
+  readonly chatRebota = signal(false);
+
+  private chatAntes = 0;
+  private relojDelRebote: ReturnType<typeof setTimeout> | null = null;
 
   /** Hay teclado: se ofrece el botón de atajos y funcionan las teclas. */
   readonly hasKeyboard = this.shortcuts.enabled;

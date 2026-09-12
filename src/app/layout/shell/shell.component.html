@@ -72,6 +72,18 @@
               </span>
             }
 
+            <!-- Mensajes sin leer. Salta cuando el número sube: es lo único
+                 que hace mirar la barra a quien está en otra pantalla. -->
+            @if (item.key === 'chat' && chatCount() > 0) {
+              <span
+                class="shell__nav-badge"
+                [class.shell__nav-badge--rebota]="chatRebota()"
+                [title]="chatCount() + ' mensajes sin leer'"
+              >
+                {{ chatCount() > 99 ? '99+' : chatCount() }}
+              </span>
+            }
+
             <!-- Cuántas actividades hay creadas. A diferencia de los otros dos,
                  no pide ninguna acción: es una referencia de cuánto trabajo
                  hay, y por eso va en tono apagado. -->

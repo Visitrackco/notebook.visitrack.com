@@ -6,7 +6,7 @@ import { environment } from '../../../environments/environment';
 import { AuthService } from '../../core/services/auth.service';
 import { AlertSoundService } from '../../core/services/alert-sound.service';
 import { AvisoQueFlotaService } from './aviso-que-flota.service';
-import { MensajeDeSala } from './chat.api';
+import { ChatApi, MensajeDeSala } from './chat.api';
 import { FORMATO, VozEnVivoService } from './voz-en-vivo.service';
 
 /** Cómo se ve a alguien en una sala. */
@@ -43,6 +43,7 @@ export class ChatSocketService {
   private readonly voz = inject(VozEnVivoService);
   private readonly avisos = inject(AvisoQueFlotaService);
   private readonly sonido = inject(AlertSoundService);
+  private readonly api = inject(ChatApi);
   private readonly router = inject(Router);
   private readonly destroy = inject(DestroyRef);
 
@@ -183,7 +184,12 @@ export class ChatSocketService {
       transports: ['polling', 'websocket'],
     });
 
-    this.socket.on('connect', () => this.conectado.set(true));
+    this.socket.on('connect', () => {
+      this.conectado.set(true);
+
+      // Lo que ya estaba esperando antes de abrir esta pestaña.
+      void this.sembrarLosContadores();
+    });
     this.socket.on('disconnect', () => this.conectado.set(false));
     this.socket.on('sesion:invalida', () => this.desconectar());
 
@@ -354,6 +360,47 @@ export class ChatSocketService {
     if (this.estoyEnLaSala(m.salaId)) return;
 
     void this.sonido.notify();
+  }
+
+  /**
+   * Lo que ya estaba sin leer antes de abrir esta pestaña.
+   *
+   * Lo dice el servidor en la lista de salas. Sin esto el contador empieza en
+   * cero en cada recarga, y la marca del menú solo enseña lo que llega
+   * **mientras** se mira — que es justo cuando menos falta hace, porque
+   * entonces ya sonó y ya subió la burbuja.
+   *
+   * Se pide por HTTP y no por el socket porque es el mismo dato que ya devuelve
+   * la lista de salas: añadir un evento sería una segunda fuente de la misma
+   * verdad, y dos fuentes de un contador acaban discrepando.
+   *
+   * Si falla no pasa nada: arranca en cero y se llena con lo que vaya
+   * llegando. Es peor de lo ideal, no una avería.
+   */
+  private async sembrarLosContadores(): Promise<void> {
+    try {
+      const salas = await this.api.salas();
+
+      const porSala: Record<number, number> = {};
+      let total = 0;
+
+      for (const sala of salas) {
+        const pendientes = Number(sala.sinLeer ?? 0);
+        if (pendientes <= 0) continue;
+
+        // La que se tiene delante no cuenta: se marca leída en cuanto se
+        // pinta, y esa petición puede ir por detrás de esta.
+        if (this.estoyEnLaSala(sala.id)) continue;
+
+        porSala[sala.id] = pendientes;
+        total += pendientes;
+      }
+
+      this.sinLeerPorSala.set(porSala);
+      this.sinLeer.set(total);
+    } catch {
+      // Ver el comentario de arriba.
+    }
   }
 
   /** Se olvida lo pendiente de una sala al entrar en ella. */

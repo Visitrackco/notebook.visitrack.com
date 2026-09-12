@@ -267,6 +267,46 @@
 }
 
 /**
+ * El salto del distintivo del chat cuando llega un mensaje.
+ *
+ * Dos botes que se apagan, no uno: un solo brinco se lee como un tropiezo del
+ * dibujo, y dos como algo que llama. Y sube, no parpadea — un parpadeo en una
+ * barra lateral se confunde con un fallo de pintado.
+ *
+ * Con `prefers-reduced-motion` no se mueve nada: ahí el número aparece y ya.
+ * Quien pide menos movimiento normalmente lo pide porque el movimiento le
+ * marea, y un rebote en el borde de la vista es de los peores.
+ */
+@keyframes vt-rebote-del-chat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  20% {
+    transform: translateY(-6px) scale(1.12);
+  }
+  45% {
+    transform: translateY(0);
+  }
+  65% {
+    transform: translateY(-3px) scale(1.06);
+  }
+  85% {
+    transform: translateY(0);
+  }
+}
+
+.shell__nav-badge--rebota {
+  animation: vt-rebote-del-chat 700ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shell__nav-badge--rebota {
+    animation: none;
+  }
+}
+
+/**
  * El distintivo que no pide nada.
  *
  * «Formularios» lleva cuántas actividades hay creadas: es una referencia, no
