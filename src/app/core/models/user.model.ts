@@ -35,6 +35,23 @@ export interface User {
   Token: string;
 
   UTCCode: string;
+
+  /**
+   * Los minutos de su zona respecto a UTC, ya resueltos por el servidor, o
+   * `null` si la plataforma no los tiene apuntados.
+   *
+   * `UTCCode` por sí solo no sirve para pintar: es un código de catálogo, y
+   * traducirlo a horas exige la tabla `TimeZones` más los tramos de horario de
+   * verano de `TimeZonesChanges`. El servidor lo resuelve y manda el número.
+   *
+   * `null` **no es cero**: cero es una zona de verdad —Londres en invierno— y
+   * `null` es «no se sabe». Ver `ZonaHorariaService`.
+   */
+  UTCMinutes: number | null;
+
+  /** Cómo se llama esa zona en el catálogo, para poder enseñarla. */
+  UTCName: string;
+
   DefaultLanguage: string;
 
   GroupID: number;
@@ -99,6 +116,8 @@ export interface LoginUserData {
   token?: string;
   tokenExpiresOn?: string | null;
   UTCCode?: string;
+  UTCMinutes?: number | null;
+  UTCName?: string;
   Active?: string | number | boolean;
   Phone?: string;
   StatusID?: string | number;

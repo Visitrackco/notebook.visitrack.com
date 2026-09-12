@@ -27,6 +27,7 @@ import { seedGradient, seedPalette } from '../../shared/utils/seed-color';
 import { FormRunnerComponent } from './form/form-runner.component';
 import { MasterDetailStackService } from './form/master-detail-row/master-detail-stack.service';
 import { StatusBarComponent } from './form/status-bar/status-bar.component';
+import { ZonaHorariaService } from '../../core/services/zona-horaria.service';
 
 /**
  * Una actividad abierta.
@@ -71,6 +72,7 @@ export class ActivityDetailComponent {
   private readonly dispatch = inject(DispatchStatusRepository);
   private readonly drafts = inject(DraftPolicyService);
   private readonly auth = inject(AuthService);
+  private readonly zona = inject(ZonaHorariaService);
 
   readonly autosave = inject(AutosaveService);
 
@@ -622,14 +624,15 @@ export class ActivityDetailComponent {
     }
   }
 
-  /** Fecha legible en la zona del navegador. */
+  /**
+   * Fecha legible, en la zona de quien mira.
+   *
+   * Esa zona sale del catálogo de la plataforma y no del navegador: ver
+   * `ZonaHorariaService`. Aquí sí va el año — es la ficha de una actividad
+   * concreta, y saber de qué año es importa cuando se consulta una vieja.
+   */
   formatDate(value: string | Date | null): string {
-    if (!value) return '';
-
-    const date = value instanceof Date ? value : new Date(value);
-    if (Number.isNaN(date.getTime())) return '';
-
-    return date.toLocaleString('es', {
+    return this.zona.comoTexto(value, {
       day: '2-digit',
       month: 'short',
       year: 'numeric',

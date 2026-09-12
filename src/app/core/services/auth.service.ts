@@ -298,6 +298,20 @@ export class AuthService {
        */
       Token: data.token || data.AccessToken || '',
       UTCCode: data.UTCCode ?? '',
+
+      /*
+       * Con qué hora se pintan las fechas de esta persona.
+       *
+       * Lo resuelve el servidor y llega hecho. Antes solo venía `UTCCode`, que
+       * no lo usaba nadie para formatear —se enseñaba como texto en el perfil y
+       * ya—, así que todo se pintaba con la zona del navegador. Ver
+       * `ZonaHorariaService`.
+       */
+      UTCMinutes: typeof data.UTCMinutes === 'number' && Number.isFinite(data.UTCMinutes)
+        ? data.UTCMinutes
+        : null,
+      UTCName: data.UTCName ?? '',
+
       DefaultLanguage: data.DefaultLanguage ?? 'es',
       GroupID: Number(data.GroupID ?? 0),
       DivisionID: Number(data.DivisionID ?? 0),
@@ -348,6 +362,15 @@ export class AuthService {
        */
       Password: '',
       UTCCode: text(record['UTCCode']),
+
+      // Se recupera de lo guardado para que al recargar la página las fechas
+      // no se pinten un instante en la zona del navegador antes de volver el
+      // login. Ver `ZonaHorariaService`.
+      UTCMinutes: typeof record['UTCMinutes'] === 'number' && Number.isFinite(record['UTCMinutes'] as number)
+        ? (record['UTCMinutes'] as number)
+        : null,
+      UTCName: text(record['UTCName']),
+
       Email: text(record['Email']),
       CompanyID: Number(record['CompanyID'] ?? 0),
       Token: text(record['Token']),

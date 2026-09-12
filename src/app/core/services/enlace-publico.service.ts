@@ -270,6 +270,14 @@ export class EnlacePublicoService {
       Token: '',
 
       UTCCode: texto(fila['UTCCode']),
+
+      // El enlace público también pinta fechas, así que también necesita zona.
+      // Ver `ZonaHorariaService`.
+      UTCMinutes: typeof fila['UTCMinutes'] === 'number' && Number.isFinite(fila['UTCMinutes'] as number)
+        ? (fila['UTCMinutes'] as number)
+        : null,
+      UTCName: texto(fila['UTCName']),
+
       DefaultLanguage: texto(fila['DefaultLanguage'], 'es'),
       GroupID: Number(fila['GroupID']) || 0,
       DivisionID: Number(fila['DivisionID']) || 0,

@@ -43,6 +43,7 @@ import {
   ParaCompartir,
 } from '../chat/compartir-en-sala/compartir-en-sala.component';
 import { ReassignDialogComponent } from './reassign-dialog/reassign-dialog.component';
+import { ZonaHorariaService } from '../../core/services/zona-horaria.service';
 import {
   ActionItem,
   ActivityAction,
@@ -533,6 +534,7 @@ export class ActivitiesComponent {
   }
 
   private readonly retention = inject(RetentionPolicyService);
+  private readonly zona = inject(ZonaHorariaService);
 
   /** Horas que vive un borrador aquí, según la preferencia del usuario. */
   private draftHours = 0;
@@ -551,8 +553,8 @@ export class ActivitiesComponent {
       // El color viene como '#rrggbb'; si llega vacío la ficha usa el del estado.
       dispatchColor: dispatch?.Color?.startsWith('#') ? dispatch.Color : '',
       dispatchName: dispatch?.Name ?? '',
-      updated: formatDateTime(answer.UpdatedOn),
-      created: formatDateTime(answer.CreatedOn),
+      updated: this.zona.comoTexto(answer.UpdatedOn, kFechaCorta),
+      created: this.zona.comoTexto(answer.CreatedOn, kFechaCorta),
       shortGuid: shortenGuid(answer.GUID),
       retires: expires ? timeLeft(expires) : '',
       borrador: this.cuantoLeQuedaAlBorrador(answer),
@@ -917,25 +919,23 @@ export class ActivitiesComponent {
 }
 
 /**
- * Fecha legible en la zona horaria del navegador.
+ * Cómo se escribe la fecha en las fichas: «03 sept, 14:20».
  *
- * Las fechas se guardan en UTC —así lo hace el móvil y así las espera el
- * servidor— pero mostrarlas en UTC confundiría a quien trabaja de noche: vería
- * una actividad creada «mañana».
+ * Sin año, porque en una lista de actividades del día ocupa sitio y no dice
+ * nada. La ficha abierta sí lo lleva.
+ *
+ * Las fechas se guardan en UTC —así lo hace el teléfono y así las espera el
+ * servidor— y se pintan en la zona de quien mira. Ver `ZonaHorariaService`:
+ * esa zona sale del catálogo de la plataforma, **no** del navegador, que era lo
+ * que hacía que a quien tiene apuntada la de México le salieran las horas de
+ * Colombia por abrirlo desde aquí.
  */
-function formatDateTime(value: string): string {
-  if (!value) return '';
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-
-  return date.toLocaleString('es', {
-    day: '2-digit',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
+const kFechaCorta: Intl.DateTimeFormatOptions = {
+  day: '2-digit',
+  month: 'short',
+  hour: '2-digit',
+  minute: '2-digit',
+};
 
 /**
  * GUID recortado: primeros ocho y últimos cuatro.
