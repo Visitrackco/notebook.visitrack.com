@@ -180,7 +180,27 @@ function aDondeVa(enlace) {
   if (!enlace) return '';
 
   try {
-    return new URL(enlace, self.registration.scope).href;
+    /*
+     * Y con la almohadilla, porque esta aplicacion enruta por hash.
+     *
+     * El destino que escribe quien manda el aviso es una ruta de la
+     * aplicacion —`chat/12`— y las rutas de aqui viven detras de `#`:
+     * `/#/chat/12`. Sin ella, la direccion apunta a `/chat/12`, que el
+     * servidor no conoce; se sirve el `index.html`, Angular arranca sin
+     * hash y se va a la pantalla de inicio.
+     *
+     * Desde fuera eso se ve como «toco el aviso y no me lleva al chat», sin
+     * ningun error: la aplicacion abre, solo que en otro sitio. Ver
+     * `withHashLocation()` en `app.config.ts`.
+     *
+     * Una direccion completa —`https://otro-sitio/...`— se respeta tal cual:
+     * ahi el destino no es una ruta de esta aplicacion.
+     */
+    if (/^https?:\/\//i.test(enlace)) return new URL(enlace).href;
+
+    const ruta = String(enlace).replace(/^[#/]+/, '');
+
+    return new URL(`#/${ruta}`, self.registration.scope).href;
   } catch (e) {
     // Una direccion que no se puede leer no puede impedir abrir el aviso: se
     // trae la pestana al frente y ya.

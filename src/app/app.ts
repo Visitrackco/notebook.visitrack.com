@@ -4,6 +4,7 @@ import { RouterOutlet } from '@angular/router';
 import { DatabaseService } from './core/database/database.service';
 import { ThemeService } from './core/services/theme.service';
 import { AvisoQueFlotaComponent } from './features/chat/aviso-que-flota.component';
+import { HablandoQueFlotaComponent } from './features/chat/hablando-que-flota.component';
 import { LluviaEmojisComponent } from './shared/components/lluvia-emojis/lluvia-emojis.component';
 import { ToastsComponent } from './shared/components/toasts/toasts.component';
 
@@ -18,7 +19,13 @@ import { ToastsComponent } from './shared/components/toasts/toasts.component';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [AvisoQueFlotaComponent, LluviaEmojisComponent, RouterOutlet, ToastsComponent],
+  imports: [
+    AvisoQueFlotaComponent,
+    HablandoQueFlotaComponent,
+    LluviaEmojisComponent,
+    RouterOutlet,
+    ToastsComponent,
+  ],
   template: `
     @if (db.upgradeBlocked()) {
       <div class="app-blocked">
@@ -65,6 +72,9 @@ import { ToastsComponent } from './shared/components/toasts/toasts.component';
       encarga de filtrar la que está en la dirección.
     -->
     <vt-aviso-que-flota />
+
+    <!-- Y mientras alguien habla, abajo. Ver HablandoQueFlotaComponent. -->
+    <vt-hablando-que-flota />
   `,
   styles: [
     `
