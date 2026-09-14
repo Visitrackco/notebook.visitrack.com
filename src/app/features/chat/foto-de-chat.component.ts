@@ -1,4 +1,4 @@
-import { Component, inject, input, output, signal } from '@angular/core';
+import { Component, OnInit, inject, input, output, signal } from '@angular/core';
 
 import { AdjuntoDeMensaje, ChatApi, propiedadesDe } from './chat.api';
 
@@ -126,7 +126,7 @@ const VALEN_MS = 4 * 60 * 1000;
     }
   `,
 })
-export class FotoDeChatComponent {
+export class FotoDeChatComponent implements OnInit {
   private readonly api = inject(ChatApi);
 
   readonly adjunto = input.required<AdjuntoDeMensaje>();
@@ -143,7 +143,15 @@ export class FotoDeChatComponent {
   readonly cargando = signal(true);
   readonly fallo = signal(false);
 
-  constructor() {
+  /*
+   * Se pide al iniciar y no en el constructor.
+   *
+   * En el constructor la entrada `adjunto` todavía no está puesta —Angular la
+   * asigna después— y leerla revienta: la primera petición fallaba siempre y
+   * la foto salía como «pulsa para reintentar», que sí funcionaba porque para
+   * entonces la entrada ya existía. En `ngOnInit` las entradas están.
+   */
+  ngOnInit(): void {
     void this.pedir();
   }
 
