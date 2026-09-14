@@ -101,6 +101,13 @@
   max-width: 100%;
   max-height: 100%;
 
+  /* Centrada en la escena pase lo que pase con el tamaño de la foto: una
+     vertical estrecha, una panorámica, o una más pequeña que la ventana. El
+     `grid` del padre ya lo hace; esto lo deja escrito en la propia imagen
+     para que no dependa de él. */
+  place-self: center;
+  margin: auto;
+
   /* El origen en el centro es lo que hace que el zoom se sienta como acercarse
      y no como empujar la imagen hacia una esquina. */
   transform-origin: center center;
