@@ -6,7 +6,14 @@ import { IconComponent } from '../../../../../shared/components/icon/icon.compon
 export type ViewerKind = 'image' | 'video';
 
 /** Límites del zoom. Son los mismos que usa el visor de la app. */
-const MIN_SCALE = 0.5;
+/*
+ * No se reduce por debajo del tamaño que cabe entero.
+ *
+ * Con 0,5 se podía encoger la foto y dejarla flotando en una esquina, y al
+ * reducir el zoom se veía recortada: lo que se quiere al reducir es volver a
+ * verla entera y en el centro, no más pequeña que la ventana.
+ */
+const MIN_SCALE = 1;
 const MAX_SCALE = 5;
 
 /** Escala del doble toque. */
@@ -138,14 +145,20 @@ export class MediaViewerComponent {
       return;
     }
 
+    /*
+     * La foto no sale del marco.
+     *
+     * En cada eje: si la foto ampliada cabe, va centrada y no se desplaza; si
+     * no cabe, se puede arrastrar solo hasta que su borde toque el del marco.
+     * Antes había un tercio de ventana de holgura «para asomarse», y eso es
+     * justo lo que al reducir el zoom dejaba la foto recortada contra un lado
+     * con un hueco negro al otro.
+     */
     const scale = this.scale();
     const overflowX = Math.max(0, (media.offsetWidth * scale - stage.clientWidth) / 2);
     const overflowY = Math.max(0, (media.offsetHeight * scale - stage.clientHeight) / 2);
 
-    const slackX = overflowX + stage.clientWidth / 3;
-    const slackY = overflowY + stage.clientHeight / 3;
-
-    this.offset.set({ x: clamp(x, -slackX, slackX), y: clamp(y, -slackY, slackY) });
+    this.offset.set({ x: clamp(x, -overflowX, overflowX), y: clamp(y, -overflowY, overflowY) });
   }
 
   /** Zoom con los botones: hacia el centro, que es lo que se está mirando. */
