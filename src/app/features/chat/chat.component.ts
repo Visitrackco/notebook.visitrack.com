@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import {
   Component,
   ElementRef,
+  OnDestroy,
   computed,
   effect,
   inject,
@@ -44,7 +45,7 @@ import { ChatApi, MensajeDeSala, MiembroDeSala, POR_TANDA, SalaResumen } from '.
   templateUrl: './chat.component.html',
   styleUrl: './chat.component.scss',
 })
-export class ChatComponent {
+export class ChatComponent implements OnDestroy {
   private readonly api = inject(ChatApi);
   private readonly socket = inject(ChatSocketService);
   private readonly toasts = inject(ToastService);
@@ -277,9 +278,26 @@ export class ChatComponent {
    * importa— dejaba de avisar hasta abrir otra o recargar.
    */
   volverALaLista(): void {
+    const cerrada = this.abierta();
     this.abierta.set(null);
 
+    // Y el servidor se entera: si no, los demás seguirían viendo a esta
+    // persona «en la sala» desde la lista.
+    if (cerrada) this.socket.salirDeLaSala(cerrada.id);
+
     void this.router.navigate(['/chat']);
+  }
+
+  /**
+   * Al irse del chat con una conversación abierta, se deja de mirarla.
+   *
+   * Sin esto, quien lee la sala 5 y se va a Actividades sigue contando como
+   * «mirando» la 5 para todos los demás hasta que la abra otra vez o se le
+   * caiga la conexión.
+   */
+  ngOnDestroy(): void {
+    const abierta = this.abierta();
+    if (abierta) this.socket.salirDeLaSala(abierta.id);
   }
 
   async abrir(sala: SalaResumen, navegar = true): Promise<void> {

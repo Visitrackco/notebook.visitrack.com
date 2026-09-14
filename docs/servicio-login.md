@@ -38,9 +38,32 @@ Todos en la cadena de consulta.
 | `deviceid` | **Sí** | `@NewDeviceID` | Identificador del equipo. Es la llave con la que se registra la sesión. |
 | `platform` | No | — | Nombre con el que se ve la sesión al listarla. Si no viene, el servidor pone **`movil`**. |
 | `devicename` | No | — | Descripción legible del equipo. Si no viene, queda `null`. |
+| `resetsync` | No | — | `1` para que **todo** lo que este equipo ya había bajado vuelva a quedar pendiente. Ver «Bajarlo todo otra vez». |
 
 Faltando cualquiera de los tres primeros, el servicio **no llega a la base de
 datos**: responde `400` de inmediato.
+
+### Bajarlo todo otra vez: `resetsync=1`
+
+El procedimiento siembra en `MOB_SyncByDevice` lo que este `deviceid` **no
+tenía**. Pero las filas de una vez anterior sobreviven a que la aplicación se
+reinstale o a que otra cuenta limpie la base local: quedan en `isSynced = 1`
+y la descarga siguiente no las vuelve a traer. Sin más, una cuenta que entra
+en un equipo que no la conoce —pero que el servidor sí— arranca en blanco.
+
+Con `resetsync=1`, **después** del procedimiento y **antes** de responder, el
+servicio pone `isSynced = 0` en todas las filas de ese usuario y equipo. Así
+la descarga que el cliente arranca con la respuesta ya se lo lleva todo, sin
+una segunda llamada que llegue tarde.
+
+Lo pide el cliente porque solo él sabe si su base está vacía; el servidor no
+tiene forma de verlo. La app móvil lo manda cuando no encuentra formularios
+de esa cuenta en su SQLite (`DBProvider.esCuentaNuevaEnEsteEquipo`, por
+`Login`). Un servidor que no lo entiende lo ignora.
+
+Es la misma marca que hace `POST /prepareDevice {reset: true}`; comparten
+`providers/sync/dispositivo.js`. Aquella sigue existiendo para el web y para
+«descargar todo de nuevo» con la sesión ya abierta.
 
 ```
 /loginTemp?user=juan@empresa.com&password=SECRETO&deviceid=a1b2c3&platform=web&devicename=Chrome%20en%20Windows
@@ -64,6 +87,7 @@ el controlador.
 ```json
 {
   "status": true,
+  "sync": { "reset": false, "restored": 0, "pending": null },
   "response": {
     "ID": 1234,
     "CompanyID": 2259,
@@ -88,6 +112,14 @@ Lo que agrega el controlador:
 | `RoleID`, `RoleName`, `RoleCode` | `UserRoles` × `Roles` |
 | `permissions` | `ModulePermissions` × `Modules` × `Permission`, como `{ moduleKey, permissionCode }` |
 | `token`, `tokenExpiresOn` | La sesión recién emitida |
+
+Y fuera de `response`, porque no es del usuario sino de este equipo:
+
+| Campo | Qué dice |
+|---|---|
+| `sync.reset` | `true` si se pidió `resetsync=1` **y** se hizo. `false` si no se pidió, o si se pidió y falló (se entra igual; el motivo queda en la consola del servidor) |
+| `sync.restored` | Cuántas filas volvieron a quedar pendientes |
+| `sync.pending` | Cuántas le quedan por bajar a este equipo tras el reset; `null` si no hubo reset |
 
 **El resto de columnas las pone el procedimiento** y pueden variar según la
 compañía. Quien consuma esto debe tomar las que conoce e ignorar el resto, no

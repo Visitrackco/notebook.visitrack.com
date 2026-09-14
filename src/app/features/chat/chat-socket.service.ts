@@ -189,6 +189,18 @@ export class ChatSocketService {
 
       // Lo que ya estaba esperando antes de abrir esta pestaña.
       void this.sembrarLosContadores();
+
+      /*
+       * Y la sala que se tiene delante, si hay una.
+       *
+       * El servidor arranca cada conexión sin ninguna sala delante: es el
+       * cliente quien le dice cuál abrió. Tras una reconexión —se cayó la
+       * red, el servidor se reinició— nadie se lo vuelve a decir, y esta
+       * persona desaparece de «mirando» para los demás aunque siga con la
+       * conversación abierta.
+       */
+      const delante = this.salaDeLaDireccion();
+      if (delante !== null) this.entrarALaSala(delante);
     });
     this.socket.on('disconnect', () => this.conectado.set(false));
     this.socket.on('sesion:invalida', () => this.desconectar());
@@ -321,6 +333,27 @@ export class ChatSocketService {
    */
   private estoyEnLaSala(salaId: number): boolean {
     return this.router.url.split(/[?#]/)[0] === `/chat/${salaId}`;
+  }
+
+  /** La sala de la dirección, o `null` si se está en la lista o fuera del chat. */
+  private salaDeLaDireccion(): number | null {
+    const tramo = /^\/chat\/(\d+)$/.exec(this.router.url.split(/[?#]/)[0]);
+
+    return tramo ? Number(tramo[1]) : null;
+  }
+
+  /**
+   * Se cerró la conversación: se deja de tener delante.
+   *
+   * Es lo que quita a esta persona de «2 mirando» en la pantalla de los demás.
+   * Al abrir otra sala no hace falta —`sala:entrar` ya dice cuál se tiene
+   * delante y el servidor descuenta la anterior—; lo que el servidor no sabría
+   * por su cuenta es que se volvió a la lista o se fue a otra pantalla. Con la
+   * sala y no a secas: si el «entrar» de la nueva llegó antes, un salir a
+   * ciegas borraría la que sí se está mirando.
+   */
+  salirDeLaSala(salaId: number): void {
+    this.socket?.emit('sala:salir', { salaId });
   }
 
   /**
