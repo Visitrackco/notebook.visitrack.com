@@ -42,6 +42,43 @@ export interface AdjuntoDeMensaje {
   tamano: number;
 }
 
+/** Si el adjunto es una imagen que se puede pintar. */
+export function esFoto(a: Pick<AdjuntoDeMensaje, 'tipoMime'>): boolean {
+  return /^image\//i.test((a.tipoMime ?? '').split(';')[0].trim());
+}
+
+/** La extensión en mayúsculas, del nombre o —si no la trae— del tipo. */
+export function extensionDe(a: Pick<AdjuntoDeMensaje, 'nombre' | 'tipoMime'>): string {
+  const punto = a.nombre.lastIndexOf('.');
+
+  if (punto > 0 && punto < a.nombre.length - 1) {
+    const suya = a.nombre.slice(punto + 1).trim();
+    if (/^[A-Za-z0-9]{1,5}$/.test(suya)) return suya.toUpperCase();
+  }
+
+  const tipo = (a.tipoMime ?? '').split('/')[1]?.split(';')[0]?.trim() ?? '';
+  if (tipo === 'jpeg') return 'JPG';
+
+  return tipo.toUpperCase();
+}
+
+/** El peso: «812 KB», «1,2 MB». Con coma decimal, que es como se lee aquí. */
+export function comoPesa(bytes: number): string {
+  if (!bytes || bytes <= 0) return '';
+  if (bytes < 1024) return `${bytes} B`;
+
+  const kb = bytes / 1024;
+  if (kb < 1024) return `${Math.round(kb)} KB`;
+
+  const mb = kb / 1024;
+  return `${mb.toFixed(mb < 10 ? 1 : 0).replace('.', ',')} MB`;
+}
+
+/** «JPG · 1,2 MB», o lo que se sepa de las dos cosas. */
+export function propiedadesDe(a: AdjuntoDeMensaje): string {
+  return [extensionDe(a), comoPesa(a.tamano)].filter(Boolean).join(' · ');
+}
+
 export interface MensajeDeSala {
   id: number;
   salaId: number;

@@ -20,7 +20,19 @@ import { IconComponent } from '../../shared/components/icon/icon.component';
 import { PdfPreviewComponent } from '../../shared/components/pdf-preview/pdf-preview.component';
 import { ChatSocketService } from './chat-socket.service';
 import { FORMATO, TOPE_DE_SEGUNDOS, VozEnVivoService } from './voz-en-vivo.service';
-import { ChatApi, MensajeDeSala, MiembroDeSala, POR_TANDA, SalaResumen } from './chat.api';
+import { MediaViewerComponent } from '../activities/form/fields/media-viewer/media-viewer.component';
+import {
+  AdjuntoDeMensaje,
+  ChatApi,
+  MensajeDeSala,
+  MiembroDeSala,
+  POR_TANDA,
+  SalaResumen,
+  comoPesa,
+  esFoto as esImagen,
+  propiedadesDe,
+} from './chat.api';
+import { FotoDeChatComponent } from './foto-de-chat.component';
 
 /**
  * El chat en el diligenciador.
@@ -41,7 +53,14 @@ import { ChatApi, MensajeDeSala, MiembroDeSala, POR_TANDA, SalaResumen } from '.
 @Component({
   selector: 'vt-chat',
   standalone: true,
-  imports: [CommonModule, FormsModule, IconComponent, PdfPreviewComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    IconComponent,
+    PdfPreviewComponent,
+    FotoDeChatComponent,
+    MediaViewerComponent,
+  ],
   templateUrl: './chat.component.html',
   styleUrl: './chat.component.scss',
 })
@@ -469,6 +488,22 @@ export class ChatComponent implements OnDestroy {
     return this.actividades.pdfUrl(guid);
   }
 
+  /** La foto que se está viendo en grande, o `null`. */
+  readonly fotoVista = signal<{ adjunto: AdjuntoDeMensaje; url: string } | null>(null);
+
+  esFoto(a: AdjuntoDeMensaje): boolean {
+    return esImagen(a);
+  }
+
+  propiedadesDe(a: AdjuntoDeMensaje): string {
+    return propiedadesDe(a);
+  }
+
+  /** «foto.jpg · JPG · 1,2 MB», para el título de lo que no es foto. */
+  descripcionDe(a: AdjuntoDeMensaje): string {
+    return [a.nombre, propiedadesDe(a)].filter(Boolean).join(' · ');
+  }
+
   async abrirAdjunto(adjuntoId: number, descargar = false): Promise<void> {
     try {
       const { url } = await this.api.direccionDe(adjuntoId, descargar);
@@ -767,10 +802,7 @@ export class ChatComponent implements OnDestroy {
   }
 
   comoPesa(bytes: number): string {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
-
-    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+    return comoPesa(bytes);
   }
 
   /**

@@ -143,10 +143,20 @@
                   <button type="button" class="chat__nota" (click)="abrirAdjunto(a.id)">
                     ▶ Nota de voz · {{ m.segundos }}s
                   </button>
+                } @else if (esFoto(a)) {
+                  <!-- Una foto se ve; lo demás se abre. La foto es el mensaje
+                       y se decide con verla: va pintada, con nombre, extensión
+                       y peso debajo, descarga, y en grande con zoom al pulsar. -->
+                  <vt-foto-de-chat
+                    [adjunto]="a"
+                    [mia]="esMio(m)"
+                    (ver)="fotoVista.set($event)"
+                    (descargar)="abrirAdjunto($event.id, true)"
+                  />
                 } @else {
                   <div class="chat__adjunto">
                     <span class="chat__adjunto-nombre">{{ a.nombre }}</span>
-                    <span class="chat__adjunto-peso">{{ comoPesa(a.tamano) }}</span>
+                    <span class="chat__adjunto-peso">{{ propiedadesDe(a) }}</span>
 
                     <!-- Ver y descargar son intenciones distintas. La dirección
                          se pide al pulsar porque caduca en cinco minutos. -->
@@ -322,5 +332,16 @@
     [url]="urlDeActividad(guid)"
     titulo="Actividad compartida"
     (cerrado)="actividadVista.set('')"
+  />
+}
+
+@if (fotoVista(); as vista) {
+  <vt-media-viewer
+    kind="image"
+    [src]="vista.url"
+    [title]="vista.adjunto.nombre"
+    [caption]="propiedadesDe(vista.adjunto)"
+    (download)="abrirAdjunto(vista.adjunto.id, true)"
+    (close)="fotoVista.set(null)"
   />
 }
