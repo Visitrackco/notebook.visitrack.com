@@ -39,7 +39,7 @@ Module (CloudGoldFront)          Configuración > Enlaces
    ▼
 cloud-gold  POST /public-links   ──► dbo.md_public_links   (GUID = randomUUID)
    │
-   │  la pantalla enseña   https://web.visitrack.com/#/e/<guid>
+   │  la pantalla enseña   https://notebook.visitrack.com/#/e/<guid>
    ▼
 quien lo recibe abre la dirección en su navegador
    │
@@ -175,7 +175,7 @@ anterior que las creaba.
 ### El GUID es toda la dirección, y no lleva nada más
 
 ```
-https://web.visitrack.com/#/e/3f2b0c74-9a1e-4d55-b8c1-6e0f2a7d91ab
+https://notebook.visitrack.com/#/e/3f2b0c74-9a1e-4d55-b8c1-6e0f2a7d91ab
 ```
 
 Ni el formulario, ni la compañía, ni el usuario, ni el `ID`. **Quien recibe el
