@@ -2107,8 +2107,7 @@ export class FormRunnerComponent {
     const bloqueos = engine.revisarFlujoAlGuardar();
 
     if (bloqueos.length) {
-      this.feedback.set(bloqueos.join(' · '));
-      void this.sound.warn();
+      this.avisarQueNoSePuedeGuardar(bloqueos);
       return;
     }
 
@@ -2906,6 +2905,29 @@ export class FormRunnerComponent {
    * mensaje no salía. Desde fuera parecía que el tramo hacía una cosa de las
    * dos.
    */
+  /**
+   * Lo que el flujo impide, dicho donde se ve.
+   *
+   * El renglón de `feedback` vive arriba del formulario, y se pulsa Guardar
+   * abajo del todo: el motivo quedaba fuera de la pantalla y parecía que el
+   * botón no hacía nada. Sale como aviso emergente —el mismo que usan las
+   * reglas de «avisar»— con el motivo que escribió quien configuró la regla,
+   * y se deja también arriba para quien vuelva a subir.
+   */
+  private avisarQueNoSePuedeGuardar(bloqueos: readonly string[]): void {
+    const motivos = bloqueos.map((m) => m.trim()).filter(Boolean);
+    const detalle = motivos.join(' · ');
+
+    this.feedback.set(detalle || 'El flujo no deja guardar todavía.');
+
+    this.toasts.show({
+      title: 'No se puede guardar',
+      detail: detalle || 'Falta algo por resolver.',
+      tone: 'error',
+      sonido: 'alerta',
+    });
+  }
+
   private decirLosAvisosNuevos(avisos: readonly Aviso[]): void {
     for (const aviso of avisos) {
       if (this.avisosDichos.has(aviso.texto)) continue;
@@ -2983,8 +3005,7 @@ export class FormRunnerComponent {
       this.decirLosAvisosNuevos(engineAlGuardar.avisosDelFlujo());
 
       if (bloqueos.length) {
-        this.feedback.set(bloqueos.join(' · '));
-        void this.sound.warn();
+        this.avisarQueNoSePuedeGuardar(bloqueos);
         return;
       }
     }
