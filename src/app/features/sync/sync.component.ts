@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatTableModule } from '@angular/material/table';
 
@@ -65,7 +65,26 @@ export class SyncComponent {
 
   constructor() {
     void this.initialize();
+
+    /*
+     * Una descarga que termina mientras esta pantalla está abierta —la que
+     * dispara el servidor por el socket, o la que lanzó otra pestaña— se
+     * refleja en las cifras sin tener que salir y volver. Se mira solo la
+     * fase, no todo el estado: el progreso cambia decenas de veces por
+     * descarga y no hay que releer la base en cada una.
+     */
+    effect(() => {
+      if (this.fase() !== 'done') return;
+
+      untracked(() => {
+        void this.status.loadLocalCounts();
+        void this.readStorage();
+      });
+    });
   }
+
+  /** La fase de la descarga, aislada del resto del estado. */
+  private readonly fase = computed(() => this.sync.state().phase);
 
   private async initialize(): Promise<void> {
     await this.status.loadLocalCounts();

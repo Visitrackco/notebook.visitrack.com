@@ -7,6 +7,8 @@ import { DatabaseService } from '../database/database.service';
 import { UserConfig } from '../models/entities.model';
 import { SurveyRepository, UserConfigRepository } from '../repositories/entity.repositories';
 import { UserRepository } from '../repositories/user.repository';
+import { AlertSoundService } from '../services/alert-sound.service';
+import { DataRevisionService } from './data-revision.service';
 import { ConnectivityService } from '../services/connectivity.service';
 import {
   ENTITY_MAPPERS,
@@ -90,6 +92,8 @@ export class SyncService {
   private readonly users = inject(UserRepository);
   private readonly configs = inject(UserConfigRepository);
   private readonly surveys = inject(SurveyRepository);
+  private readonly revisions = inject(DataRevisionService);
+  private readonly sonidos = inject(AlertSoundService);
   private readonly connectivity = inject(ConnectivityService);
   private readonly dispatchFiles = inject(DispatchFilesService);
   private readonly toasts = inject(ToastService);
@@ -125,6 +129,9 @@ export class SyncService {
 
   /** Permite cortar la descarga en curso. */
   private controller: AbortController | null = null;
+
+  /** Ya se avisó de que el servidor no manda la fecha de los formularios. */
+  private avisoSinFecha = false;
 
   /**
    * Descarga todo lo que el servidor tenga pendiente para este dispositivo.
@@ -250,6 +257,31 @@ export class SyncService {
           phase: 'done',
           message: saved > 0 ? `${saved} registros actualizados` : 'Ya tienes todo al día',
         }));
+
+        /*
+         * Las pantallas abiertas se enteran.
+         *
+         * Los datos viven en IndexedDB: el listado de formularios, el de
+         * actividades o el de ubicaciones los leyeron al abrirse y ahí se
+         * quedaron. Sin este latido, lo recién bajado —un formulario nuevo,
+         * una consigna, una fecha de cambio— no se ve hasta salir y volver a
+         * entrar, y parece que la sincronización no hizo nada. Solo si hubo
+         * algo: una descarga vacía no cambia lo que hay en pantalla.
+         */
+        if (saved > 0) {
+          this.revisions.touchAll();
+          this.revisions.touchEntities();
+        }
+
+        /*
+         * Y suena al terminar.
+         *
+         * La descarga tarda y se lanza para luego mirar otra cosa —otra
+         * pestaña, el teléfono—. Tres notas si trajo algo, dos si ya estaba
+         * todo al día: las mismas formas que el resto de la aplicación, así
+         * no hay que aprenderse un sonido nuevo.
+         */
+        void this.sonidos.sonar(saved > 0 ? 'ok' : 'info');
 
         await this.markLastSync(session.UserID);
         return saved;
@@ -424,6 +456,23 @@ export class SyncService {
 
       const mapped = mapper(item.data, userId);
       const target = isDeletedRecord(item.data) ? deletesByStore : upsertsByStore;
+
+      /*
+       * Un formulario que llega sin fecha de cambio es un servidor viejo.
+       *
+       * `Surveys.ModifiedOn` viaja en el `SELECT *` de la entidad 79, así que
+       * si no viene no es un dato vacío: es que el cloud-server que contesta
+       * no es el que la manda. Se deja dicho una vez, con el nombre del
+       * servidor, porque desde la pantalla se ve exactamente igual que si la
+       * aplicación no la guardara — y es la primera pregunta que se hace.
+       */
+      if (item.entity === 79 && !('ModifiedOn' in item.data) && !this.avisoSinFecha) {
+        this.avisoSinFecha = true;
+        console.warn(
+          `[Sync] el formulario ${String(item.data['ID'])} llegó sin ModifiedOn: ` +
+            'el cloud-server que contesta no manda la fecha de cambio (versión desactualizada).',
+        );
+      }
 
       if (!target.has(store)) target.set(store, []);
       target.get(store)!.push(mapped);
