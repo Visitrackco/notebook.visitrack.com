@@ -19,6 +19,7 @@ import {
 } from '../../core/services/theme.service';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { SessionsComponent } from './sessions/sessions.component';
+import { MisFirmasComponent } from './mis-firmas/mis-firmas.component';
 import { ZonaHorariaService } from '../../core/services/zona-horaria.service';
 
 /**
@@ -33,7 +34,7 @@ import { ZonaHorariaService } from '../../core/services/zona-horaria.service';
 @Component({
   selector: 'vt-profile',
   standalone: true,
-  imports: [IconComponent, MatSlideToggleModule, SessionsComponent],
+  imports: [IconComponent, MatSlideToggleModule, SessionsComponent, MisFirmasComponent],
   templateUrl: './profile.component.html',
   styleUrl: './profile.component.scss',
 })

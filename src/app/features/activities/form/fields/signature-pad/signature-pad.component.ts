@@ -1,14 +1,4 @@
-import {
-  Component,
-  ElementRef,
-  OnDestroy,
-  computed,
-  effect,
-  inject,
-  output,
-  signal,
-  viewChild,
-} from '@angular/core';
+import { Component, ElementRef, OnDestroy, computed, effect, inject, output, signal, viewChild, input } from '@angular/core';
 
 import { FirmaGuardada } from '../../../../../core/models/entities.model';
 import { FirmaRepository } from '../../../../../core/repositories/entity.repositories';
@@ -67,6 +57,14 @@ const MIN_HEIGHT = 14;
 export class SignaturePadComponent implements OnDestroy {
   readonly signed = output<{ blob: Blob; name: string }>();
   readonly cancel = output<void>();
+
+  /**
+   * Desde dónde se abre. `campo` es el de siempre: firmar una actividad, con
+   * la tira de «Mis firmas» y la casilla para apuntarla. `mias` es crear una
+   * firma para la lista desde el perfil: ahí ni tira ni casilla —quien la
+   * guarda es el perfil— y el título lo dice.
+   */
+  readonly modo = input<'campo' | 'mias'>('campo');
 
   private readonly firmas = inject(FirmaRepository);
   private readonly users = inject(UserRepository);

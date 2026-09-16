@@ -4,7 +4,7 @@
       <vt-icon name="close" [size]="20" />
     </button>
 
-    <span class="sign__title">Firma</span>
+    <span class="sign__title">{{ modo() === 'mias' ? 'Nueva firma' : 'Firma' }}</span>
 
     <button type="button" class="sign__accept" [disabled]="!canSave()" (click)="accept()">
       <vt-icon name="check" [size]="17" />
@@ -40,7 +40,7 @@
   </label>
 
   <!-- Las guardadas, para no firmar de nuevo cada vez. -->
-  @if (guardadas().length) {
+  @if (modo() === 'campo' && guardadas().length) {
     <section class="sign__mias" aria-label="Mis firmas">
       <span class="sign__mias-titulo">Mis firmas</span>
       <div class="sign__mias-lista">
@@ -99,10 +99,12 @@
     </div>
 
     <!-- Apuntarla en «Mis firmas» al guardar: la próxima vez se elige arriba. -->
-    <label class="sign__recordar">
-      <input type="checkbox" [checked]="recordar()" (change)="recordar.set($any($event.target).checked)" />
-      Guardar en mis firmas
-    </label>
+    @if (modo() === 'campo') {
+      <label class="sign__recordar">
+        <input type="checkbox" [checked]="recordar()" (change)="recordar.set($any($event.target).checked)" />
+        Guardar en mis firmas
+      </label>
+    }
 
     <button type="button" class="sign__clear" [disabled]="!hasSignature()" (click)="clear()">
       <vt-icon name="trash" [size]="16" />
