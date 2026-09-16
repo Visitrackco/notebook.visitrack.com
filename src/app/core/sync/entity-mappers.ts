@@ -242,6 +242,8 @@ const mapSurvey: Mapper = (r, userId) => ({
   jsonBranding: s(r['jsonBranding']),
   hasBranding: n(r['hasBranding']),
   IsDownloadPDF: flagText(r['IsDownloadPDF']),
+  // Tal cual viene (UTC); se convierte al enseñarla.
+  ModifiedOn: s(r['ModifiedOn']),
   UserID: userId,
   IsDeleted: flag(r['IsDeleted']),
   SyncOn: 0,

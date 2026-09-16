@@ -125,6 +125,14 @@
             @if (card.survey.Description) {
               <p class="forms__desc">{{ card.survey.Description }}</p>
             }
+            <!-- Cuándo cambió el formato por última vez, en la hora de quien
+                 mira: así se sabe si se tiene la última versión sin preguntar. -->
+            @if (cuandoSeActualizo(card.survey); as actualizado) {
+              <p class="forms__actualizado" [title]="'Última actualización del formato'">
+                <vt-icon name="refresh" [size]="12" />
+                Actualizado {{ actualizado }}
+              </p>
+            }
           </div>
 
           <footer class="forms__foot">

@@ -190,6 +190,12 @@ export interface Survey extends SyncableEntity {
   hasBranding: number;
   jsonBranding: string;
   IsDownloadPDF: string;
+  /**
+   * Cuándo se cambió el formulario por última vez en el servidor (UTC, ISO).
+   * Se enseña en el listado en la hora de quien mira, para saber si lo que se
+   * tiene es la última versión del formato.
+   */
+  ModifiedOn?: string;
 }
 
 /** Actividad: un diligenciamiento de un formulario. */

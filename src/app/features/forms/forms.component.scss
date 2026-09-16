@@ -357,6 +357,15 @@
   -webkit-line-clamp: 2;
 }
 
+.forms__actualizado {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 6px 0 0;
+  font-size: 0.72rem;
+  color: var(--text-muted, #7a7a7a);
+}
+
 .forms__desc {
   display: -webkit-box;
   overflow: hidden;

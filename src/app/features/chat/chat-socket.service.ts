@@ -4,6 +4,7 @@ import { Socket, io } from 'socket.io-client';
 
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../../core/services/auth.service';
+import { SyncService } from '../../core/sync/sync.service';
 import { AlertSoundService } from '../../core/services/alert-sound.service';
 import { AvisoQueFlotaService } from './aviso-que-flota.service';
 import { ChatApi, MensajeDeSala } from './chat.api';
@@ -40,6 +41,10 @@ export interface PresenciaDeUno {
 @Injectable({ providedIn: 'root' })
 export class ChatSocketService {
   private readonly auth = inject(AuthService);
+  private readonly sync = inject(SyncService);
+
+  /** Cuándo fue el último disparo por aviso, para no encadenarlos. */
+  private ultimoDisparo = 0;
   private readonly voz = inject(VozEnVivoService);
   private readonly avisos = inject(AvisoQueFlotaService);
   private readonly sonido = inject(AlertSoundService);
@@ -155,6 +160,20 @@ export class ChatSocketService {
     }
   }
 
+  private async alPedirSincronizar(): Promise<void> {
+    const ahora = Date.now();
+    if (ahora - this.ultimoDisparo < 20_000) return;
+    this.ultimoDisparo = ahora;
+
+    if (this.sync.isRunning()) return;
+
+    try {
+      await this.sync.download();
+    } catch (e) {
+      console.warn('[chat-socket] no se pudo sincronizar por aviso', e);
+    }
+  }
+
   private conectar(token: string): void {
     if (this.socket) return;
 
@@ -204,6 +223,16 @@ export class ChatSocketService {
     });
     this.socket.on('disconnect', () => this.conectado.set(false));
     this.socket.on('sesion:invalida', () => this.desconectar());
+
+    /*
+     * Le llegó algo por bajar: se sincroniza solo.
+     *
+     * El servidor vigila lo pendiente de cada persona conectada y avisa
+     * cuando crece, venga de donde venga el cambio (Module, el web viejo o
+     * un disparador de la base). No viaja ningún dato: se dispara la misma
+     * descarga de siempre, si no hay una en curso, y no más de una cada 20 s.
+     */
+    this.socket.on('sync:pendiente', () => void this.alPedirSincronizar());
 
     this.socket.on('mensaje', (m: MensajeDeSala) => {
       this.mensaje.set(m);

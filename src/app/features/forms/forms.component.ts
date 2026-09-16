@@ -168,4 +168,29 @@ export class FormsComponent {
   async open(card: FormCard): Promise<void> {
     await this.router.navigate(['/formularios', card.survey.SurveyID]);
   }
+
+  /**
+   * La fecha de cambio del formulario, en la hora de quien mira.
+   *
+   * El servidor la guarda en UTC y sin zona en el texto («2026-09-15
+   * 21:04:11»): se lee como UTC y se pasa a local. Si no se puede leer, no se
+   * enseña nada antes que enseñar una fecha equivocada.
+   */
+  cuandoSeActualizo(survey: { ModifiedOn?: string }): string {
+    const texto = (survey?.ModifiedOn ?? '').toString().trim();
+    if (!texto) return '';
+
+    const conZona = /Z$|[+-]\d{2}:?\d{2}$/.test(texto);
+    const fecha = new Date(conZona ? texto : texto.replace(' ', 'T') + 'Z');
+    if (Number.isNaN(fecha.getTime())) return '';
+
+    const hoy = new Date();
+    return fecha.toLocaleString('es', {
+      day: 'numeric',
+      month: 'short',
+      year: fecha.getFullYear() === hoy.getFullYear() ? undefined : 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }
 }
