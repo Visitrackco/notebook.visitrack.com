@@ -37,6 +37,8 @@ import {
   comoLoGuarda,
   comoTexto,
   evaluar,
+  leerValor,
+  referenciaDetalle,
 } from './flujo-motor';
 
 /**
@@ -1513,6 +1515,23 @@ export class FormEngine {
     const leido: Record<string, string> = {};
 
     for (const apiId of camposDeLasReglas(this.flujo)) {
+      /*
+       * Una referencia a una tabla —`DETALLE:EQUIPOS@filas`,
+       * `DETALLE:EQUIPOS:IMPORTE`— no es un campo: el motor la resuelve al
+       * evaluar. El rastro la resuelve igual, o decía «no está en el
+       * formulario» de algo que la regla sí estaba leyendo y disparando.
+       */
+      const ref = referenciaDetalle(apiId);
+
+      if (ref) {
+        const tabla = campos[ref.tabla];
+        const leidoDeLaTabla = leerValor(apiId, valores, campos);
+        leido[apiId] = tabla
+          ? `${ref.agregado || 'campo de la tabla'} = ${JSON.stringify(leidoDeLaTabla ?? null)}`
+          : `(la tabla ${ref.tabla} no está en el formulario)`;
+        continue;
+      }
+
       leido[apiId] = campos[apiId]
         ? `${campos[apiId].fty} = "${comoTexto(valores[apiId], campos[apiId])}"`
         : '(no está en el formulario)';
