@@ -4,8 +4,7 @@ import { Router } from '@angular/router';
 import { environment } from '../../../environments/environment';
 import { ApiFetchService } from '../services/api-fetch.service';
 import { DatabaseService } from '../database/database.service';
-import { UserConfig } from '../models/entities.model';
-import { SurveyRepository, UserConfigRepository } from '../repositories/entity.repositories';
+import { SurveyRepository } from '../repositories/entity.repositories';
 import { UserRepository } from '../repositories/user.repository';
 import { AlertSoundService } from '../services/alert-sound.service';
 import { DataRevisionService } from './data-revision.service';
@@ -90,7 +89,6 @@ export class SyncService {
   private readonly api = inject(ApiFetchService);
   private readonly brillantexMail = inject(BrillantexMailService);
   private readonly users = inject(UserRepository);
-  private readonly configs = inject(UserConfigRepository);
   private readonly surveys = inject(SurveyRepository);
   private readonly revisions = inject(DataRevisionService);
   private readonly sonidos = inject(AlertSoundService);
@@ -216,13 +214,6 @@ export class SyncService {
         }
 
         /**
-         * La configuración por usuario, que decide qué módulos están activos.
-         *
-         * También al final y también sin poder tumbar la sincronización: si no
-         * llega, los permisos se resuelven como estaban — permitiendo, que es
-         * el criterio de la app cuando no sabe.
-         */
-        /**
          * El correo de Brillantex, si la compañía es la suya.
          *
          * Al final y sin poder tumbar la sincronización: manda los informes de
@@ -235,12 +226,6 @@ export class SyncService {
           await this.brillantexMail.run();
         } catch (error) {
           console.warn('[Sync] no se pudo enviar el correo de Brillantex', error);
-        }
-
-        try {
-          await this.downloadUserConfig(session.UserID, session.CompanyID, effectiveUserId);
-        } catch (error) {
-          console.warn('[Sync] no se pudo traer la configuración del usuario', error);
         }
 
         // Los duplicados que dejó la versión anterior. Ver [dropLocalDuplicates].
@@ -740,44 +725,6 @@ export class SyncService {
         }
       });
     }
-  }
-
-  /**
-   * Trae la configuración de módulos del usuario.
-   *
-   * Es lo que en la app decide, para algunas compañías, si se pueden crear
-   * ítems de lista desde un formulario. Se guarda como el JSON crudo: el
-   * catálogo de módulos lo define la plataforma.
-   */
-  private async downloadUserConfig(
-    userId: string,
-    companyId: number,
-    ownerId: number,
-  ): Promise<void> {
-    const base = environment.useLocalApi ? environment.localApiUrl : environment.apiUrl;
-
-    const url =
-      `${base}/getUsersModuleByUserIdAndCompanyId` +
-      `?userId=${encodeURIComponent(userId)}&companyId=${encodeURIComponent(String(companyId))}`;
-
-    const reply = await this.api.fetch(url);
-    if (!reply.ok) return;
-
-    const response = (await reply.json()) as { status?: boolean; response?: unknown };
-    if (response?.status !== true) return;
-
-    const existing = await this.configs.findByUser(ownerId);
-
-    const record: UserConfig = {
-      ...(existing ?? { UserID: ownerId }),
-      UserID: ownerId,
-      config: JSON.stringify(response.response ?? []),
-      lastDate: new Date().toISOString(),
-    };
-
-    if (!existing) delete (record as { ID?: number }).ID;
-
-    await this.configs.put(record);
   }
 
   /**
