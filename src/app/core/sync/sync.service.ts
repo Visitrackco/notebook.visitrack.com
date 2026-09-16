@@ -5,7 +5,7 @@ import { environment } from '../../../environments/environment';
 import { ApiFetchService } from '../services/api-fetch.service';
 import { DatabaseService } from '../database/database.service';
 import { UserConfig } from '../models/entities.model';
-import { UserConfigRepository } from '../repositories/entity.repositories';
+import { SurveyRepository, UserConfigRepository } from '../repositories/entity.repositories';
 import { UserRepository } from '../repositories/user.repository';
 import { ConnectivityService } from '../services/connectivity.service';
 import {
@@ -89,6 +89,7 @@ export class SyncService {
   private readonly brillantexMail = inject(BrillantexMailService);
   private readonly users = inject(UserRepository);
   private readonly configs = inject(UserConfigRepository);
+  private readonly surveys = inject(SurveyRepository);
   private readonly connectivity = inject(ConnectivityService);
   private readonly dispatchFiles = inject(DispatchFilesService);
   private readonly toasts = inject(ToastService);
@@ -164,6 +165,11 @@ export class SyncService {
      * Si falla no se detiene la descarga — puede que el equipo ya estuviera
      * preparado de antes, y quedarse sin sincronizar por esto sería peor.
      */
+    // Una sola vez: los formularios que se bajaron antes de que existiera la
+    // fecha de cambio se vuelven a pedir. Va antes de preparar el equipo para
+    // que lo recién marcado entre en esta misma descarga.
+    await this.refrescarFechaDeFormularios(session.UserID, effectiveUserId);
+
     try {
       const ready = await this.prepareDevice(session.UserID, session.DeviceID);
 
@@ -723,6 +729,57 @@ export class SyncService {
     if (!existing) delete (record as { ID?: number }).ID;
 
     await this.configs.put(record);
+  }
+
+  /**
+   * Vuelve a pedir los formularios que se guardaron sin fecha de cambio.
+   *
+   * `Survey.ModifiedOn` llegó después de que muchos equipos ya tuvieran sus
+   * formularios bajados, y nada los volvería a traer: el servidor solo manda lo
+   * que tiene marcado como pendiente para este equipo. Así que, una sola vez
+   * por usuario, se le pide que vuelva a marcarlos (`/setupSurveys`, el paso
+   * de formularios de «Configurar mis datos») y la descarga de siempre los
+   * trae con la fecha.
+   *
+   * Si no hay ninguno sin fecha se apunta como hecho y no vuelve a preguntar.
+   * Si el servidor no contesta no se apunta nada: se intenta en la siguiente.
+   */
+  private async refrescarFechaDeFormularios(userId: string, ownerId: number): Promise<void> {
+    const clave = `sync.formularios.fecha.${ownerId}`;
+
+    try {
+      if (localStorage.getItem(clave) === '1') return;
+    } catch {
+      // Sin almacenamiento se pide cada vez: es una petición pequeña.
+    }
+
+    try {
+      const sinFecha = (await this.surveys.findByUser(ownerId)).some(
+        (s) => !(s.ModifiedOn ?? '').trim(),
+      );
+
+      if (sinFecha) {
+        const base = environment.useLocalApi ? environment.localApiUrl : environment.apiUrl;
+        const reply = await this.api.fetch(`${base}/setupSurveys`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ UserID: userId }),
+        });
+
+        if (!reply.ok) return;
+
+        const result = (await reply.json()) as { status?: boolean };
+        if (result?.status !== true) return;
+      }
+
+      try {
+        localStorage.setItem(clave, '1');
+      } catch {
+        // Ídem.
+      }
+    } catch (error) {
+      console.warn('[Sync] no se pudo pedir la fecha de los formularios', error);
+    }
   }
 
   /**
