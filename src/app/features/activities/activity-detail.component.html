@@ -45,6 +45,14 @@
           } @else {
             Actividad nueva
           }
+          <!-- Cuándo cambió el formato, en la zona de quien mira: arriba,
+               para saber qué versión se está llenando sin ir a buscarlo. -->
+          @if (formularioActualizado(); as cuando) {
+            <span class="detail__updated" [matTooltip]="'Última actualización del formulario'">
+              <vt-icon name="refresh" [size]="11" />
+              Actualizado {{ cuando }}
+            </span>
+          }
         </p>
       </div>
 
@@ -218,6 +226,18 @@
           <strong>{{ formatDate(act.UpdatedOn) }}</strong>
         </span>
       </div>
+
+      @if (formularioActualizado(); as cuando) {
+        <div class="detail__fact">
+          <span class="detail__fact-icon">
+            <vt-icon name="refresh" [size]="16" />
+          </span>
+          <span class="detail__fact-text">
+            <small>Formulario actualizado</small>
+            <strong>{{ cuando }}</strong>
+          </span>
+        </div>
+      }
 
       @if (act.Consecutive) {
         <div class="detail__fact">

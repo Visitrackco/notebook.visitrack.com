@@ -223,6 +223,38 @@ export class ZonaHorariaService {
    * plataforma llegan minutos. Así que se corre la fecha y se escribe en UTC:
    * el resultado es el mismo y no hace falta traducir el catálogo a nombres.
    */
+  /**
+   * Cuándo se cambió un formulario por última vez, listo para enseñar.
+   *
+   * `Surveys.ModifiedOn` llega del servidor en UTC y sin zona en el texto
+   * («2026-09-15 21:04:11»): `new Date` lo tomaría por hora del navegador, así
+   * que primero se marca como UTC. Después se escribe corto —«15 sep, 16:04»—
+   * en la zona de quien mira, con el año solo si no es el de hoy. Vacío si no
+   * hay fecha o no se puede leer: antes nada que una fecha equivocada.
+   *
+   * Es el mismo texto en el listado de formularios, en la cabecera de la
+   * actividad y en su ficha: así se reconoce como el mismo dato.
+   */
+  formularioActualizado(survey: { ModifiedOn?: string } | null | undefined): string {
+    const texto = (survey?.ModifiedOn ?? '').toString().trim();
+    if (!texto) return '';
+
+    const conZona = /Z$|[+-]\d{2}:?\d{2}$/.test(texto);
+    const fecha = new Date(conZona ? texto : texto.replace(' ', 'T') + 'Z');
+    if (Number.isNaN(fecha.getTime())) return '';
+
+    const hoy = this.comoLaVe(new Date()) ?? new Date();
+    const vista = this.comoLaVe(fecha) ?? fecha;
+
+    return this.comoTexto(fecha, {
+      day: 'numeric',
+      month: 'short',
+      year: vista.getFullYear() === hoy.getFullYear() ? undefined : 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }
+
   comoTexto(
     cuando: Date | string | null | undefined,
     opciones: Intl.DateTimeFormatOptions,

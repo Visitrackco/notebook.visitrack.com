@@ -7,6 +7,7 @@ import { SurveyAnswerRepository, SurveyRepository } from '../../core/repositorie
 import { ActivityService } from '../../core/services/activity.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ConnectivityService } from '../../core/services/connectivity.service';
+import { ZonaHorariaService } from '../../core/services/zona-horaria.service';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { SeedPalette, seedGradient, seedPalette } from '../../shared/utils/seed-color';
 
@@ -53,6 +54,7 @@ export class FormsComponent {
   private readonly answers = inject(SurveyAnswerRepository);
   private readonly activities = inject(ActivityService);
   private readonly router = inject(Router);
+  private readonly zona = inject(ZonaHorariaService);
 
   readonly auth = inject(AuthService);
   readonly connectivity = inject(ConnectivityService);
@@ -169,28 +171,8 @@ export class FormsComponent {
     await this.router.navigate(['/formularios', card.survey.SurveyID]);
   }
 
-  /**
-   * La fecha de cambio del formulario, en la hora de quien mira.
-   *
-   * El servidor la guarda en UTC y sin zona en el texto («2026-09-15
-   * 21:04:11»): se lee como UTC y se pasa a local. Si no se puede leer, no se
-   * enseña nada antes que enseñar una fecha equivocada.
-   */
+  /** Cuándo cambió el formulario, en la zona de quien mira. */
   cuandoSeActualizo(survey: { ModifiedOn?: string }): string {
-    const texto = (survey?.ModifiedOn ?? '').toString().trim();
-    if (!texto) return '';
-
-    const conZona = /Z$|[+-]\d{2}:?\d{2}$/.test(texto);
-    const fecha = new Date(conZona ? texto : texto.replace(' ', 'T') + 'Z');
-    if (Number.isNaN(fecha.getTime())) return '';
-
-    const hoy = new Date();
-    return fecha.toLocaleString('es', {
-      day: 'numeric',
-      month: 'short',
-      year: fecha.getFullYear() === hoy.getFullYear() ? undefined : 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return this.zona.formularioActualizado(survey);
   }
 }

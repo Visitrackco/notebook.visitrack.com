@@ -631,6 +631,16 @@ export class ActivityDetailComponent {
    * `ZonaHorariaService`. Aquí sí va el año — es la ficha de una actividad
    * concreta, y saber de qué año es importa cuando se consulta una vieja.
    */
+  /**
+   * Cuándo cambió el formato por última vez, en la zona de quien mira.
+   *
+   * Va en la cabecera y en la ficha: si el formulario no se comporta como se
+   * esperaba, lo primero que se pregunta es qué versión se tiene.
+   */
+  readonly formularioActualizado = computed(() =>
+    this.zona.formularioActualizado(this.survey()),
+  );
+
   formatDate(value: string | Date | null): string {
     return this.zona.comoTexto(value, {
       day: '2-digit',

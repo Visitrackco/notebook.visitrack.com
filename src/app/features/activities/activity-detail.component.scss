@@ -207,6 +207,21 @@
   }
 }
 
+/* Cuándo cambió el formato, al lado del contexto y un punto más apagado:
+   se lee cuando se busca y no compite con de qué actividad se trata. */
+.detail__updated {
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+  margin-left: var(--vt-space-2);
+  color: var(--vt-text-subtle);
+
+  &::before {
+    margin-right: var(--vt-space-2);
+    content: '·';
+  }
+}
+
 .detail__signals {
   display: flex;
   flex-shrink: 0;
