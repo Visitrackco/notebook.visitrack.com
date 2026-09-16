@@ -536,6 +536,11 @@ export class ActivitiesComponent {
   private readonly retention = inject(RetentionPolicyService);
   private readonly zona = inject(ZonaHorariaService);
 
+  /** Cuándo cambió el formato, en la zona de quien mira. Ver `formularioActualizado`. */
+  readonly formularioActualizado = computed(() =>
+    this.zona.formularioActualizado(this.survey()),
+  );
+
   /** Horas que vive un borrador aquí, según la preferencia del usuario. */
   private draftHours = 0;
 

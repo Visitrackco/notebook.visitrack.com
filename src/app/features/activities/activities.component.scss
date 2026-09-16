@@ -67,6 +67,15 @@
   }
 }
 
+/* Cuándo cambió el formato: en la misma línea que el resto del contexto,
+   con el icono alineado al texto para que no baile. */
+.acts__updated {
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+  white-space: nowrap;
+}
+
 .acts__header-actions {
   display: flex;
   gap: 2px;

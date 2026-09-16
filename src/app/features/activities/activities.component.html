@@ -39,6 +39,13 @@
                 · requiere activo
               }
             }
+            <!-- Cuándo cambió el formato, en la zona de quien mira: arriba,
+                 para saber qué versión se tiene sin abrir la información. -->
+            @if (formularioActualizado(); as cuando) {
+              <span class="acts__updated" matTooltip="Última actualización del formulario">
+                · <vt-icon name="refresh" [size]="12" /> Actualizado {{ cuando }}
+              </span>
+            }
           }
         </p>
       </div>
@@ -94,6 +101,12 @@
             <dt>Identificador</dt>
             <dd class="vt-figure">{{ form.SurveyID }}</dd>
           </div>
+          @if (formularioActualizado(); as cuando) {
+            <div>
+              <dt>Última actualización</dt>
+              <dd>{{ cuando }}</dd>
+            </div>
+          }
           <div>
             <dt>Regla de borrado</dt>
             <dd>
