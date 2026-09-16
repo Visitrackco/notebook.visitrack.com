@@ -90,6 +90,7 @@
         </div>
       </header>
 
+      <div class="chat__lienzo">
       <div class="chat__mensajes" #caja (scroll)="alDesplazar()">
         @if (cargandoSala()) {
           <p class="chat__nada">Abriendo la sala…</p>
@@ -176,6 +177,24 @@
             <p class="chat__nada">Todavía no hay nada. Escribe lo primero.</p>
           }
         }
+      </div>
+
+      <!-- Volver al último mensaje. Solo aparece cuando se ha subido a leer:
+           abajo del todo no aporta nada y taparía la última burbuja. -->
+      @if (lejosDelFinal()) {
+        <button
+          type="button"
+          class="chat__ir-abajo"
+          (click)="irAbajo()"
+          title="Ir al último mensaje"
+          aria-label="Ir al último mensaje"
+        >
+          <vt-icon name="chevron" [size]="18" class="chat__ir-abajo-flecha" />
+          @if (nuevosAbajo() > 0) {
+            <span class="chat__ir-abajo-cifra">{{ nuevosAbajo() }}</span>
+          }
+        </button>
+      }
       </div>
 
       <!--

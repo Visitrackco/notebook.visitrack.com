@@ -199,12 +199,72 @@
   background: #e08a00;
 }
 
+/* El lienzo: la caja que se desplaza y, encima, el botón de ir abajo. */
+.chat__lienzo {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .chat__mensajes {
   flex: 1;
   min-height: 0;
   padding: var(--vt-space-4);
   overflow-y: auto;
   background: var(--vt-bg);
+}
+
+.chat__ir-abajo {
+  position: absolute;
+  right: var(--vt-space-4);
+  bottom: var(--vt-space-3);
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  color: var(--vt-text);
+  cursor: pointer;
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-border);
+  border-radius: var(--vt-radius-full);
+  box-shadow: 0 6px 18px rgb(0 0 0 / 18%);
+  animation: chat-ir-abajo-entra 140ms ease-out;
+
+  &:hover {
+    background: var(--vt-surface-2, var(--vt-surface));
+  }
+}
+
+/* La flecha del icono apunta a la derecha; aquí, abajo. */
+.chat__ir-abajo-flecha {
+  transform: rotate(90deg);
+}
+
+/* Cuántos llegaron mientras se leía arriba. */
+.chat__ir-abajo-cifra {
+  position: absolute;
+  top: -6px;
+  right: -4px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 20px;
+  color: #fff;
+  text-align: center;
+  background: var(--vt-brand);
+  border-radius: 10px;
+}
+
+@keyframes chat-ir-abajo-entra {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
 }
 
 .chat__mensaje {

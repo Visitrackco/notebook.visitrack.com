@@ -673,6 +673,18 @@ export class ChatComponent implements OnDestroy {
     if (!nuevo.enviando) this.ultimoVisto = Math.max(this.ultimoVisto, nuevo.seq);
 
     void this.marcarLeidoTodo();
+
+    /*
+     * Si se está leyendo arriba, un mensaje ajeno no arrastra la vista: se
+     * cuenta en el botón de ir abajo y quien lee decide cuándo bajar. Lo que
+     * uno mismo escribe sí baja siempre: se acaba de mandar y se quiere ver.
+     */
+    const mio = nuevo.enviando || nuevo.userId === this.yoId;
+    if (!mio && this.lejosDelFinal()) {
+      this.nuevosAbajo.update((n) => n + 1);
+      return;
+    }
+
     this.bajarDelTodo();
   }
 
@@ -707,11 +719,37 @@ export class ChatComponent implements OnDestroy {
    * desplazamiento suave o con rueda rápida el navegador se pasa de largo y la
    * carga no se dispara nunca.
    */
+  /**
+   * Si se ha subido a leer: lo bastante lejos del final como para que valga la
+   * pena un botón de volver. Un dedo de margen no cuenta.
+   */
+  readonly lejosDelFinal = signal(false);
+
+  /** Mensajes que llegaron mientras se leía arriba. Se enseñan en el botón. */
+  readonly nuevosAbajo = signal(0);
+
   alDesplazar(): void {
     const caja = this.caja()?.nativeElement;
-    if (!caja || caja.scrollTop > 80) return;
+    if (!caja) return;
+
+    const falta = caja.scrollHeight - caja.clientHeight - caja.scrollTop;
+    const lejos = falta > 240;
+    if (lejos !== this.lejosDelFinal()) this.lejosDelFinal.set(lejos);
+    if (!lejos && this.nuevosAbajo()) this.nuevosAbajo.set(0);
+
+    if (caja.scrollTop > 80) return;
 
     void this.traerAnteriores();
+  }
+
+  /** El botón: al último mensaje, con viaje. */
+  irAbajo(): void {
+    const caja = this.caja()?.nativeElement;
+    if (!caja) return;
+
+    caja.scrollTo({ top: caja.scrollHeight, behavior: 'smooth' });
+    this.lejosDelFinal.set(false);
+    this.nuevosAbajo.set(0);
   }
 
   /**
@@ -787,6 +825,8 @@ export class ChatComponent implements OnDestroy {
       if (!caja) return;
 
       caja.scrollTop = caja.scrollHeight;
+      this.lejosDelFinal.set(false);
+      this.nuevosAbajo.set(0);
 
       /*
        * Y se vuelve a bajar en los cuadros siguientes mientras el fondo se
