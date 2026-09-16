@@ -784,7 +784,30 @@ export class ChatComponent implements OnDestroy {
   private bajarDelTodo(): void {
     setTimeout(() => {
       const caja = this.caja()?.nativeElement;
-      if (caja) caja.scrollTop = caja.scrollHeight;
+      if (!caja) return;
+
+      caja.scrollTop = caja.scrollHeight;
+
+      /*
+       * Y se vuelve a bajar en los cuadros siguientes mientras el fondo se
+       * mueva: las fuentes, los avatares o un mensaje largo pueden terminar de
+       * medirse un instante después, y un solo salto se quedaba corto. Las
+       * fotos ya no cuentan —tienen alto fijo, ver `FotoDeChat`—, así que son
+       * dos o tres cuadros como mucho. Si la persona ya empezó a subir, se la
+       * deja en paz.
+       */
+      let intentos = 0;
+      const repasar = () => {
+        if (!caja.isConnected || intentos++ >= 8) return;
+
+        const falta = caja.scrollHeight - caja.clientHeight - caja.scrollTop;
+        if (falta <= 1) return;
+        if (falta > 400) return; // ya se fue hacia arriba a propósito
+
+        caja.scrollTop = caja.scrollHeight;
+        requestAnimationFrame(repasar);
+      };
+      requestAnimationFrame(repasar);
     });
   }
 

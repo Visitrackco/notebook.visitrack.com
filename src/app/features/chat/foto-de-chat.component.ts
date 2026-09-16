@@ -65,9 +65,19 @@ const VALEN_MS = 4 * 60 * 1000;
       margin: 0.3rem 0 0;
     }
 
+    /*
+     * El marco mide siempre lo mismo, cargue la foto o no.
+     *
+     * Es lo que deja a la sala colocarse al final al abrir: se mide antes de
+     * que las fotos lleguen, y si cada una crecía al cargar el fondo se corría
+     * y la conversación quedaba a medias. Con un alto fijo la cuenta sale igual
+     * antes y después; lo que no quepa se recorta, y la foto entera se ve al
+     * abrirla en grande.
+     */
     .foto__marco {
       display: block;
       width: 100%;
+      height: 200px;
       padding: 0;
       overflow: hidden;
       cursor: zoom-in;
@@ -83,14 +93,14 @@ const VALEN_MS = 4 * 60 * 1000;
     .foto__marco img {
       display: block;
       width: 100%;
-      max-height: 320px;
+      height: 100%;
       object-fit: cover;
     }
 
     .foto__espera {
       display: grid;
       place-items: center;
-      min-height: 120px;
+      height: 100%;
       padding: 1rem;
       font-size: 0.8rem;
       opacity: 0.75;
