@@ -4,11 +4,15 @@ import {
   OnDestroy,
   computed,
   effect,
+  inject,
   output,
   signal,
   viewChild,
 } from '@angular/core';
 
+import { FirmaGuardada } from '../../../../../core/models/entities.model';
+import { FirmaRepository } from '../../../../../core/repositories/entity.repositories';
+import { UserRepository } from '../../../../../core/repositories/user.repository';
 import { IconComponent } from '../../../../../shared/components/icon/icon.component';
 
 /** Un trazo de la firma, en coordenadas del lienzo. */
@@ -64,6 +68,23 @@ export class SignaturePadComponent implements OnDestroy {
   readonly signed = output<{ blob: Blob; name: string }>();
   readonly cancel = output<void>();
 
+  private readonly firmas = inject(FirmaRepository);
+  private readonly users = inject(UserRepository);
+
+  // ── Mis firmas ─────────────────────────────────────────────────────────────
+  //
+  // Igual que en la app: se dibuja una vez con nombre y en cada actividad se
+  // elige en vez de volver a firmar. Al usarla se copia el PNG al campo, así
+  // que borrar la guardada no toca ninguna actividad. Viven en este navegador.
+
+  /** Las guardadas de quien tiene la sesión, con su imagen lista para pintar. */
+  readonly guardadas = signal<(FirmaGuardada & { url: string })[]>([]);
+
+  /** Si al guardar la firma se apunta también en «Mis firmas». */
+  readonly recordar = signal(false);
+
+  private userId = 0;
+
   private readonly canvasRef = viewChild<ElementRef<HTMLCanvasElement>>('canvas');
   private readonly nameRef = viewChild<ElementRef<HTMLInputElement>>('nameInput');
 
@@ -111,6 +132,8 @@ export class SignaturePadComponent implements OnDestroy {
   private observer?: ResizeObserver;
 
   constructor() {
+    void this.cargarGuardadas();
+
     effect(() => {
       const canvas = this.canvasRef()?.nativeElement;
       if (!canvas) return;
@@ -133,6 +156,38 @@ export class SignaturePadComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this.observer?.disconnect();
+    this.soltarUrls();
+  }
+
+  private async cargarGuardadas(): Promise<void> {
+    try {
+      const sesion = await this.users.getActiveSession();
+      this.userId = Number(sesion?.UserID) || 0;
+      if (!this.userId) return;
+
+      this.soltarUrls();
+      const lista = await this.firmas.deUsuario(this.userId);
+      this.guardadas.set(lista.map((f) => ({ ...f, url: URL.createObjectURL(f.Png) })));
+    } catch {
+      this.guardadas.set([]);
+    }
+  }
+
+  private soltarUrls(): void {
+    for (const f of this.guardadas()) URL.revokeObjectURL(f.url);
+  }
+
+  /** Usar una guardada: sale como si se acabara de firmar, con su nombre. */
+  usarGuardada(f: FirmaGuardada): void {
+    if (this.saving()) return;
+    this.signed.emit({ blob: f.Png, name: f.Name });
+  }
+
+  async borrarGuardada(f: FirmaGuardada, event: Event): Promise<void> {
+    event.stopPropagation();
+    if (f.ID === undefined) return;
+    await this.firmas.delete(f.ID);
+    await this.cargarGuardadas();
   }
 
   /**
@@ -260,7 +315,18 @@ export class SignaturePadComponent implements OnDestroy {
         cropped.toBlob(resolve, 'image/png'),
       );
 
-      if (blob) this.signed.emit({ blob, name: this.name().trim() });
+      if (!blob) return;
+
+      // Antes de entregarla: si la entrega cierra el lienzo, aquí ya no queda nadie.
+      if (this.recordar() && this.userId) {
+        try {
+          await this.firmas.guardar(this.userId, this.name().trim(), blob);
+        } catch {
+          // Que no se guarde en «Mis firmas» no impide firmar la actividad.
+        }
+      }
+
+      this.signed.emit({ blob, name: this.name().trim() });
     } finally {
       this.saving.set(false);
     }

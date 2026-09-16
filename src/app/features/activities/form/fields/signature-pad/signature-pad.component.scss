@@ -142,6 +142,90 @@
   pointer-events: none;
 }
 
+/* Las guardadas: una tira de miniaturas, cada una con su nombre debajo. */
+.sign__mias {
+  width: 100%;
+  max-width: 720px;
+  padding: 0 var(--vt-space-4) var(--vt-space-2);
+  margin: 0 auto;
+}
+
+.sign__mias-titulo {
+  display: block;
+  margin-bottom: 6px;
+  font-size: var(--vt-text-xs);
+  font-weight: 600;
+  color: var(--vt-text-subtle);
+}
+
+.sign__mias-lista {
+  display: flex;
+  gap: var(--vt-space-2);
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.sign__mia {
+  position: relative;
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 120px;
+  padding: 8px 8px 6px;
+  background: #fff;
+  border: 1px solid var(--vt-rule-strong);
+  border-radius: var(--vt-radius-md, 10px);
+  cursor: pointer;
+
+  img {
+    width: 100%;
+    height: 44px;
+    object-fit: contain;
+  }
+
+  &:hover {
+    border-color: var(--vt-primary, #c0392b);
+  }
+}
+
+.sign__mia-nombre {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 0.7rem;
+  color: var(--vt-text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sign__mia-borrar {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  color: var(--vt-text-muted);
+  background: var(--vt-surface);
+  border-radius: 50%;
+
+  &:hover {
+    color: var(--vt-danger);
+  }
+}
+
+.sign__recordar {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-muted);
+  cursor: pointer;
+}
+
 .sign__foot {
   display: flex;
   flex-wrap: wrap;

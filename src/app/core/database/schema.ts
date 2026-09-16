@@ -58,8 +58,9 @@ export const DB_NAME_PUBLICO = 'VisitrackPublico';
  *  - 2: store `Workflows` — flujos de trabajo, entidad 100.
  *  - 4: store `CorreosFlujo` — los correos que pide una regla, por encolar.
  *  - 5: store `PushFlujo` — las notificaciones que pide una regla, por encolar.
+ *  - 6: store `Firmas` — las firmas guardadas de cada persona, para reutilizar.
  */
-export const DB_VERSION = 5;
+export const DB_VERSION = 6;
 
 /** Definición de un índice secundario dentro de un store. */
 export interface IndexDefinition {
@@ -495,6 +496,21 @@ export const DB_SCHEMA: readonly StoreDefinition[] = [
       { name: 'byEntity', keyPath: 'entity' },
       { name: 'byCreatedAt', keyPath: 'createdAt' },
     ],
+  },
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Firmas guardadas
+  // ───────────────────────────────────────────────────────────────────────────
+  {
+    name: 'Firmas',
+    keyPath: 'ID',
+    autoIncrement: true,
+    description:
+      'Las firmas que cada persona guardó para no dibujarlas cada vez: el PNG y el nombre de ' +
+      'quien firma. Es lo mismo que «Mis firmas» en la app. Viven solo en este navegador; al ' +
+      'usarse en una actividad se copia el PNG al campo, así que borrar la guardada no toca ' +
+      'ninguna actividad.',
+    indexes: [{ name: 'byUserID', keyPath: 'UserID' }],
   },
 ];
 

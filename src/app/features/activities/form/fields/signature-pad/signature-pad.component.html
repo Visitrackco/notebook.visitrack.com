@@ -39,6 +39,24 @@
     }
   </label>
 
+  <!-- Las guardadas, para no firmar de nuevo cada vez. -->
+  @if (guardadas().length) {
+    <section class="sign__mias" aria-label="Mis firmas">
+      <span class="sign__mias-titulo">Mis firmas</span>
+      <div class="sign__mias-lista">
+        @for (f of guardadas(); track f.ID) {
+          <button type="button" class="sign__mia" (click)="usarGuardada(f)" [title]="'Usar la firma de ' + f.Name">
+            <img [src]="f.url" [alt]="'Firma de ' + f.Name" />
+            <span class="sign__mia-nombre">{{ f.Name }}</span>
+            <span class="sign__mia-borrar" role="button" tabindex="0" (click)="borrarGuardada(f, $event)" (keydown.enter)="borrarGuardada(f, $event)" aria-label="Quitar de mis firmas">
+              <vt-icon name="close" [size]="12" />
+            </span>
+          </button>
+        }
+      </div>
+    </section>
+  }
+
   <div class="sign__stage">
     <canvas
       #canvas
@@ -79,6 +97,12 @@
         </span>
       }
     </div>
+
+    <!-- Apuntarla en «Mis firmas» al guardar: la próxima vez se elige arriba. -->
+    <label class="sign__recordar">
+      <input type="checkbox" [checked]="recordar()" (change)="recordar.set($any($event.target).checked)" />
+      Guardar en mis firmas
+    </label>
 
     <button type="button" class="sign__clear" [disabled]="!hasSignature()" (click)="clear()">
       <vt-icon name="trash" [size]="16" />

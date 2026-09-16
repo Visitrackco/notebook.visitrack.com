@@ -198,6 +198,17 @@ export interface Survey extends SyncableEntity {
   ModifiedOn?: string;
 }
 
+/** Una firma guardada para reutilizar, como «Mis firmas» en la app. */
+export interface FirmaGuardada {
+  ID?: number;
+  UserID: number;
+  /** Nombre de quien firma: es lo que va en `sig` al usarla. */
+  Name: string;
+  /** El PNG, recortado, con fondo blanco. */
+  Png: Blob;
+  CreatedAt: string;
+}
+
 /** Actividad: un diligenciamiento de un formulario. */
 export interface SurveyAnswer {
   ID?: number;

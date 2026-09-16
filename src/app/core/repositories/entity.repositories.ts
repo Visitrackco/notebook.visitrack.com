@@ -5,6 +5,7 @@ import {
   DispatchStatus,
   Division,
   EntityType,
+  FirmaGuardada,
   Group,
   Item,
   ItemType,
@@ -12,8 +13,8 @@ import {
   ListDetail,
   LocationForm,
   RolePermission,
-  UserConfig,
   Survey,
+  UserConfig,
   WorkZone,
 } from '../models/entities.model';
 import { BaseRepository } from './base.repository';
@@ -906,4 +907,30 @@ function belongsToLocation(asset: Asset, locationId: string, locationGuid?: stri
   if (locationId && String(asset.LocationID) === String(locationId)) return true;
 
   return Boolean(locationGuid) && String(asset.LocationGUID ?? '') === String(locationGuid);
+}
+
+/**
+ * Las firmas guardadas de cada persona.
+ *
+ * Es «Mis firmas» de la app: se dibuja una vez, se le pone nombre, y en cada
+ * actividad se elige en vez de volver a firmar. Solo las de quien tiene la
+ * sesión: el índice `byUserID` es la única forma de leerlas.
+ */
+@Injectable({ providedIn: 'root' })
+export class FirmaRepository extends BaseRepository<FirmaGuardada> {
+  protected readonly storeName = 'Firmas';
+
+  async deUsuario(userId: number): Promise<FirmaGuardada[]> {
+    const firmas = await this.query({ index: 'byUserID', range: userId });
+    return firmas.sort((a, b) => (b.CreatedAt ?? '').localeCompare(a.CreatedAt ?? ''));
+  }
+
+  async guardar(userId: number, name: string, png: Blob): Promise<IDBValidKey> {
+    return this.put({
+      UserID: userId,
+      Name: name.trim(),
+      Png: png,
+      CreatedAt: new Date().toISOString(),
+    } as FirmaGuardada);
+  }
 }
