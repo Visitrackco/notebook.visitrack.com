@@ -162,6 +162,31 @@ export class EnlacePublicoService {
     return datos.enlace;
   }
 
+  /**
+   * Vuelve a traer el formulario del servidor y lo sobrescribe en la base.
+   *
+   * ## Por qué hace falta aparte de [abrir]
+   *
+   * [abrir] corre al entrar por la puerta del enlace. Pero quien esta
+   * diligenciando y **recarga** aterriza directo en la actividad, sin pasar
+   * por la puerta, y el formulario que se pinta es el que se guardo la primera
+   * vez: si en Visitrack le cambiaron un campo entre medias, aqui seguia el
+   * viejo. En un enlace no hay sincronizacion que lo traiga despues, asi que
+   * la unica oportunidad es esta.
+   *
+   * Es la misma semilla —pequena— y los mismos mapeadores: el formulario se
+   * escribe por su ID, asi que cada pasada deja el ultimo. Sin red se sigue
+   * con lo guardado: no es motivo para no dejar trabajar.
+   */
+  async refrescarFormulario(): Promise<void> {
+    try {
+      const datos = await this.pedirLaSemilla();
+      await this.sembrar(datos);
+    } catch (error) {
+      console.warn('[Enlace] no se pudo refrescar el formulario; se sigue con el guardado', error);
+    }
+  }
+
   private async pedirLaSemilla(): Promise<RespuestaAbrir> {
     try {
       const respuesta = await firstValueFrom(

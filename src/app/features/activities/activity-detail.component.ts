@@ -5,6 +5,7 @@ import { Router, RouterLink, RouterOutlet } from '@angular/router';
 
 import { resolveCatalogOwnerId } from '../../core/config/company-rules';
 import { esModoPublico } from '../../core/config/modo-publico';
+import { EnlacePublicoService } from '../../core/services/enlace-publico.service';
 import {
   ANSWER_STATE,
   AnswerStateInfo,
@@ -72,6 +73,7 @@ import { ZonaHorariaService } from '../../core/services/zona-horaria.service';
 export class ActivityDetailComponent {
   private readonly router = inject(Router);
   private readonly activities = inject(ActivityService);
+  private readonly enlaces = inject(EnlacePublicoService);
   private readonly revisions = inject(DataRevisionService);
   private readonly answers = inject(SurveyAnswerRepository);
   private readonly dispatch = inject(DispatchStatusRepository);
@@ -334,6 +336,16 @@ export class ActivityDetailComponent {
     this.loading.set(true);
 
     try {
+      /*
+       * En un enlace, el formulario se vuelve a pedir **cada vez** que se
+       * abre la actividad: al entrar y al recargar a medio diligenciar. Aqui
+       * no hay sincronizacion, y lo que se guardo al abrir el enlace por
+       * primera vez puede haber cambiado en Visitrack desde entonces. Las
+       * respuestas ya dadas no se tocan: viven en la actividad, no en el
+       * formulario.
+       */
+      if (esModoPublico()) await this.enlaces.refrescarFormulario();
+
       const [survey, answer] = await Promise.all([
         this.activities.findSurvey(surveyId),
         this.activities.findByGuid(guid),
