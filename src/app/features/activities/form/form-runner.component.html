@@ -381,7 +381,7 @@
       [open]="askingRequired()"
       [missing]="missing()"
       [pageLabels]="pageLabels()"
-      [canSaveAnyway]="false"
+      [canSaveAnyway]="permiteGuardarDeTodosModos()"
       (review)="onReviewRequired()"
       (saveAnyway)="onSaveAnyway()"
       (goToField)="goToMissing($event)"

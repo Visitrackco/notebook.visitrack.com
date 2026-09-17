@@ -1,3 +1,4 @@
+import { esModoPublico } from '../../../core/config/modo-publico';
 import {
   Component,
   DestroyRef,
@@ -547,6 +548,18 @@ export class FormRunnerComponent {
 
   /** El aviso de obligatorios está abierto. */
   readonly askingRequired = signal(false);
+
+  /**
+   * «Guardar de todos modos» **no** se ofrece en un enlace público.
+   *
+   * Con sesión sigue: quien trabaja en la aplicación tiene un listado donde
+   * la actividad queda marcada como incompleta y puede volver a ella. En un
+   * enlace no hay a dónde volver —quien lo abre cierra la pestaña al ver
+   * «gracias»— y lo incompleto llegaba a Visitrack como un registro válido al
+   * que le faltaba justo lo exigido. Ahí, lo obligatorio se diligencia en el
+   * momento.
+   */
+  readonly permiteGuardarDeTodosModos = computed(() => !esModoPublico());
 
   /** Contenedor de campos: destino del desplazamiento al cambiar de página. */
   private readonly fieldsRef = viewChild<ElementRef<HTMLElement>>('fields');
