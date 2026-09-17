@@ -22,21 +22,16 @@
       }
     </div>
 
+    <!-- Cuántas hay, como una pastilla alineada con el título: antes era una
+         cifra suelta a la derecha que no cuadraba con nada. -->
     @if (totalCount() > 0) {
-      <span class="picker__count">
+      <span class="picker__count" [attr.aria-label]="totalCount() + ' opciones'">
         <span class="vt-figure">{{ totalCount() }}</span>
         <small>{{ totalCount() === 1 ? 'opción' : 'opciones' }}</small>
       </span>
     }
 
-    <!-- Crear lo que no está: aquí es donde aparece la necesidad, y salir a
-         otra pantalla obligaría a rehacer el camino al volver. -->
-    @if (createLabel()) {
-      <button type="button" class="picker__create" (click)="create.emit()">
-        <vt-icon name="plus" [size]="16" />
-        {{ createLabel() }}
-      </button>
-    } @else if (createBlocked()) {
+    @if (!createLabel() && createBlocked()) {
       <span class="picker__denied" [title]="createBlocked()">
         <vt-icon name="shield" [size]="15" />
       </span>
@@ -141,5 +136,23 @@
         </span>
       </button>
     }
+  }
+
+  <!-- Crear lo que no está: un botón flotante abajo a la derecha, como en la
+       app. Siempre a mano, se haya bajado lo que se haya bajado, y sin robarle
+       sitio a la cabecera. El hueco de abajo evita que tape la última fila. -->
+  @if (createLabel()) {
+    <div class="picker__fab-space" aria-hidden="true"></div>
+    <button
+      mat-fab
+      extended
+      type="button"
+      class="picker__fab"
+      (click)="create.emit()"
+      [matTooltip]="createLabel()"
+    >
+      <vt-icon name="plus" [size]="20" />
+      <span class="picker__fab-label">{{ createLabel() }}</span>
+    </button>
   }
 </div>

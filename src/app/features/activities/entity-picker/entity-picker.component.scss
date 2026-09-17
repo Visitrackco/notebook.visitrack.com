@@ -20,6 +20,10 @@
   display: flex;
   gap: var(--vt-space-3);
   align-items: center;
+  padding: var(--vt-space-4) var(--vt-space-4) var(--vt-space-4) var(--vt-space-3);
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-rule);
+  border-radius: var(--vt-radius-lg);
 }
 
 /* El icono apunta a la derecha por defecto; aquí se usa como «volver». */
@@ -63,14 +67,22 @@
   }
 }
 
+/* La cuenta, en una pastilla alineada al centro de la cabecera. */
 .picker__count {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  line-height: 1.1;
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 5px;
+  align-items: baseline;
+  align-self: center;
+  padding: 5px 12px;
+  line-height: 1;
+  white-space: nowrap;
+  background: var(--vt-surface-2);
+  border: 1px solid var(--vt-rule);
+  border-radius: var(--vt-radius-full);
 
   .vt-figure {
-    font-size: var(--vt-text-lg);
+    font-size: var(--vt-text-md);
     font-weight: 700;
   }
 
@@ -354,26 +366,35 @@
 /**
  * Crear la entidad que no aparece en la lista.
  *
- * En la cabecera y no al final del listado: quien ya sabe que no está no
- * debería recorrer doscientas opciones para encontrar el botón.
+ * Un botón flotante abajo a la derecha, como en la app: siempre a mano se haya
+ * bajado lo que se haya bajado, y sin quitarle sitio a la cabecera. Se pinta
+ * con la marca y no con el color de Material, para que sea el mismo botón que
+ * el resto de la aplicación.
  */
-.picker__create {
-  display: inline-flex;
-  flex-shrink: 0;
-  gap: 7px;
-  align-items: center;
-  padding: 9px 16px;
-  font-family: var(--vt-font);
-  font-size: var(--vt-text-sm);
-  font-weight: 650;
+.picker__fab {
+  position: fixed;
+  right: max(var(--vt-space-5), env(safe-area-inset-right));
+  bottom: max(var(--vt-space-5), env(safe-area-inset-bottom));
+  z-index: 20;
+  gap: 8px;
   color: var(--vt-on-brand);
   background: var(--vt-brand);
-  border: 0;
-  border-radius: var(--vt-radius-full);
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--vt-brand) 40%, transparent);
 
   &:hover {
     background: var(--vt-brand-dark);
   }
+}
+
+.picker__fab-label {
+  font-family: var(--vt-font);
+  font-size: var(--vt-text-sm);
+  font-weight: 650;
+}
+
+/* Para que la última fila no quede debajo del botón. */
+.picker__fab-space {
+  height: 72px;
 }
 
 /* El rol no lo permite: queda la marca con su explicación al pasar el ratón, en

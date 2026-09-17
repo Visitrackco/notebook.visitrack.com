@@ -15,7 +15,12 @@ import {
 import { Asset, DispatchStatus, LocationForm, Survey, SurveyAnswer } from '../../core/models/entities.model';
 import { DispatchStatusRepository } from '../../core/repositories/entity.repositories';
 import { SurveyAnswerRepository } from '../../core/repositories/survey-answer.repository';
-import { ActivityService, ConsistencyIssue } from '../../core/services/activity.service';
+import {
+  ActivityService,
+  ConsistencyIssue,
+  readRequirements,
+  resolveNextStep,
+} from '../../core/services/activity.service';
 import { DataRevisionService } from '../../core/sync/data-revision.service';
 import { AuthService } from '../../core/services/auth.service';
 import { AutosaveService } from '../../core/services/autosave.service';
@@ -338,6 +343,28 @@ export class ActivityDetailComponent {
       this.answer.set(answer);
 
       if (!answer) return;
+
+      /*
+       * Sin la entidad que el formulario exige no hay formulario que enseñar.
+       *
+       * Se llega aquí recargando el navegador a medio camino —se creó la
+       * actividad, se abrió el selector y se recargó sin elegir— y la
+       * dirección de la actividad ya existía. Pintar el formulario en ese
+       * estado dejaba responder sin sede ni equipo; se vuelve al paso que
+       * falta, reemplazando la dirección para que «atrás» no traiga esto.
+       * En un enlace público no aplica: allí la puerta del enlace decide.
+       */
+      if (survey && !esModoPublico()) {
+        const paso = resolveNextStep(readRequirements(survey), answer);
+
+        if (paso !== 'form') {
+          await this.router.navigate(
+            ['/formularios', surveyId, paso === 'location' ? 'ubicaciones' : 'activos'],
+            { queryParams: { actividad: answer.GUID }, replaceUrl: true },
+          );
+          return;
+        }
+      }
 
       const [location, asset, hours] = await Promise.all([
         this.activities.locationOf(answer),
