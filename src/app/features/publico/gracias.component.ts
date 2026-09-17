@@ -1,4 +1,4 @@
-import { DestroyRef, Component, computed, inject, signal } from '@angular/core';
+import { DestroyRef, Component, computed, inject, signal, input } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { guidPublico, RUTA_ENLACE } from '../../core/config/modo-publico';
@@ -54,7 +54,13 @@ export class GraciasComponent {
   /** Alguna necesita que una persona la corrija: no se arregla sola. */
   readonly atascadas = computed(() => this.pendientes().filter((p) => p.issue !== null));
 
+  /** Se llegó aquí descartando la actividad: no se envió nada. */
+  readonly descartada = input('');
+
+  readonly fueDescartada = computed(() => this.descartada() === '1');
+
   readonly titulo = computed(() => {
+    if (this.fueDescartada()) return 'Actividad descartada';
     if (this.listo()) return '¡Gracias! Ya quedó registrado';
     if (this.atascadas().length > 0) return 'No se pudo enviar del todo';
     if (this.esperandoArchivos()) return 'Enviando tus archivos…';
@@ -63,6 +69,10 @@ export class GraciasComponent {
   });
 
   readonly explicacion = computed(() => {
+    if (this.fueDescartada()) {
+      return 'No se envió nada. Puedes cerrar esta página, o empezar otra cuando quieras.';
+    }
+
     if (this.listo()) {
       /*
        * Y se dice que puede cerrar.

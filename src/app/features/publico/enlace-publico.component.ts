@@ -8,7 +8,7 @@ import { ToastService } from '../../core/services/toast.service';
 import { esModoPublico } from '../../core/config/modo-publico';
 import { Asset, LocationForm, Survey, SurveyAnswer } from '../../core/models/entities.model';
 import { ANSWER_STATE } from '../../core/models/activity.model';
-import { ActivityService, readRequirements } from '../../core/services/activity.service';
+import { ActivityService, readRequirements, resolveNextStep } from '../../core/services/activity.service';
 import {
   ConfiguracionDelEnlace,
   EnlaceCerrado,
@@ -302,6 +302,32 @@ export class EnlacePublicoComponent {
   /** Retoma una actividad de una visita anterior. */
   async retomar(actividad: SurveyAnswer): Promise<void> {
     this.answer.set(actividad);
+
+    /*
+     * Lo que le falte se vuelve a pedir.
+     *
+     * Una actividad retomada puede ser una que se creó y se cerró sin elegir
+     * la sede o el equipo —al recargar a medio camino—. Abrirle el formulario
+     * directamente dejaba responder con la ubicación en nulo.
+     */
+    const survey = this.survey();
+    const config = this.config();
+    if (survey && config) {
+      const requisitos = readRequirements(survey);
+      const paso = resolveNextStep(requisitos, actividad);
+
+      if (paso === 'location' && !config.conUbicacion) {
+        this.paso.set('ubicacion');
+        await this.recargar();
+        return;
+      }
+
+      if (paso === 'asset' && !config.conActivo) {
+        await this.irAlPasoDelActivo();
+        return;
+      }
+    }
+
     await this.alFormulario();
   }
 

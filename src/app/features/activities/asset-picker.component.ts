@@ -13,6 +13,8 @@ import {
   parseEntityDescriptors,
 } from '../../shared/utils/descriptors';
 import { PermissionsService } from '../../core/services/permissions.service';
+import { DraftPolicyService } from '../../core/services/draft-policy.service';
+import { esModoPublico } from '../../core/config/modo-publico';
 import { EntityPickerComponent, PickerItem } from './entity-picker/entity-picker.component';
 
 /** Cuántos activos se traen por página. */
@@ -60,6 +62,7 @@ const SEARCH_DELAY_MS = 300;
 export class AssetPickerComponent {
   private readonly router = inject(Router);
   private readonly activities = inject(ActivityService);
+  private readonly drafts = inject(DraftPolicyService);
   readonly permissions = inject(PermissionsService);
 
   readonly surveyId = input.required<string>();
@@ -137,12 +140,42 @@ export class AssetPickerComponent {
     return this.answer()?.LocationGUID ?? '';
   }
 
+  /**
+   * Si esta pantalla es lo primero que carga el navegador.
+   *
+   * `router.navigated` es falso hasta que termina la primera navegación, y este
+   * componente nace durante ella: es la forma de saber que se llegó **recargando**
+   * y no desde el listado.
+   */
+  private readonly recargado = !this.router.navigated;
+
   constructor() {
     effect(() => {
       const surveyId = this.surveyId();
       const guid = this.actividad();
       void this.init(surveyId, guid);
     });
+  }
+
+  /**
+   * Recargar el navegador a medio elegir no retoma la elección: al listado.
+   *
+   * Es la regla del usuario: sin sede o sin equipo no hay actividad que abrir.
+   * El borrador que nació al pulsar «Nueva actividad» y no llegó a guardarse se
+   * descarta de paso, para que no quede en la lista con la entidad en nulo.
+   *
+   * @returns si se salió de aquí.
+   */
+  private async salirSiRecargado(answer: SurveyAnswer | null): Promise<boolean> {
+    if (!this.recargado || esModoPublico()) return false;
+
+    if (answer?.eraser === 1) {
+      await this.drafts.discard(answer.GUID);
+      this.activities.notifyChanged();
+    }
+
+    await this.router.navigate(['/formularios', this.surveyId()], { replaceUrl: true });
+    return true;
   }
 
   private async init(surveyId: string, guid: string): Promise<void> {
@@ -158,6 +191,7 @@ export class AssetPickerComponent {
       this.answer.set(answer);
 
       if (!survey) return;
+      if (await this.salirSiRecargado(answer)) return;
 
       const requirements = readRequirements(survey);
       const locationId = answer?.LocationID ?? '';

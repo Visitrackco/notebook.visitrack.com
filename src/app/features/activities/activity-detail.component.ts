@@ -358,10 +358,7 @@ export class ActivityDetailComponent {
         const paso = resolveNextStep(readRequirements(survey), answer);
 
         if (paso !== 'form') {
-          await this.router.navigate(
-            ['/formularios', surveyId, paso === 'location' ? 'ubicaciones' : 'activos'],
-            { queryParams: { actividad: answer.GUID }, replaceUrl: true },
-          );
+          await this.volverAlListadoSinEntidad(answer);
           return;
         }
       }
@@ -525,7 +522,7 @@ export class ActivityDetailComponent {
     this.dialog.set('none');
     await this.drafts.discard(this.guid());
     this.activities.notifyChanged();
-    await this.exit();
+    await this.exit(true);
   }
 
   /** Pide descartar el borrador explícitamente, sin salir por la puerta de atrás. */
@@ -538,7 +535,7 @@ export class ActivityDetailComponent {
     this.autosave.cancel(this.autosaveKey);
     await this.drafts.discard(this.guid());
     this.activities.notifyChanged();
-    await this.exit();
+    await this.exit(true);
   }
 
   closeDialog(): void {
@@ -553,13 +550,42 @@ export class ActivityDetailComponent {
    * si la respuesta llegó ya a Visitrack. De eso se encarga `/gracias`, que
    * sigue mirando la cola hasta que deje de haber algo en vuelo.
    */
-  private async exit(): Promise<void> {
+  private async exit(descartada = false): Promise<void> {
     if (esModoPublico()) {
-      await this.router.navigate(['/gracias'], { replaceUrl: true });
+      /*
+       * Si se descartó, la pantalla de cierre tiene que decirlo tal cual.
+       *
+       * Sin esta marca salía «¡Gracias! Ya quedó registrado» después de
+       * borrar la actividad: la cola estaba vacía y la pantalla lo leía como
+       * que todo llegó. Es lo contrario de lo que pasó.
+       */
+      await this.router.navigate(['/gracias'], {
+        replaceUrl: true,
+        queryParams: descartada ? { descartada: 1 } : {},
+      });
       return;
     }
 
     await this.router.navigate(['/formularios', this.surveyId()]);
+  }
+
+  /**
+   * Una actividad a la que le falta la sede o el equipo no se abre: al listado.
+   *
+   * Si nunca se guardó —es el borrador que nace al pulsar «Nueva actividad»
+   * antes de elegir nada— se descarta de paso: dejarlo en el listado sería
+   * dejar una actividad con la ubicación en nulo, que es justo lo que no
+   * puede existir. Una que sí se guardó se respeta y se queda en la lista con
+   * su aviso de datos descuadrados.
+   */
+  private async volverAlListadoSinEntidad(answer: SurveyAnswer): Promise<void> {
+    if (answer.eraser === 1) {
+      this.autosave.cancel(this.autosaveKey);
+      await this.drafts.discard(answer.GUID);
+      this.activities.notifyChanged();
+    }
+
+    await this.router.navigate(['/formularios', this.surveyId()], { replaceUrl: true });
   }
 
   /** Vuelve al selector de ubicación para cambiarla. */

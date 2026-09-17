@@ -7,7 +7,11 @@
 -->
 <div class="gr">
   <div class="gr-centro">
-    @if (listo()) {
+    @if (fueDescartada()) {
+      <span class="gr-marca">
+        <vt-icon name="trash" [size]="34" />
+      </span>
+    } @else if (listo()) {
       <span class="gr-marca gr-marca--ok">
         <vt-icon name="check" [size]="34" />
       </span>
@@ -41,7 +45,11 @@
     }
 
     <div class="gr-botones">
-      @if (listo()) {
+      @if (fueDescartada()) {
+        <button type="button" class="gr-boton" (click)="otro()">
+          Empezar otra
+        </button>
+      } @else if (listo()) {
         <!-- Lo único que se puede querer hacer después de terminar: otra. No
              hay a dónde volver, así que no se ofrece ninguna salida más. -->
         <button type="button" class="gr-boton" (click)="otro()">
@@ -66,7 +74,7 @@
       }
     </div>
 
-    @if (!listo()) {
+    @if (!listo() && !fueDescartada()) {
       <p class="gr-nota">
         Lo que no alcance a enviarse queda guardado en este navegador. Para
         recuperarlo hay que volver a abrir el mismo enlace en este mismo equipo.
