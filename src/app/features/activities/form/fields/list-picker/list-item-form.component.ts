@@ -1,4 +1,14 @@
-import { Component, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
+import {
+  Component,
+  computed,
+  effect,
+  forwardRef,
+  inject,
+  input,
+  output,
+  signal,
+  untracked,
+} from '@angular/core';
 
 import { FormEngine } from '../../../../../core/forms/form-engine';
 import { FieldValue, FormField, ResolvedDescriptor } from '../../../../../core/forms/form-schema';
@@ -30,10 +40,18 @@ import {
  * Muchas listas no definen ninguno y el ítem es solo su nombre. Es un caso
  * legítimo y frecuente, no un error de configuración.
  */
+/*
+ * `FieldHostComponent` va con `forwardRef` porque hay un ciclo de modulos:
+ * el repartidor de campos pinta el campo de lista, que abre el selector, que
+ * abre este alta, que vuelve a usar el repartidor para los campos del item.
+ * Sin el `forwardRef`, en el momento en que se evalua este decorador la
+ * clase del repartidor todavia es `undefined`, y Angular revienta al pulsar
+ * «Crear un item nuevo» con `NG0919: Cannot read @Component metadata`.
+ */
 @Component({
   selector: 'vt-list-item-form',
   standalone: true,
-  imports: [FieldHostComponent, IconComponent, RequiredDialogComponent],
+  imports: [forwardRef(() => FieldHostComponent), IconComponent, RequiredDialogComponent],
   templateUrl: './list-item-form.component.html',
   styleUrl: './list-item-form.component.scss',
 })

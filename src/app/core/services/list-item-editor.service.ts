@@ -1,4 +1,5 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, Injector, inject } from '@angular/core';
+import { esModoPublico } from '../config/modo-publico';
 
 import { resolveCatalogOwnerId } from '../config/company-rules';
 import { AnswerField, FormField, FormPage, parseQuestions } from '../forms/form-schema';
@@ -53,6 +54,7 @@ export class ListItemEditorService {
   private readonly details = inject(ListDetailRepository);
   private readonly auth = inject(AuthService);
   private readonly revisions = inject(DataRevisionService);
+  private readonly injector = inject(Injector);
 
   /**
    * El formulario que define los campos de un ítem.
@@ -135,7 +137,46 @@ export class ListItemEditorService {
     await this.details.put(record);
     this.revisions.touchEntities();
 
+    /*
+     * En un enlace publico, el item sale **ya**.
+     *
+     * Con sesion se queda pendiente y lo lleva la sincronizacion, que esta
+     * bien: hay cuenta, cola y otro dia para volver. En un enlace no hay nada
+     * de eso, y ademas la lista suele ser en linea —sus items se buscan en el
+     * servidor—: un item que solo existe en este navegador no lo ve nadie
+     * mas, ni siquiera esta misma persona al abrir el enlace manana.
+     *
+     * Sin esperar: el item ya esta elegido y se sigue respondiendo; la cola lo
+     * sube detras. Ver [EnlacePublicoComponent.subirDetras], que hace lo
+     * mismo con las sedes y los equipos.
+     */
+    if (esModoPublico()) this.subirEnLinea(record);
+
     return record;
+  }
+
+  private subirEnLinea(record: ListDetail): void {
+    void (async () => {
+      try {
+        const { EntityUploadService } = await import('../sync/entity-upload.service');
+        const subidas = this.injector.get(EntityUploadService);
+
+        while (subidas.running()) await new Promise((r) => setTimeout(r, 400));
+        await subidas.run();
+
+        const subido = (await this.details.getByIndex('byGUID', record.GUID))?.SyncedToServer === '1';
+        if (subido) return;
+
+        const { ToastService } = await import('./toast.service');
+        this.injector.get(ToastService).show({
+          title: 'El ítem aún no subió a Visitrack',
+          detail: `${subidas.lastSummary()?.message ?? 'Se reintenta solo.'} La actividad esperará a que esté arriba.`,
+          tone: 'warning',
+        });
+      } catch (error) {
+        console.warn('[Listas] no se pudo subir el ítem en línea; la cola lo reintenta', error);
+      }
+    })();
   }
 }
 
