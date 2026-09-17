@@ -75,7 +75,15 @@ export class RequiredDialogComponent {
    * todo el mundo, y uno a medias envenena las respuestas de los demás sin que
    * nadie sepa de dónde salió. Ahí la única salida es completarlos.
    */
-  readonly canSaveAnyway = input(true);
+  /**
+   * «Guardar de todos modos» está apagado a propósito.
+   *
+   * Decisión del usuario (17-sep-2026): en la web lo obligatorio se diligencia
+   * en el momento; una actividad marcada como incompleta llegaba a Visitrack
+   * como un registro válido al que le faltaba justo lo que se exigía. Se deja
+   * la entrada por si algún día vuelve, pero por defecto no se ofrece.
+   */
+  readonly canSaveAnyway = input(false);
 
   /**
    * Los faltantes se agrupan por página.
