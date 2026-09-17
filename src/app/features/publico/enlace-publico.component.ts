@@ -552,13 +552,23 @@ export class EnlacePublicoComponent {
   }
 
   /**
-   * Lo recién creado: sube a Visitrack **ahora** y se asocia.
+   * Lo recién creado se asocia **ya** y sube a Visitrack por detrás.
    *
-   * Primero sube y después se asocia, y no al revés: si el servidor lo
-   * rechaza —el enlace no lo permite, no hay zona de trabajo, se cayó la red—
-   * la actividad no puede quedar apuntando a algo que no existe en Visitrack.
-   * Se vuelve al selector con el motivo, y lo creado se queda en este
-   * navegador para reintentar.
+   * Antes se subía primero y se asociaba después, esperando la respuesta del
+   * servidor con la rueda puesta. El alta de una sede en Visitrack no es
+   * instantánea —el procedimiento reparte la novedad a todos los aparatos de
+   * la zona— y quien acaba de pulsar «Crear» se quedaba mirando la rueda sin
+   * saber qué pasaba, a veces bastantes segundos, creyendo que se había
+   * colgado.
+   *
+   * No hace falta esperar. La actividad lleva el GUID de lo creado y, cuando
+   * el servidor devuelve el identificador, la cola lo pone en su sitio
+   * (`relabelAnswers`): es lo mismo que pasa con sesión al crear una sede sin
+   * cobertura. Y la actividad **no sale** hasta que sus entidades estén
+   * arriba —`waitingEntities`—, así que nunca llega apuntando a nada.
+   *
+   * Si el servidor la rechaza se avisa con el motivo y la cola lo reintenta;
+   * lo diligenciado no se pierde.
    */
   private async alCrearEntidad(guidCreado: string): Promise<void> {
     const config = this.config();
@@ -567,54 +577,88 @@ export class EnlacePublicoComponent {
     if (!config || !answer || !survey) return;
 
     const requisitos = readRequirements(survey);
-    const esActivo = !!(await this.editor.findAsset(guidCreado));
-    const entidad = esActivo ? 'activo' : 'ubicacion';
+    const activo = await this.editor.findAsset(guidCreado);
+    const ubicacion = activo ? null : await this.editor.findLocation(guidCreado);
 
-    this.paso.set(esActivo ? 'activo' : 'ubicacion');
-    this.cargando.set(true);
-
-    try {
-      const subida = await this.subidas.subirAhora(entidad, guidCreado);
-
-      if (!subida.ok) {
-        this.toasts.show({
-          title: esActivo ? 'El activo no se pudo subir' : 'La ubicación no se pudo subir',
-          detail: subida.error,
-          tone: 'error',
-        });
-        await this.recargar();
-        return;
-      }
-
-      const actual = (await this.activities.findByGuid(answer.GUID)) ?? answer;
-
-      if (esActivo) {
-        const activo = await this.editor.findAsset(guidCreado);
-        if (!activo) return;
-
-        await this.activities.attachAsset(actual, activo);
-        this.toasts.show({ title: 'Activo creado y subido a Visitrack', tone: 'success' });
-        await this.alFormulario();
-        return;
-      }
-
-      const ubicacion = await this.editor.findLocation(guidCreado);
-      if (!ubicacion) return;
-
-      const conUbicacion = await this.activities.attachLocation(actual, ubicacion);
-      if (conUbicacion) this.answer.set(conUbicacion);
-
-      this.toasts.show({ title: 'Ubicación creada y subida a Visitrack', tone: 'success' });
-
-      if (requisitos.requiresAsset && !config.conActivo) {
-        await this.irAlPasoDelActivo();
-        return;
-      }
-
-      await this.alFormulario();
-    } finally {
-      this.cargando.set(false);
+    if (!activo && !ubicacion) {
+      this.toasts.show({
+        title: 'Lo que se creó ya no está en este navegador',
+        detail: 'Vuelve a crearlo o elige uno de la lista.',
+        tone: 'error',
+      });
+      this.paso.set(requisitos.requiresLocation && !answer.LocationID ? 'ubicacion' : 'activo');
+      await this.recargar();
+      return;
     }
+
+    const actual = (await this.activities.findByGuid(answer.GUID)) ?? answer;
+
+    if (activo) {
+      await this.activities.attachAsset(actual, activo);
+      this.toasts.show({
+        title: 'Activo creado',
+        detail: 'Se está subiendo a Visitrack mientras sigues.',
+        tone: 'success',
+      });
+      this.subirDetras('activo', guidCreado);
+      await this.alFormulario();
+      return;
+    }
+
+    const conUbicacion = await this.activities.attachLocation(actual, ubicacion!);
+    if (conUbicacion) this.answer.set(conUbicacion);
+
+    this.toasts.show({
+      title: 'Ubicación creada',
+      detail: 'Se está subiendo a Visitrack mientras sigues.',
+      tone: 'success',
+    });
+    this.subirDetras('ubicacion', guidCreado);
+
+    if (requisitos.requiresAsset && !config.conActivo) {
+      await this.irAlPasoDelActivo();
+      return;
+    }
+
+    await this.alFormulario();
+  }
+
+  /**
+   * Sube lo creado sin bloquear la pantalla, y cuenta cómo fue.
+   *
+   * Va por la cola entera y no por la entidad suelta: un activo recién creado
+   * cuelga de una sede que puede estar subiendo en este mismo momento, y la
+   * cola ya sabe esperar a la sede, tomar su identificador y subir el activo
+   * detrás. Si hay una corrida en marcha se espera a que acabe: lanzar otra
+   * encima solo devolvería «ya hay una subida en curso».
+   *
+   * La pantalla desde la que se llamó puede haberse ido; los avisos son
+   * globales y la cola vive en el armazón.
+   */
+  private subirDetras(entidad: 'ubicacion' | 'activo', guid: string): void {
+    void (async () => {
+      try {
+        while (this.subidas.running()) await espera(400);
+
+        await this.subidas.run();
+
+        const subida =
+          entidad === 'activo'
+            ? (await this.editor.findAsset(guid))?.SyncedToServer === '1'
+            : (await this.editor.findLocation(guid))?.SyncedToServer === '1';
+
+        if (subida) return;
+
+        const resumen = this.subidas.lastSummary();
+        this.toasts.show({
+          title: entidad === 'activo' ? 'El activo aún no subió' : 'La ubicación aún no subió',
+          detail: `${resumen?.message ?? 'Se reintenta solo.'} La actividad esperará a que esté arriba.`,
+          tone: 'warning',
+        });
+      } catch (error) {
+        console.warn('[Enlace] no se pudo subir lo creado; la cola lo reintenta', error);
+      }
+    })();
   }
 
   async elegir(opcion: PickerItem): Promise<void> {
@@ -693,4 +737,9 @@ export class EnlacePublicoComponent {
   reintentar(): void {
     void this.abrir();
   }
+}
+
+/** Una pausa corta, para esperar a que acabe una corrida en marcha. */
+function espera(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

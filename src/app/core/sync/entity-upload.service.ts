@@ -167,11 +167,15 @@ export class EntityUploadService {
          * los números tarden en cuadrar es un inconveniente; que un fallo al
          * consultarlos deshaga una subida que sí funcionó, no.
          */
-        try {
-          await this.status.loadLocalCounts();
-          await this.status.checkAgainstServer();
-        } catch (error) {
-          console.warn('[Entidades] no se pudieron actualizar los totales', error);
+        // En un enlace no hay pantalla de sincronización que los muestre, y
+        // el endpoint no existe en la puerta pública: sería un 404 seguro.
+        if (!esModoPublico()) {
+          try {
+            await this.status.loadLocalCounts();
+            await this.status.checkAgainstServer();
+          } catch (error) {
+            console.warn('[Entidades] no se pudieron actualizar los totales', error);
+          }
         }
       }
 
