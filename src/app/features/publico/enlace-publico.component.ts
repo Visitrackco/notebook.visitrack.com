@@ -1,6 +1,9 @@
 import { DatePipe } from '@angular/common';
 import { Component, computed, inject, input, signal } from '@angular/core';
 import { Router } from '@angular/router';
+import { EntityUploadService } from '../../core/sync/entity-upload.service';
+import { LocationEditorService } from '../../core/services/location-editor.service';
+import { ToastService } from '../../core/services/toast.service';
 
 import { esModoPublico } from '../../core/config/modo-publico';
 import { Asset, LocationForm, Survey, SurveyAnswer } from '../../core/models/entities.model';
@@ -61,9 +64,23 @@ export class EnlacePublicoComponent {
   private readonly router = inject(Router);
   private readonly enlaces = inject(EnlacePublicoService);
   private readonly activities = inject(ActivityService);
+  private readonly subidas = inject(EntityUploadService);
+  private readonly editor = inject(LocationEditorService);
+  private readonly toasts = inject(ToastService);
 
   /** El GUID, del segmento de la ruta. Solo para reintentar sobre la misma. */
   readonly guid = input('');
+
+  /**
+   * Al volver del editor de entidades: qué se creó y para qué actividad.
+   *
+   * El editor es la pantalla de siempre —la misma que usa quien tiene sesión—
+   * y vuelve aquí con `?creado=<guid>`. La actividad viaja en la misma
+   * dirección porque esta pantalla se vuelve a montar desde cero al volver, y
+   * sin ella se ofrecería «retomar» o se crearía otra.
+   */
+  readonly creado = input('');
+  readonly actividad = input('');
 
   readonly paso = signal<Paso>('abriendo');
   readonly mensaje = signal('');
@@ -154,6 +171,17 @@ export class EnlacePublicoComponent {
       }
 
       this.survey.set(survey);
+
+      // Se viene del editor con una ubicación o un activo recién creados.
+      if (this.creado() && this.actividad()) {
+        const retomada = await this.activities.findByGuid(this.actividad());
+
+        if (retomada) {
+          this.answer.set(retomada);
+          await this.alCrearEntidad(this.creado());
+          return;
+        }
+      }
 
       // Lo que quedó a medias de una visita anterior manda: empezar una
       // actividad nueva encima dejaría la anterior enterrada.
@@ -459,6 +487,110 @@ export class EnlacePublicoComponent {
   }
 
   /** Eligió una. Se guarda en la base y se sigue al paso siguiente. */
+  /** Si en este paso se puede dar de alta lo que no se encuentra. */
+  readonly puedeCrear = computed(() => {
+    const config = this.config();
+    if (!config) return false;
+
+    return this.paso() === 'activo' ? config.puedeCrearActivos : config.puedeCrearUbicaciones;
+  });
+
+  /**
+   * Al editor de siempre, y de vuelta aquí con lo creado.
+   *
+   * Del tipo que exige el formulario, como en el selector con sesión: de otro
+   * tipo no serviría para esta actividad. La actividad viaja en la dirección
+   * de vuelta para retomarla tal cual al regresar.
+   */
+  async crearNueva(): Promise<void> {
+    const survey = this.survey();
+    const answer = this.answer();
+    if (!survey || !answer) return;
+
+    const requisitos = readRequirements(survey);
+    const volver = `/e/${this.guid()}?actividad=${encodeURIComponent(answer.GUID)}`;
+
+    if (this.paso() === 'activo') {
+      const ubicacion = answer.LocationGUID;
+      if (!ubicacion) return;
+
+      await this.router.navigate(['/ubicaciones', ubicacion, 'activo', 'nuevo'], {
+        queryParams: { volver, tipo: requisitos.assetTypeGuid ?? '' },
+      });
+      return;
+    }
+
+    await this.router.navigate(['/ubicaciones', 'nueva'], {
+      queryParams: { volver, tipo: requisitos.locationTypeGuid ?? '' },
+    });
+  }
+
+  /**
+   * Lo recién creado: sube a Visitrack **ahora** y se asocia.
+   *
+   * Primero sube y después se asocia, y no al revés: si el servidor lo
+   * rechaza —el enlace no lo permite, no hay zona de trabajo, se cayó la red—
+   * la actividad no puede quedar apuntando a algo que no existe en Visitrack.
+   * Se vuelve al selector con el motivo, y lo creado se queda en este
+   * navegador para reintentar.
+   */
+  private async alCrearEntidad(guidCreado: string): Promise<void> {
+    const config = this.config();
+    const answer = this.answer();
+    const survey = this.survey();
+    if (!config || !answer || !survey) return;
+
+    const requisitos = readRequirements(survey);
+    const esActivo = !!(await this.editor.findAsset(guidCreado));
+    const entidad = esActivo ? 'activo' : 'ubicacion';
+
+    this.paso.set(esActivo ? 'activo' : 'ubicacion');
+    this.cargando.set(true);
+
+    try {
+      const subida = await this.subidas.subirAhora(entidad, guidCreado);
+
+      if (!subida.ok) {
+        this.toasts.show({
+          title: esActivo ? 'El activo no se pudo subir' : 'La ubicación no se pudo subir',
+          detail: subida.error,
+          tone: 'error',
+        });
+        await this.recargar();
+        return;
+      }
+
+      const actual = (await this.activities.findByGuid(answer.GUID)) ?? answer;
+
+      if (esActivo) {
+        const activo = await this.editor.findAsset(guidCreado);
+        if (!activo) return;
+
+        await this.activities.attachAsset(actual, activo);
+        this.toasts.show({ title: 'Activo creado y subido a Visitrack', tone: 'success' });
+        await this.alFormulario();
+        return;
+      }
+
+      const ubicacion = await this.editor.findLocation(guidCreado);
+      if (!ubicacion) return;
+
+      const conUbicacion = await this.activities.attachLocation(actual, ubicacion);
+      if (conUbicacion) this.answer.set(conUbicacion);
+
+      this.toasts.show({ title: 'Ubicación creada y subida a Visitrack', tone: 'success' });
+
+      if (requisitos.requiresAsset && !config.conActivo) {
+        await this.irAlPasoDelActivo();
+        return;
+      }
+
+      await this.alFormulario();
+    } finally {
+      this.cargando.set(false);
+    }
+  }
+
   async elegir(opcion: PickerItem): Promise<void> {
     const config = this.config();
     const answer = this.answer();

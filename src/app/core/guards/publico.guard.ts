@@ -19,7 +19,20 @@ import { esModoPublico, guidPublico, RUTA_ENLACE } from '../config/modo-publico'
  * lleva la flecha de volver de la actividad, así que sin esta regla se llegaba
  * por accidente.
  */
-const PERMITIDAS = [/^\/formularios\/[^/]+\/actividad(\/|$)/, /^\/gracias(\/|$)/];
+const PERMITIDAS = [
+  /^\/formularios\/[^/]+\/actividad(\/|$)/,
+  /^\/gracias(\/|$)/,
+
+  /*
+   * El editor de entidades, solo para **crear**: `ubicaciones/nueva` y
+   * `ubicaciones/<guid>/activo/nuevo`. Es la pantalla de siempre; el enlace
+   * decide si se ofrece (ver `puedeCrearUbicaciones`) y el servidor vuelve a
+   * comprobarlo al subir. El detalle y la edición de lo que ya existe siguen
+   * fuera: son pantallas de la aplicación con sesión.
+   */
+  /^\/ubicaciones\/nueva$/,
+  /^\/ubicaciones\/[^/]+\/activo\/nuevo$/,
+];
 
 /**
  * Mantiene una pestaña pública dentro de lo suyo.

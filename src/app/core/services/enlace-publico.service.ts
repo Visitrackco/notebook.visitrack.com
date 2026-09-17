@@ -25,6 +25,16 @@ export interface ConfiguracionDelEnlace {
   conActivo: boolean;
 
   /**
+   * Si el enlace deja dar de alta una ubicación o un activo desde aquí.
+   *
+   * Lo decide quien configuró el enlace en Module. Lo creado queda a nombre del
+   * usuario del enlace y **sube a Visitrack en el acto**: aquí no hay
+   * sincronización que lo lleve después.
+   */
+  puedeCrearUbicaciones: boolean;
+  puedeCrearActivos: boolean;
+
+  /**
    * Color de fondo de la página, `#rrggbb`. Vacío = el gris de la aplicación.
    *
    * Es del enlace, no de quien lo abre: quien reparte un enlace decide cómo se

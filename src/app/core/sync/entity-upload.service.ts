@@ -1,6 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 
 import { resolveCatalogOwnerId } from '../config/company-rules';
+import { esModoPublico } from '../config/modo-publico';
 import { Asset, ListDetail, LocationForm, SurveyAnswer } from '../models/entities.model';
 import {
   AssetRepository,
@@ -255,6 +256,49 @@ export class EntityUploadService {
   // Cada familia
   // ───────────────────────────────────────────────────────────────────────────
 
+  /**
+   * Sube **ahora** una ubicación o un activo recién creados, por su GUID.
+   *
+   * Es lo que usa un enlace público: allí no hay sincronización que lo lleve
+   * después, así que lo que se crea tiene que llegar a Visitrack en el mismo
+   * gesto de guardar. Devuelve por qué no, cuando no.
+   */
+  async subirAhora(entidad: 'ubicacion' | 'activo', guid: string): Promise<{ ok: boolean; error: string }> {
+    const done: Counters = { locations: 0, assets: 0, items: 0, deferred: 0, failed: 0 };
+
+    try {
+      if (entidad === 'ubicacion') {
+        const row = await this.locations.getByIndex('byGUID', guid);
+        if (!row) return { ok: false, error: 'La ubicación no está en este navegador.' };
+        if (row.SyncedToServer === '1') return { ok: true, error: '' };
+
+        await this.pushLocations([row], done);
+        return done.locations > 0
+          ? { ok: true, error: '' }
+          : { ok: false, error: this.ultimoRechazo || 'El servidor no aceptó la ubicación.' };
+      }
+
+      const row = await this.assets.getByIndex('byGUID', guid);
+      if (!row) return { ok: false, error: 'El activo no está en este navegador.' };
+      if (row.SyncedToServer === '1') return { ok: true, error: '' };
+
+      await this.pushAssets([row], done);
+
+      if (done.deferred > 0) {
+        return { ok: false, error: 'La ubicación del activo todavía no tiene identificador en el servidor.' };
+      }
+
+      return done.assets > 0
+        ? { ok: true, error: '' }
+        : { ok: false, error: this.ultimoRechazo || 'El servidor no aceptó el activo.' };
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : 'No se pudo subir.' };
+    }
+  }
+
+  /** Lo último que dijo el servidor al rechazar algo, para poder enseñarlo. */
+  private ultimoRechazo = '';
+
   private async pushLocations(rows: LocationForm[], done: Counters): Promise<void> {
     // La compañía sale de la sesión: el registro local no la guarda, porque
     // todo lo que hay en el dispositivo es de la compañía de quien entró.
@@ -271,13 +315,21 @@ export class EntityUploadService {
        */
       const zone = await this.resolveWorkZone(row);
 
-      if (!zone) {
+      /*
+       * Desde un enlace público la zona la pone el servidor.
+       *
+       * Aquí no hay zonas descargadas —no hay sincronización— y el usuario del
+       * enlace puede no traer una en su ficha. El endpoint público la resuelve
+       * de la persona a la que pertenece el enlace; mandar la petición sin
+       * zona es lo que le permite hacerlo.
+       */
+      if (!zone && !esModoPublico()) {
         console.warn('[Entidades] la ubicación no tiene zona de trabajo', row.GUID);
         done.failed++;
         continue;
       }
 
-      if (zone !== String(row.WorkZoneID ?? '')) {
+      if (zone && zone !== String(row.WorkZoneID ?? '')) {
         await this.locations.update(row.ID, { WorkZoneID: zone });
       }
 
@@ -420,6 +472,7 @@ export class EntityUploadService {
     if (result.notImplemented) this.notImplemented.set(true);
     else console.warn('[Entidades] el servidor rechazó el registro', result.error);
 
+    this.ultimoRechazo = result.error ?? '';
     done.failed++;
     return false;
   }

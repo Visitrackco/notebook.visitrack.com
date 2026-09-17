@@ -32,9 +32,11 @@
       [searchTerm]="busqueda()"
       [totalCount]="total()"
       emptyMessage="No hay nada que cuadre con lo que buscas. Prueba con otro nombre, o con el código de la etiqueta."
+      [createLabel]="puedeCrear() ? (paso() === 'activo' ? 'Nuevo activo' : 'Nueva ubicación') : ''"
       (search)="buscar($event)"
       (loadMore)="masResultados()"
       (choose)="elegir($event)"
+      (create)="crearNueva()"
     />
   } @else if (paso() === 'abriendo') {
     <div class="ep-centro" role="status" aria-live="polite">
