@@ -233,6 +233,59 @@ export class BinaryStorageService {
       } catch (error) {
         console.warn('[Binarios] no se pudo subir en linea; queda en la cola', error);
       }
+
+      this.confirmarEnLinea(answerGuid);
+    })();
+  }
+
+  /**
+   * Actividades cuyos archivos se estan confirmando ahora mismo, y si mientras
+   * tanto llego alguno nuevo que obliga a otra vuelta.
+   */
+  private readonly confirmando = new Map<string, { otraVez: boolean }>();
+
+  /**
+   * Y, subido, se sigue hasta que este **en el bucket**.
+   *
+   * Que el servidor reciba el archivo no lo deja disponible: lo pasa a AWS un
+   * trabajo que corre cada minuto, y la actividad no sale hasta que el servidor
+   * confirme que ya esta alli. Con la subida sola, ese minuto se pagaba entero
+   * en «Gracias», mirando un «se esta enviando».
+   *
+   * Preguntando desde ya, ese minuto transcurre mientras la persona sigue
+   * llenando el formulario: al pulsar Guardar los archivos suelen estar
+   * confirmados y la actividad sale en el acto.
+   *
+   * Una sola ronda por actividad. Cada foto nueva no abre otra espera: si ya
+   * hay una en marcha se le pide una vuelta mas al terminar, y cada vuelta
+   * relee lo pendiente de la actividad, asi que lo que se capture mientras
+   * tanto entra en la siguiente pregunta.
+   */
+  private confirmarEnLinea(answerGuid: string): void {
+    const enCurso = this.confirmando.get(answerGuid);
+
+    if (enCurso) {
+      enCurso.otraVez = true;
+      return;
+    }
+
+    const marca = { otraVez: false };
+    this.confirmando.set(answerGuid, marca);
+
+    void (async () => {
+      try {
+        const { BinaryVerifyService } = await import('../sync/binary-verify.service');
+        const verificador = this.injector.get(BinaryVerifyService);
+
+        do {
+          marca.otraVez = false;
+          await verificador.ensureAnswerOnline(answerGuid);
+        } while (marca.otraVez);
+      } catch (error) {
+        console.warn('[Binarios] no se pudo confirmar en linea; lo hara el envio', error);
+      } finally {
+        this.confirmando.delete(answerGuid);
+      }
     })();
   }
 

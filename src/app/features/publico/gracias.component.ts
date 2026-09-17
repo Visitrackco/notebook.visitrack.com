@@ -9,6 +9,16 @@ import { IconComponent } from '../../shared/components/icon/icon.component';
 const LATIDO_MS = 4000;
 
 /**
+ * Cada cuánto se empuja la cola mientras quede algo en vuelo.
+ *
+ * Más corto que el minuto de la cola, más largo que el latido: cada empujón
+ * pregunta al servidor por los archivos, y hacerlo cada cuatro segundos sería
+ * martillearlo sin que el trabajo que pasa los archivos al bucket vaya más
+ * rápido por eso.
+ */
+const EMPUJON_MS = 10_000;
+
+/**
  * El final de un enlace público.
  *
  * ## Por qué no basta con «Gracias»
@@ -114,8 +124,36 @@ export class GraciasComponent {
      *
      * Se para al salir: un intervalo suelto sigue despertando la pestaña.
      */
-    const latido = setInterval(() => void this.uploads.refresh(), LATIDO_MS);
+    const latido = setInterval(() => void this.latir(), LATIDO_MS);
     inject(DestroyRef).onDestroy(() => clearInterval(latido));
+  }
+
+  /**
+   * Un latido: mirar, y si sigue algo en vuelo, **empujarlo**.
+   *
+   * La cola de siempre reintenta cada minuto, que con sesion esta bien —hay
+   * un listado donde verlo y otro dia para volver—. Aqui la persona esta
+   * delante de esta pantalla esperando a que diga «ya», y el minuto se le hace
+   * eterno: en cuanto el servidor confirma los archivos, la actividad deberia
+   * salir en segundos, no en la siguiente vuelta del reloj.
+   *
+   * Solo cuando de verdad queda algo: con la cola vacia el latido es solo
+   * mirar. Y `run` ya se protege de solaparse con una corrida en marcha.
+   */
+  private async latir(): Promise<void> {
+    await this.uploads.refresh();
+
+    if (this.listo() || this.uploads.running() || this.reintentando()) return;
+    if (this.atascadas().length > 0 && !this.esperandoArchivos()) return;
+
+    const ultima = this.uploads.lastRun()?.getTime() ?? 0;
+    if (Date.now() - ultima < EMPUJON_MS) return;
+
+    try {
+      await this.uploads.run();
+    } finally {
+      await this.uploads.refresh();
+    }
   }
 
   /** Vuelve a intentar lo que quedó. */
