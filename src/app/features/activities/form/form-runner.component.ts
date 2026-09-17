@@ -3030,8 +3030,12 @@ export class FormRunnerComponent {
     this.blocking.set([]);
     this.saving.set(true);
 
+    const t0 = performance.now();
+    const marca = (paso: string) => console.debug(`[Guardar] ${paso} · ${Math.round(performance.now() - t0)} ms`);
+
     try {
       await this.flush();
+      marca('respuestas escritas');
 
       // Con archivos por subir, la actividad queda esperándolos en lugar de
       // ponerse en cola: subirla antes la dejaría en Visitrack apuntando a
@@ -3081,6 +3085,7 @@ export class FormRunnerComponent {
        * dueño y **retiene el envío** de la actividad. Ver [dispatch].
        */
       await this.resolverDestinatarios(answer);
+      marca('reglas, flujo y destinatarios');
 
       const pendingFiles = await this.activities.countBlockingBinaries(answer.GUID);
 
@@ -3098,6 +3103,7 @@ export class FormRunnerComponent {
       const completedOn = incomplete ? '' : answer.CompletedOn || new Date().toISOString();
 
       await this.answers.markSaved(answer.ID, pendingFiles > 0, completedOn);
+      marca(`guardada (${pendingFiles} archivo(s) por confirmar)`);
 
       this.activities.notifyChanged();
       this.feedback.set(this.describeSave(incomplete, pendingFiles));

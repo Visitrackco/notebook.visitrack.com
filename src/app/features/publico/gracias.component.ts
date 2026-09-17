@@ -64,6 +64,15 @@ export class GraciasComponent {
   /** Alguna necesita que una persona la corrija: no se arregla sola. */
   readonly atascadas = computed(() => this.pendientes().filter((p) => p.issue !== null));
 
+  /**
+   * Está esperando a que suba algo creado aquí —una sede, un equipo, un ítem
+   * de lista— antes de poder salir. Se resuelve solo; se dice para que la
+   * espera no parezca un cuelgue.
+   */
+  readonly esperandoEntidades = computed(
+    () => this.pendientes().find((p) => p.waitingEntities)?.waitingEntities ?? '',
+  );
+
   /** Se llegó aquí descartando la actividad: no se envió nada. */
   readonly descartada = input('');
 
@@ -74,6 +83,7 @@ export class GraciasComponent {
     if (this.listo()) return '¡Gracias! Ya quedó registrado';
     if (this.atascadas().length > 0) return 'No se pudo enviar del todo';
     if (this.esperandoArchivos()) return 'Enviando tus archivos…';
+    if (this.esperandoEntidades()) return 'Subiendo lo que creaste…';
 
     return 'Enviando…';
   });
@@ -106,6 +116,10 @@ export class GraciasComponent {
         'Las fotos y los archivos se están subiendo. No cierres esta página hasta ' +
         'que termine, o habrá que hacerlo otra vez.'
       );
+    }
+
+    if (this.esperandoEntidades()) {
+      return `${this.esperandoEntidades()} Después sale la respuesta. No cierres esta página todavía.`;
     }
 
     return 'Un momento, se está enviando. No cierres esta página todavía.';

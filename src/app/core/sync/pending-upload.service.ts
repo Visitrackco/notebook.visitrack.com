@@ -183,14 +183,20 @@ export class PendingUploadService {
        * sede, queda allí apuntando a nada — y nadie lo corrige, porque el
        * registro ya existe y parece completo. Ver [EntityUploadService].
        */
+      const t0 = performance.now();
+      const marca = (paso: string) => console.debug(`[Cola] ${paso} · ${Math.round(performance.now() - t0)} ms`);
+
       const entities = await this.entities.run();
+      marca('entidades');
 
       const uploadedFiles = await this.uploads.uploadPending(answerGuid);
+      marca(`archivos subidos (${uploadedFiles})`);
 
       // Confirmar en bloque y no actividad por actividad: una sola llamada
       // resuelve todos los archivos, y el servidor responde igual de rápido
       // para uno que para cincuenta.
       const report = await this.verify.verifyAll(false);
+      marca(`archivos confirmados (${report.confirmed}, en espera ${report.queued})`);
 
       // Las que necesitan una decisión del usuario no entran: reintentarlas
       // cada minuto no las arregla y solo llena la bitácora de fallos iguales.
@@ -204,6 +210,7 @@ export class PendingUploadService {
         // Rondas cortas: aquí no hay nadie esperando en pantalla, y si todavía
         // no está lista se reintenta en la corrida siguiente.
         const result = await this.submit.submit(entry.answer, 1);
+        marca(`actividad ${entry.answer.GUID.slice(0, 8)}: ${result.outcome}`);
 
         if (result.outcome !== 'sent') continue;
 
