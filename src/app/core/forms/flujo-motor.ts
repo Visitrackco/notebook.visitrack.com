@@ -657,6 +657,14 @@ export function evaluar(flujo: Flujo, contexto: Contexto): Resultado {
   const origen = contexto.origen ?? {};
   const enFila = ambito === 'fila';
 
+  // Los límites de cambios del flujo van en **toda** salida, en cualquier
+  // momento y haya o no reglas: son del formulario, no de una regla. Ver
+  // `Flujo.limitesDeCambios`.
+  const conLimites = (r: Resultado): Resultado => {
+    if (!enFila) aplicarLimitesDeCambios(flujo, r, contexto.campos);
+    return r;
+  };
+
   const vivas = (flujo?.reglas ?? [])
     .filter((r) => r.activa !== false)
     .filter((r) => esDeAmbito(r, ambito, tablaDeFila));
@@ -762,7 +770,7 @@ export function evaluar(flujo: Flujo, contexto: Contexto): Resultado {
     return suyos.length === 0 || suyos.some((c) => disparadores.has(c));
   };
 
-  if (!reglas.length && !generales.length) return resultado;
+  if (!reglas.length && !generales.length) return conLimites(resultado);
 
   /*
    * Se evalúa por pasadas hasta que nada cambie.
@@ -998,7 +1006,7 @@ export function evaluar(flujo: Flujo, contexto: Contexto): Resultado {
       cerrar(generales, resultado, valores, contexto.campos, puedeAvisar, String(contexto.ahora ?? ''), origen, String(contexto.urlDeBinarios ?? ''));
       expandirPaginas(resultado.campos, contexto.campos);
       resultado.campos = limpiar(resultado.campos);
-      return resultado;
+      return conLimites(resultado);
     }
   }
 
@@ -1006,7 +1014,7 @@ export function evaluar(flujo: Flujo, contexto: Contexto): Resultado {
   cerrar(generales, resultado, valores, contexto.campos, puedeAvisar, String(contexto.ahora ?? ''), origen, String(contexto.urlDeBinarios ?? ''));
   expandirPaginas(resultado.campos, contexto.campos);
   resultado.campos = limpiar(resultado.campos);
-  return resultado;
+  return conLimites(resultado);
 }
 
 /**
@@ -1327,6 +1335,41 @@ function loQueEsperaba(
  * decisión que los tres motores tendrían que acertar igual cada uno por su
  * lado.
  */
+/**
+ * Los límites de cambios configurados en el flujo, aplicados al resultado.
+ *
+ * Es lo mismo que hace la acción `limitar-cambios`, pero sin regla: vale
+ * para toda la vida de la actividad porque se aplica en cada evaluación. Si
+ * un campo tiene tope por los dos caminos, se queda con el más bajo.
+ */
+function aplicarLimitesDeCambios(
+  flujo: Flujo,
+  resultado: Resultado,
+  campos: Record<ApiId, Campo>,
+): void {
+  const limites = flujo?.limitesDeCambios;
+  if (!limites || typeof limites !== 'object') return;
+
+  const limitar = (id: ApiId, tope: number) => {
+    const estado = (resultado.campos[id] ??= {});
+    estado.maxCambios = estado.maxCambios == null ? tope : Math.min(estado.maxCambios, tope);
+    if ((cambiosDelContexto[id] ?? 0) >= estado.maxCambios) estado.soloLectura = true;
+  };
+
+  const general = Number(limites['*']);
+  if (Number.isFinite(general) && general > 0) {
+    for (const id of Object.keys(campos)) {
+      if (!referenciaDetalle(id) && !id.includes(':')) limitar(id, Math.floor(general));
+    }
+  }
+
+  for (const [id, crudo] of Object.entries(limites)) {
+    if (id === '*') continue;
+    const tope = Number(crudo);
+    if (Number.isFinite(tope) && tope > 0) limitar(id, Math.floor(tope));
+  }
+}
+
 /** Ver `evaluar`: lo que el contexto trae y las condiciones necesitan. */
 let ahoraDelContexto = '';
 let cambiosDelContexto: Record<ApiId, number> = {};

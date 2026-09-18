@@ -24,6 +24,20 @@ export interface Flujo {
   version: number;
   reglas: Regla[];
   lienzo?: Record<string, Punto>;
+
+  /**
+   * Cuántas veces se puede cambiar cada campo, **durante toda la vida de la
+   * actividad**.
+   *
+   * Por `apiId`, o `*` para todos los campos del formulario. No es una regla:
+   * se aplica en cada evaluación, en cualquier momento, con los cambios que
+   * trae `Contexto.cambios` —que viajan con la actividad—, así que reabrirla
+   * no lo deshace. Al llegar al tope el campo queda en solo lectura, y el
+   * estado del campo lleva `maxCambios` para que la pantalla diga «2 de 3».
+   * Un campo nombrado aquí y en una regla `limitar-cambios` se queda con el
+   * tope más bajo.
+   */
+  limitesDeCambios?: Record<ApiId, number>;
 }
 
 export interface Punto {
