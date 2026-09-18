@@ -655,7 +655,9 @@ export class FormRunnerComponent {
         if (!pedido || !this.engine()?.consumirGuardarAhora()) return;
         if (this.saving() || this.soloLectura() || this.guardarOculto()) return;
 
-        this.save().catch((error) => console.error('[flujo] no se pudo guardar solo', error));
+        this.guardarPorElFlujo().catch((error) =>
+          console.error('[flujo] no se pudo guardar solo', error),
+        );
       });
     });
 
@@ -2263,6 +2265,30 @@ export class FormRunnerComponent {
   async onSaveAnyway(): Promise<void> {
     this.askingRequired.set(false);
     await this.commit(true);
+  }
+
+  /**
+   * Guardar porque una regla lo pidió (`guardar-actividad`).
+   *
+   * Sin preguntarle a nadie: si hay obligatorios sin responder se guarda
+   * **de todos modos** —incompleta, como con el botón del diálogo— y si no,
+   * como con el botón de guardar. Lo único que sigue mandando es un bloqueo
+   * del flujo: una regla que pide guardar no puede saltarse a otra que lo
+   * impide, y quien las escribió tiene que verlas chocar.
+   */
+  private async guardarPorElFlujo(): Promise<void> {
+    const engine = this.engine();
+    if (!engine || this.saving()) return;
+
+    this.feedback.set('');
+
+    const bloqueos = engine.revisarFlujoAlGuardar();
+    if (bloqueos.length) {
+      this.avisarQueNoSePuedeGuardar(bloqueos);
+      return;
+    }
+
+    await this.commit(this.missing().length > 0);
   }
 
   /** Escribe y marca la actividad como terminada. */
