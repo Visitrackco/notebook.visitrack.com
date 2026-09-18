@@ -1108,6 +1108,10 @@ export class FormEngine {
       if (veces > 0) this.cambios.set(a.id, veces);
     }
 
+    // Y publicado desde el principio: la pantalla lee la señal, y sin esto
+    // decía «0 de 3» al reabrir aunque el motor ya contara con los tres.
+    this.cambiosPorCampo.set(new Map(this.cambios));
+
     this.appliedDefaults = initial.size > stored.length || this.recalculated;
     this.values.set(initial);
 

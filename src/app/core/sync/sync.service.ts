@@ -550,6 +550,17 @@ export class SyncService {
                 record['ID'] = identity;
               }
 
+              /*
+               * Lo que solo vive en este navegador se conserva.
+               *
+               * Una actividad que baja del servidor trae sus respuestas, pero
+               * no lo que el flujo apuntó aquí: si ya corrió «al crear», por
+               * qué no se puede eliminar, y cuántas veces se cambió cada campo
+               * cuando el servidor no lo trae. Sin esto, cada sincronización
+               * volvía a correr «al crear» y ponía el conteo a cero.
+               */
+              if (store === 'SurveyAnswers') conservarLoLocal(record, existing);
+
               // En los que autoincrementan la llave la puso IndexedDB y hay que
               // respetarla; en los demás manda la del servidor, y la fila vieja
               // sobra.
@@ -853,4 +864,55 @@ export class SyncService {
  */
 function isPendingLocal(record: Record<string, unknown>): boolean {
   return record['CreateWithMovil'] === '1' && record['Upload'] !== '1';
+}
+
+/**
+ * Pasa al registro que baja del servidor lo que solo se sabe aquí.
+ *
+ * Las marcas del flujo (`FlujoCrear`, `NoEliminar`) y, dentro de `Fields`,
+ * el conteo de cambios `cam` de cada respuesta cuando la versión del servidor
+ * no lo trae. Lo que sí trae el servidor manda.
+ */
+function conservarLoLocal(record: Record<string, unknown>, existing: Record<string, unknown>): void {
+  for (const clave of ['FlujoCrear', 'NoEliminar']) {
+    if (record[clave] === undefined && existing[clave] !== undefined) record[clave] = existing[clave];
+  }
+
+  try {
+    const locales = leerCampos(existing['Fields']);
+    if (!locales.length) return;
+
+    const camPorId = new Map<string, number>();
+    for (const c of locales) {
+      const n = Number(c['cam'] ?? 0);
+      if (n > 0 && c['id'] != null) camPorId.set(String(c['id']), n);
+    }
+    if (!camPorId.size) return;
+
+    const entrantes = leerCampos(record['Fields']);
+    let tocado = false;
+
+    for (const c of entrantes) {
+      const id = String(c['id'] ?? '');
+      const local = camPorId.get(id);
+      if (local === undefined) continue;
+
+      const suyo = Number(c['cam'] ?? 0);
+      if (suyo < local) {
+        c['cam'] = local;
+        tocado = true;
+      }
+    }
+
+    if (tocado) {
+      record['Fields'] = typeof record['Fields'] === 'string' ? JSON.stringify(entrantes) : entrantes;
+    }
+  } catch {
+    // Un `Fields` que no se lee se deja como llegó.
+  }
+}
+
+function leerCampos(crudo: unknown): Record<string, unknown>[] {
+  const lista = typeof crudo === 'string' ? JSON.parse(crudo || '[]') : crudo;
+  return Array.isArray(lista) ? lista.filter((c) => c && typeof c === 'object') : [];
 }
