@@ -2413,7 +2413,10 @@ export class FormRunnerComponent {
           campos: (pedido.campos ?? []).map((c) => ({ campo: c.campo, valor: c.valor })),
         };
 
-        if (encargo.que === 'crear-hijo') {
+        // Heredar con «crear si falta» es crear: la hija nace con los campos.
+        const crea = encargo.que === 'crear-hijo' || (encargo.que === 'heredar-al-hijo' && pedido.crearSiFalta === true);
+
+        if (crea) {
           if (hijo) {
             if (herencia.campos?.length) await this.sembrarHerencia(hijo, survey, answer, this.survey(), herencia);
             continue;

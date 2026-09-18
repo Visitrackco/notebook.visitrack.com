@@ -3946,6 +3946,9 @@ function aplicar(
 
       if (accion.accion === 'heredar-al-hijo' && !camposDelEncargo.length) return;
       if (camposDelEncargo.length) valor.campos = camposDelEncargo;
+
+      // Heredar puede crear la hija si falta: lo decide quien escribió la regla.
+      if (accion.accion === 'heredar-al-hijo' && config['crearSiFalta'] === true) valor.crearSiFalta = true;
     }
 
     const yaEsta = resultado.encargos.some(

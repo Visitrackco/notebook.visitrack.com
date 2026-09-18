@@ -2310,9 +2310,12 @@ export type TipoAccion =
   /** Eliminar la actividad hija de un campo vinculado, al guardar el padre. */
   | 'eliminar-hijo'
   /**
-   * Heredar campos del padre a un hijo **que ya existe**, al guardar el
-   * padre. `campo` es el vinculado; `valor` un `{campos: [...]}` como en
-   * [HerenciaDeActividad]. Sin hijo, no hace nada.
+   * Heredar campos del padre a un hijo, al guardar el padre.
+   *
+   * `campo` es el vinculado; `valor` un `{campos: [...]}` como en
+   * [HerenciaDeActividad], y opcionalmente `crearSiFalta: true` para que, si
+   * la actividad hija todavía no existe, se cree en ese momento —igual que
+   * `crear-hijo`— y reciba los campos. Sin eso, sin hijo no hace nada.
    */
   | 'heredar-al-hijo';
 
@@ -2640,6 +2643,8 @@ export interface EncargoDeHijo {
    * `crear-actividad`, para que quien siembra sea el mismo código.
    */
   campos?: { campo: ApiId; valor: string }[];
+  /** Para `heredar-al-hijo`: si la hija no existe, crearla y sembrarla. */
+  crearSiFalta?: boolean;
 }
 
 export interface Encargo {
