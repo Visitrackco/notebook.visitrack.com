@@ -220,6 +220,9 @@ export class ActivityDetailComponent {
   /** ¿El formulario permite elegir estado de despacho? */
   readonly statusEnabled = computed(() => Number(this.survey()?.StatusEnabled) === 1);
 
+  /** El flujo cerró el cambio de estado (`modo-auditor`). Lo dice el runner. */
+  readonly estadoCerradoPorElFlujo = signal(false);
+
   /**
    * ¿Queda algo por guardar de verdad?
    *

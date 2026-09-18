@@ -306,7 +306,7 @@
     } @else {
       <div class="acts__list">
         @for (card of cards(); track trackByGuid($index, card)) {
-          <article [class]="'acts__card acts__card--' + card.state.tone">
+          <article [class]="'acts__card acts__card--' + card.state.tone" [class.acts__card--bloqueada]="!!card.answer.NoEntrar">
             <button type="button" class="acts__card-main" (click)="open(card)">
               <!-- La bolita lleva el estado: es lo primero que se busca al
                    repasar la lista, y un disco de color se localiza de un
@@ -334,6 +334,15 @@
 
                   @if (card.answer.Consecutive) {
                     <span class="acts__consecutive vt-figure">#{{ card.answer.Consecutive }}</span>
+                  }
+
+                  <!-- El flujo la dejó sin poder abrirse: el candado es lo
+                       primero que se ve, y la leyenda que configuró quien
+                       escribió la regla va abajo. -->
+                  @if (card.answer.NoEntrar) {
+                    <span class="acts__lock" matTooltip="No se puede volver a abrir">
+                      <vt-icon name="lock" [size]="14" />
+                    </span>
                   }
                 </span>
 
@@ -388,6 +397,13 @@
                   </span>
                 } @else {
                   <span class="acts__blank">Sin datos diligenciados todavía</span>
+                }
+
+                @if (card.answer.NoEntrar) {
+                  <span class="acts__noentrar">
+                    <vt-icon name="lock" [size]="14" />
+                    {{ card.answer.NoEntrar }}
+                  </span>
                 }
 
                 @if (card.answer.Msg) {

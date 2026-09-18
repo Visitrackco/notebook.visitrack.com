@@ -847,3 +847,37 @@
   background: var(--vt-surface-2);
   border-radius: var(--vt-radius-full);
 }
+
+/* ── Bloqueada por el flujo: candado y leyenda ─────────────────────────── */
+.acts__card--bloqueada .acts__card-main {
+  cursor: not-allowed;
+}
+
+.acts__card--bloqueada .acts__bubble {
+  filter: saturate(0.4);
+}
+
+.acts__lock {
+  display: inline-grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-left: 0.35rem;
+  border-radius: 50%;
+  color: var(--mat-sys-on-error-container, #7a1c1c);
+  background: var(--mat-sys-error-container, #fde2e1);
+  flex: 0 0 auto;
+}
+
+.acts__noentrar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--mat-sys-on-error-container, #7a1c1c);
+  background: var(--mat-sys-error-container, #fde2e1);
+}

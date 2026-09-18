@@ -779,6 +779,7 @@ export class FormEngine {
    */
   private readonly edicionPorMomento = new Map<string, readonly string[]>();
   private readonly guardarOcultoPorMomento = new Map<string, boolean>();
+  private readonly estadoBloqueadoPorMomento = new Map<string, boolean>();
   private readonly eliminarPorMomento = new Map<string, readonly string[]>();
   private readonly guardarIgualPorMomento = new Map<string, boolean>();
   private readonly descriptivosPorMomento = new Map<
@@ -1073,6 +1074,20 @@ export class FormEngine {
 
   /** Si el flujo pidió esconder el botón de guardar. */
   readonly guardarOculto = signal(false);
+
+  /** Si el flujo cerró el cambio de estado (`modo-auditor`). */
+  readonly estadoBloqueado = signal(false);
+
+  /**
+   * Lo que la **última** evaluación dijo sobre volver a entrar.
+   *
+   * No se combina por momentos como el resto: es una decisión que quien
+   * llama apunta en la actividad al guardar, y ahí lo que cuenta es lo que
+   * dijo la pasada de «al guardar». `entradaPermitida` va aparte porque la
+   * lista vacía también es «ninguna regla dijo nada».
+   */
+  readonly entradaBloqueada = signal<readonly string[]>([]);
+  readonly entradaPermitida = signal(false);
 
   /** Si el flujo cerró la salida de «guardar de todos modos». */
   readonly guardarIgualBloqueado = signal(false);
@@ -1466,6 +1481,7 @@ export class FormEngine {
     this.bloqueosPorMomento.delete(llave);
     this.edicionPorMomento.delete(llave);
     this.guardarOcultoPorMomento.delete(llave);
+    this.estadoBloqueadoPorMomento.delete(llave);
     this.eliminarPorMomento.delete(llave);
     this.guardarIgualPorMomento.delete(llave);
     this.descriptivosPorMomento.delete(llave);
@@ -1479,7 +1495,10 @@ export class FormEngine {
     this.bloqueosPorMomento.set(llave, resultado.bloqueos);
     this.edicionPorMomento.set(llave, resultado.edicionBloqueada ?? []);
     this.guardarOcultoPorMomento.set(llave, !!resultado.guardarOculto);
+    this.estadoBloqueadoPorMomento.set(llave, !!resultado.estadoBloqueado);
     this.eliminarPorMomento.set(llave, resultado.eliminarBloqueado ?? []);
+    this.entradaBloqueada.set(resultado.entradaBloqueada ?? []);
+    this.entradaPermitida.set(!!resultado.entradaPermitida);
 
     // Un pulso: se enciende si alguna regla lo pidió en esta pasada y lo apaga
     // quien guarda. No se combina por momentos como el resto.
@@ -1550,6 +1569,7 @@ export class FormEngine {
      */
     this.edicionBloqueada.set([...new Set([...this.edicionPorMomento.values()].flat())]);
     this.guardarOculto.set([...this.guardarOcultoPorMomento.values()].some(Boolean));
+    this.estadoBloqueado.set([...this.estadoBloqueadoPorMomento.values()].some(Boolean));
     this.eliminarBloqueado.set([...new Set([...this.eliminarPorMomento.values()].flat())]);
     this.guardarIgualBloqueado.set([...this.guardarIgualPorMomento.values()].some(Boolean));
     /*

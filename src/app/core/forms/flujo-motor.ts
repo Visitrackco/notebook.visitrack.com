@@ -636,6 +636,9 @@ export function evaluar(flujo: Flujo, contexto: Contexto): Resultado {
     guardarIgualBloqueado: false,
     eliminarBloqueado: [],
     guardarAhora: false,
+    estadoBloqueado: false,
+    entradaBloqueada: [],
+    entradaPermitida: false,
     descriptivos: [],
     enEspera: [],
     ciclo: false,
@@ -4370,6 +4373,38 @@ function aplicar(
 
   if (accion.accion === 'guardar-actividad') {
     resultado.guardarAhora = true;
+    return;
+  }
+
+  /*
+   * Solo para mirar: los tres cierres de una vez.
+   *
+   * Pasa por `edicionBloqueada` y `guardarOculto` —y no por banderas
+   * propias— para que quien ya aplica esas dos no tenga que aprender nada
+   * nuevo; lo único que se añade es el estado cerrado.
+   */
+  if (accion.accion === 'modo-auditor') {
+    const motivo = String(accion.valor ?? '').trim() || 'Esta actividad está en modo auditor: solo se puede consultar';
+    if (!resultado.edicionBloqueada.includes(motivo)) {
+      resultado.edicionBloqueada.push(motivo);
+    }
+    resultado.guardarOculto = true;
+    resultado.estadoBloqueado = true;
+    return;
+  }
+
+  // Que no se vuelva a abrir, con la leyenda que se lee en el listado.
+  if (accion.accion === 'bloquear-actividad') {
+    const leyenda = String(accion.valor ?? '').trim() || 'Esta actividad está bloqueada';
+    if (!resultado.entradaBloqueada.includes(leyenda)) {
+      resultado.entradaBloqueada.push(leyenda);
+    }
+    return;
+  }
+
+  if (accion.accion === 'permitir-entrar') {
+    resultado.entradaBloqueada = [];
+    resultado.entradaPermitida = true;
     return;
   }
 

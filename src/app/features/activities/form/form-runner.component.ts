@@ -26,6 +26,7 @@ import {
 } from '../../../core/forms/form-schema';
 import { Survey, SurveyAnswer } from '../../../core/models/entities.model';
 import { DispatchStatusRepository } from '../../../core/repositories/entity.repositories';
+import { ANSWER_STATE } from '../../../core/models/activity.model';
 import { SurveyAnswerRepository } from '../../../core/repositories/survey-answer.repository';
 import { ActivityService } from '../../../core/services/activity.service';
 import { AlertSoundService } from '../../../core/services/alert-sound.service';
@@ -503,6 +504,12 @@ export class FormRunnerComponent {
    */
   readonly leave = output<void>();
 
+  /**
+   * El flujo cerró el cambio de estado (`modo-auditor`): el detalle esconde
+   * la barra de estados. Sale cada vez que cambia.
+   */
+  readonly estadoBloqueado = output<boolean>();
+
   readonly engine = signal<FormEngine | null>(null);
 
   /**
@@ -627,6 +634,12 @@ export class FormRunnerComponent {
      * actividad. Se escribe en cuanto el motor lo decide y se borra en cuanto
      * lo deja de decidir, sin esperar a guardar.
      */
+    // El cambio de estado cerrado, para que el detalle esconda la barra.
+    effect(() => {
+      const cerrado = this.engine()?.estadoBloqueado() ?? false;
+      untracked(() => this.estadoBloqueado.emit(cerrado));
+    });
+
     effect(() => {
       const motivos = this.engine()?.eliminarBloqueado() ?? [];
 
@@ -779,6 +792,17 @@ export class FormRunnerComponent {
     this.flujoDelFormulario.set(flujo ?? null);
     this.blocking.set([]);
     this.feedback.set('');
+
+    /*
+     * Si el flujo dice al abrir que esta actividad no se vuelve a abrir, se
+     * cierra en el acto.
+     *
+     * Es el respaldo de la marca del listado: la marca vive en este
+     * navegador, y si se perdió —otro navegador, datos borrados— la regla
+     * la vuelve a poner. Solo sobre una actividad ya guardada: cerrar una sin
+     * guardar dejaría trabajo atrapado sin subir.
+     */
+    if (await this.cerrarSiNoSePuedeEntrar(engine, answer)) return;
 
     // Lo que respondió un servicio es de la actividad que lo pidió: arrastrarlo
     // a la siguiente enseñaría el archivo de otra visita.
@@ -2319,6 +2343,47 @@ export class FormRunnerComponent {
   /** Lo último apuntado, para no escribir en la base lo que ya está. */
   private noEliminarApuntado: string | null = null;
 
+  /**
+   * Apunta —o quita— la leyenda con la que la actividad no se vuelve a abrir.
+   *
+   * Solo cuando el flujo lo dijo en esta pasada: con la lista vacía y sin
+   * `permitir-entrar`, ninguna regla habló y la marca que haya se respeta.
+   */
+  private async apuntarNoEntrarSegunElFlujo(): Promise<void> {
+    const engine = this.engine();
+    const answer = this.answer();
+    if (!engine || answer.ID == null) return;
+
+    const leyendas = engine.entradaBloqueada();
+    if (leyendas.length) {
+      await this.answers.update(answer.ID, { NoEntrar: leyendas.join(' · ') });
+      this.activities.notifyChanged();
+      return;
+    }
+
+    if (engine.entradaPermitida() && String(answer.NoEntrar ?? '').trim()) {
+      await this.answers.update(answer.ID, { NoEntrar: '' });
+      this.activities.notifyChanged();
+    }
+  }
+
+  /** Ver el montaje: cierra la actividad si el flujo no deja entrar. */
+  private async cerrarSiNoSePuedeEntrar(engine: FormEngine, answer: SurveyAnswer): Promise<boolean> {
+    const leyendas = engine.entradaBloqueada();
+    if (!leyendas.length) return false;
+    if (Number(answer.isSaved ?? 0) === ANSWER_STATE.UNSAVED) return false;
+
+    const leyenda = leyendas.join(' · ');
+    if (answer.ID != null && String(answer.NoEntrar ?? '') !== leyenda) {
+      await this.answers.update(answer.ID, { NoEntrar: leyenda });
+      this.activities.notifyChanged();
+    }
+
+    this.toasts.show({ title: 'Esta actividad está bloqueada', detail: leyenda, tone: 'warning' });
+    this.leave.emit();
+    return true;
+  }
+
   private async apuntarNoEliminar(motivo: string): Promise<void> {
     const answer = this.answer();
     if (answer.ID == null) return;
@@ -3229,6 +3294,10 @@ export class FormRunnerComponent {
       // ese aviso saca al usuario al listado y destruye este componente, así
       // que leer la entrada después sería leer algo que ya no está.
       void this.dispatch(answer.GUID);
+
+      // Lo que «al guardar» decidió sobre volver a entrar queda apuntado en
+      // la actividad, que es lo único que el listado puede mirar.
+      await this.apuntarNoEntrarSegunElFlujo();
 
       this.saved.emit();
     } catch (error) {

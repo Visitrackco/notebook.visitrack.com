@@ -86,7 +86,7 @@
           <span class="detail__saving-text">{{ autosaveLabel() }}</span>
         </span>
 
-        @if (statusEnabled() && statuses().length > 0) {
+        @if (statusEnabled() && statuses().length > 0 && !estadoCerradoPorElFlujo()) {
           <vt-status-bar
             [statuses]="statuses()"
             [current]="act.Status"
@@ -196,6 +196,7 @@
           [answer]="act"
           (saved)="onFormSaved()"
           (statusChanged)="onFlowStatus($event)"
+          (estadoBloqueado)="estadoCerradoPorElFlujo.set($event)"
           (leave)="leave()"
         />
       }

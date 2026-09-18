@@ -235,6 +235,13 @@ export interface SurveyAnswer {
   NoEliminar?: string;
 
   /**
+   * La leyenda con la que el flujo dejó la actividad **sin poder abrirse**.
+   * Vacío: se abre. La escribe el formulario al guardar (`bloquear-actividad`)
+   * y el listado la enseña con su marca sin dejar entrar.
+   */
+  NoEntrar?: string;
+
+  /**
    * `'1'` cuando el momento «al crear» del flujo ya corrió para esta
    * actividad en este navegador. Se escribe al montar el formulario la
    * primera vez, para que no vuelva a correr.

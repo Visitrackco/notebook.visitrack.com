@@ -2255,7 +2255,31 @@ export type TipoAccion =
    * Cuántas opciones se pueden marcar, como mucho, en una casilla múltiple.
    * `valor` es el tope. Manda sobre el que traiga el flujo de fondo.
    */
-  | 'limitar-opciones';
+  | 'limitar-opciones'
+  /**
+   * La actividad se abre **solo para mirar**: todos los campos en solo
+   * lectura, sin botón de guardar y sin poder cambiarle el estado.
+   *
+   * Es `bloquear-edicion` más `ocultar-guardar` más el estado cerrado, en
+   * una sola acción: lo que se quiere de una actividad ya auditada es que
+   * nadie la toque por ningún camino, y escribir tres acciones para eso es
+   * dejar una puerta abierta el día que se olvide una. `valor` es el motivo
+   * que se lee arriba; vacío, uno por omisión.
+   */
+  | 'modo-auditor'
+  /**
+   * La actividad **no se vuelve a abrir** desde el aparato o navegador.
+   *
+   * El motor solo lo anota (`Resultado.entradaBloqueada`); quien llama lo
+   * escribe en la actividad —como hace con `bloquear-eliminar`— cuando el
+   * guardado termina bien, y el listado la enseña con su marca y su leyenda
+   * sin dejar entrar. Solo se bloquea una actividad ya guardada: cerrar una
+   * sin guardar dejaría trabajo atrapado sin subir. `valor` es la leyenda que
+   * se lee en el listado.
+   */
+  | 'bloquear-actividad'
+  /** Volver a dejar entrar. Quita la marca que puso `bloquear-actividad`. */
+  | 'permitir-entrar';
 
 export interface Accion {
   accion: TipoAccion;
@@ -2725,6 +2749,26 @@ export interface Resultado {
 
   /** Una regla pidió guardar la actividad ya, sin esperar al botón. */
   guardarAhora: boolean;
+
+  /**
+   * Alguna regla cerró el cambio de estado de la actividad. Ver
+   * `modo-auditor`: la barra de estados no se ofrece.
+   */
+  estadoBloqueado: boolean;
+
+  /**
+   * Leyendas con las que la actividad queda sin poder abrirse. Vacío: se
+   * puede. Quien llama las apunta en la actividad al guardar; ver
+   * `bloquear-actividad`.
+   */
+  entradaBloqueada: string[];
+
+  /**
+   * Alguna regla pidió volver a dejar entrar (`permitir-entrar`). Va aparte
+   * de que la lista esté vacía: vacía también está cuando ninguna regla dijo
+   * nada, y ahí la marca que ya tenga la actividad no se toca.
+   */
+  entradaPermitida: boolean;
 
   /**
    * Lo que el flujo quiere que describa a la actividad —o a la fila.

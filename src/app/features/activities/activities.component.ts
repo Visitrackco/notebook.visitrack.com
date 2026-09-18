@@ -740,6 +740,13 @@ export class ActivitiesComponent {
 
   /** Abre una actividad existente por donde le corresponda. */
   async open(card: ActivityCard): Promise<void> {
+    // Bloqueada por el flujo: se ve, con su leyenda, pero no se entra.
+    const leyenda = String(card.answer.NoEntrar ?? '').trim();
+    if (leyenda) {
+      this.toasts.show({ title: 'Esta actividad está bloqueada', detail: leyenda, tone: 'warning' });
+      return;
+    }
+
     await this.goToNextStep(card.answer);
   }
 
