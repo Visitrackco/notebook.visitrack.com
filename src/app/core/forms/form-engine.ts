@@ -1135,7 +1135,7 @@ export class FormEngine {
     // se abre la actividad. Ver [deriveSections].
     this.sections.set(this.deriveSections(initial));
 
-    if (this.flujo?.reglas?.length) {
+    if (this.hayFlujo()) {
       this.indexarCampos();
 
       /*
@@ -1288,8 +1288,26 @@ export class FormEngine {
    * ejecuta en los tres momentos que el flujo declara (al abrir, al cambiar y
    * al guardar) y el resto del motor lee lo que dejó.
    */
+  /**
+   * ¿Hay algo que evaluar?
+   *
+   * Reglas, o lo que el flujo trae **sin regla**: los límites de cambios y
+   * los comportamientos por campo se aplican en cada evaluación aunque no
+   * haya ni una regla escrita. Mirar solo `reglas` dejaba un flujo que solo
+   * limita cambios sin correr nunca, y el campo decía «sin límite».
+   */
+  private hayFlujo(): boolean {
+    const f = this.flujo;
+    if (!f) return false;
+    return (
+      (f.reglas?.length ?? 0) > 0 ||
+      Object.keys(f.limitesDeCambios ?? {}).length > 0 ||
+      Object.keys(f.comportamientos ?? {}).length > 0
+    );
+  }
+
   private correrFlujo(momento: Momento, campoQueCambio?: string): void {
-    if (!this.flujo?.reglas?.length) return;
+    if (!this.hayFlujo()) return;
 
     /*
      * Un campo que a ninguna regla le importa no paga nada.
