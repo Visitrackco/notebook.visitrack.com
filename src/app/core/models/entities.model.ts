@@ -226,6 +226,14 @@ export interface SurveyAnswer {
   AnswerID: string | null;
   Consecutive?: string;
 
+  /**
+   * Por qué el flujo no deja eliminar esta actividad. Vacío o ausente: sí.
+   *
+   * Lo escribe el formulario cuando una regla `bloquear-eliminar` se cumple,
+   * y lo lee el listado, que ofrece borrar sin haber evaluado ningún flujo.
+   */
+  NoEliminar?: string;
+
   LocationTypeID: string;
   LocationID: string;
   LocationGUID: string;

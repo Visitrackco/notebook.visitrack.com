@@ -770,6 +770,7 @@ export class FormEngine {
    */
   private readonly edicionPorMomento = new Map<string, readonly string[]>();
   private readonly guardarOcultoPorMomento = new Map<string, boolean>();
+  private readonly eliminarPorMomento = new Map<string, readonly string[]>();
   private readonly guardarIgualPorMomento = new Map<string, boolean>();
   private readonly descriptivosPorMomento = new Map<
     string,
@@ -1027,6 +1028,40 @@ export class FormEngine {
   /** Motivos por los que el flujo no deja editar la actividad. Vacío = se puede. */
   readonly edicionBloqueada = signal<readonly string[]>([]);
 
+  /**
+   * Cuántas veces se cambió a mano cada campo, por `id`.
+   *
+   * Sube en [setValue] —lo que responde la persona— y no cuando escribe el
+   * flujo. Se guarda con la respuesta (`AnswerField.cam`) y se le pasa al
+   * motor para `limitar-cambios`. Como señal para que la pantalla pueda
+   * decir «2 de 3» junto al campo.
+   */
+  private readonly cambios = new Map<string, number>();
+  readonly cambiosPorCampo = signal<ReadonlyMap<string, number>>(new Map());
+
+  /** Cuántas veces se cambió un campo. Cero si nunca. */
+  cambiosDe(id: string): number {
+    return this.cambiosPorCampo().get(id) ?? 0;
+  }
+
+  /** Por qué no se puede eliminar la actividad. Vacío: sí se puede. */
+  readonly eliminarBloqueado = signal<readonly string[]>([]);
+
+  /**
+   * Una regla acaba de pedir guardar la actividad ya.
+   *
+   * Es un **pulso**, no un estado: quien lo escucha guarda y lo apaga con
+   * [consumirGuardarAhora]. Dejarlo encendido haría que cada evaluación
+   * volviera a guardar.
+   */
+  readonly guardarAhora = signal(false);
+
+  consumirGuardarAhora(): boolean {
+    const pedido = this.guardarAhora();
+    if (pedido) this.guardarAhora.set(false);
+    return pedido;
+  }
+
   /** Si el flujo pidió esconder el botón de guardar. */
   readonly guardarOculto = signal(false);
 
@@ -1056,6 +1091,13 @@ export class FormEngine {
 
     const stored = parseAnswerFields(input.answers);
     const initial = this.buildInitialValues(stored);
+
+    // Cuántas veces se cambió cada campo, tal como quedó guardado: es lo que
+    // deja que `limitar-cambios` siga contando al reabrir la actividad.
+    for (const a of stored) {
+      const veces = Number(a.cam ?? 0);
+      if (veces > 0) this.cambios.set(a.id, veces);
+    }
 
     this.appliedDefaults = initial.size > stored.length || this.recalculated;
     this.values.set(initial);
@@ -1320,11 +1362,19 @@ export class FormEngine {
       if (!campos[apiId]) campos[apiId] = { apiId, fty: 'text' };
     }
 
+    // Los cambios por campo, con la misma llave que los valores: el `apiId`.
+    const cambios: Record<string, number> = {};
+    for (const [apiId, id] of this.idPorApiId) {
+      const veces = this.cambios.get(id) ?? 0;
+      if (veces > 0) cambios[apiId] = veces;
+    }
+
     const resultado: Resultado = evaluar(this.flujo, {
       valores,
       campos,
       momento,
       campoQueCambio,
+      cambios,
 
       // El reloj de quien diligencia. Lo usa la programación de una consigna
       // —«dentro de dos días»— y se pasa en vez de leerlo dentro para que el
@@ -1399,6 +1449,7 @@ export class FormEngine {
     this.bloqueosPorMomento.delete(llave);
     this.edicionPorMomento.delete(llave);
     this.guardarOcultoPorMomento.delete(llave);
+    this.eliminarPorMomento.delete(llave);
     this.guardarIgualPorMomento.delete(llave);
     this.descriptivosPorMomento.delete(llave);
 
@@ -1411,6 +1462,11 @@ export class FormEngine {
     this.bloqueosPorMomento.set(llave, resultado.bloqueos);
     this.edicionPorMomento.set(llave, resultado.edicionBloqueada ?? []);
     this.guardarOcultoPorMomento.set(llave, !!resultado.guardarOculto);
+    this.eliminarPorMomento.set(llave, resultado.eliminarBloqueado ?? []);
+
+    // Un pulso: se enciende si alguna regla lo pidió en esta pasada y lo apaga
+    // quien guarda. No se combina por momentos como el resto.
+    if (resultado.guardarAhora) this.guardarAhora.set(true);
     this.guardarIgualPorMomento.set(llave, !!resultado.guardarIgualBloqueado);
     this.descriptivosPorMomento.set(llave, resultado.descriptivos ?? []);
 
@@ -1477,6 +1533,7 @@ export class FormEngine {
      */
     this.edicionBloqueada.set([...new Set([...this.edicionPorMomento.values()].flat())]);
     this.guardarOculto.set([...this.guardarOcultoPorMomento.values()].some(Boolean));
+    this.eliminarBloqueado.set([...new Set([...this.eliminarPorMomento.values()].flat())]);
     this.guardarIgualBloqueado.set([...this.guardarIgualPorMomento.values()].some(Boolean));
     /*
      * Y si una regla pidió ir a otra página, se va.
@@ -2281,6 +2338,20 @@ export class FormEngine {
    * Si el campo activa secciones, también recalcula cuáles quedan abiertas.
    */
   setValue(field: FormField, value: FieldValue): void {
+    /*
+     * Un cambio se cuenta cuando el valor **cambia**, no en cada tecla igual.
+     *
+     * Escribir «abc» son tres cambios de valor —a, ab, abc—; el tope de
+     * `limitar-cambios` está pensado para elecciones, fechas y números, donde
+     * cada cambio es uno deliberado. En un texto libre el tope se alcanza
+     * rápido, y eso es lo que quien configura la regla pidió al ponérselo.
+     */
+    if (!mismoValor(this.values().get(field.id), value)) {
+      const veces = (this.cambios.get(field.id) ?? 0) + 1;
+      this.cambios.set(field.id, veces);
+      this.cambiosPorCampo.set(new Map(this.cambios));
+    }
+
     this.values.update((current) => {
       const next = new Map(current);
       next.set(field.id, value);
@@ -2504,7 +2575,8 @@ export class FormEngine {
 
         if (file) {
           const { val, val1 } = splitFileValue(field.fty, file);
-          result.push({ id: field.id, val, val1, fty: field.fty, hid: hidden });
+          const cam = this.cambios.get(field.id) ?? 0;
+          result.push({ id: field.id, val, val1, fty: field.fty, hid: hidden, ...(cam > 0 ? { cam } : {}) });
           continue;
         }
 
@@ -2512,6 +2584,7 @@ export class FormEngine {
         // recalculan al leerla: el ítem puede cambiar en Visitrack después, y
         // lo que la actividad documenta es lo que decía al responderse.
         const des = this.descriptorsOf(field.id);
+        const cam = this.cambios.get(field.id) ?? 0;
 
         result.push({
           id: field.id,
@@ -2519,6 +2592,7 @@ export class FormEngine {
           fty: field.fty,
           hid: hidden,
           ...(des.length > 0 ? { des } : {}),
+          ...(cam > 0 ? { cam } : {}),
         });
       }
     }
@@ -2917,4 +2991,21 @@ function ahoraLocal(): string {
     `${hoy.getFullYear()}-${dos(hoy.getMonth() + 1)}-${dos(hoy.getDate())} ` +
     `${dos(hoy.getHours())}:${dos(hoy.getMinutes())}`
   );
+}
+
+/**
+ * ¿Es el mismo valor, a efectos de contar un cambio?
+ *
+ * Por contenido y no por referencia: un objeto —una opción elegida, un
+ * archivo— llega nuevo cada vez aunque diga lo mismo.
+ */
+function mismoValor(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (a == null || b == null) return (a ?? '') === (b ?? '');
+
+  try {
+    return JSON.stringify(a) === JSON.stringify(b);
+  } catch {
+    return false;
+  }
 }

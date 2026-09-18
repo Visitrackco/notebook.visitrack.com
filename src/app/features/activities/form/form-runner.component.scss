@@ -748,3 +748,15 @@ vt-page-nav {
     animation: none;
   }
 }
+
+/* Cuántos cambios le quedan a un campo limitado por el flujo. */
+.runner__field-cambios {
+  margin: 4px 0 0;
+  font-size: var(--vt-text-xs, 12px);
+  color: var(--vt-text-subtle);
+}
+
+.runner__field-cambios--agotado {
+  color: var(--vt-warning, #b26a00);
+  font-weight: 600;
+}

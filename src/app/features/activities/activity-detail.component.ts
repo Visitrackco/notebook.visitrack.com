@@ -537,8 +537,12 @@ export class ActivityDetailComponent {
     await this.exit(true);
   }
 
+  /** Por qué el flujo no deja eliminar esta actividad. Vacío: sí se puede. */
+  readonly noEliminar = computed(() => String(this.answer()?.NoEliminar ?? '').trim());
+
   /** Pide descartar el borrador explícitamente, sin salir por la puerta de atrás. */
   askDiscard(): void {
+    if (this.noEliminar()) return;
     this.dialog.set('discard');
   }
 

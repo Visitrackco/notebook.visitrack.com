@@ -625,11 +625,24 @@ export function evaluar(flujo: Flujo, contexto: Contexto): Resultado {
     edicionBloqueada: [],
     guardarOculto: false,
     guardarIgualBloqueado: false,
+    eliminarBloqueado: [],
+    guardarAhora: false,
     descriptivos: [],
     enEspera: [],
     ciclo: false,
     conflictos: [],
   };
+
+  /*
+   * La hora del aparato y los cambios por campo, a mano de todo el motor.
+   *
+   * Los leen las condiciones (`@hoy`, `@ahora`) y `limitar-cambios`, que
+   * están varias llamadas por debajo. Se dejan aquí en vez de pasarlos por
+   * cada firma: el motor es de una sola pasada y no reentra, así que no hay
+   * dos evaluaciones a la vez que puedan pisarse.
+   */
+  ahoraDelContexto = String(contexto.ahora ?? '');
+  cambiosDelContexto = contexto.cambios ?? {};
 
   const ambito = contexto.ambito ?? 'actividad';
   const tablaDeFila = contexto.tabla ?? '';
@@ -1295,6 +1308,56 @@ function loQueEsperaba(
  * decisión que los tres motores tendrían que acertar igual cada uno por su
  * lado.
  */
+/** Ver `evaluar`: lo que el contexto trae y las condiciones necesitan. */
+let ahoraDelContexto = '';
+let cambiosDelContexto: Record<ApiId, number> = {};
+
+/** `@hoy`, `@ahora` u `@hora`, con días o minutos de más o de menos. */
+const TOKEN_DEL_APARATO = /^@(hoy|ahora|hora)\s*(?:([+-])\s*(\d+))?$/i;
+
+/** ¿Es un valor que se resuelve con la hora del aparato? */
+export function esTokenDelAparato(valor: unknown): boolean {
+  return typeof valor === 'string' && TOKEN_DEL_APARATO.test(valor.trim());
+}
+
+/**
+ * La fecha u hora del aparato con la que se compara un campo.
+ *
+ * Sale en **el formato en que ese campo guarda** —`aaaa-mm-dd`, `aaaa-mm-dd
+ * hh:mm` o `hh:mm`— para que `aMomento` lea los dos lados igual. `@hoy` sobre
+ * un campo de hora no tiene sentido y se resuelve como hora; `@hora` sobre uno
+ * de fecha, como fecha: el nombre dice de dónde se cuenta, el campo cómo se
+ * escribe. Sin `Contexto.ahora` no hay con qué resolver y la condición no se
+ * cumple.
+ */
+export function resolverTokenDelAparato(valor: string, fty: string, ahora: string): string | null {
+  const m = valor.trim().match(TOKEN_DEL_APARATO);
+  if (!m) return valor;
+
+  const base = new Date(ahora);
+  if (!ahora || Number.isNaN(base.getTime())) return null;
+
+  const cuanto = Number(m[3] ?? 0) * (m[2] === '-' ? -1 : 1);
+  const tipo = m[1].toLowerCase();
+
+  // Días para `@hoy`, minutos para `@ahora` y `@hora`.
+  const t = new Date(base.getTime() + (tipo === 'hoy' ? cuanto * 86400000 : cuanto * 60000));
+
+  const dd = (n: number) => String(n).padStart(2, '0');
+  const fecha = `${t.getFullYear()}-${dd(t.getMonth() + 1)}-${dd(t.getDate())}`;
+  const hora = `${dd(t.getHours())}:${dd(t.getMinutes())}`;
+
+  const f = (fty || '').toLowerCase();
+  if (f === 'time') return hora;
+  if (f === 'datetime') return `${fecha} ${hora}`;
+  if (f === 'date' || f === 'datediff') return fecha;
+
+  // Un campo que no es de fecha: se le da lo que el token dice.
+  if (tipo === 'hora') return hora;
+  if (tipo === 'ahora') return `${fecha} ${hora}`;
+  return fecha;
+}
+
 function conLaReferenciaResuelta(
   cond: Condicion,
   valores: Record<ApiId, unknown>,
@@ -1304,6 +1367,34 @@ function conLaReferenciaResuelta(
 ): Condicion | null {
   const uno = String(cond.valorCampo ?? '').trim();
   const dos = String(cond.valor2Campo ?? '').trim();
+
+  /*
+   * La fecha u hora del aparato, si el valor la pide.
+   *
+   * Va antes que la referencia a otro campo, y por el mismo camino: el valor
+   * escrito se sustituye por uno concreto y el resto del motor no sabe que
+   * hubo un token. El campo contra el que se compara decide el formato.
+   */
+  if (esTokenDelAparato(cond.valor) || esTokenDelAparato(cond.valor2)) {
+    const ref = referenciaDetalle(cond.campo);
+    const propio = ref ? campoDeDetalle(campos[ref.tabla], ref.campo) : campos[cond.campo];
+    const fty = (propio?.fty ?? '').toLowerCase();
+    const conAhora: Condicion = { ...cond };
+
+    if (esTokenDelAparato(cond.valor)) {
+      const texto = resolverTokenDelAparato(String(cond.valor), fty, ahoraDelContexto);
+      if (texto === null) return null;
+      conAhora.valor = texto;
+    }
+
+    if (esTokenDelAparato(cond.valor2)) {
+      const texto = resolverTokenDelAparato(String(cond.valor2), fty, ahoraDelContexto);
+      if (texto === null) return null;
+      conAhora.valor2 = texto;
+    }
+
+    cond = conAhora;
+  }
 
   // El camino de siempre, que es el de todos los flujos que ya corren: sin
   // referencia no hay nada que resolver ni objeto nuevo que armar.
@@ -1716,7 +1807,13 @@ export function aMomento(texto: string, fty = ''): number | null {
     return Number.isFinite(t) ? t : null;
   }
 
-  const t = Date.parse(limpio);
+  /*
+   * `aaaa-mm-dd hh:mm` con espacio es como guarda la app el campo de fecha y
+   * hora. `Date.parse` lo entiende en unos navegadores y en otros no; con la
+   * `T` lo entienden todos, y se lee como hora local igual que en Dart.
+   */
+  const conEspacio = limpio.match(/^(\d{4}-\d{2}-\d{2}) (\d{1,2}:\d{2}(?::\d{2})?)$/);
+  const t = Date.parse(conEspacio ? `${conEspacio[1]}T${conEspacio[2]}` : limpio);
   return Number.isFinite(t) ? t : null;
 }
 
@@ -4051,6 +4148,62 @@ function aplicar(
 
   if (accion.accion === 'permitir-guardar-igual') {
     resultado.guardarIgualBloqueado = false;
+    return;
+  }
+
+  /*
+   * Que la actividad no se pueda eliminar, y que se guarde ya.
+   *
+   * Dos más de las que deciden sobre la actividad entera. El motor las anota
+   * y quien llama las aplica: el listado que ofrece borrar mira los motivos, y
+   * el formulario que ve `guardarAhora` guarda como si se hubiera pulsado el
+   * botón —si no hay bloqueos ni obligatorios sin responder—.
+   */
+  if (accion.accion === 'bloquear-eliminar') {
+    const motivo = String(accion.valor ?? 'Esta actividad no se puede eliminar');
+    if (!resultado.eliminarBloqueado.includes(motivo)) {
+      resultado.eliminarBloqueado.push(motivo);
+    }
+    return;
+  }
+
+  if (accion.accion === 'permitir-eliminar') {
+    resultado.eliminarBloqueado = [];
+    return;
+  }
+
+  if (accion.accion === 'guardar-actividad') {
+    resultado.guardarAhora = true;
+    return;
+  }
+
+  /*
+   * Cuántas veces se puede cambiar un campo, o todos.
+   *
+   * El tope va al estado —para que la pantalla diga «2 de 3»— y, si los
+   * cambios que trae el contexto ya lo alcanzan, el campo queda en solo
+   * lectura. Con `*` se limita cada campo del formulario que se conoce; los
+   * de una tabla se limitan desde su propia regla de fila.
+   */
+  if (accion.accion === 'limitar-cambios') {
+    const tope = Math.max(0, Math.floor(Number(accion.valor) || 0));
+    const objetivo = String(accion.campo ?? '').trim();
+    const todos = !objetivo || objetivo === '*';
+
+    const limitar = (id: ApiId) => {
+      const estado = (resultado.campos[id] ??= {});
+      estado.maxCambios = tope;
+      if ((cambiosDelContexto[id] ?? 0) >= tope) estado.soloLectura = true;
+    };
+
+    if (todos) {
+      for (const id of Object.keys(campos)) {
+        if (!referenciaDetalle(id)) limitar(id);
+      }
+    } else {
+      limitar(objetivo);
+    }
+
     return;
   }
 

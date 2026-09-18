@@ -1754,6 +1754,19 @@ export interface Condicion {
   /** Lo mismo para el segundo extremo: el «hasta» de `entre`, el radio de `cerca-de`. */
   valor2Campo?: ApiId;
 
+  /*
+   * `valor` y `valor2` admiten además **la fecha y la hora del aparato**:
+   *
+   * - `@hoy`, `@hoy+7`, `@hoy-3` — la fecha de hoy, con días de más o de menos;
+   * - `@ahora`, `@ahora+30`, `@ahora-15` — fecha y hora de ahora, con minutos;
+   * - `@hora`, `@hora+30` — solo la hora de ahora, con minutos.
+   *
+   * El motor los resuelve con `Contexto.ahora` al evaluar, en el formato del
+   * campo con el que se comparan (fecha, fecha y hora, u hora). Es lo que hace
+   * posible «si la fecha de la visita es anterior a hoy» o «si la hora de
+   * llegada es mayor que la hora actual» sin escribir ninguna fecha a mano.
+   */
+
   /**
    * Cuántas filas tienen que cumplirla, cuando [campo] es de una tabla.
    *
@@ -2123,7 +2136,30 @@ export type TipoAccion =
    * que no se puede retirar— y **no desde una fila**, porque quien lo ejecuta
    * mira los de la actividad y allí se perdería sin dejar rastro.
    */
-  | 'enviar-push';
+  | 'enviar-push'
+  /**
+   * Cuántas veces se puede cambiar un campo.
+   *
+   * `valor` es el tope; `campo` el campo, o `*` para todos los del formulario.
+   * Quien llama cuenta los cambios hechos a mano —no los que escribe el flujo—
+   * y los pasa en `Contexto.cambios`; al llegar al tope el campo queda en solo
+   * lectura y el motor deja `maxCambios` en su estado para que la pantalla
+   * pueda decir «2 de 3».
+   */
+  | 'limitar-cambios'
+  /**
+   * La actividad no se puede eliminar desde el dispositivo, con el motivo.
+   * Quien llama lo anota en la actividad para que el listado también lo sepa.
+   */
+  | 'bloquear-eliminar'
+  | 'permitir-eliminar'
+  /**
+   * Guardar la actividad **ahora**, sin esperar al botón.
+   *
+   * El motor solo lo anota (`Resultado.guardarAhora`); quien llama guarda si
+   * no hay bloqueos ni obligatorios sin responder, una vez por evaluación.
+   */
+  | 'guardar-actividad';
 
 export interface Accion {
   accion: TipoAccion;
@@ -2227,6 +2263,12 @@ export interface EstadoCampo {
 
   obligatorio?: boolean;
   soloLectura?: boolean;
+
+  /**
+   * Cuántos cambios a mano admite el campo, si una regla lo limitó. La
+   * pantalla lo enseña junto a los que lleva (`Contexto.cambios`).
+   */
+  maxCambios?: number;
   valor?: unknown;
   color?: string;
   colorTexto?: string;
@@ -2567,6 +2609,12 @@ export interface Resultado {
   /** Alguna regla pidió cerrar la salida de «Guardar de todos modos». */
   guardarIgualBloqueado: boolean;
 
+  /** Por qué no se puede eliminar la actividad. Vacío: sí se puede. */
+  eliminarBloqueado: string[];
+
+  /** Una regla pidió guardar la actividad ya, sin esperar al botón. */
+  guardarAhora: boolean;
+
   /**
    * Lo que el flujo quiere que describa a la actividad —o a la fila.
    *
@@ -2713,6 +2761,14 @@ export interface Contexto {
    * Sin ella, una regla que programa en relativo no programa: sale ya.
    */
   ahora?: string;
+
+  /**
+   * Cuántas veces se cambió a mano cada campo en esta actividad.
+   *
+   * Lo lleva quien llama —cuenta las respuestas de la persona, no lo que
+   * escribe el flujo— y solo lo mira `limitar-cambios`.
+   */
+  cambios?: Record<ApiId, number>;
 
   /**
    * Con qué se arma la dirección de un archivo, para poder meterla en un correo.

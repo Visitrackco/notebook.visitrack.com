@@ -349,6 +349,16 @@ export interface AnswerField {
    * llegan desde el móvil. Lo resuelven [fileValueOf] y [splitFileValue].
    */
   val1?: FileValue;
+
+  /**
+   * Cuántas veces cambió **a mano** esta respuesta.
+   *
+   * Lo cuenta el motor del formulario y viaja con la respuesta, no se
+   * recalcula: es lo que mira la regla `limitar-cambios` del flujo para dejar
+   * el campo en solo lectura al llegar al tope. Los valores que escribe el
+   * propio flujo no cuentan. Ausente cuando nunca se cambió.
+   */
+  cam?: number;
 }
 
 /**

@@ -263,6 +263,19 @@
             <p class="runner__field-aviso">{{ flujo?.mensaje }}</p>
           }
 
+          <!-- Cuántos cambios le quedan al campo, cuando una regla los limitó.
+               Se dice siempre que hay tope, no solo al agotarse: quien va por
+               el segundo de tres tiene que saberlo antes del tercero. -->
+          @if (flujo?.maxCambios != null) {
+            <p class="runner__field-cambios" [class.runner__field-cambios--agotado]="eng.cambiosDe(field.id) >= (flujo?.maxCambios ?? 0)">
+              @if (eng.cambiosDe(field.id) >= (flujo?.maxCambios ?? 0)) {
+                Sin más cambios: se usaron los {{ flujo?.maxCambios }} permitidos.
+              } @else {
+                Cambios: {{ eng.cambiosDe(field.id) }} de {{ flujo?.maxCambios }}.
+              }
+            </p>
+          }
+
           <!-- La gráfica va debajo del campo al que la regla la colocó, igual
                que en la app. Los números vienen contados por el motor: aquí
                solo se dibujan. Ver `FlujoGraficaComponent`. -->

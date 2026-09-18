@@ -412,9 +412,11 @@ export class ActivitiesComponent {
       icon: 'trash',
       tone: 'danger',
       // Borrar con archivos a medio subir deja huérfano lo que ya llegó al
-      // servidor, y el usuario pierde fotos que creía guardadas.
-      disabledReason:
-        !isDraft && blocking > 0
+      // servidor, y el usuario pierde fotos que creía guardadas. Y si el
+      // flujo del formulario lo prohibió, manda su motivo.
+      disabledReason: String(answer.NoEliminar ?? '').trim()
+        ? String(answer.NoEliminar).trim()
+        : !isDraft && blocking > 0
           ? blocking === 1
             ? 'Hay 1 archivo sin terminar de subir'
             : `Hay ${blocking} archivos sin terminar de subir`

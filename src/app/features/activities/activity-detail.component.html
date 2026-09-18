@@ -288,7 +288,7 @@
          lo condicionan. Aquí solo queda descartar, que no depende de ellas. -->
     @if (isDiscardable()) {
       <footer class="detail__actions">
-        <button mat-button type="button" (click)="askDiscard()">Descartar actividad</button>
+        <button mat-button type="button" (click)="askDiscard()" [disabled]="!!noEliminar()" [matTooltip]="noEliminar()">Descartar actividad</button>
       </footer>
     }
   </div>

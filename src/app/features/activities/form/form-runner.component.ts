@@ -620,6 +620,46 @@ export class FormRunnerComponent {
     });
 
     /*
+     * Que no se pueda eliminar, apuntado en la actividad.
+     *
+     * El listado ofrece borrar sin abrir el formulario ni evaluar ningún
+     * flujo, así que lo único que puede mirar es lo que quedó escrito en la
+     * actividad. Se escribe en cuanto el motor lo decide y se borra en cuanto
+     * lo deja de decidir, sin esperar a guardar.
+     */
+    effect(() => {
+      const motivos = this.engine()?.eliminarBloqueado() ?? [];
+
+      untracked(() => {
+        this.apuntarNoEliminar(motivos.join(' · ')).catch((error) =>
+          console.error('[flujo] no se pudo apuntar el bloqueo de eliminar', error),
+        );
+      });
+    });
+
+    /*
+     * Guardar cuando una regla lo pide, como si se hubiera pulsado el botón.
+     *
+     * Es un pulso del motor que se consume aquí: guardar dispara el momento
+     * «al guardar», que vuelve a evaluar, y si la señal siguiera encendida se
+     * guardaría sin parar. Pasa por [save] entero —obligatorios, bloqueos,
+     * reglas de la compañía— y no por un atajo: lo que pide la regla es que
+     * la actividad **salga**, no que se escriba a medias.
+     */
+    effect(() => {
+      const pedido = this.engine()?.guardarAhora() ?? false;
+
+      untracked(() => {
+        // Se consume siempre: un pulso que llega mientras ya se está guardando
+        // —el momento «al guardar» vuelve a evaluar— no pide nada nuevo.
+        if (!pedido || !this.engine()?.consumirGuardarAhora()) return;
+        if (this.saving() || this.soloLectura() || this.guardarOculto()) return;
+
+        this.save().catch((error) => console.error('[flujo] no se pudo guardar solo', error));
+      });
+    });
+
+    /*
      * Los avisos que pida el flujo, en cuanto los pida.
      *
      * **Solo los nuevos.** El flujo se evalúa con cada respuesta, así que
@@ -2236,6 +2276,21 @@ export class FormRunnerComponent {
    * estado que traía, que puede ser ninguno. Dejarla con el estado puesto sería
    * como dejar visible un campo que el flujo ya no quiere mostrar.
    */
+  /** Lo último apuntado, para no escribir en la base lo que ya está. */
+  private noEliminarApuntado: string | null = null;
+
+  private async apuntarNoEliminar(motivo: string): Promise<void> {
+    const answer = this.answer();
+    if (answer.ID == null) return;
+
+    const actual = this.noEliminarApuntado ?? String(answer.NoEliminar ?? '');
+    if (actual === motivo) return;
+
+    this.noEliminarApuntado = motivo;
+    await this.answers.update(answer.ID, { NoEliminar: motivo });
+    this.activities.notifyChanged();
+  }
+
   private async aplicarEstadoDelFlujo(pedido: string | null): Promise<void> {
     const answer = this.answer();
 
