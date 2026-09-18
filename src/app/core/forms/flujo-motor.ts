@@ -18,6 +18,7 @@
 import {
   Accion,
   ApiId,
+  Comportamiento,
   Campo,
   Encargo,
   Comparador,
@@ -651,17 +652,21 @@ export function evaluar(flujo: Flujo, contexto: Contexto): Resultado {
    */
   ahoraDelContexto = String(contexto.ahora ?? '');
   cambiosDelContexto = contexto.cambios ?? {};
+  permitidasDelContexto = {};
 
   const ambito = contexto.ambito ?? 'actividad';
   const tablaDeFila = contexto.tabla ?? '';
   const origen = contexto.origen ?? {};
   const enFila = ambito === 'fila';
 
-  // Los límites de cambios del flujo van en **toda** salida, en cualquier
-  // momento y haya o no reglas: son del formulario, no de una regla. Ver
-  // `Flujo.limitesDeCambios`.
+  // Los límites de cambios y los comportamientos del flujo van en **toda**
+  // salida, en cualquier momento y haya o no reglas: son del formulario, no
+  // de una regla. Ver `Flujo.limitesDeCambios` y `Flujo.comportamientos`.
   const conLimites = (r: Resultado): Resultado => {
-    if (!enFila) aplicarLimitesDeCambios(flujo, r, contexto.campos);
+    if (!enFila) {
+      aplicarLimitesDeCambios(flujo, r, contexto.campos);
+      aplicarComportamientos(flujo, r, contexto.campos);
+    }
     return r;
   };
 
@@ -1370,9 +1375,111 @@ function aplicarLimitesDeCambios(
   }
 }
 
+/**
+ * Lo que cada campo trae configurado de fondo, aplicado al resultado.
+ *
+ * Es la **base**, y por eso va después de las reglas y solo rellena lo que
+ * ninguna decidió: una regla que limite la misma fecha o los mismos
+ * caracteres manda mientras se cumpla. Las opciones bloqueadas se **suman**
+ * a las que bloqueó una regla, menos las que otra volvió a permitir. Ver
+ * `Flujo.comportamientos`.
+ */
+function aplicarComportamientos(
+  flujo: Flujo,
+  resultado: Resultado,
+  campos: Record<ApiId, Campo>,
+): void {
+  const todos = flujo?.comportamientos;
+  if (!todos || typeof todos !== 'object') return;
+
+  for (const [id, crudo] of Object.entries(todos)) {
+    const c = crudo as Comportamiento;
+    if (!c || typeof c !== 'object' || !id.trim()) continue;
+
+    const estado = (resultado.campos[id] ??= {});
+    const fty = String(campos[id]?.fty ?? '').toLowerCase();
+
+    if (estado.desde === undefined && String(c.desde ?? '').trim()) {
+      const desde = limiteResuelto(c.desde, fty);
+      if (desde !== null) estado.desde = desde;
+    }
+
+    if (estado.hasta === undefined && String(c.hasta ?? '').trim()) {
+      const hasta = limiteResuelto(c.hasta, fty);
+      if (hasta !== null) estado.hasta = hasta;
+    }
+
+    const rango = rangoDeLaAccion(
+      { min: c.minCaracteres, max: c.maxCaracteres },
+      true,
+    );
+
+    if (rango) {
+      if (estado.minCaracteres === undefined && rango.min !== undefined) estado.minCaracteres = rango.min;
+      if (estado.maxCaracteres === undefined && rango.max !== undefined) estado.maxCaracteres = rango.max;
+    }
+
+    const tope = Math.floor(Number(c.maxOpciones));
+    if (estado.maxOpciones === undefined && Number.isFinite(tope) && tope > 0) {
+      estado.maxOpciones = tope;
+    }
+
+    const deFondo = listaDeOpciones(c.opcionesBloqueadas);
+    if (deFondo.length) {
+      const permitidas = permitidasDelContexto[id];
+      const quedan = permitidas === '*'
+        ? []
+        : deFondo.filter((o) => !(permitidas ?? []).includes(o));
+
+      const union = [...(estado.opcionesBloqueadas ?? [])];
+      for (const o of quedan) if (!union.includes(o)) union.push(o);
+      if (union.length) estado.opcionesBloqueadas = union;
+    }
+
+    // Un campo del que al final no se decidió nada, fuera: ver `evaluar`.
+    if (!Object.keys(estado).length) delete resultado.campos[id];
+  }
+}
+
+/**
+ * Un límite de fecha u hora tal como se anota: `HOY` y las fechas fijas van
+ * tal cual —`HOY` lo resuelve el aparato—, y un token del aparato (`@hoy+7`)
+ * se resuelve aquí con `Contexto.ahora`. Sin hora con la que resolverlo, se
+ * devuelve `null` y no se anota nada.
+ */
+function limiteResuelto(crudo: unknown, fty: string): string | null {
+  const texto = String(crudo ?? '').trim();
+  if (!esTokenDelAparato(texto)) return texto;
+  return resolverTokenDelAparato(texto, fty, ahoraDelContexto);
+}
+
+/**
+ * Los textos de unas opciones, escritos como lista o separados por comas.
+ * Sin vacíos y sin repetidos, en el orden en que se escribieron.
+ */
+function listaDeOpciones(crudo: unknown): string[] {
+  const brutos: unknown[] = Array.isArray(crudo)
+    ? crudo
+    : String(crudo ?? '').split(',');
+
+  const salida: string[] = [];
+  for (const b of brutos) {
+    const t = String(b ?? '').trim();
+    if (t && !salida.includes(t)) salida.push(t);
+  }
+  return salida;
+}
+
 /** Ver `evaluar`: lo que el contexto trae y las condiciones necesitan. */
 let ahoraDelContexto = '';
 let cambiosDelContexto: Record<ApiId, number> = {};
+
+/**
+ * Qué opciones volvió a permitir una regla en esta evaluación, por campo.
+ * `*` es todas. Lo lee `aplicarComportamientos` para no volver a bloquear
+ * de fondo lo que una regla acaba de abrir.
+ */
+let permitidasDelContexto: Record<ApiId, string[] | '*'> = {};
 
 /** `@hoy`, `@ahora` u `@hora`, con días o minutos de más o de menos. */
 const TOKEN_DEL_APARATO = /^@(hoy|ahora|hora)\s*(?:([+-])\s*(\d+))?$/i;
@@ -4430,9 +4537,68 @@ function aplicar(
      * resultado en el simulador que en un teléfono sin conexión, donde lo
      * único de fiar es su propio reloj.
      */
-    case 'limitar-desde': estado.desde = String(accion.valor ?? ''); break;
-    case 'limitar-hasta': estado.hasta = String(accion.valor ?? ''); break;
+    /*
+     * Salvo los tokens del aparato —`@hoy+7`, `@ahora-30`—, que sí se
+     * resuelven aquí con la hora que trae el contexto: es la de este momento
+     * en este aparato, no la de cuando se guardó el flujo. Sin ella no se
+     * anota nada.
+     */
+    case 'limitar-desde': {
+      const desde = limiteResuelto(accion.valor, String(campos[apiId]?.fty ?? ''));
+      if (desde !== null) estado.desde = desde;
+      break;
+    }
+    case 'limitar-hasta': {
+      const hasta = limiteResuelto(accion.valor, String(campos[apiId]?.fty ?? ''));
+      if (hasta !== null) estado.hasta = hasta;
+      break;
+    }
     case 'dias-permitidos': estado.dias = String(accion.valor ?? ''); break;
+
+    /*
+     * Qué opciones no se pueden elegir, y cuántas se pueden marcar.
+     *
+     * Restricciones del editor, como los límites de una fecha: el motor
+     * anota y la pantalla deja la opción a la vista sin poder marcarla. Lo
+     * que ya estaba marcado se queda; desmarcarlo sería escribir en la
+     * respuesta, y eso lo hace `poner-valor`, no esto.
+     *
+     * Permitir quita de lo bloqueado en esta evaluación y, además, se apunta
+     * para que lo que el flujo trae bloqueado de fondo no lo vuelva a cerrar.
+     */
+    case 'bloquear-opciones': {
+      const nuevas = listaDeOpciones(accion.valor);
+      if (!nuevas.length) break;
+
+      const union = [...(estado.opcionesBloqueadas ?? [])];
+      for (const o of nuevas) if (!union.includes(o)) union.push(o);
+      estado.opcionesBloqueadas = union;
+      break;
+    }
+
+    case 'permitir-opciones': {
+      const texto = Array.isArray(accion.valor) ? '' : String(accion.valor ?? '').trim();
+      const todas = !texto || texto === '*';
+      const cuales = todas ? [] : listaDeOpciones(accion.valor);
+
+      if (todas) {
+        permitidasDelContexto[apiId] = '*';
+        if (estado.opcionesBloqueadas) estado.opcionesBloqueadas = [];
+      } else {
+        const ya = permitidasDelContexto[apiId];
+        permitidasDelContexto[apiId] = ya === '*' ? '*' : [...(ya ?? []), ...cuales];
+        if (estado.opcionesBloqueadas) {
+          estado.opcionesBloqueadas = estado.opcionesBloqueadas.filter((o) => !cuales.includes(o));
+        }
+      }
+      break;
+    }
+
+    case 'limitar-opciones': {
+      const tope = Math.floor(Number(String(accion.valor ?? '').trim()));
+      if (Number.isFinite(tope) && tope > 0) estado.maxOpciones = tope;
+      break;
+    }
 
     /*
      * La nota de ayuda que se lee debajo del campo.

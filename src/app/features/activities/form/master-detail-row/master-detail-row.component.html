@@ -120,6 +120,7 @@
             [value]="level.engine.valueOf(field.id)"
             [obligatorioDelFlujo]="deLaRegla?.obligatorio ?? null"
             [limites]="limitesDe(deLaRegla)"
+            [opcionesDelFlujo]="opcionesDe(deLaRegla)"
             [textoDelFlujo]="deLaRegla?.texto ?? null"
             [imagenDelFlujo]="deLaRegla?.imagen ?? null"
             [invalid]="level.engine.showsError(field)"

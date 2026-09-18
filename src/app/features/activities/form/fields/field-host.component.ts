@@ -224,6 +224,16 @@ export class FieldHostComponent {
   } | null>(null);
 
   /**
+   * Lo que el flujo decidió sobre las opciones de un radio, un check o un
+   * desplegable: cuántas se pueden marcar y cuáles no se pueden elegir.
+   *
+   * Restricciones del editor, como los límites de una fecha: la opción se
+   * deja a la vista pero sin poder marcarla, y lo que ya estaba marcado se
+   * queda. `null` es «ninguna regla dijo nada».
+   */
+  readonly opcionesDelFlujo = input<{ max?: number; bloqueadas?: string[] } | null>(null);
+
+  /**
    * El flujo entero y el motor del formulario.
    *
    * Solo los usa la tabla de detalle: cada fila se diligencia con su propio
@@ -708,6 +718,35 @@ export class FieldHostComponent {
   isChecked(optionId: string): boolean {
     return this.checkedIds().includes(optionId);
   }
+
+  /** ¿El flujo dejó esta opción sin poder elegir? Se compara por su texto. */
+  bloqueada(option: { id: string; txt: string }): boolean {
+    const bloqueadas = this.opcionesDelFlujo()?.bloqueadas ?? [];
+    if (!bloqueadas.length) return false;
+
+    const txt = String(option.txt ?? '').trim().toLowerCase();
+    return bloqueadas.some((b) => String(b).trim().toLowerCase() === txt);
+  }
+
+  /**
+   * ¿Ya no cabe marcar esta casilla?
+   *
+   * Solo las que no están marcadas: desmarcar siempre se puede, que es lo
+   * que permite cambiar de opinión cuando el tope ya se alcanzó.
+   */
+  sinCupo(optionId: string): boolean {
+    const max = this.opcionesDelFlujo()?.max;
+    if (!max || max <= 0) return false;
+    if (this.isChecked(optionId)) return false;
+
+    return this.checkedIds().length >= max;
+  }
+
+  /** Cuántas se pueden marcar, para decirlo debajo del campo. */
+  readonly topeDeOpciones = computed(() => {
+    const max = this.opcionesDelFlujo()?.max;
+    return max && max > 0 ? max : 0;
+  });
 }
 
 // ─── Conversión entre el texto guardado y `Date` ─────────────────────────────

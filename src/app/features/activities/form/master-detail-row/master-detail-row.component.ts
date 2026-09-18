@@ -148,6 +148,19 @@ export class MasterDetailRowComponent implements OnDestroy {
   }
 
   /**
+   * Lo que el flujo decidió sobre las opciones de un campo: cuántas se pueden
+   * marcar y cuáles no se pueden elegir. `null` cuando no dijo nada, por lo
+   * mismo que en [limitesDe].
+   */
+  opcionesDe(estado: { maxOpciones?: number; opcionesBloqueadas?: string[] } | undefined) {
+    const max = estado?.maxOpciones;
+    const bloqueadas = estado?.opcionesBloqueadas ?? [];
+    if (!(max && max > 0) && !bloqueadas.length) return null;
+
+    return { max: max && max > 0 ? max : undefined, bloqueadas };
+  }
+
+  /**
    * El sello de un campo, para la clave del `@for`.
    *
    * Sale del nivel que se está viendo: los de debajo quedan inertes y no se

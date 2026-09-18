@@ -51,6 +51,15 @@ export class ListFieldComponent {
   readonly readOnly = input(false);
   readonly invalid = input(false);
 
+  /**
+   * Los ítems que el flujo dejó sin poder elegir, por su texto.
+   *
+   * Se quitan de lo que enseña el selector: en una lista de miles, una fila
+   * apagada en medio no se explica sola, y lo que se busca es no poder
+   * elegirla. Lo que ya estaba elegido se queda.
+   */
+  readonly bloqueadas = input<string[]>([]);
+
   /** Lo elegido, o `null`. */
   readonly value = input<ListSelection | null>(null);
 
@@ -190,6 +199,19 @@ export class ListFieldComponent {
     this.open.set(false);
   }
 
+  /** Lo resuelto sin los ítems que el flujo bloqueó, comparados por texto. */
+  private sinLasBloqueadas<T extends { choices: { txt: string }[] }>(resueltos: T): T {
+    const bloqueadas = this.bloqueadas().map((b) => String(b).trim().toLowerCase()).filter(Boolean);
+    if (!bloqueadas.length) return resueltos;
+
+    return {
+      ...resueltos,
+      choices: resueltos.choices.filter(
+        (c) => !bloqueadas.includes(String(c.txt ?? '').trim().toLowerCase()),
+      ),
+    };
+  }
+
   onSearch(term: string): void {
     void this.load(term);
   }
@@ -198,13 +220,13 @@ export class ListFieldComponent {
     this.loading.set(true);
 
     try {
-      this.items.set(
-        await this.source.resolve(this.field(), {
-          answerGuid: this.answerGuid() || undefined,
-          parentValue: this.parentValue() || undefined,
-          search,
-        }),
-      );
+      const resueltos = await this.source.resolve(this.field(), {
+        answerGuid: this.answerGuid() || undefined,
+        parentValue: this.parentValue() || undefined,
+        search,
+      });
+
+      this.items.set(this.sinLasBloqueadas(resueltos));
     } catch (error) {
       console.error('[Lista] no se pudieron cargar los ítems', error);
       this.items.set({

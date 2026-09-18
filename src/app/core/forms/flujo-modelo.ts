@@ -38,6 +38,54 @@ export interface Flujo {
    * tope más bajo.
    */
   limitesDeCambios?: Record<ApiId, number>;
+
+  /**
+   * Cómo se comporta cada campo **durante toda la vida de la actividad**.
+   *
+   * Por `apiId`. Tampoco es una regla: se aplica en cada evaluación, en
+   * cualquier momento, y por eso reabrir la actividad no lo deshace. Es lo
+   * que se configura de entrada y se da por hecho —«la fecha no puede ser
+   * anterior a hoy», «la observación no pasa de 500 caracteres», «en este
+   * check se marcan dos como mucho», «esta opción no se puede elegir»—.
+   *
+   * Es la **base**: una regla que decida lo mismo sobre el mismo campo manda
+   * mientras se cumpla. Así un flujo puede alterarlo —abrir el rango un día
+   * concreto, desbloquear una opción cuando otra cosa se responde— sin que la
+   * configuración de fondo deje de valer el resto del tiempo.
+   */
+  comportamientos?: Record<ApiId, Comportamiento>;
+}
+
+/**
+ * Lo que un campo trae configurado de fondo. Ver `Flujo.comportamientos`.
+ *
+ * Cada cosa vale para la familia del campo a la que pertenece, y sobre otra
+ * no hace nada: un `desde` sobre un texto no limita nada, un `maxCaracteres`
+ * sobre una fecha tampoco. El lienzo solo ofrece lo que le cuadra a cada uno.
+ */
+export interface Comportamiento {
+  /**
+   * Desde y hasta cuándo se puede elegir, en fecha, hora o fecha y hora.
+   *
+   * Un valor fijo en el formato del campo, `HOY` —que se resuelve en el
+   * aparato— o un token del aparato (`@hoy+7`, `@ahora-30`, `@hora+15`), que
+   * el motor resuelve con `Contexto.ahora`.
+   */
+  desde?: string;
+  hasta?: string;
+
+  /** Cuántos caracteres admite un campo de texto. */
+  minCaracteres?: number;
+  maxCaracteres?: number;
+
+  /** Cuántas opciones se pueden marcar en una casilla múltiple. */
+  maxOpciones?: number;
+
+  /**
+   * Qué opciones no se pueden elegir, por su texto, en un radio, un check o
+   * un desplegable con opciones escritas.
+   */
+  opcionesBloqueadas?: string[];
 }
 
 export interface Punto {
@@ -2187,7 +2235,27 @@ export type TipoAccion =
    * El motor solo lo anota (`Resultado.guardarAhora`); quien llama guarda si
    * no hay bloqueos ni obligatorios sin responder, una vez por evaluación.
    */
-  | 'guardar-actividad';
+  | 'guardar-actividad'
+  /**
+   * Qué opciones de un radio, un check o un desplegable **no** se pueden
+   * elegir mientras la regla se cumpla.
+   *
+   * `valor` son los textos de las opciones —una lista, o separados por
+   * comas—. Se suman a las que el flujo trae bloqueadas de fondo
+   * (`Comportamiento.opcionesBloqueadas`). Una opción ya marcada no se
+   * desmarca: el motor anota y la pantalla impide elegirla, nada más.
+   */
+  | 'bloquear-opciones'
+  /**
+   * Volver a dejar elegir unas opciones, también las bloqueadas de fondo.
+   * `valor` son sus textos, o `*` para todas las del campo.
+   */
+  | 'permitir-opciones'
+  /**
+   * Cuántas opciones se pueden marcar, como mucho, en una casilla múltiple.
+   * `valor` es el tope. Manda sobre el que traiga el flujo de fondo.
+   */
+  | 'limitar-opciones';
 
 export interface Accion {
   accion: TipoAccion;
@@ -2297,6 +2365,21 @@ export interface EstadoCampo {
    * pantalla lo enseña junto a los que lleva (`Contexto.cambios`).
    */
   maxCambios?: number;
+
+  /**
+   * Cuántas opciones se pueden marcar como mucho en una casilla múltiple.
+   * Ver `limitar-opciones` y `Comportamiento.maxOpciones`.
+   */
+  maxOpciones?: number;
+
+  /**
+   * Qué opciones no se pueden elegir, por su texto. Ver `bloquear-opciones`.
+   *
+   * Como los límites de una fecha, es una **restricción del editor**: el
+   * motor lo anota y la pantalla deja la opción a la vista pero sin poder
+   * marcarla. Lo que ya estaba marcado se queda.
+   */
+  opcionesBloqueadas?: string[];
   valor?: unknown;
   color?: string;
   colorTexto?: string;

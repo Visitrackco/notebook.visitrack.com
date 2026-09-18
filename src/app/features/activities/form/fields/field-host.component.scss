@@ -454,3 +454,9 @@
   color: #c47f10;
   text-align: center;
 }
+
+/* Una estrella que el flujo bloqueó: a la vista, sin poder elegirse. */
+.rating__star--bloqueada {
+  opacity: 0.35;
+  cursor: not-allowed;
+}

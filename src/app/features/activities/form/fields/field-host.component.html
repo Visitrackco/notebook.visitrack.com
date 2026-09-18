@@ -102,7 +102,8 @@
               type="button"
               class="rating__star"
               [class.rating__star--on]="i <= ratingIndex()"
-              [disabled]="readOnly()"
+              [class.rating__star--bloqueada]="bloqueada(option)"
+              [disabled]="readOnly() || bloqueada(option)"
               role="radio"
               [attr.aria-checked]="selectedId() === option.id"
               [attr.aria-label]="option.txt"
@@ -139,7 +140,8 @@
         (change)="onSingle($event.value)"
       >
         @for (option of options(); track option.id) {
-          <mat-radio-button [value]="option.id" [disabled]="readOnly()">
+          <!-- Una opción que el flujo bloqueó se ve, pero no se elige. -->
+          <mat-radio-button [value]="option.id" [disabled]="readOnly() || bloqueada(option)">
             {{ option.txt }}
           </mat-radio-button>
         }
@@ -160,9 +162,11 @@
     <fieldset class="fld__group" [class.fld__group--invalid]="invalid()">
       <div class="fld__checks">
         @for (option of options(); track option.id) {
+          <!-- Bloqueada por el flujo, o sin cupo porque ya se marcaron las
+               que cabían: se ve, pero no se marca. Desmarcar siempre. -->
           <mat-checkbox
             [checked]="isChecked(option.id)"
-            [disabled]="readOnly()"
+            [disabled]="readOnly() || bloqueada(option) || sinCupo(option.id)"
             (change)="onMultiple(option.id, $event.checked)"
           >
             {{ option.txt }}
@@ -170,6 +174,11 @@
         }
       </div>
 
+      @if (topeDeOpciones()) {
+        <p class="fld__hint">
+          Se pueden marcar {{ topeDeOpciones() }} como mucho ({{ checkedIds().length }} de {{ topeDeOpciones() }})
+        </p>
+      }
       @if (ayuda()) {
         <p class="fld__hint">{{ ayuda() }}</p>
       }
@@ -294,6 +303,7 @@
       [field]="f"
       [readOnly]="readOnly()"
       [invalid]="invalid()"
+      [bloqueadas]="opcionesDelFlujo()?.bloqueadas ?? []"
       [value]="listValue()"
       [parentValue]="parentValue()"
       [answerGuid]="answerGuid()"
