@@ -33,15 +33,23 @@
               <span class="chat__bola" aria-hidden="true">{{ inicialDe(sala.nombre) }}</span>
 
               <span class="chat__sala-texto">
-                <span class="chat__sala-nombre">{{ sala.nombre }}</span>
-                <span class="chat__sala-pie">
-                  {{ sala.ultimoTexto || (sala.miembros + ' personas') }}
+                <span class="chat__sala-arriba">
+                  <span class="chat__sala-nombre">{{ sala.nombre }}</span>
+                  <!-- Cuándo fue lo último, en la zona de quien mira: hoy la
+                       hora, ayer «ayer», y antes el día. -->
+                  @if (cuandoDeSala(sala.ultimoEn); as cuando) {
+                    <time class="chat__sala-cuando" [attr.datetime]="sala.ultimoEn">{{ cuando }}</time>
+                  }
+                </span>
+                <span class="chat__sala-abajo">
+                  <span class="chat__sala-pie">
+                    {{ sala.ultimoTexto || (sala.miembros + ' personas') }}
+                  </span>
+                  @if (sala.sinLeer > 0) {
+                    <span class="chat__sinleer">{{ sala.sinLeer }}</span>
+                  }
                 </span>
               </span>
-
-              @if (sala.sinLeer > 0) {
-                <span class="chat__sinleer">{{ sala.sinLeer }}</span>
-              }
             </button>
           </li>
         } @empty {
@@ -51,8 +59,13 @@
             Y se dice quién puede hacerlo, porque lo primero que se piensa ante
             una lista vacía es que la aplicación no cargó.
           -->
-          <li class="chat__nada">
-            No estás en ninguna sala todavía. Quien administre una puede agregarte desde Module.
+          <li>
+            <ng-container
+              *ngTemplateOutlet="buzonVacio; context: {
+                titulo: 'Sin salas de chat en tu empresa',
+                detalle: 'Quien administre una puede agregarte desde Module.'
+              }"
+            ></ng-container>
           </li>
         }
       </ul>
@@ -328,13 +341,23 @@
         </button>
       </footer>
     } @else {
-      <p class="chat__nada chat__nada--centro">
+      <div class="chat__nada--centro">
         @if (hayAlgo()) {
-          Elige una sala para ver la conversación.
+          <ng-container
+            *ngTemplateOutlet="buzonVacio; context: {
+              titulo: 'Elige una sala para ver la conversación',
+              detalle: ''
+            }"
+          ></ng-container>
         } @else {
-          Cuando te agreguen a una sala, aparecerá aquí.
+          <ng-container
+            *ngTemplateOutlet="buzonVacio; context: {
+              titulo: 'Sin salas de chat en tu empresa',
+              detalle: 'Cuando te agreguen a una, aparecerá aquí.'
+            }"
+          ></ng-container>
         }
-      </p>
+      </div>
     }
   </section>
 </div>
@@ -364,3 +387,35 @@
     (close)="fotoVista.set(null)"
   />
 }
+
+<!--
+  El buzón vacío: no hay salas, o ninguna abierta.
+
+  Un dibujo y no solo una frase: una lista en blanco se lee como «no cargó»,
+  y un buzón con la tapa abierta y nada dentro se lee como lo que es. Va en
+  línea y con `currentColor` para que herede el tema, claro u oscuro.
+-->
+<ng-template #buzonVacio let-titulo="titulo" let-detalle="detalle">
+  <div class="chat__buzon" role="status">
+    <svg class="chat__buzon-dibujo" viewBox="0 0 220 180" fill="none" aria-hidden="true">
+      <ellipse class="chat__buzon-sombra" cx="110" cy="164" rx="70" ry="8"/>
+      <!-- el poste -->
+      <rect x="104" y="112" width="12" height="50" rx="3" class="chat__buzon-poste"/>
+      <!-- el cuerpo del buzón -->
+      <path class="chat__buzon-cuerpo" d="M52 68a26 26 0 0 1 26-26h74a26 26 0 0 1 26 26v40a8 8 0 0 1-8 8H60a8 8 0 0 1-8-8z"/>
+      <!-- la boca, abierta y vacía -->
+      <path class="chat__buzon-boca" d="M62 70a18 18 0 0 1 18-18h68a18 18 0 0 1 18 18v36H62z"/>
+      <path class="chat__buzon-fondo" d="M70 106V78a10 10 0 0 1 10-10h68a10 10 0 0 1 10 10v28z"/>
+      <!-- la tapa levantada -->
+      <path class="chat__buzon-tapa" d="M56 60c10-22 34-30 62-30h22c10 0 18 4 22 12L70 66z"/>
+      <!-- la banderita, bajada -->
+      <path class="chat__buzon-bandera" d="M170 84h22a4 4 0 0 1 4 4v12a4 4 0 0 1-4 4h-22z"/>
+      <!-- tres rayitas de «nada»: lo que no hay -->
+      <path class="chat__buzon-nada" d="M86 90h20M92 98h14M100 82h12" stroke-linecap="round"/>
+    </svg>
+    <p class="chat__buzon-titulo">{{ titulo }}</p>
+    @if (detalle) {
+      <p class="chat__buzon-detalle">{{ detalle }}</p>
+    }
+  </div>
+</ng-template>

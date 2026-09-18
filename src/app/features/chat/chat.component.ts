@@ -895,6 +895,42 @@ export class ChatComponent implements OnDestroy {
    * `getHours` volveria a aplicar la zona del navegador encima y correria la
    * hora dos veces, que es el fallo clasico de esto.
    */
+  /**
+   * Cuándo fue lo último de una sala, en corto y en la zona de quien mira.
+   *
+   * Hoy, la hora; ayer, «ayer»; antes, el día y el mes. Es lo que se lee de
+   * reojo en una lista para saber cuál se movió: la hora exacta de hace tres
+   * semanas no le dice nada a nadie.
+   */
+  cuandoDeSala(cuando: string): string {
+    if (!cuando) return '';
+
+    const t = new Date(cuando);
+    if (Number.isNaN(t.getTime())) return '';
+
+    const minutos = this.desfase();
+
+    // Los dos —el mensaje y ahora— corridos a la misma zona, y comparados por
+    // su fecha con `getUTC*`, que es la que quedó tras correrlos. Ver `aLaHora`.
+    const suya = minutos === null ? t : new Date(t.getTime() + minutos * 60_000);
+    const hoy = minutos === null ? new Date() : new Date(Date.now() + minutos * 60_000);
+    const dia = (d: Date) =>
+      minutos === null
+        ? Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())
+        : Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+
+    const diferencia = Math.round((dia(hoy) - dia(suya)) / 86_400_000);
+
+    if (diferencia === 0) return this.aLaHora(cuando);
+    if (diferencia === 1) return 'ayer';
+
+    const dos = (n: number) => String(n).padStart(2, '0');
+    const d = minutos === null ? suya.getDate() : suya.getUTCDate();
+    const m = minutos === null ? suya.getMonth() + 1 : suya.getUTCMonth() + 1;
+
+    return `${dos(d)}/${dos(m)}`;
+  }
+
   aLaHora(cuando: string): string {
     if (!cuando) return '';
 
