@@ -1307,7 +1307,8 @@ export class FormEngine {
   }
 
   private correrFlujo(momento: Momento, campoQueCambio?: string): void {
-    if (!this.hayFlujo()) return;
+    const flujo = this.flujo;
+    if (!flujo || !this.hayFlujo()) return;
 
     /*
      * Un campo que a ninguna regla le importa no paga nada.
@@ -1419,7 +1420,7 @@ export class FormEngine {
       if (veces > 0) cambios[apiId] = veces;
     }
 
-    const resultado: Resultado = evaluar(this.flujo, {
+    const resultado: Resultado = evaluar(flujo, {
       valores,
       campos,
       momento,
@@ -1626,7 +1627,7 @@ export class FormEngine {
 
     const leido: Record<string, string> = {};
 
-    for (const apiId of camposDeLasReglas(this.flujo)) {
+    for (const apiId of camposDeLasReglas(flujo)) {
       /*
        * Una referencia a una tabla —`DETALLE:EQUIPOS@filas`,
        * `DETALLE:EQUIPOS:IMPORTE`— no es un campo: el motor la resuelve al
