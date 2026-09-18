@@ -1202,8 +1202,20 @@ export class FormEngine {
      * preguntan por nadie, así que no se puede descartar nada.
      */
     if (!this.leidosYEscritos.size) return true;
+    if (this.leidosYEscritos.has(campo)) return true;
 
-    return this.leidosYEscritos.has(campo);
+    /*
+     * Y lo que el flujo decide **sin regla** también importa.
+     *
+     * Un campo con tope de cambios o con comportamiento de fondo tiene que
+     * reevaluarse al responderse, aunque ninguna regla lo nombre: es cuando
+     * el conteo sube y cuando, al llegar al tope, pasa a solo lectura. Sin
+     * esto se quedaba en «0 de 3» hasta reabrir la actividad.
+     */
+    const limites = this.flujo.limitesDeCambios ?? {};
+    if ('*' in limites || campo in limites) return true;
+
+    return campo in (this.flujo.comportamientos ?? {});
   }
 
   /**
