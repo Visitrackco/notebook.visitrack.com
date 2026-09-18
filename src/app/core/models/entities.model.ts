@@ -234,6 +234,13 @@ export interface SurveyAnswer {
    */
   NoEliminar?: string;
 
+  /**
+   * `'1'` cuando el momento «al crear» del flujo ya corrió para esta
+   * actividad en este navegador. Se escribe al montar el formulario la
+   * primera vez, para que no vuelva a correr.
+   */
+  FlujoCrear?: string;
+
   LocationTypeID: string;
   LocationID: string;
   LocationGUID: string;

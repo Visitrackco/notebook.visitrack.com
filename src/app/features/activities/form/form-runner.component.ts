@@ -752,11 +752,25 @@ export class FormRunnerComponent {
     // vieja encima sería peor que no montar nada.
     if (answer.GUID !== this.mountedGuid) return;
 
+    /*
+     * «Al crear» corre una sola vez por actividad.
+     *
+     * Se apunta en la actividad **antes** de montar el motor, no después: si
+     * el montaje reventara a medias, volver a entrar repetiría reglas que ya
+     * escribieron. Solo cuando hay flujo: sin flujo no hay nada que apuntar.
+     */
+    const primeraVez = !!flujo && String(answer.FlujoCrear ?? '') !== '1';
+
+    if (primeraVez && answer.ID != null) {
+      await this.answers.update(answer.ID, { FlujoCrear: '1' });
+    }
+
     const engine = new FormEngine({
       questions: survey.JSONQuestion,
       answers: answer.Fields,
       inherits,
       flujo,
+      primeraVez,
     });
 
     this.engine.set(engine);

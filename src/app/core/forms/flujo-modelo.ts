@@ -32,7 +32,21 @@ export interface Punto {
 }
 
 /** Cuándo se evalúa una regla. Puede pedir más de un momento. */
-export type Momento = 'abrir' | 'cambia' | 'guardar';
+/**
+ * Cuándo corre una regla.
+ *
+ * - `crear` — **una sola vez**, la primera vez que la actividad se abre en ese
+ *   aparato o navegador: recién creada, o recién llegada como consigna. Es
+ *   el sitio de lo que se decide de entrada y no debe repetirse: limitar
+ *   cuántas veces se cambia un campo, dejar un valor inicial.
+ * - `abrir` — cada vez que se abre.
+ * - `cambia` — cada vez que se responde un campo.
+ * - `guardar` — al pulsar guardar, antes de guardar.
+ *
+ * Quien llama decide cuándo es la primera vez (lo apunta en la actividad); el
+ * motor solo filtra las reglas por el momento que le dicen.
+ */
+export type Momento = 'crear' | 'abrir' | 'cambia' | 'guardar';
 
 export interface Regla {
   id: string;

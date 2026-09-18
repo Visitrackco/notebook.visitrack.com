@@ -79,6 +79,15 @@ export interface FormEngineInput {
   readOnly?: boolean;
 
   /**
+   * Es la primera vez que esta actividad se abre aquí.
+   *
+   * Con esto corre además el momento «al crear», antes de «al abrir». Lo
+   * decide quien monta el formulario, que es quien sabe si la actividad ya
+   * pasó por aquí; el motor no lo puede adivinar.
+   */
+  primeraVez?: boolean;
+
+  /**
    * El flujo de trabajo que aplica a este formulario, si lo hay.
    *
    * Lo trae `FlujoService` desde lo que bajó la sincronización. Sin flujo, el
@@ -1123,6 +1132,10 @@ export class FormEngine {
        * también al entrar adelantaba decisiones sobre campos que el usuario
        * todavía no ha tocado.
        */
+      // Una sola vez por actividad, antes de «al abrir»: es donde viven las
+      // reglas que deciden de entrada y no deben repetirse.
+      if (input.primeraVez) this.correrFlujo('crear');
+
       this.correrFlujo('abrir');
     }
   }
