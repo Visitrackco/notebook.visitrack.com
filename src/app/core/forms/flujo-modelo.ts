@@ -2279,7 +2279,22 @@ export type TipoAccion =
    */
   | 'bloquear-actividad'
   /** Volver a dejar entrar. Quita la marca que puso `bloquear-actividad`. */
-  | 'permitir-entrar';
+  | 'permitir-entrar'
+  /**
+   * Escribir un valor en un campo de una actividad **hija**.
+   *
+   * `campo` es `HIJO:<vinculado>:<campo>` y `valor` lo que se escribe, con
+   * plantillas del padre si hace falta (`{CLIENTE}`). El motor solo lo anota
+   * como encargo; quien lo ejecuta busca la actividad que cuelga del campo
+   * vinculado y escribe en ella. Sin hijo todavía, no hay dónde escribir y
+   * el encargo se descarta.
+   */
+  | 'escribir-en-hijo'
+  /**
+   * Cambiar el estado de una actividad hija. `campo` es el campo vinculado y
+   * `valor` el estado al que pasa. Encargo, como el anterior.
+   */
+  | 'cambiar-estado-hijo';
 
 export interface Accion {
   accion: TipoAccion;
@@ -2586,6 +2601,21 @@ export interface HerenciaDeActividad {
  * teléfono y en el simulador, donde nada de eso existe—. Las **anota**, y quien
  * llama decide si las lleva a cabo.
  */
+/**
+ * Lo que un encargo `escribir-en-hijo` o `cambiar-estado-hijo` lleva en
+ * `valor`: por qué campo vinculado se llega al hijo, y qué se le pone.
+ */
+export interface EncargoDeHijo {
+  /** El `apiId` del campo vinculado del padre. */
+  vinculado: ApiId;
+  /** Para `escribir-en-hijo`: el campo del hijo, ya sin prefijo. */
+  campo?: ApiId;
+  /** Lo que se escribe, ya con las plantillas resueltas. */
+  valor?: unknown;
+  /** Para `cambiar-estado-hijo`: el estado al que pasa. */
+  estado?: string;
+}
+
 export interface Encargo {
   que:
     | 'crear-actividad'
@@ -2616,7 +2646,10 @@ export interface Encargo {
      * eso solo lo sabe el servidor mirando las sesiones vivas de cada persona—.
      * Lo apunta y lo manda el servidor. Ver [PushDeFlujo].
      */
-    | 'enviar-push';
+    | 'enviar-push'
+    /** Escribir en un hijo, o cambiarle el estado. `valor` es un [EncargoDeHijo]. */
+    | 'escribir-en-hijo'
+    | 'cambiar-estado-hijo';
   valor: unknown;
   /** Qué regla lo pidió, para poder decirlo si algo sale mal. */
   regla: string;
@@ -3037,3 +3070,27 @@ export const ESTADO_DE_LA_ACTIVIDAD = 'ACTIVIDAD:estado';
  * aunque los dos se llamen igual. Que es justo el caso que hay que resolver.
  */
 export const PREFIJO_FORMULARIO = 'FORMULARIO:';
+
+/**
+ * Con qué nombre se refiere una regla al **padre** de la actividad.
+ *
+ * Una actividad hija —la que nace de un campo vinculado— puede mirar hacia
+ * arriba: `PADRE:CLIENTE` es el campo CLIENTE del padre, en vivo, y
+ * `PADRE:estado` su estado. Quien evalúa los mete en `Contexto.valores` con
+ * el prefijo puesto, igual que hace con `FORMULARIO:` para una fila; el motor
+ * los trata como cualquier otro valor.
+ */
+export const PREFIJO_PADRE = 'PADRE:';
+export const ESTADO_DEL_PADRE = 'PADRE:estado';
+
+/**
+ * Con qué nombre se refiere una regla del padre a **un hijo**.
+ *
+ * Un campo vinculado apunta a una actividad hija, y se nombra por ese campo:
+ * `HIJO:ORDEN:TOTAL` es el campo TOTAL de la actividad que cuelga del campo
+ * vinculado ORDEN; `HIJO:ORDEN:estado` su estado; `HIJO:ORDEN@existe` y
+ * `HIJO:ORDEN@guardado` dicen «Sí» o «No». Lo que cambia cuando el hijo se
+ * crea o se guarda es el campo ORDEN, y es ese el que despierta a la regla:
+ * ver `referenciaHijo` y `camposDeLaRegla`.
+ */
+export const PREFIJO_HIJO = 'HIJO:';

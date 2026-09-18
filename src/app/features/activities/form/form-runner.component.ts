@@ -28,6 +28,7 @@ import { Survey, SurveyAnswer } from '../../../core/models/entities.model';
 import { DispatchStatusRepository } from '../../../core/repositories/entity.repositories';
 import { ANSWER_STATE } from '../../../core/models/activity.model';
 import { SurveyAnswerRepository } from '../../../core/repositories/survey-answer.repository';
+import { ParientesService } from '../../../core/forms/parientes.service';
 import { ActivityService } from '../../../core/services/activity.service';
 import { AlertSoundService } from '../../../core/services/alert-sound.service';
 import { AuthService } from '../../../core/services/auth.service';
@@ -129,6 +130,7 @@ const PREFIJO_DESCRIPTIVO_DE_FLUJO = 'flujo:';
 export class FormRunnerComponent {
   private readonly answers = inject(SurveyAnswerRepository);
   private readonly activities = inject(ActivityService);
+  private readonly parientes = inject(ParientesService);
   private readonly autosave = inject(AutosaveService);
   private readonly flujos = inject(FlujoService);
   private readonly detalles = inject(MasterDetailSourceService);
@@ -634,6 +636,33 @@ export class FormRunnerComponent {
      * actividad. Se escribe en cuanto el motor lo decide y se borra en cuanto
      * lo deja de decidir, sin esperar a guardar.
      */
+    /*
+     * Lo que el flujo pide sobre los hijos, en cuanto lo pide.
+     *
+     * Escribir en el hijo y cambiarle el estado se ejecutan al momento, como
+     * el estado de la propia actividad: una regla de «al cambiar» que mueve al
+     * hijo tiene que verse al abrirlo después. Si algo se escribió, lo de
+     * fuera se vuelve a leer y se reevalúa; la segunda pasada no escribe nada
+     * —ya está— y ahí se para.
+     */
+    effect(() => {
+      const engine = this.engine();
+      const encargos = engine?.encargosDeHijos() ?? [];
+      if (!engine || !encargos.length) return;
+
+      untracked(() => {
+        const answer = this.answer();
+        const survey = this.survey();
+        this.parientes
+          .ejecutar(answer, survey, encargos)
+          .then((tocado) => {
+            if (tocado) return this.refrescarParientes(engine);
+            return undefined;
+          })
+          .catch((error) => console.error('[flujo] no se pudo ejecutar el encargo del hijo', error));
+      });
+    });
+
     // El cambio de estado cerrado, para que el detalle esconda la barra.
     effect(() => {
       const cerrado = this.engine()?.estadoBloqueado() ?? false;
@@ -780,12 +809,21 @@ export class FormRunnerComponent {
       await this.answers.update(answer.ID, { FlujoCrear: '1' });
     }
 
+    /*
+     * La familia, para el flujo: lo que se puede mirar del padre y de cada
+     * hijo entra como valores de fuera, con `PADRE:` y `HIJO:` delante. Solo
+     * cuando hay flujo: sin reglas nadie lo mira, y leerlo cuesta consultas.
+     */
+    const deFuera = flujo ? await this.parientes.deFuera(answer, survey) : { valores: {}, campos: {} };
+
     const engine = new FormEngine({
       questions: survey.JSONQuestion,
       answers: answer.Fields,
       inherits,
       flujo,
       primeraVez,
+      valoresDeFuera: deFuera.valores,
+      camposDeFuera: deFuera.campos,
     });
 
     this.engine.set(engine);
@@ -1029,6 +1067,12 @@ export class FormRunnerComponent {
 
     engine.setValue(field, value);
     this.persist(engine, answer.ID);
+
+    // Un campo vinculado que cambia es un hijo que acaba de nacer: lo que el
+    // flujo ve de él se vuelve a leer, y las reglas que lo miran se enteran.
+    if ((field.fty ?? '').toLowerCase() === 'linkedform') {
+      void this.refrescarParientes(engine, (field.apiId ?? '').toString().trim() || field.id);
+    }
 
     // Y si lo que se acaba de responder hizo que una regla quiera llenar una
     // tabla, se llena: esperar al guardado dejaría mirando una tabla vacía.
@@ -2349,6 +2393,16 @@ export class FormRunnerComponent {
    * Solo cuando el flujo lo dijo en esta pasada: con la lista vacía y sin
    * `permitir-entrar`, ninguna regla habló y la marca que haya se respeta.
    */
+  /** Vuelve a leer al padre y a los hijos, y reevalúa con lo nuevo. */
+  private async refrescarParientes(engine: FormEngine, campoQueCambio?: string): Promise<void> {
+    if (!this.flujoDelFormulario()) return;
+
+    const deFuera = await this.parientes.deFuera(this.answer(), this.survey());
+    if (this.engine() !== engine) return;
+
+    engine.actualizarLoDeFuera(deFuera.valores, deFuera.campos, campoQueCambio);
+  }
+
   private async apuntarNoEntrarSegunElFlujo(): Promise<void> {
     const engine = this.engine();
     const answer = this.answer();

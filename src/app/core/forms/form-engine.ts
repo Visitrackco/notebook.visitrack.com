@@ -218,10 +218,10 @@ export class FormEngine {
   private readonly origenDeLaFila: Record<string, unknown>;
 
   /** Lo respondido fuera de la fila, con `FORMULARIO:` delante. */
-  private readonly valoresDeFuera: Record<string, unknown>;
+  private valoresDeFuera: Record<string, unknown>;
 
   /** Los campos de fuera, con el mismo prefijo. */
-  private readonly camposDeFuera: Record<string, Campo>;
+  private camposDeFuera: Record<string, Campo>;
 
   /** Lo que el flujo decidió sobre cada campo, por `id` de campo. */
   private readonly estadoFlujo = signal(new Map<string, EstadoCampo>());
@@ -1074,6 +1074,29 @@ export class FormEngine {
 
   /** Si el flujo pidió esconder el botón de guardar. */
   readonly guardarOculto = signal(false);
+
+  /**
+   * Cambia lo que se ve de fuera —el padre y los hijos— y vuelve a evaluar.
+   *
+   * Lo de fuera se lee al montar, y cambia sin que este formulario se toque:
+   * se crea el hijo, se guarda, el flujo del padre le escribe. Quien lo lee
+   * de la base lo trae aquí y se reevalúa «al cambiar» sobre el campo que lo
+   * despertó —el vinculado— para que las reglas que lo miran se enteren.
+   */
+  actualizarLoDeFuera(
+    valores: Record<string, unknown>,
+    campos: Record<string, Campo>,
+    campoQueCambio?: string,
+  ): void {
+    this.valoresDeFuera = { ...this.valoresDeFuera, ...valores };
+    this.camposDeFuera = { ...this.camposDeFuera, ...campos };
+    this.correrFlujo('cambia', campoQueCambio);
+  }
+
+  /** Los encargos que tocan a un hijo: escribirle un campo o cambiarle el estado. */
+  readonly encargosDeHijos = computed<readonly Encargo[]>(() =>
+    this.encargosDeFlujo().filter((e) => e.que === 'escribir-en-hijo' || e.que === 'cambiar-estado-hijo'),
+  );
 
   /** Si el flujo cerró el cambio de estado (`modo-auditor`). */
   readonly estadoBloqueado = signal(false);

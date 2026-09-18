@@ -19,6 +19,7 @@ import {
   Accion,
   ApiId,
   Comportamiento,
+  EncargoDeHijo,
   Campo,
   Encargo,
   Comparador,
@@ -42,6 +43,7 @@ import {
   CorreoPedido,
   ESTADO_DE_LA_ACTIVIDAD,
   PREFIJO_FORMULARIO,
+  PREFIJO_HIJO,
   HerenciaDeActividad,
   TablaHeredada,
   Grafica,
@@ -213,6 +215,27 @@ export interface ReferenciaDetalle {
 }
 
 /** Desarma `DETALLE:TABLA:CAMPO@agregado`. `null` si no es uno de estos. */
+/**
+ * Una referencia a un hijo, partida: `HIJO:ORDEN:TOTAL` → vinculado ORDEN,
+ * resto `TOTAL`; `HIJO:ORDEN@existe` → vinculado ORDEN, resto `@existe`.
+ * `null` si no es una referencia a un hijo.
+ */
+export function referenciaHijo(apiId: string): { vinculado: string; resto: string } | null {
+  if (!apiId.startsWith(PREFIJO_HIJO)) return null;
+
+  const cuerpo = apiId.slice(PREFIJO_HIJO.length);
+  const arroba = cuerpo.indexOf('@');
+  const puntos = cuerpo.indexOf(':');
+
+  let corte = -1;
+  if (arroba >= 0 && (puntos < 0 || arroba < puntos)) corte = arroba;
+  else if (puntos >= 0) corte = puntos;
+
+  if (corte <= 0) return cuerpo ? { vinculado: cuerpo, resto: '' } : null;
+
+  return { vinculado: cuerpo.slice(0, corte), resto: cuerpo.slice(corte) };
+}
+
 export function referenciaDetalle(apiId: string): ReferenciaDetalle | null {
   if (!apiId.startsWith(PREFIJO_DETALLE)) return null;
 
@@ -3845,6 +3868,40 @@ function aplicar(
     return;
   }
 
+  /*
+   * Escribir en un hijo, o cambiarle el estado: encargos.
+   *
+   * El motor no sabe dónde vive la actividad hija —eso lo sabe la base de
+   * quien lo ejecuta—, así que anota por qué campo vinculado se llega y qué se
+   * le pone, con las plantillas del padre ya resueltas.
+   */
+  if (accion.accion === 'escribir-en-hijo' || accion.accion === 'cambiar-estado-hijo') {
+    const objetivo = String(accion.campo ?? '').trim();
+    const ref = referenciaHijo(objetivo);
+    const vinculado = ref ? ref.vinculado : objetivo;
+    if (!vinculado) return;
+
+    const valor: EncargoDeHijo = { vinculado };
+
+    if (accion.accion === 'escribir-en-hijo') {
+      const campo = ref ? ref.resto.replace(/^:/, '') : '';
+      if (!campo) return;
+      valor.campo = campo;
+      valor.valor = conLasVariables(String(accion.valor ?? ''), valores, campos, false);
+    } else {
+      const estado = String(accion.valor ?? '').trim();
+      if (!estado) return;
+      valor.estado = estado;
+    }
+
+    const yaEsta = resultado.encargos.some(
+      (e) => e.que === accion.accion && JSON.stringify(e.valor) === JSON.stringify(valor),
+    );
+    if (!yaEsta) resultado.encargos.push({ que: accion.accion, valor, regla });
+
+    return;
+  }
+
   if (accion.accion === 'crear-actividad' || accion.accion === 'cambiar-estado') {
     const valor =
       accion.accion === 'crear-actividad'
@@ -5122,6 +5179,11 @@ export function camposDeLaRegla(regla: Regla): string[] {
 
         const ref = referenciaDetalle(apiId);
         if (ref) usados.add(ref.tabla);
+
+        // Y una referencia a un hijo es **del campo vinculado**: crear o
+        // guardar el hijo cambia ese campo, y es lo que tiene que despertarla.
+        const hijo = referenciaHijo(apiId);
+        if (hijo) usados.add(hijo.vinculado);
       };
 
       anotar(c.campo);
