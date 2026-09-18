@@ -1485,11 +1485,23 @@ function comparar(cond: Condicion, crudo: unknown, campo?: Campo): boolean {
     case 'con-valor':
       return tieneRespuesta(crudo);
 
+    /*
+     * Una fecha o una hora se comparan **como momento**, no como texto.
+     *
+     * «2026-09-17 10:30» y «2026-09-17T10:30» son el mismo instante escrito de
+     * dos maneras —la app guarda con espacio, el navegador con la T— y contra
+     * el reloj del aparato (`@ahora`, `@hora`) la igualdad es lo que se
+     * pregunta: «si la hora de llegada es la hora actual». Como texto no
+     * casaban nunca. Si alguno de los dos no se entiende como momento, se
+     * comparan como texto, que es lo de siempre.
+     */
     case 'igual':
-      return normalizar(texto, modo) === normalizar(comoTextoLlano(cond.valor), modo);
+    case 'distinto': {
+      const iguales = mismoMomento(texto, comoTextoLlano(cond.valor), campo)
+        ?? (normalizar(texto, modo) === normalizar(comoTextoLlano(cond.valor), modo));
 
-    case 'distinto':
-      return normalizar(texto, modo) !== normalizar(comoTextoLlano(cond.valor), modo);
+      return cond.cmp === 'igual' ? iguales : !iguales;
+    }
 
     case 'contiene':
       return normalizar(texto, modo).includes(normalizar(comoTextoLlano(cond.valor), modo));
@@ -1734,6 +1746,21 @@ const DE_FECHA = new Set(['date', 'datetime', 'time', 'datediff']);
  * silenciosamente falsa. Se mira el tipo del campo y se convierte a algo
  * ordenable: milisegundos para las fechas, el número para lo demás.
  */
+/**
+ * ¿Son el mismo momento? `null` cuando el campo no es de fecha o alguno de los
+ * dos no se lee como momento: entonces manda la comparación de texto.
+ */
+function mismoMomento(a: string, b: string, campo?: Campo): boolean | null {
+  const fty = (campo?.fty ?? '').toLowerCase();
+  if (!DE_FECHA.has(fty)) return null;
+
+  const x = aMomento(a, fty);
+  const y = aMomento(b, fty);
+  if (x === null || y === null) return null;
+
+  return x === y;
+}
+
 function compararOrden(
   cmp: Comparador,
   texto: string,
