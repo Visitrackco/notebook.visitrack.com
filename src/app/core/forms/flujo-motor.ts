@@ -3887,7 +3887,13 @@ function aplicar(
       const campo = ref ? ref.resto.replace(/^:/, '') : '';
       if (!campo) return;
       valor.campo = campo;
-      valor.valor = conLasVariables(String(accion.valor ?? ''), valores, campos, false);
+
+      // Lo que se escribe: un campo de este formulario (`origen`, como en
+      // `copiar-de`) o un texto con variables.
+      const origen = String(accion.origen ?? '').trim();
+      valor.valor = origen
+        ? comoTexto(leerValor(origen, valores, campos), campos[origen])
+        : conLasVariables(String(accion.valor ?? ''), valores, campos, false);
     } else {
       const estado = String(accion.valor ?? '').trim();
       if (!estado) return;

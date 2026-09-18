@@ -2284,7 +2284,8 @@ export type TipoAccion =
    * Escribir un valor en un campo de una actividad **hija**.
    *
    * `campo` es `HIJO:<vinculado>:<campo>` y `valor` lo que se escribe, con
-   * plantillas del padre si hace falta (`{CLIENTE}`). El motor solo lo anota
+   * plantillas del padre si hace falta (`{CLIENTE}`); o `origen`, un campo de
+   * este formulario del que se copia, como en `copiar-de`. El motor solo lo anota
    * como encargo; quien lo ejecuta busca la actividad que cuelga del campo
    * vinculado y escribe en ella. Sin hijo todavía, no hay dónde escribir y
    * el encargo se descarta.
