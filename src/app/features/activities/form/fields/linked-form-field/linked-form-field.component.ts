@@ -123,7 +123,7 @@ export class LinkedFormFieldComponent {
         return;
       }
 
-      const created = await this.linked.create(parent, survey, this.value());
+      const created = await this.linked.create(parent, survey, this.value(), this.field().id);
 
       if (!created) return;
 

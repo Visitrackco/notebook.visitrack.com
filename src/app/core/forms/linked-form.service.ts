@@ -79,6 +79,14 @@ export class LinkedFormService {
     parent: SurveyAnswer,
     survey: Survey,
     currentValue: unknown,
+
+    /**
+     * El `id` del campo vinculado en el padre. Con él, el enlace al hijo se
+     * escribe **aquí mismo** en las respuestas del padre, sin esperar al
+     * autoguardado: se navegaba al hijo antes de que ese guardado corriera y
+     * el padre se quedaba sin el enlace, así que la siguiente vez creaba otro.
+     */
+    fieldId?: string,
   ): Promise<{ answer: SurveyAnswer; value: { gui: string; tit: string } } | null> {
     const user = this.auth.currentUser();
 
@@ -155,10 +163,37 @@ export class LinkedFormService {
 
     this.revisions.touchActivities();
 
+    const value = { gui: child.GUID, tit: survey.Title };
+    if (fieldId) await this.enlazarEnElPadre(parent, fieldId, value);
+
     return {
       answer: { ...child, ID: Number(id) },
-      value: { gui: child.GUID, tit: survey.Title },
+      value,
     };
+  }
+
+  /** Deja el enlace al hijo en el campo vinculado del padre, en la base. */
+  async enlazarEnElPadre(parent: SurveyAnswer, fieldId: string, value: unknown): Promise<void> {
+    if (parent.ID == null) return;
+
+    try {
+      const fresco = (await this.answers.findByGuid(parent.GUID)) ?? parent;
+      const fields = parseAnswerFields(fresco.Fields);
+      const existente = fields.find((f) => f.id === fieldId);
+
+      if (existente) {
+        existente.val = value as never;
+      } else {
+        fields.push({ id: fieldId, val: value as never, fty: 'form', hid: false });
+      }
+
+      await this.answers.update(parent.ID, {
+        Fields: JSON.stringify(fields),
+        UpdatedOn: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.warn('[Vinculado] no se pudo dejar el enlace en el padre', error);
+    }
   }
 
   /**

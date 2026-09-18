@@ -2423,7 +2423,7 @@ export class FormRunnerComponent {
           }
 
           const padre = (await this.answers.findByGuid(answer.GUID)) ?? answer;
-          const creada = await this.linked.create(padre, survey, valorActual);
+          const creada = await this.linked.create(padre, survey, valorActual, campo.id);
           if (!creada) continue;
 
           // El enlace queda en el campo, como si se hubiera pulsado «diligenciar».
