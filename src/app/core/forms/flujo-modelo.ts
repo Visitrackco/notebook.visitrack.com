@@ -2295,7 +2295,26 @@ export type TipoAccion =
    * Cambiar el estado de una actividad hija. `campo` es el campo vinculado y
    * `valor` el estado al que pasa. Encargo, como el anterior.
    */
-  | 'cambiar-estado-hijo';
+  | 'cambiar-estado-hijo'
+  /**
+   * Crear la actividad hija de un campo vinculado, **al guardar** el padre.
+   *
+   * `campo` es el campo vinculado; `valor`, opcional, un `{campos: [...]}`
+   * con la misma forma que [HerenciaDeActividad]: qué campos del padre llegan
+   * escritos al hijo (`{campo, de}` o `{campo, valor}`). Si el hijo ya
+   * existe no se crea otro. Lo que se llame igual en los dos formularios se
+   * hereda siempre. Quien guarda lo ejecuta y deja el enlace en el campo
+   * vinculado, como si se hubiera pulsado «diligenciar».
+   */
+  | 'crear-hijo'
+  /** Eliminar la actividad hija de un campo vinculado, al guardar el padre. */
+  | 'eliminar-hijo'
+  /**
+   * Heredar campos del padre a un hijo **que ya existe**, al guardar el
+   * padre. `campo` es el vinculado; `valor` un `{campos: [...]}` como en
+   * [HerenciaDeActividad]. Sin hijo, no hace nada.
+   */
+  | 'heredar-al-hijo';
 
 export interface Accion {
   accion: TipoAccion;
@@ -2615,6 +2634,12 @@ export interface EncargoDeHijo {
   valor?: unknown;
   /** Para `cambiar-estado-hijo`: el estado al que pasa. */
   estado?: string;
+  /**
+   * Para `crear-hijo` y `heredar-al-hijo`: cada campo del hijo con el valor
+   * que recibe, ya leído del padre. La misma forma que en la herencia de
+   * `crear-actividad`, para que quien siembra sea el mismo código.
+   */
+  campos?: { campo: ApiId; valor: string }[];
 }
 
 export interface Encargo {
@@ -2650,7 +2675,11 @@ export interface Encargo {
     | 'enviar-push'
     /** Escribir en un hijo, o cambiarle el estado. `valor` es un [EncargoDeHijo]. */
     | 'escribir-en-hijo'
-    | 'cambiar-estado-hijo';
+    | 'cambiar-estado-hijo'
+    /** Al guardar el padre: crear, eliminar o heredar al hijo. `valor` es un [EncargoDeHijo]. */
+    | 'crear-hijo'
+    | 'eliminar-hijo'
+    | 'heredar-al-hijo';
   valor: unknown;
   /** Qué regla lo pidió, para poder decirlo si algo sale mal. */
   regla: string;

@@ -3908,6 +3908,54 @@ function aplicar(
     return;
   }
 
+  /*
+   * Crear, eliminar o heredar al hijo de un campo vinculado, al guardar.
+   *
+   * Los campos que se heredan se anotan ya leídos del padre —`{campo, valor}`,
+   * como en la herencia de `crear-actividad`— para que quien siembra sea el
+   * mismo código en los dos casos.
+   */
+  if (
+    accion.accion === 'crear-hijo'
+    || accion.accion === 'eliminar-hijo'
+    || accion.accion === 'heredar-al-hijo'
+  ) {
+    const vinculado = String(accion.campo ?? '').trim();
+    if (!vinculado) return;
+
+    const valor: EncargoDeHijo = { vinculado };
+
+    if (accion.accion !== 'eliminar-hijo') {
+      const config = leerJson(accion.valor) ?? {};
+      const pares = Array.isArray(config['campos']) ? (config['campos'] as CampoHeredado[]) : [];
+      const camposDelEncargo: { campo: ApiId; valor: string }[] = [];
+
+      for (const par of pares) {
+        if (!par || typeof par !== 'object') continue;
+        const campo = String(par.campo ?? '').trim();
+        if (!campo) continue;
+
+        const de = String(par.de ?? '').trim();
+        const texto = de
+          ? comoTexto(leerValor(de, valores, campos), campos[de])
+          : comoTextoLlano(par.valor);
+        if (!texto.trim()) continue;
+
+        camposDelEncargo.push({ campo, valor: texto });
+      }
+
+      if (accion.accion === 'heredar-al-hijo' && !camposDelEncargo.length) return;
+      if (camposDelEncargo.length) valor.campos = camposDelEncargo;
+    }
+
+    const yaEsta = resultado.encargos.some(
+      (e) => e.que === accion.accion && JSON.stringify(e.valor) === JSON.stringify(valor),
+    );
+    if (!yaEsta) resultado.encargos.push({ que: accion.accion, valor, regla });
+
+    return;
+  }
+
   if (accion.accion === 'crear-actividad' || accion.accion === 'cambiar-estado') {
     const valor =
       accion.accion === 'crear-actividad'

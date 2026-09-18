@@ -1093,10 +1093,16 @@ export class FormEngine {
     this.correrFlujo('cambia', campoQueCambio);
   }
 
-  /** Los encargos que tocan a un hijo: escribirle un campo o cambiarle el estado. */
-  readonly encargosDeHijos = computed<readonly Encargo[]>(() =>
-    this.encargosDeFlujo().filter((e) => e.que === 'escribir-en-hijo' || e.que === 'cambiar-estado-hijo'),
-  );
+  /**
+   * Los encargos que tocan a un hijo, de la pasada de «al guardar».
+   *
+   * Crear, eliminar, heredar y cambiar el estado se hacen con la actividad ya
+   * entera, así que solo cuentan los de ese momento y los ejecuta quien guarda.
+   */
+  encargosDeHijosAlGuardar(): readonly Encargo[] {
+    const deHijos = new Set(['crear-hijo', 'eliminar-hijo', 'heredar-al-hijo', 'cambiar-estado-hijo', 'escribir-en-hijo']);
+    return (this.encargosPorMomento()['guardar'] ?? []).filter((e) => deHijos.has(e.que));
+  }
 
   /** Si el flujo cerró el cambio de estado (`modo-auditor`). */
   readonly estadoBloqueado = signal(false);

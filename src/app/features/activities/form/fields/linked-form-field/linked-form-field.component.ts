@@ -138,7 +138,13 @@ export class LinkedFormFieldComponent {
     }
   }
 
+  /**
+   * A la actividad hija, por la misma ruta que abre cualquier actividad.
+   *
+   * Iba a `/actividades/…`, que no existe: el comodín la mandaba al inicio
+   * y «diligenciar» parecía no hacer nada.
+   */
   private async goTo(answer: SurveyAnswer): Promise<void> {
-    await this.router.navigate(['/actividades', answer.SurveyID, answer.GUID]);
+    await this.router.navigate(['/formularios', answer.SurveyID, 'actividad', answer.GUID]);
   }
 }

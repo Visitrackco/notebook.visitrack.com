@@ -29,6 +29,8 @@ import { DispatchStatusRepository } from '../../../core/repositories/entity.repo
 import { ANSWER_STATE } from '../../../core/models/activity.model';
 import { SurveyAnswerRepository } from '../../../core/repositories/survey-answer.repository';
 import { ParientesService, esVinculado } from '../../../core/forms/parientes.service';
+import { EncargoDeHijo } from '../../../core/forms/flujo-modelo';
+import { LinkedFormService } from '../../../core/forms/linked-form.service';
 import { ActivityService } from '../../../core/services/activity.service';
 import { AlertSoundService } from '../../../core/services/alert-sound.service';
 import { AuthService } from '../../../core/services/auth.service';
@@ -131,6 +133,7 @@ export class FormRunnerComponent {
   private readonly answers = inject(SurveyAnswerRepository);
   private readonly activities = inject(ActivityService);
   private readonly parientes = inject(ParientesService);
+  private readonly linked = inject(LinkedFormService);
   private readonly autosave = inject(AutosaveService);
   private readonly flujos = inject(FlujoService);
   private readonly detalles = inject(MasterDetailSourceService);
@@ -636,33 +639,6 @@ export class FormRunnerComponent {
      * actividad. Se escribe en cuanto el motor lo decide y se borra en cuanto
      * lo deja de decidir, sin esperar a guardar.
      */
-    /*
-     * Lo que el flujo pide sobre los hijos, en cuanto lo pide.
-     *
-     * Escribir en el hijo y cambiarle el estado se ejecutan al momento, como
-     * el estado de la propia actividad: una regla de «al cambiar» que mueve al
-     * hijo tiene que verse al abrirlo después. Si algo se escribió, lo de
-     * fuera se vuelve a leer y se reevalúa; la segunda pasada no escribe nada
-     * —ya está— y ahí se para.
-     */
-    effect(() => {
-      const engine = this.engine();
-      const encargos = engine?.encargosDeHijos() ?? [];
-      if (!engine || !encargos.length) return;
-
-      untracked(() => {
-        const answer = this.answer();
-        const survey = this.survey();
-        this.parientes
-          .ejecutar(answer, survey, encargos)
-          .then((tocado) => {
-            if (tocado) return this.refrescarParientes(engine);
-            return undefined;
-          })
-          .catch((error) => console.error('[flujo] no se pudo ejecutar el encargo del hijo', error));
-      });
-    });
-
     // El cambio de estado cerrado, para que el detalle esconda la barra.
     effect(() => {
       const cerrado = this.engine()?.estadoBloqueado() ?? false;
@@ -2393,6 +2369,94 @@ export class FormRunnerComponent {
    * Solo cuando el flujo lo dijo en esta pasada: con la lista vacía y sin
    * `permitir-entrar`, ninguna regla habló y la marca que haya se respeta.
    */
+  /**
+   * Lo que el flujo pidió sobre los hijos al guardar.
+   *
+   * Cada encargo llega por su campo vinculado: crear la hija si no existe y
+   * dejar el enlace en el campo —como si se hubiera pulsado «diligenciar»—,
+   * sembrarle los campos que se eligieron, cambiarle el estado o eliminarla.
+   * Lo que se siembra viene ya leído del padre; sembrar es el mismo código
+   * que usa «crear una actividad».
+   */
+  private async aplicarEncargosDeHijos(engine: FormEngine, answer: SurveyAnswer): Promise<void> {
+    const encargos = engine.encargosDeHijosAlGuardar();
+    if (!encargos.length || answer.ID == null) return;
+
+    // Los que escriben en un hijo que ya existe, por el camino que ya había.
+    const antiguos = encargos.filter((e) => e.que === 'escribir-en-hijo');
+    if (antiguos.length) await this.parientes.ejecutar(answer, this.survey(), antiguos);
+
+    const vinculados = engine.pages.flatMap((p) => p.fie).filter((f) => esVinculado(f.fty));
+    let tocado = false;
+
+    for (const encargo of encargos) {
+      if (encargo.que === 'escribir-en-hijo') continue;
+
+      const pedido = encargo.valor as EncargoDeHijo;
+      const campo = vinculados.find((f) => ((f.apiId ?? '').toString().trim() || f.id) === pedido?.vinculado);
+      if (!campo) {
+        console.warn('[flujo] el encargo apunta a un campo vinculado que no existe', pedido?.vinculado);
+        continue;
+      }
+
+      try {
+        const valorActual = engine.valueOf(campo.id);
+        const { answer: hijo, survey } = await this.linked.resolve(String(campo.fid ?? ''), valorActual);
+
+        if (!survey) {
+          console.warn('[flujo] el formulario hijo no está descargado', campo.fid);
+          continue;
+        }
+
+        const herencia: HerenciaDeActividad = {
+          formulario: String(survey.SurveyID),
+          campos: (pedido.campos ?? []).map((c) => ({ campo: c.campo, valor: c.valor })),
+        };
+
+        if (encargo.que === 'crear-hijo') {
+          if (hijo) {
+            if (herencia.campos?.length) await this.sembrarHerencia(hijo, survey, answer, this.survey(), herencia);
+            continue;
+          }
+
+          const padre = (await this.answers.findByGuid(answer.GUID)) ?? answer;
+          const creada = await this.linked.create(padre, survey, valorActual);
+          if (!creada) continue;
+
+          // El enlace queda en el campo, como si se hubiera pulsado «diligenciar».
+          engine.setValue(campo, creada.value as unknown as FieldValue);
+          await this.answers.update(answer.ID, { Fields: JSON.stringify(engine.toAnswerFields()) });
+
+          if (herencia.campos?.length) await this.sembrarHerencia(creada.answer, survey, padre, this.survey(), herencia);
+          tocado = true;
+          continue;
+        }
+
+        if (!hijo) continue;
+
+        if (encargo.que === 'heredar-al-hijo') {
+          await this.sembrarHerencia(hijo, survey, answer, this.survey(), herencia);
+          tocado = true;
+        } else if (encargo.que === 'cambiar-estado-hijo') {
+          const estado = String(pedido.estado ?? '').trim();
+          if (estado && hijo.ID != null && String(hijo.Status ?? '') !== estado) {
+            await this.answers.update(hijo.ID, { Status: estado, UpdatedOn: new Date().toISOString() });
+            tocado = true;
+          }
+        } else if (encargo.que === 'eliminar-hijo') {
+          await this.answers.remove(hijo);
+          engine.setValue(campo, null);
+          await this.answers.update(answer.ID, { Fields: JSON.stringify(engine.toAnswerFields()) });
+          tocado = true;
+        }
+      } catch (error) {
+        console.error('[flujo] no se pudo ejecutar el encargo sobre el hijo', encargo.que, error);
+      }
+    }
+
+    if (tocado) this.activities.notifyChanged();
+  }
+
   /** Vuelve a leer al padre y a los hijos, y reevalúa con lo nuevo. */
   private async refrescarParientes(engine: FormEngine, campoQueCambio?: string): Promise<void> {
     if (!this.flujoDelFormulario()) return;
@@ -3352,6 +3416,10 @@ export class FormRunnerComponent {
       // Lo que «al guardar» decidió sobre volver a entrar queda apuntado en
       // la actividad, que es lo único que el listado puede mirar.
       await this.apuntarNoEntrarSegunElFlujo();
+
+      // Y lo que decidió sobre los hijos: crearlos, eliminarlos, heredarles
+      // campos o cambiarles el estado. Con la actividad ya escrita.
+      if (engineAlGuardar) await this.aplicarEncargosDeHijos(engineAlGuardar, answer);
 
       this.saved.emit();
     } catch (error) {
