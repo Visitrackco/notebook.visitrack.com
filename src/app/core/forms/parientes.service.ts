@@ -70,7 +70,7 @@ export class ParientesService {
   }
 
   private async deLosHijos(answer: SurveyAnswer, survey: Survey, salida: LoDeFuera): Promise<void> {
-    const vinculados = camposPlanos(survey).filter((f) => f.fty === 'linkedform');
+    const vinculados = camposPlanos(survey).filter((f) => esVinculado(f.fty));
     if (!vinculados.length) return;
 
     const respuestas = parseAnswerFields(answer.Fields);
@@ -127,7 +127,7 @@ export class ParientesService {
     if (!deHijos.length) return false;
 
     const respuestas = parseAnswerFields(answer.Fields);
-    const vinculados = camposPlanos(survey).filter((f) => f.fty === 'linkedform');
+    const vinculados = camposPlanos(survey).filter((f) => esVinculado(f.fty));
     let tocado = false;
 
     for (const encargo of deHijos) {
@@ -219,4 +219,13 @@ function comoLoGuarda(campo: FormField, valor: unknown): unknown {
   }
 
   return texto;
+}
+
+/**
+ * ¿Es un campo vinculado (el que crea una actividad hija)? En el esquema el
+ * tipo es `form`; `linkedform` es como lo llaman algunos catálogos.
+ */
+export function esVinculado(fty: unknown): boolean {
+  const t = String(fty ?? '').toLowerCase();
+  return t === 'form' || t === 'linkedform';
 }

@@ -28,7 +28,7 @@ import { Survey, SurveyAnswer } from '../../../core/models/entities.model';
 import { DispatchStatusRepository } from '../../../core/repositories/entity.repositories';
 import { ANSWER_STATE } from '../../../core/models/activity.model';
 import { SurveyAnswerRepository } from '../../../core/repositories/survey-answer.repository';
-import { ParientesService } from '../../../core/forms/parientes.service';
+import { ParientesService, esVinculado } from '../../../core/forms/parientes.service';
 import { ActivityService } from '../../../core/services/activity.service';
 import { AlertSoundService } from '../../../core/services/alert-sound.service';
 import { AuthService } from '../../../core/services/auth.service';
@@ -1070,7 +1070,7 @@ export class FormRunnerComponent {
 
     // Un campo vinculado que cambia es un hijo que acaba de nacer: lo que el
     // flujo ve de él se vuelve a leer, y las reglas que lo miran se enteran.
-    if ((field.fty ?? '').toLowerCase() === 'linkedform') {
+    if (esVinculado(field.fty)) {
       void this.refrescarParientes(engine, (field.apiId ?? '').toString().trim() || field.id);
     }
 
