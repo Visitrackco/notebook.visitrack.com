@@ -2380,6 +2380,23 @@ export class FormRunnerComponent {
    */
   private async aplicarEncargosDeHijos(engine: FormEngine, answer: SurveyAnswer): Promise<void> {
     const encargos = engine.encargosDeHijosAlGuardar();
+
+    /*
+     * Que se vea qué pidió el flujo y qué pasó con cada cosa.
+     *
+     * «La regla se disparó y no creó nada» tiene cuatro causas que desde fuera
+     * se ven igual: que el encargo no llegara, que el campo vinculado no se
+     * encontrara, que el formulario hijo no esté descargado, o que la hija ya
+     * existiera. Sin esto hay que ir descartándolas a ciegas.
+     */
+    console.log('[flujo] hijos al guardar:', {
+      encargos: encargos.map((e) => `${e.que} → ${(e.valor as EncargoDeHijo)?.vinculado}`),
+      vinculados: engine.pages
+        .flatMap((p) => p.fie)
+        .filter((f) => esVinculado(f.fty))
+        .map((f) => `${(f.apiId ?? '').toString().trim() || f.id} (fid ${f.fid ?? '?'})`),
+    });
+
     if (!encargos.length || answer.ID == null) return;
 
     // Los que escriben en un hijo que ya existe, por el camino que ya había.
@@ -2404,9 +2421,11 @@ export class FormRunnerComponent {
         const { answer: hijo, survey } = await this.linked.resolve(String(campo.fid ?? ''), valorActual);
 
         if (!survey) {
-          console.warn('[flujo] el formulario hijo no está descargado', campo.fid);
+          console.warn('[flujo] el formulario hijo no está descargado en este navegador', campo.fid);
           continue;
         }
+
+        console.log(`[flujo] ${encargo.que} sobre «${pedido.vinculado}»: ${hijo ? 'la hija ya existe' : 'sin hija todavía'}`);
 
         const herencia: HerenciaDeActividad = {
           formulario: String(survey.SurveyID),
@@ -2424,7 +2443,11 @@ export class FormRunnerComponent {
 
           const padre = (await this.answers.findByGuid(answer.GUID)) ?? answer;
           const creada = await this.linked.create(padre, survey, valorActual, campo.id);
-          if (!creada) continue;
+          if (!creada) {
+            console.warn('[flujo] no se pudo crear la hija (¿sin sesión?)');
+            continue;
+          }
+          console.log('[flujo] hija creada', creada.answer.GUID);
 
           // El enlace queda en el campo, como si se hubiera pulsado «diligenciar».
           engine.setValue(campo, creada.value as unknown as FieldValue);

@@ -3944,11 +3944,12 @@ function aplicar(
         camposDelEncargo.push({ campo, valor: texto });
       }
 
-      if (accion.accion === 'heredar-al-hijo' && !camposDelEncargo.length) return;
-      if (camposDelEncargo.length) valor.campos = camposDelEncargo;
-
       // Heredar puede crear la hija si falta: lo decide quien escribió la regla.
+      // Con eso, la acción vale aunque no traiga pares: crea.
       if (accion.accion === 'heredar-al-hijo' && config['crearSiFalta'] === true) valor.crearSiFalta = true;
+
+      if (accion.accion === 'heredar-al-hijo' && !camposDelEncargo.length && !valor.crearSiFalta) return;
+      if (camposDelEncargo.length) valor.campos = camposDelEncargo;
     }
 
     const yaEsta = resultado.encargos.some(
