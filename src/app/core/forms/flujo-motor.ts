@@ -599,6 +599,14 @@ export function leerValor(
  * Una regla de fila sin `md` vale para todas las tablas: es la forma de escribir
  * una vez lo que se quiere en todas.
  */
+/**
+ * En qué momento corre una regla general: `crear` si lo dice, y si no
+ * `guardar`, que es como estaban escritas todas las que ya existen.
+ */
+export function momentoDeGeneral(regla: Regla): 'crear' | 'guardar' {
+  return regla.cuando?.includes('crear') ? 'crear' : 'guardar';
+}
+
 export function esDeAmbito(regla: Regla, ambito: string, tabla: string): boolean {
   const suyo = regla.ambito ?? 'actividad';
 
@@ -667,8 +675,19 @@ export function evaluar(flujo: Flujo, contexto: Contexto): Resultado {
   // Las generales cierran **la actividad**: suman lo diligenciado y deciden con
   // qué estado se cierra. Una fila no se cierra con un estado, así que dentro de
   // una fila no hay reglas de cierre.
+  /*
+   * Y también **al crear**: las generales de apertura.
+   *
+   * Corren una sola vez, la primera vez que la actividad se abre, en el orden
+   * en que están escritas, y sin colgar de ningún campo: es donde se deja lo
+   * que la actividad trae de entrada —un valor inicial, cuántos cambios admite
+   * cada campo, si se puede eliminar—. Una general sin `crear` en su `cuando`
+   * es de guardar, que es como estaban escritas todas las que ya existen.
+   */
   const generales =
-    contexto.momento === 'guardar' && !enFila ? vivas.filter((r) => r.general) : [];
+    !enFila && (contexto.momento === 'guardar' || contexto.momento === 'crear')
+      ? vivas.filter((r) => r.general && momentoDeGeneral(r) === contexto.momento)
+      : [];
 
   /*
    * Y las que **están esperando la respuesta de un servicio**, corran cuando
