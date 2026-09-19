@@ -28,6 +28,12 @@ export interface ListSearchQuery {
   /** La lista se filtra por el usuario dueño de cada ítem. */
   byusers: boolean;
   byuserList: string;
+  /**
+   * Los campos de la lista que el formulario enseña como descriptivos.
+   * Con ellos el servidor busca también en lo escrito en esos campos del
+   * ítem, no solo en el nombre.
+   */
+  des?: string[];
 }
 
 export interface ListSearchResult {

@@ -568,6 +568,12 @@ export class ListSourceService {
       users: filter.users === true,
       byusers: filter.byusers === true,
       byuserList: filter.byuserList ?? '',
+
+      // Los descriptivos marcados en el campo: se busca también por ellos.
+      des: (field.des ?? [])
+        .filter((d) => d.isSelected !== false)
+        .map((d) => String(d.id ?? '').trim())
+        .filter(Boolean),
     };
 
     const result = await this.api.search(query, {
