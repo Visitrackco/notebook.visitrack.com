@@ -21,8 +21,10 @@ import {
   FieldValue,
   FormField,
   ResolvedDescriptor,
+  fileValueOf,
   parseAnswerFields,
   parseQuestions,
+  splitFileValue,
 } from '../../../core/forms/form-schema';
 import { Survey, SurveyAnswer } from '../../../core/models/entities.model';
 import { DispatchStatusRepository } from '../../../core/repositories/entity.repositories';
@@ -31,6 +33,7 @@ import { SurveyAnswerRepository } from '../../../core/repositories/survey-answer
 import { ParientesService, esVinculado } from '../../../core/forms/parientes.service';
 import { EncargoDeHijo } from '../../../core/forms/flujo-modelo';
 import { LinkedFormService } from '../../../core/forms/linked-form.service';
+import { BinaryStorageService } from '../../../core/services/binary-storage.service';
 import { ActivityService } from '../../../core/services/activity.service';
 import { AlertSoundService } from '../../../core/services/alert-sound.service';
 import { AuthService } from '../../../core/services/auth.service';
@@ -134,6 +137,7 @@ export class FormRunnerComponent {
   private readonly activities = inject(ActivityService);
   private readonly parientes = inject(ParientesService);
   private readonly linked = inject(LinkedFormService);
+  private readonly binaryStorage = inject(BinaryStorageService);
   private readonly autosave = inject(AutosaveService);
   private readonly flujos = inject(FlujoService);
   private readonly detalles = inject(MasterDetailSourceService);
@@ -2430,14 +2434,17 @@ export class FormRunnerComponent {
         const herencia: HerenciaDeActividad = {
           formulario: String(survey.SurveyID),
           campos: (pedido.campos ?? []).map((c) => ({ campo: c.campo, valor: c.valor })),
+          tablas: pedido.tablas ?? [],
+          binarios: pedido.binarios ?? [],
         };
+        const hayHerencia = !!(herencia.campos?.length || herencia.tablas?.length || herencia.binarios?.length);
 
         // Heredar con «crear si falta» es crear: la hija nace con los campos.
         const crea = encargo.que === 'crear-hijo' || (encargo.que === 'heredar-al-hijo' && pedido.crearSiFalta === true);
 
         if (crea) {
           if (hijo) {
-            if (herencia.campos?.length) await this.sembrarHerencia(hijo, survey, answer, this.survey(), herencia);
+            if (hayHerencia) await this.sembrarHerencia(hijo, survey, answer, this.survey(), herencia);
             continue;
           }
 
@@ -2453,7 +2460,7 @@ export class FormRunnerComponent {
           engine.setValue(campo, creada.value as unknown as FieldValue);
           await this.answers.update(answer.ID, { Fields: JSON.stringify(engine.toAnswerFields()) });
 
-          if (herencia.campos?.length) await this.sembrarHerencia(creada.answer, survey, padre, this.survey(), herencia);
+          if (hayHerencia) await this.sembrarHerencia(creada.answer, survey, padre, this.survey(), herencia);
           tocado = true;
           continue;
         }
@@ -2746,15 +2753,9 @@ export class FormRunnerComponent {
 
     const campos = herencia.campos ?? [];
     const tablas = herencia.tablas ?? [];
+    const binarios = herencia.binarios ?? [];
 
-    if (herencia.binarios?.length) {
-      console.warn(
-        '[flujo] heredar archivos todavía solo funciona en la app',
-        herencia.binarios.map((b) => b.campo),
-      );
-    }
-
-    if (!campos.length && !tablas.length) return;
+    if (!campos.length && !tablas.length && !binarios.length) return;
 
     try {
       const delHijo = this.camposPorApiId(survey);
@@ -2862,6 +2863,40 @@ export class FormRunnerComponent {
           val: filas as unknown as FieldValue,
           fty: 'masterdetail',
           hid: !!tablaHija.hid,
+        });
+      }
+
+      /*
+       * Los archivos: una copia con identificador propio, a partir del
+       * original. La hija no comparte el archivo del padre —lo suyo sube bajo
+       * su propia actividad— y por eso se copia el contenido en vez de
+       * apuntar al mismo GUID.
+       */
+      for (const pedido of binarios) {
+        const campoHijo = delHijo.get(String(pedido.campo ?? '').trim());
+        const campoPadre = delPadre.get(String(pedido.de ?? pedido.campo ?? '').trim());
+
+        if (!campoHijo || !campoPadre) {
+          console.warn('[flujo] no se puede heredar el archivo: falta el campo', pedido);
+          continue;
+        }
+
+        const respuesta = respuestas.get(campoPadre.id);
+        const archivo = respuesta ? fileValueOf(respuesta) : null;
+        if (!archivo?.bin) continue;
+
+        const nuevo = await this.binaryStorage.copiarPara(archivo.bin, hija.GUID, campoHijo.id);
+        if (!nuevo) {
+          console.warn('[flujo] el archivo del padre no está en este navegador; no se copia', pedido.de);
+          continue;
+        }
+
+        const copia = { ...archivo, bin: nuevo };
+        entradas.push({
+          id: campoHijo.id,
+          ...splitFileValue(campoHijo.fty, copia),
+          fty: campoHijo.fty,
+          hid: !!campoHijo.hid,
         });
       }
 

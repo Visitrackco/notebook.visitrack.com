@@ -295,6 +295,55 @@ export class BinaryStorageService {
     return this.binaries.getByIndex('byGUID', guid);
   }
 
+  /**
+   * Una copia de un archivo para otra actividad.
+   *
+   * Es lo que hereda una actividad hija: **su propio** archivo, con
+   * identificador propio, hecho a partir del original. Copia el contenido y
+   * los metadatos, y nace pendiente de subir bajo la actividad y el campo que
+   * lo reciben. Sin contenido local no hay de qué copiar y devuelve `null`.
+   */
+  async copiarPara(guidOrigen: string, answerGuid: string, fieldId: string): Promise<string | null> {
+    const user = this.auth.currentUser();
+    if (!user || !guidOrigen) return null;
+
+    const [origen, blob] = await Promise.all([this.find(guidOrigen), this.loadBlob(guidOrigen)]);
+    if (!origen || !blob) return null;
+
+    const guid = crypto.randomUUID().slice(0, 49);
+
+    await this.db.transaction('BinariesData', 'readwrite', (tx) =>
+      this.db.request(
+        tx.objectStore('BinariesData').put({
+          GUID: guid,
+          blob,
+          mimeType: blob.type || 'application/octet-stream',
+          createdAt: new Date().toISOString(),
+        } satisfies BinaryData),
+      ),
+    );
+
+    await this.binaries.put({
+      ...origen,
+      ID: undefined,
+      base: guid,
+      GUID: guid,
+      AnswerGUID: answerGuid,
+      IDField: fieldId,
+      UserID: user.UserID,
+      tim: String(Date.now()),
+      Uploaded: 0,
+      IsSync: 0,
+      BinaryState: BinaryState.Pending,
+      VerifyAttempts: 0,
+      VerifiedOn: '',
+      Origin: undefined,
+    });
+    this.revisions.touchBinaries();
+
+    return guid;
+  }
+
   /** El contenido de un archivo. */
   async loadBlob(guid: string): Promise<Blob | null> {
     if (!guid) return null;

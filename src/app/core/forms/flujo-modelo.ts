@@ -2643,6 +2643,14 @@ export interface EncargoDeHijo {
    * `crear-actividad`, para que quien siembra sea el mismo código.
    */
   campos?: { campo: ApiId; valor: string }[];
+  /**
+   * Y las tablas y los archivos, como en [HerenciaDeActividad]: una tabla
+   * del padre a una del hijo (solo si salen de la misma lista; si no, quien
+   * siembra no copia nada) y un archivo del padre a un campo del hijo (se
+   * copia con identificador propio, a partir del original).
+   */
+  tablas?: TablaHeredada[];
+  binarios?: BinarioHeredado[];
   /** Para `heredar-al-hijo`: si la hija no existe, crearla y sembrarla. */
   crearSiFalta?: boolean;
 }

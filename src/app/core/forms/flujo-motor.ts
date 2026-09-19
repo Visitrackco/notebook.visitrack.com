@@ -3927,29 +3927,26 @@ function aplicar(
 
     if (accion.accion !== 'eliminar-hijo') {
       const config = leerJson(accion.valor) ?? {};
-      const pares = Array.isArray(config['campos']) ? (config['campos'] as CampoHeredado[]) : [];
-      const camposDelEncargo: { campo: ApiId; valor: string }[] = [];
 
-      for (const par of pares) {
-        if (!par || typeof par !== 'object') continue;
-        const campo = String(par.campo ?? '').trim();
-        if (!campo) continue;
+      /*
+       * La misma herencia que «crear una actividad»: campos, tablas y
+       * archivos, resueltos por el mismo código. `formulario` aquí es solo el
+       * vinculado: quien siembra ya sabe a qué formulario apunta.
+       */
+      const herencia = herenciaDeActividad({ ...config, formulario: vinculado }, valores, campos);
 
-        const de = String(par.de ?? '').trim();
-        const texto = de
-          ? comoTexto(leerValor(de, valores, campos), campos[de])
-          : comoTextoLlano(par.valor);
-        if (!texto.trim()) continue;
-
-        camposDelEncargo.push({ campo, valor: texto });
+      if (herencia && typeof herencia === 'object') {
+        if (herencia.campos?.length) valor.campos = herencia.campos as { campo: ApiId; valor: string }[];
+        if (herencia.tablas?.length) valor.tablas = herencia.tablas;
+        if (herencia.binarios?.length) valor.binarios = herencia.binarios;
       }
 
       // Heredar puede crear la hija si falta: lo decide quien escribió la regla.
-      // Con eso, la acción vale aunque no traiga pares: crea.
+      // Con eso, la acción vale aunque no traiga nada que heredar: crea.
       if (accion.accion === 'heredar-al-hijo' && config['crearSiFalta'] === true) valor.crearSiFalta = true;
 
-      if (accion.accion === 'heredar-al-hijo' && !camposDelEncargo.length && !valor.crearSiFalta) return;
-      if (camposDelEncargo.length) valor.campos = camposDelEncargo;
+      const hayAlgo = !!(valor.campos?.length || valor.tablas?.length || valor.binarios?.length);
+      if (accion.accion === 'heredar-al-hijo' && !hayAlgo && !valor.crearSiFalta) return;
     }
 
     const yaEsta = resultado.encargos.some(
