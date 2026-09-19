@@ -887,7 +887,23 @@ function conservarLoLocal(record: Record<string, unknown>, existing: Record<stri
       const n = Number(c['cam'] ?? 0);
       if (n > 0 && c['id'] != null) camPorId.set(String(c['id']), n);
     }
-    if (!camPorId.size) return;
+
+    /*
+     * Y el enlace a la actividad hija de un campo vinculado.
+     *
+     * Se escribe aquí al crear la hija y puede no haber subido todavía cuando
+     * el servidor devuelve las respuestas: sin esto, la sincronización lo
+     * borraba y el campo volvía a «diligenciar» —y a crear otra hija—.
+     */
+    const enlacePorId = new Map<string, unknown>();
+    for (const c of locales) {
+      const val = c['val'] as { gui?: unknown } | null;
+      if (String(c['fty'] ?? '').toLowerCase() === 'form' && val && typeof val === 'object' && val.gui) {
+        enlacePorId.set(String(c['id']), val);
+      }
+    }
+
+    if (!camPorId.size && !enlacePorId.size) return;
 
     const entrantes = leerCampos(record['Fields']);
     let tocado = false;
@@ -895,13 +911,29 @@ function conservarLoLocal(record: Record<string, unknown>, existing: Record<stri
     for (const c of entrantes) {
       const id = String(c['id'] ?? '');
       const local = camPorId.get(id);
-      if (local === undefined) continue;
-
-      const suyo = Number(c['cam'] ?? 0);
-      if (suyo < local) {
-        c['cam'] = local;
-        tocado = true;
+      if (local !== undefined) {
+        const suyo = Number(c['cam'] ?? 0);
+        if (suyo < local) {
+          c['cam'] = local;
+          tocado = true;
+        }
       }
+
+      const enlace = enlacePorId.get(id);
+      if (enlace !== undefined) {
+        const suyo = c['val'] as { gui?: unknown } | null;
+        if (!suyo || typeof suyo !== 'object' || !suyo.gui) {
+          c['val'] = enlace;
+          tocado = true;
+        }
+        enlacePorId.delete(id);
+      }
+    }
+
+    // Un vinculado que el servidor no trae en absoluto se añade con su enlace.
+    for (const [id, enlace] of enlacePorId) {
+      entrantes.push({ id, val: enlace, fty: 'form', hid: false });
+      tocado = true;
     }
 
     if (tocado) {

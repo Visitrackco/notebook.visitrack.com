@@ -3437,15 +3437,22 @@ export class FormRunnerComponent {
       // Y **antes** de avisar de que se guardó, con el GUID ya en la mano:
       // ese aviso saca al usuario al listado y destruye este componente, así
       // que leer la entrada después sería leer algo que ya no está.
+      /*
+       * Lo que decidió sobre los hijos —crearlos, eliminarlos, heredarles
+       * campos o cambiarles el estado— va **antes** del envío.
+       *
+       * Crear la hija escribe el enlace en el campo vinculado del padre. Si el
+       * envío salía primero, subía las respuestas sin ese enlace y la
+       * siguiente sincronización las traía de vuelta tal cual: el campo volvía
+       * a «diligenciar» y cada guardado creaba otra hija.
+       */
+      if (engineAlGuardar) await this.aplicarEncargosDeHijos(engineAlGuardar, answer);
+
       void this.dispatch(answer.GUID);
 
       // Lo que «al guardar» decidió sobre volver a entrar queda apuntado en
       // la actividad, que es lo único que el listado puede mirar.
       await this.apuntarNoEntrarSegunElFlujo();
-
-      // Y lo que decidió sobre los hijos: crearlos, eliminarlos, heredarles
-      // campos o cambiarles el estado. Con la actividad ya escrita.
-      if (engineAlGuardar) await this.aplicarEncargosDeHijos(engineAlGuardar, answer);
 
       this.saved.emit();
     } catch (error) {
