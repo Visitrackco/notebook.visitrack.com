@@ -1149,6 +1149,15 @@ export class FormEngine {
   readonly timerCambio = signal(0);
 
   /**
+   * Ya corre el timer de otra actividad en este navegador: aquí no arranca
+   * ninguno. Lo pone quien monta el formulario mirando `TimerGlobalService`.
+   */
+  otroTimerCorriendo = false;
+
+  /** Un timer que quiso arrancar y no pudo por [otroTimerCorriendo]. */
+  readonly timerRechazado = signal<string>('');
+
+  /**
    * Cuántos minutos faltan para el siguiente hito del timer activo, según
    * la última evaluación. `null` si no hay timer o ya terminó.
    */
@@ -1566,7 +1575,10 @@ export class FormEngine {
 
       // El timer de la actividad: con él el motor sabe qué hitos llegaron.
       timer: this.timer(),
+      otroTimerCorriendo: this.otroTimerCorriendo,
     });
+
+    if (resultado.timerRechazado) this.timerRechazado.set(resultado.timerRechazado);
 
     /*
      * Lo que el motor decidió sobre el timer.

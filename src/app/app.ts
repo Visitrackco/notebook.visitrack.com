@@ -2,6 +2,7 @@ import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 
 import { DatabaseService } from './core/database/database.service';
+import { TimerGlobalService } from './core/forms/timer-global.service';
 import { ThemeService } from './core/services/theme.service';
 import { AvisoQueFlotaComponent } from './features/chat/aviso-que-flota.component';
 import { HablandoQueFlotaComponent } from './features/chat/hablando-que-flota.component';
@@ -121,6 +122,10 @@ import { ToastsComponent } from './shared/components/toasts/toasts.component';
 })
 export class App {
   protected readonly db = inject(DatabaseService);
+
+  // El timer global se instancia aquí para que dé sus ticks desde el
+  // arranque, con o sin actividad abierta.
+  private readonly timers = inject(TimerGlobalService);
 
   /**
    * Se inyecta aquí para que el tema se aplique **siempre**, sin importar en

@@ -778,6 +778,8 @@ export function evaluar(flujo: Flujo, contexto: Contexto): Resultado {
   timerDeLaPasada = timerDelContexto;
   timerTocado = false;
   flujoDelContexto = flujo;
+  otroTimerDelContexto = contexto.otroTimerCorriendo === true;
+  timerRechazado = '';
 
   const ambito = contexto.ambito ?? 'actividad';
   const tablaDeFila = contexto.tabla ?? '';
@@ -1665,6 +1667,8 @@ let timerDelContexto: EstadoDelTimer | null = null;
 let timerDeLaPasada: EstadoDelTimer | null = null;
 let timerTocado = false;
 let flujoDelContexto: Flujo | null = null;
+let otroTimerDelContexto = false;
+let timerRechazado = '';
 
 /**
  * Arranca un timer sobre la pasada, si su tope de veces lo permite.
@@ -1674,6 +1678,13 @@ let flujoDelContexto: Flujo | null = null;
  * arranca y el estado se queda como estaba.
  */
 function arrancarTimer(id: string, ahora: string): boolean {
+  // Solo un timer a la vez en todo el aparato: si corre el de otra
+  // actividad, este no arranca, y se dice.
+  if (otroTimerDelContexto) {
+    timerRechazado = id;
+    return false;
+  }
+
   const corridas = { ...(timerDeLaPasada?.corridas ?? {}) };
   const hechas = Math.max(0, Math.floor(Number(corridas[id]) || 0));
 
@@ -1798,6 +1809,7 @@ function cerrarTimer(flujo: Flujo, resultado: Resultado): void {
   }
 
   if (cambio) resultado.timer = estado;
+  if (timerRechazado) resultado.timerRechazado = timerRechazado;
 
   // Cuánto falta para lo siguiente, para programar el tick.
   if (estado && !estado.terminado) {

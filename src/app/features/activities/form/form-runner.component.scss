@@ -763,11 +763,18 @@ vt-page-nav {
 
 /* El timer del flujo: la misma tira que los avisos, en el color de acento. */
 .runner__timer {
+  /* Fijo arriba mientras se recorre el formulario: un reloj que se pierde
+     al hacer scroll no es un reloj. */
+  position: sticky;
+  top: 0;
+  z-index: 5;
   display: flex;
   gap: var(--vt-space-3);
   align-items: flex-start;
   padding: var(--vt-space-3) var(--vt-space-4);
-  background: color-mix(in srgb, var(--vt-primary) 8%, transparent);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  background: color-mix(in srgb, var(--vt-primary) 8%, var(--vt-surface, #fff));
   border: 1px solid color-mix(in srgb, var(--vt-primary) 32%, transparent);
   border-radius: var(--vt-radius);
 
@@ -775,6 +782,15 @@ vt-page-nav {
     display: block;
     font-size: var(--vt-text-sm);
     color: var(--vt-primary);
+  }
+
+  .runner__timer-reloj {
+    display: inline-block;
+    min-width: 5ch;
+    margin-left: 6px;
+    font-variant-numeric: tabular-nums;
+    font-size: 1.15em;
+    letter-spacing: 0.02em;
   }
 
   small {

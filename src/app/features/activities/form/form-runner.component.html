@@ -156,12 +156,11 @@
         <div class="runner__timer-cuerpo">
           <strong>
             Timer «{{ t.nombre }}»
+            <span class="runner__timer-reloj">{{ t.reloj }}</span>
             @if (t.terminado) {
               · terminado
             } @else if (t.duracion) {
-              · {{ t.minutos }} de {{ t.duracion }} min
-            } @else {
-              · {{ t.minutos }} min
+              · de {{ t.duracion }} min
             }
           </strong>
           @if (t.duracion) {

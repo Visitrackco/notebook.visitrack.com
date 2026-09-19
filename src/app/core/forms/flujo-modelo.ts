@@ -2973,6 +2973,12 @@ export interface Resultado {
   siguienteHito?: number;
 
   /**
+   * Un timer que quiso arrancar y no pudo porque ya corre el de otra
+   * actividad (`Contexto.otroTimerCorriendo`). Para decirlo en pantalla.
+   */
+  timerRechazado?: string;
+
+  /**
    * Lo que el flujo quiere que describa a la actividad —o a la fila.
    *
    * Se anotan y no se escriben: el motor no sabe dónde vive el `JSONTitle` ni
@@ -3144,6 +3150,17 @@ export interface Contexto {
    * siguiente.
    */
   timer?: EstadoDelTimer | null;
+
+  /**
+   * Ya corre el timer de **otra** actividad en este aparato.
+   *
+   * Solo puede correr un timer a la vez en todo el aparato —web o teléfono—
+   * para no tenerlo evaluando actividades sin parar. Con esto puesto, ningún
+   * timer arranca aquí (ni por regla ni solo) y el motor lo dice en
+   * `Resultado.timerRechazado`; el que ya corre sigue como está. Quien
+   * llama lo sabe: es el que guarda los timers de todas las actividades.
+   */
+  otroTimerCorriendo?: boolean;
 
   /**
    * Con qué se arma la dirección de un archivo, para poder meterla en un correo.

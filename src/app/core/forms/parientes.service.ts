@@ -15,15 +15,12 @@
 import { Injectable, inject } from '@angular/core';
 
 import { Survey, SurveyAnswer } from '../models/entities.model';
-import { DispatchStatusRepository, SurveyRepository } from '../repositories/entity.repositories';
+import { SurveyRepository } from '../repositories/entity.repositories';
 import { SurveyAnswerRepository } from '../repositories/survey-answer.repository';
 import { ActivityService } from '../services/activity.service';
-import { ActivityInheritsService } from './activity-inherits.service';
 import { Campo, Encargo, EncargoDeHijo, PREFIJO_HIJO, PREFIJO_PADRE } from './flujo-modelo';
-import { FlujoService } from './flujo.service';
 import { Injector } from '@angular/core';
-import { FormEngine, leerTimer } from './form-engine';
-import { EncargosDelFlujoService } from './encargos.service';
+import { FlujoSinPantallaService } from './flujo-sin-pantalla.service';
 import { FormField, parseAnswerFields, parseQuestions } from './form-schema';
 
 export interface LoDeFuera {
@@ -36,19 +33,7 @@ export class ParientesService {
   private readonly answers = inject(SurveyAnswerRepository);
   private readonly surveys = inject(SurveyRepository);
   private readonly activities = inject(ActivityService);
-  private readonly flujos = inject(FlujoService);
-  private readonly estados = inject(DispatchStatusRepository);
-  private readonly inherits = inject(ActivityInheritsService);
   private readonly injector = inject(Injector);
-
-  /**
-   * El ejecutor de encargos, pedido tarde: él depende de este servicio (para
-   * escribir en los hijos) y este de él (para que el padre ejecute todo), y
-   * pedirlo en el constructor sería un círculo.
-   */
-  private encargos(): EncargosDelFlujoService {
-    return this.injector.get(EncargosDelFlujoService);
-  }
 
   /**
    * Cómo están los hijos ahora, en una línea: qué hija cuelga de cada
@@ -118,78 +103,12 @@ export class ParientesService {
     // le escribe al hijo y eso vuelve a avisarle.
     if (huella === String(padre.HijosVistos ?? '')) return;
 
-    const flujo = await this.flujos.paraFormulario(survey.ID);
-    const reacciona = !!flujo?.reglas?.some((r) => r.activa !== false && r.cuando?.includes('hijo'));
-
-    if (!reacciona) {
-      await this.answers.update(padre.ID, { HijosVistos: huella });
-      return;
-    }
-
+    // Se evalúa sin pantalla y se hace todo lo que decida; la huella queda
+    // apuntada en la misma escritura. Sin reglas de ese momento solo se
+    // apunta la huella.
     try {
-      const inherits = await this.inherits.forAnswer(padre, survey.JSONQuestion);
-      const deFuera = await this.deFuera(padre, survey);
-
-      const engine = new FormEngine({
-        questions: survey.JSONQuestion,
-        answers: padre.Fields,
-        inherits,
-        flujo,
-        primeraVez: false,
-        valoresDeFuera: deFuera.valores,
-        camposDeFuera: deFuera.campos,
-        timer: leerTimer(padre.Timer),
-      });
-
-      engine.estadoActividad.set(String(padre.Status ?? ''));
-      engine.correrHijo();
-
-      const cambios: Partial<SurveyAnswer> = { HijosVistos: huella };
-
-      const fields = JSON.stringify(engine.toAnswerFields());
-      if (fields !== String(padre.Fields ?? '')) cambios.Fields = fields;
-
-      const estado = engine.estadoDelFlujo();
-      if (estado && estado !== String(padre.Status ?? '') && (await this.estados.findByDispatchId(Number(estado)))) {
-        cambios.Status = estado;
-      }
-
-      const leyendas = engine.entradaBloqueada();
-      if (leyendas.length) cambios.NoEntrar = leyendas.join(' · ');
-      else if (engine.entradaPermitida() && String(padre.NoEntrar ?? '').trim()) cambios.NoEntrar = '';
-
-      const timer = engine.timer();
-      const timerTexto = timer ? JSON.stringify(timer) : '';
-      if (timerTexto !== String(padre.Timer ?? '')) cambios.Timer = timerTexto;
-
-      if (Object.keys(cambios).length > 1) cambios.UpdatedOn = new Date().toISOString();
-
-      await this.answers.update(padre.ID, cambios);
-
-      console.log('[flujo] el padre reaccionó al hijo:', {
-        padre: padre.GUID,
-        disparadas: engine.hayReglasDe('hijo'),
-        cambios: Object.keys(cambios),
-      });
-
-      /*
-       * Y **todo** lo demás que pidió: crear actividades, despachar, correos,
-       * notificaciones, lo de otros hijos y, si lo dijo, guardar ahora mismo.
-       * Con la actividad ya escrita, para que lo que suba lleve lo decidido.
-       * Lo que necesita a alguien delante —preguntar a quién se despacha— no
-       * se puede aquí: la consigna queda sin dueño y retiene el envío, como
-       * en la pantalla cuando se cancela el diálogo.
-       */
-      const actualizado = { ...padre, ...cambios };
-      const encargos = this.encargos();
-      await encargos.ejecutarTodo(engine, actualizado, survey, { momento: 'hijo' });
-
-      if (engine.guardarAhora()) {
-        engine.guardarAhora.set(false);
-        await encargos.guardarSinPantalla(engine, actualizado);
-      }
-
-      this.activities.notifyChanged();
+      const salida = await this.injector.get(FlujoSinPantallaService).evaluar(padre, 'hijo', { HijosVistos: huella });
+      if (!salida) await this.answers.update(padre.ID, { HijosVistos: huella });
     } catch (error) {
       console.warn('[flujo] el padre no pudo reaccionar al hijo', error);
     }

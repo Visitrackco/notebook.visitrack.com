@@ -32,6 +32,7 @@ import { ANSWER_STATE } from '../../../core/models/activity.model';
 import { SurveyAnswerRepository } from '../../../core/repositories/survey-answer.repository';
 import { ParientesService, esVinculado } from '../../../core/forms/parientes.service';
 import { EncargosDelFlujoService, claveDeDespacho } from '../../../core/forms/encargos.service';
+import { TimerGlobalService } from '../../../core/forms/timer-global.service';
 import { EncargoDeHijo } from '../../../core/forms/flujo-modelo';
 import { LinkedFormService } from '../../../core/forms/linked-form.service';
 import { BinaryStorageService } from '../../../core/services/binary-storage.service';
@@ -138,6 +139,7 @@ export class FormRunnerComponent {
   private readonly activities = inject(ActivityService);
   private readonly parientes = inject(ParientesService);
   private readonly encargos = inject(EncargosDelFlujoService);
+  private readonly timers = inject(TimerGlobalService);
   private readonly linked = inject(LinkedFormService);
   private readonly binaryStorage = inject(BinaryStorageService);
   private readonly autosave = inject(AutosaveService);
@@ -564,8 +566,6 @@ export class FormRunnerComponent {
   /** Si no se puede editar, el formulario entero va en solo lectura. */
   readonly soloLectura = computed(() => this.edicionBloqueada().length > 0);
 
-  /** Sube cada medio minuto para que el indicador del timer avance. */
-  private readonly reloj = signal(Date.now());
 
   /**
    * El timer que corre sobre la actividad, para enseñarlo.
@@ -575,7 +575,6 @@ export class FormRunnerComponent {
    * «Cuánto falta» lo dice el motor en cada tick (`siguienteHito`).
    */
   readonly timerDelFlujo = computed(() => {
-    this.reloj();
     const engine = this.engine();
     const timer = engine?.timer();
     const flujo = this.flujoDelFormulario();
@@ -584,13 +583,18 @@ export class FormRunnerComponent {
 
     const definido = (flujo?.timers ?? []).find((t) => t.id === timer.id);
     const duracion = Math.max(0, Math.floor(Number(definido?.duracion) || 0));
-    const inicio = Date.parse(String(timer.inicio ?? '').replace(' ', 'T'));
-    const minutos = Number.isFinite(inicio) ? Math.max(0, Math.floor((Date.now() - inicio) / 60000)) : 0;
+
+    // El reloj: segundos desde que arrancó, con el tic de un segundo del
+    // servicio global. Es lo que hace que la tira cuente como un reloj.
+    const segundos = timer.terminado && duracion ? duracion * 60 : this.timers.segundosDe(timer);
+    const minutos = Math.floor(segundos / 60);
     const falta = engine.siguienteHito();
+    const dos = (n: number) => String(n).padStart(2, '0');
 
     return {
       nombre: definido?.nombre || timer.id,
       minutos: duracion ? Math.min(minutos, duracion) : minutos,
+      reloj: `${dos(Math.floor(Math.min(segundos, duracion ? duracion * 60 : segundos) / 60))}:${dos(segundos % 60)}`,
       duracion,
       terminado: !!timer.terminado,
       hechos: (timer.hechos ?? []).length,
@@ -671,9 +675,41 @@ export class FormRunnerComponent {
         if (answer.ID == null) return;
 
         const timer = engine.timer();
+        this.timers.apuntar(answer.GUID, timer);
         this.answers
           .update(answer.ID, { Timer: timer ? JSON.stringify(timer) : '' })
           .catch((error) => console.error('[flujo] no se pudo guardar el timer', error));
+      });
+    });
+
+    /*
+     * Solo un timer a la vez en el navegador: el motor de esta actividad
+     * sabe si corre el de otra, y si una regla quiso arrancar uno y no
+     * pudo, se dice.
+     */
+    effect(() => {
+      const engine = this.engine();
+      const activo = this.timers.activo();
+      if (!engine) return;
+
+      untracked(() => {
+        engine.otroTimerCorriendo = !!activo && activo.guid !== this.answer()?.GUID && !activo.timer.terminado;
+      });
+    });
+
+    effect(() => {
+      const engine = this.engine();
+      const rechazado = engine?.timerRechazado() ?? '';
+      if (!engine || !rechazado) return;
+
+      untracked(() => {
+        engine.timerRechazado.set('');
+        const nombre = this.flujoDelFormulario()?.timers?.find((t) => t.id === rechazado)?.nombre || rechazado;
+        this.toasts.show({
+          title: `No arrancó el timer «${nombre}»`,
+          detail: 'Ya corre el timer de otra actividad: solo puede correr uno a la vez.',
+          tone: 'warning',
+        });
       });
     });
 
@@ -681,10 +717,12 @@ export class FormRunnerComponent {
       const engine = this.engine();
       const timer = engine?.timer();
       if (engine && timer && !timer.terminado) engine.correrTimer();
-      this.reloj.set(Date.now());
     }, 30_000);
 
-    inject(DestroyRef).onDestroy(() => clearInterval(tick));
+    inject(DestroyRef).onDestroy(() => {
+      clearInterval(tick);
+      if (this.timers.abierta() === this.answer()?.GUID) this.timers.abierta.set('');
+    });
 
     effect(() => {
       const pedido = this.engine()?.estadoDelFlujo() ?? null;
@@ -891,6 +929,11 @@ export class FormRunnerComponent {
      * guardar dejaría trabajo atrapado sin subir.
      */
     if (await this.cerrarSiNoSePuedeEntrar(engine, answer)) return;
+
+    // Esta es la actividad abierta: su timer lo evalúa el formulario, no el
+    // servicio global.
+    this.timers.abierta.set(answer.GUID);
+    engine.otroTimerCorriendo = this.timers.otroCorre(answer.GUID);
 
     // Los hitos del timer que ya pasaron con la actividad cerrada corren
     // ahora, y los ya hechos reponen lo que dejaron.
@@ -2530,6 +2573,7 @@ export class FormRunnerComponent {
 
     try {
       await this.answers.update(answer.ID, { Timer: texto });
+      this.timers.apuntar(answer.GUID, timer);
     } catch (error) {
       console.error('[flujo] no se pudo guardar el timer', error);
     }
