@@ -9,6 +9,14 @@
     @if (missing()) {
       <span class="lnk__meta">Este formulario no está asignado a tu usuario</span>
     } @else if (exists()) {
+      <!-- Debajo del título: el estado de despacho de la hija, con su color,
+           y en qué va (guardada, enviada…). Como en la app. -->
+      @if (estado(); as e) {
+        <span class="lnk__estado" [style.--lnk-estado]="e.color || null">
+          <span class="lnk__punto"></span>
+          {{ e.nombre || 'Sin estado' }}
+        </span>
+      }
       <span class="lnk__meta">{{ state() }}</span>
     } @else {
       <span class="lnk__meta">Todavía no se ha abierto</span>

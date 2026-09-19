@@ -56,6 +56,25 @@
   color: var(--vt-text-subtle);
 }
 
+/* El estado de despacho de la hija, con el color que le puso la compañía. */
+.lnk__estado {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0.15rem 0 0.05rem;
+  font-size: var(--vt-text-xs);
+  font-weight: 600;
+  color: var(--lnk-estado, var(--vt-text-muted));
+}
+
+.lnk__punto {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--lnk-estado, var(--vt-text-subtle));
+  flex: none;
+}
+
 .lnk__open {
   flex: none;
   padding: 8px var(--vt-space-4);

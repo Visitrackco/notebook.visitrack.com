@@ -5,6 +5,7 @@ import { FieldValue, FormField } from '../../../../../core/forms/form-schema';
 import { LinkedFormService } from '../../../../../core/forms/linked-form.service';
 import { SurveyAnswer } from '../../../../../core/models/entities.model';
 import { SurveyAnswerRepository } from '../../../../../core/repositories/survey-answer.repository';
+import { DispatchStatusRepository } from '../../../../../core/repositories/entity.repositories';
 import { ANSWER_STATE } from '../../../../../core/models/activity.model';
 import { IconComponent } from '../../../../../shared/components/icon/icon.component';
 
@@ -34,6 +35,7 @@ import { IconComponent } from '../../../../../shared/components/icon/icon.compon
 export class LinkedFormFieldComponent {
   private readonly linked = inject(LinkedFormService);
   private readonly answers = inject(SurveyAnswerRepository);
+  private readonly dispatch = inject(DispatchStatusRepository);
   private readonly router = inject(Router);
 
   readonly field = input.required<FormField>();
@@ -51,6 +53,13 @@ export class LinkedFormFieldComponent {
   readonly working = signal(false);
 
   readonly exists = computed(() => this.child() !== null);
+
+  /**
+   * El estado de despacho de la hija —el que configuró la compañía— con su
+   * color, debajo del título. Es lo que la app enseña en el mismo sitio, y lo
+   * que dice de un vistazo cómo va esa actividad sin abrirla.
+   */
+  readonly estado = signal<{ nombre: string; color: string } | null>(null);
 
   /** En qué va la actividad hija. */
   readonly state = computed(() => {
@@ -84,6 +93,7 @@ export class LinkedFormFieldComponent {
     const { answer, survey } = await this.linked.resolve(fid, value);
 
     this.child.set(answer);
+    this.estado.set(await this.estadoDe(answer));
 
     // El título sale del formulario; si no está descargado, del propio valor,
     // que lo guardó cuando sí lo estaba.
@@ -99,6 +109,23 @@ export class LinkedFormFieldComponent {
      * verse como disponible.
      */
     this.missing.set(!survey && !answer);
+  }
+
+  private async estadoDe(answer: SurveyAnswer | null): Promise<{ nombre: string; color: string } | null> {
+    const id = Number(answer?.Status ?? 0);
+    if (!id) return null;
+
+    try {
+      const estado = await this.dispatch.findByDispatchId(id);
+      if (!estado) return null;
+
+      return {
+        nombre: String(estado.Name ?? ''),
+        color: String(estado.Color ?? '').startsWith('#') ? String(estado.Color) : '',
+      };
+    } catch {
+      return null;
+    }
   }
 
   /** Abre la actividad hija, creándola la primera vez. */
@@ -131,6 +158,7 @@ export class LinkedFormFieldComponent {
       // otra actividad y la primera quedaría huérfana.
       this.valueChange.emit(created.value as unknown as FieldValue);
       this.child.set(created.answer);
+      this.estado.set(await this.estadoDe(created.answer));
 
       await this.goTo(created.answer);
     } finally {
