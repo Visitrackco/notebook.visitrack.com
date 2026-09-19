@@ -2738,8 +2738,18 @@ export class FormEngine {
    * referencia y el formulario vinculado. Contarlos en el progreso daría un
    * porcentaje que nunca llega al cien por cien.
    */
+  /**
+   * ¿El campo guarda un valor?
+   *
+   * Los de presentación, no. El **vinculado** sí, aunque para lo demás se
+   * trate como uno de presentación (sin etiqueta encima, sin marca de
+   * obligatorio): guarda el enlace a la actividad hija —`{gui, tit}`— y sin
+   * esto cada autoguardado lo tiraba, el campo volvía a «diligenciar» y cada
+   * pulsación creaba otra hija.
+   */
   private acceptsValue(fty: string): boolean {
-    return !isDisplayOnly(fty);
+    const t = (fty ?? '').toLowerCase();
+    return !isDisplayOnly(t) || t === 'form' || t === 'webform';
   }
 
   /**
