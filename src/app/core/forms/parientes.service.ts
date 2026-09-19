@@ -56,9 +56,12 @@ export class ParientesService {
       const gui = String((guardado?.val as { gui?: unknown })?.gui ?? '').trim();
       const hijo = gui ? await this.answers.findByGuid(gui) : null;
 
+      // Con lo respondido dentro (resumido): un hijo que cambia un campo
+      // mientras se diligencia también cuenta, porque el padre puede estar
+      // mirando ese campo.
       partes.push(
         hijo
-          ? `${apiId}=${gui}|${hijo.Status ?? ''}|${Number(hijo.isSaved ?? 0)}|${hijo.IsDelete ?? ''}|${hijo.UpdatedOn ?? ''}`
+          ? `${apiId}=${gui}|${hijo.Status ?? ''}|${Number(hijo.isSaved ?? 0)}|${hijo.IsDelete ?? ''}|${resumen(hijo.Fields)}`
           : `${apiId}=`,
       );
     }
@@ -97,6 +100,12 @@ export class ParientesService {
     if (!survey) return;
 
     const huella = await this.huellaDeHijos(padre, survey);
+
+    // Nada cambió desde la última vez que el padre miró: no hay a qué
+    // reaccionar. Es también lo que corta el ida y vuelta cuando el padre
+    // le escribe al hijo y eso vuelve a avisarle.
+    if (huella === String(padre.HijosVistos ?? '')) return;
+
     const flujo = await this.flujos.paraFormulario(survey.ID);
     const reacciona = !!flujo?.reglas?.some((r) => r.activa !== false && r.cuando?.includes('hijo'));
 
@@ -357,4 +366,18 @@ function comoLoGuarda(campo: FormField, valor: unknown): unknown {
 export function esVinculado(fty: unknown): boolean {
   const t = String(fty ?? '').toLowerCase();
   return t === 'form' || t === 'linkedform';
+}
+
+/**
+ * Un resumen corto de lo respondido, para la huella de los hijos.
+ *
+ * No hace falta guardar las respuestas enteras del hijo en el padre: basta
+ * con algo que cambie cuando cambien. Es el hash de siempre (djb2) sobre el
+ * JSON, en base 36 para que quepa en una palabra.
+ */
+function resumen(fields: unknown): string {
+  const texto = String(fields ?? '');
+  let h = 5381;
+  for (let i = 0; i < texto.length; i++) h = ((h * 33) ^ texto.charCodeAt(i)) >>> 0;
+  return `${texto.length}:${h.toString(36)}`;
 }

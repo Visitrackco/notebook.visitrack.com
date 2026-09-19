@@ -1859,6 +1859,10 @@ export class FormEngine {
       ojo: resultado.pisadas,
       bloqueos: resultado.bloqueos,
       estado: this.estadoDelFlujo(),
+      encargos: (resultado.encargos ?? []).map((e) => `${e.que} (${e.regla})`),
+      // El timer, para poder ver si una regla lo arrancó y cuánto falta.
+      timer: this.timer(),
+      siguienteHito: this.siguienteHito(),
     });
   }
 

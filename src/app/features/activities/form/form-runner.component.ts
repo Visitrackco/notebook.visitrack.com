@@ -2122,7 +2122,37 @@ export class FormRunnerComponent {
         Titles: JSON.stringify(await this.titlesFor(engine, id)),
         UpdatedOn: new Date().toISOString(),
       });
+
+      // Con lo escrito ya en la base, el padre se entera —si esta actividad
+      // es hija de otra— sin esperar a que se guarde.
+      this.avisarAlPadreLuego();
     });
+  }
+
+  /** El aviso al padre que está por salir. Ver [avisarAlPadreLuego]. */
+  private avisoAlPadre: ReturnType<typeof setTimeout> | null = null;
+
+  /**
+   * El padre reacciona a lo que cambia en esta actividad **mientras se
+   * diligencia**, no solo al guardar: sus reglas de «cuando cambia un hijo»
+   * pueden mirar un campo del hijo o su estado, y esos cambian al escribir.
+   *
+   * Con un respiro de segundo y medio, para no montar el motor del padre en
+   * cada tecla; y en silencio, porque el hijo no depende de lo que el padre
+   * decida.
+   */
+  private avisarAlPadreLuego(): void {
+    const answer = this.answer();
+    if (!answer || !String(answer.ParentGUID ?? '').trim()) return;
+
+    if (this.avisoAlPadre) clearTimeout(this.avisoAlPadre);
+
+    this.avisoAlPadre = setTimeout(() => {
+      this.avisoAlPadre = null;
+      this.parientes.avisarAlPadre(answer).catch((error) =>
+        console.warn('[flujo] no se pudo avisar al padre', error),
+      );
+    }, 1500);
   }
 
   // ── Paginación ─────────────────────────────────────────────────────────────
@@ -2739,6 +2769,9 @@ export class FormRunnerComponent {
 
     this.statusChanged.emit(pedido);
     this.activities.notifyChanged();
+
+    // Un estado nuevo es justo lo que el padre suele estar mirando.
+    this.avisarAlPadreLuego();
   }
 
   /**
