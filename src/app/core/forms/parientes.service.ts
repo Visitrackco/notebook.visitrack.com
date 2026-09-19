@@ -21,7 +21,9 @@ import { ActivityService } from '../services/activity.service';
 import { ActivityInheritsService } from './activity-inherits.service';
 import { Campo, Encargo, EncargoDeHijo, PREFIJO_HIJO, PREFIJO_PADRE } from './flujo-modelo';
 import { FlujoService } from './flujo.service';
+import { Injector } from '@angular/core';
 import { FormEngine, leerTimer } from './form-engine';
+import { EncargosDelFlujoService } from './encargos.service';
 import { FormField, parseAnswerFields, parseQuestions } from './form-schema';
 
 export interface LoDeFuera {
@@ -37,6 +39,16 @@ export class ParientesService {
   private readonly flujos = inject(FlujoService);
   private readonly estados = inject(DispatchStatusRepository);
   private readonly inherits = inject(ActivityInheritsService);
+  private readonly injector = inject(Injector);
+
+  /**
+   * El ejecutor de encargos, pedido tarde: él depende de este servicio (para
+   * escribir en los hijos) y este de él (para que el padre ejecute todo), y
+   * pedirlo en el constructor sería un círculo.
+   */
+  private encargos(): EncargosDelFlujoService {
+    return this.injector.get(EncargosDelFlujoService);
+  }
 
   /**
    * Cómo están los hijos ahora, en una línea: qué hija cuelga de cada
@@ -160,9 +172,22 @@ export class ParientesService {
         cambios: Object.keys(cambios),
       });
 
-      // Lo que pidió sobre otros hijos: cambiarles el estado, escribirles.
-      const encargos = engine.encargosDeHijosAlGuardar('hijo');
-      if (encargos.length) await this.ejecutar({ ...padre, ...cambios }, survey, encargos);
+      /*
+       * Y **todo** lo demás que pidió: crear actividades, despachar, correos,
+       * notificaciones, lo de otros hijos y, si lo dijo, guardar ahora mismo.
+       * Con la actividad ya escrita, para que lo que suba lleve lo decidido.
+       * Lo que necesita a alguien delante —preguntar a quién se despacha— no
+       * se puede aquí: la consigna queda sin dueño y retiene el envío, como
+       * en la pantalla cuando se cancela el diálogo.
+       */
+      const actualizado = { ...padre, ...cambios };
+      const encargos = this.encargos();
+      await encargos.ejecutarTodo(engine, actualizado, survey, { momento: 'hijo' });
+
+      if (engine.guardarAhora()) {
+        engine.guardarAhora.set(false);
+        await encargos.guardarSinPantalla(engine, actualizado);
+      }
 
       this.activities.notifyChanged();
     } catch (error) {

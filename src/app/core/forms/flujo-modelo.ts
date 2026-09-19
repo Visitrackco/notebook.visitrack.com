@@ -153,6 +153,13 @@ export interface TimerDeFlujo {
    * reinicia.
    */
   arranca?: 'regla' | 'crear' | 'abrir';
+  /**
+   * Cuántas veces puede correr **en la misma actividad**. Vacío o cero es
+   * sin límite: cada vez que una regla lo pida —o que llegue su momento de
+   * arrancar solo— vuelve a correr una vez terminado o parado. Con `1`,
+   * una sola vez y nunca más. La cuenta viaja en `EstadoDelTimer.corridas`.
+   */
+  veces?: number;
   /** Lo que se quiera decir de él: para quien diseña, no para el motor. */
   descripcion?: string;
 }
@@ -184,6 +191,14 @@ export interface EstadoDelTimer {
   hechos: string[];
   /** Llegó al final: ya no hay más hitos que esperar. */
   terminado?: boolean;
+  /** Lo paró `detener-timer` antes de llegar al final. Va con `terminado`. */
+  detenido?: boolean;
+  /**
+   * Cuántas veces arrancó cada timer en esta actividad, por `id`. Se
+   * conserva al cambiar de timer y al pararlo: es lo que hace valer
+   * `TimerDeFlujo.veces`.
+   */
+  corridas?: Record<string, number>;
 }
 
 export interface Regla {

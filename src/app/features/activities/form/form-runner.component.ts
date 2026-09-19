@@ -31,6 +31,7 @@ import { DispatchStatusRepository } from '../../../core/repositories/entity.repo
 import { ANSWER_STATE } from '../../../core/models/activity.model';
 import { SurveyAnswerRepository } from '../../../core/repositories/survey-answer.repository';
 import { ParientesService, esVinculado } from '../../../core/forms/parientes.service';
+import { EncargosDelFlujoService, claveDeDespacho } from '../../../core/forms/encargos.service';
 import { EncargoDeHijo } from '../../../core/forms/flujo-modelo';
 import { LinkedFormService } from '../../../core/forms/linked-form.service';
 import { BinaryStorageService } from '../../../core/services/binary-storage.service';
@@ -136,6 +137,7 @@ export class FormRunnerComponent {
   private readonly answers = inject(SurveyAnswerRepository);
   private readonly activities = inject(ActivityService);
   private readonly parientes = inject(ParientesService);
+  private readonly encargos = inject(EncargosDelFlujoService);
   private readonly linked = inject(LinkedFormService);
   private readonly binaryStorage = inject(BinaryStorageService);
   private readonly autosave = inject(AutosaveService);
@@ -577,7 +579,8 @@ export class FormRunnerComponent {
     const engine = this.engine();
     const timer = engine?.timer();
     const flujo = this.flujoDelFormulario();
-    if (!engine || !timer) return null;
+    // Un timer parado no se enseña: ya no cuenta nada.
+    if (!engine || !timer || timer.detenido) return null;
 
     const definido = (flujo?.timers ?? []).find((t) => t.id === timer.id);
     const duracion = Math.max(0, Math.floor(Number(definido?.duracion) || 0));
@@ -2479,122 +2482,6 @@ export class FormRunnerComponent {
    * Solo cuando el flujo lo dijo en esta pasada: con la lista vacía y sin
    * `permitir-entrar`, ninguna regla habló y la marca que haya se respeta.
    */
-  /**
-   * Lo que el flujo pidió sobre los hijos al guardar.
-   *
-   * Cada encargo llega por su campo vinculado: crear la hija si no existe y
-   * dejar el enlace en el campo —como si se hubiera pulsado «diligenciar»—,
-   * sembrarle los campos que se eligieron, cambiarle el estado o eliminarla.
-   * Lo que se siembra viene ya leído del padre; sembrar es el mismo código
-   * que usa «crear una actividad».
-   */
-  private async aplicarEncargosDeHijos(engine: FormEngine, answer: SurveyAnswer): Promise<void> {
-    const encargos = engine.encargosDeHijosAlGuardar();
-
-    /*
-     * Que se vea qué pidió el flujo y qué pasó con cada cosa.
-     *
-     * «La regla se disparó y no creó nada» tiene cuatro causas que desde fuera
-     * se ven igual: que el encargo no llegara, que el campo vinculado no se
-     * encontrara, que el formulario hijo no esté descargado, o que la hija ya
-     * existiera. Sin esto hay que ir descartándolas a ciegas.
-     */
-    console.log('[flujo] hijos al guardar:', {
-      encargos: encargos.map((e) => `${e.que} → ${(e.valor as EncargoDeHijo)?.vinculado}`),
-      vinculados: engine.pages
-        .flatMap((p) => p.fie)
-        .filter((f) => esVinculado(f.fty))
-        .map((f) => `${(f.apiId ?? '').toString().trim() || f.id} (fid ${f.fid ?? '?'})`),
-    });
-
-    if (!encargos.length || answer.ID == null) return;
-
-    // Los que escriben en un hijo que ya existe, por el camino que ya había.
-    const antiguos = encargos.filter((e) => e.que === 'escribir-en-hijo');
-    if (antiguos.length) await this.parientes.ejecutar(answer, this.survey(), antiguos);
-
-    const vinculados = engine.pages.flatMap((p) => p.fie).filter((f) => esVinculado(f.fty));
-    let tocado = false;
-
-    for (const encargo of encargos) {
-      if (encargo.que === 'escribir-en-hijo') continue;
-
-      const pedido = encargo.valor as EncargoDeHijo;
-      const campo = vinculados.find((f) => ((f.apiId ?? '').toString().trim() || f.id) === pedido?.vinculado);
-      if (!campo) {
-        console.warn('[flujo] el encargo apunta a un campo vinculado que no existe', pedido?.vinculado);
-        continue;
-      }
-
-      try {
-        const valorActual = engine.valueOf(campo.id);
-        const { answer: hijo, survey } = await this.linked.resolve(String(campo.fid ?? ''), valorActual);
-
-        if (!survey) {
-          console.warn('[flujo] el formulario hijo no está descargado en este navegador', campo.fid);
-          continue;
-        }
-
-        console.log(`[flujo] ${encargo.que} sobre «${pedido.vinculado}»: ${hijo ? 'la hija ya existe' : 'sin hija todavía'}`);
-
-        const herencia: HerenciaDeActividad = {
-          formulario: String(survey.SurveyID),
-          campos: (pedido.campos ?? []).map((c) => ({ campo: c.campo, valor: c.valor })),
-          tablas: pedido.tablas ?? [],
-          binarios: pedido.binarios ?? [],
-        };
-        const hayHerencia = !!(herencia.campos?.length || herencia.tablas?.length || herencia.binarios?.length);
-
-        // Heredar con «crear si falta» es crear: la hija nace con los campos.
-        const crea = encargo.que === 'crear-hijo' || (encargo.que === 'heredar-al-hijo' && pedido.crearSiFalta === true);
-
-        if (crea) {
-          if (hijo) {
-            if (hayHerencia) await this.sembrarHerencia(hijo, survey, answer, this.survey(), herencia);
-            continue;
-          }
-
-          const padre = (await this.answers.findByGuid(answer.GUID)) ?? answer;
-          const creada = await this.linked.create(padre, survey, valorActual, campo.id);
-          if (!creada) {
-            console.warn('[flujo] no se pudo crear la hija (¿sin sesión?)');
-            continue;
-          }
-          console.log('[flujo] hija creada', creada.answer.GUID);
-
-          // El enlace queda en el campo, como si se hubiera pulsado «diligenciar».
-          engine.setValue(campo, creada.value as unknown as FieldValue);
-          await this.answers.update(answer.ID, { Fields: JSON.stringify(engine.toAnswerFields()) });
-
-          if (hayHerencia) await this.sembrarHerencia(creada.answer, survey, padre, this.survey(), herencia);
-          tocado = true;
-          continue;
-        }
-
-        if (!hijo) continue;
-
-        if (encargo.que === 'heredar-al-hijo') {
-          await this.sembrarHerencia(hijo, survey, answer, this.survey(), herencia);
-          tocado = true;
-        } else if (encargo.que === 'cambiar-estado-hijo') {
-          const estado = String(pedido.estado ?? '').trim();
-          if (estado && hijo.ID != null && String(hijo.Status ?? '') !== estado) {
-            await this.answers.update(hijo.ID, { Status: estado, UpdatedOn: new Date().toISOString() });
-            tocado = true;
-          }
-        } else if (encargo.que === 'eliminar-hijo') {
-          await this.answers.remove(hijo);
-          engine.setValue(campo, null);
-          await this.answers.update(answer.ID, { Fields: JSON.stringify(engine.toAnswerFields()) });
-          tocado = true;
-        }
-      } catch (error) {
-        console.error('[flujo] no se pudo ejecutar el encargo sobre el hijo', encargo.que, error);
-      }
-    }
-
-    if (tocado) this.activities.notifyChanged();
-  }
 
   /** Vuelve a leer al padre y a los hijos, y reevalúa con lo nuevo. */
   private async refrescarParientes(engine: FormEngine, campoQueCambio?: string): Promise<void> {
@@ -2775,476 +2662,6 @@ export class FormRunnerComponent {
   }
 
   /**
-   * Abre las actividades que el flujo pidió crear.
-   *
-   * ## Qué se hereda y qué no
-   *
-   * La sede y el equipo se copian **solo si el formulario destino los pide del
-   * mismo tipo**. Copiarlos siempre dejaría una actividad apuntando a una sede
-   * que su formulario no admite, y eso llega a Visitrack como un registro
-   * válido que nadie puede cuadrar después. Cuando no encajan se deja en blanco
-   * y quien la abra los elige, que es lo que haría de todos modos.
-   *
-   * Se comparan los dos formularios entre sí y no el formulario con la
-   * actividad: en la actividad el tipo de sede se guarda como GUID y en el
-   * formulario como número, así que compararlos no daría igual nunca.
-   *
-   * Nace como borrador y colgando de la que la creó, para que se sepa de dónde
-   * salió: una actividad que aparece sola en el listado sin que nadie la haya
-   * pedido desconcierta.
-   */
-  private async abrirLasQuePidioElFlujo(answer: SurveyAnswer): Promise<void> {
-    const engine = this.engine();
-    if (!engine) return;
-
-    const destinos = engine.actividadesQuePideElFlujo();
-    if (!destinos.length) return;
-
-    const user = this.auth.currentUser();
-    if (!user) return;
-
-    const deOrigen = await this.activities.findSurvey(answer.SurveyID);
-    const abiertas: string[] = [];
-
-    for (const pedida of destinos) {
-      const destino = pedida.formulario;
-      const survey = await this.activities.findSurvey(destino);
-
-      // Un formulario que no está descargado no se puede abrir. Se dice y no
-      // se crea: una actividad de un formulario que no existe no se puede ni
-      // diligenciar ni borrar con sentido.
-      if (!survey) {
-        console.warn('[FormRunner] el flujo pidió un formulario que no está descargado', destino);
-        continue;
-      }
-
-      const mismaSede =
-        !!deOrigen &&
-        String(survey.LocationTypeID ?? '') === String(deOrigen.LocationTypeID ?? '') &&
-        !!answer.LocationID;
-
-      const mismoEquipo =
-        !!deOrigen &&
-        Number(survey.hasAsset) === 1 &&
-        String(survey.AssetTypeID ?? '') === String(deOrigen.AssetTypeID ?? '') &&
-        !!answer.AssetID;
-
-      try {
-        const nueva = await this.answers.createDraft({
-          survey,
-          userId: user.UserID,
-          companyId: user.CompanyID,
-          parentGuid: answer.GUID,
-        });
-
-        if ((mismaSede || mismoEquipo) && nueva.ID != null) {
-          await this.answers.update(nueva.ID, {
-            ...(mismaSede
-              ? {
-                  LocationTypeID: answer.LocationTypeID,
-                  LocationID: answer.LocationID,
-                  LocationGUID: answer.LocationGUID,
-                  LocationName: answer.LocationName,
-                  WorkZoneID: answer.WorkZoneID,
-                }
-              : {}),
-            ...(mismoEquipo
-              ? {
-                  AssetID: answer.AssetID,
-                  AssetGUID: answer.AssetGUID,
-                  AssetName: answer.AssetName,
-                }
-              : {}),
-          });
-        }
-
-        // Y lo que la regla quiso que llegara escrito. Después de crearla y no
-        // dentro: una hija que nace bien y no consigue heredar algo sigue
-        // siendo una actividad útil, y atar las dos cosas dejaría sin actividad
-        // a quien configuró mal una herencia.
-        await this.sembrarHerencia(nueva, survey, answer, deOrigen, pedida);
-
-        abiertas.push(survey.Title);
-      } catch (error) {
-        console.error('[FormRunner] no se pudo abrir la actividad del flujo', error);
-      }
-    }
-
-    if (abiertas.length) {
-      this.abiertasPorElFlujo.set(abiertas);
-      this.activities.notifyChanged();
-    }
-  }
-
-  /**
-   * Deja escrito en la actividad hija lo que el flujo quiso heredar.
-   *
-   * Los identificadores del encargo son `apiId` de **los dos** formularios: el
-   * del hijo en `campo`/`tabla` y el del padre en `de`. Se traducen aquí contra
-   * los dos esquemas, porque una respuesta se guarda por el identificador
-   * interno y ese es propio de cada formulario.
-   *
-   * ## Lo que todavía no hace aquí
-   *
-   * Llenar una tabla del hijo **con registros de una lista** y heredar
-   * archivos. Lo primero necesita resolver la lista de una tabla que no está
-   * abierta —de eso vive `MasterDetailSourceService`, y trabaja sobre el
-   * formulario en pantalla—; lo segundo, copiar ficheros, que en el navegador
-   * no es lo mismo que en el teléfono. Se dice en la consola en vez de
-   * callarse: una foto que parece heredada y no llega es peor que no heredarla.
-   */
-  private async sembrarHerencia(
-    hija: SurveyAnswer,
-    survey: Survey,
-    padre: SurveyAnswer,
-    surveyPadre: Survey | null | undefined,
-    herencia: HerenciaDeActividad,
-  ): Promise<void> {
-    if (hija.ID == null) return;
-
-    const campos = herencia.campos ?? [];
-    const tablas = herencia.tablas ?? [];
-    const binarios = herencia.binarios ?? [];
-
-    if (!campos.length && !tablas.length && !binarios.length) return;
-
-    try {
-      const delHijo = this.camposPorApiId(survey);
-      const delPadre = this.camposPorApiId(surveyPadre);
-
-      // Lo respondido en el padre, por el identificador con el que lo guardó.
-      const respuestas = new Map(
-        parseAnswerFields(padre.Fields).map((entrada) => [entrada.id, entrada]),
-      );
-
-      const entradas: AnswerField[] = [];
-
-      for (const pedido of campos) {
-        const campo = delHijo.get(String(pedido.campo ?? '').trim());
-
-        if (!campo) {
-          console.warn('[flujo] el formulario hijo no tiene el campo', pedido.campo);
-          continue;
-        }
-
-        /*
-         * El motor deja el valor **como texto** porque no conoce el esquema del
-         * hijo. Aquí sí se conoce, así que se convierte en lo que ese campo
-         * guarda de verdad: un radio `{id, txt}`, una casilla una lista de eso.
-         */
-        const valor = comoLoGuarda(pedido.valor, {
-          // Hay esquemas viejos sin `apiId`; ahí el identificador interno hace
-          // de nombre, igual que en el desplegable del lienzo.
-          apiId: campo.apiId ?? campo.id,
-          fty: campo.fty,
-          opt: campo.opt ?? [],
-        });
-
-        if (valor === null) {
-          console.warn('[flujo] el campo no admite ese valor', pedido.campo, pedido.valor);
-          continue;
-        }
-
-        entradas.push({
-          id: campo.id,
-          val: valor as FieldValue,
-          fty: campo.fty,
-          hid: !!campo.hid,
-        });
-      }
-
-      for (const pedida of tablas) {
-        const tablaHija = delHijo.get(String(pedida.tabla ?? '').trim());
-
-        if (!tablaHija || tablaHija.fty !== 'masterdetail') {
-          console.warn('[flujo] el formulario hijo no tiene la tabla', pedida.tabla);
-          continue;
-        }
-
-        if (pedida.items?.length) {
-          console.warn(
-            '[flujo] llenar con registros de una lista una tabla de la actividad hija ' +
-              'todavía solo funciona en la app',
-            pedida.tabla,
-          );
-        }
-
-        const de = String(pedida.de ?? '').trim();
-        if (!de) continue;
-
-        const tablaPadre = delPadre.get(de);
-
-        if (!tablaPadre) {
-          console.warn('[flujo] el formulario padre no tiene la tabla', de);
-          continue;
-        }
-
-        /*
-         * Solo entre tablas que salen de la misma lista.
-         *
-         * Los campos de una fila se guardan por el identificador del
-         * sub-formulario de esa lista; copiándolas a una tabla de otra, lo
-         * respondido dentro apuntaría a identificadores que allí no significan
-         * nada y la fila se vería vacía. Mejor no copiar y decirlo.
-         */
-        if (String(tablaPadre.lst ?? '') !== String(tablaHija.lst ?? '')) {
-          console.warn(
-            '[flujo] las dos tablas no salen de la misma lista: no se copian sus filas',
-            de,
-            pedida.tabla,
-          );
-
-          continue;
-        }
-
-        const filas = readRows(respuestas.get(tablaPadre.id)?.val).map((fila) => ({
-          ...structuredClone(fila),
-
-          // Es una fila de otra actividad: identificador propio y de la tabla
-          // que la recibe.
-          GUID: crypto.randomUUID(),
-          id: tablaHija.id,
-          LinkedAnswerGUID: '',
-        }));
-
-        if (!filas.length) continue;
-
-        entradas.push({
-          id: tablaHija.id,
-          val: filas as unknown as FieldValue,
-          fty: 'masterdetail',
-          hid: !!tablaHija.hid,
-        });
-      }
-
-      /*
-       * Los archivos: una copia con identificador propio, a partir del
-       * original. La hija no comparte el archivo del padre —lo suyo sube bajo
-       * su propia actividad— y por eso se copia el contenido en vez de
-       * apuntar al mismo GUID.
-       */
-      for (const pedido of binarios) {
-        const campoHijo = delHijo.get(String(pedido.campo ?? '').trim());
-        const campoPadre = delPadre.get(String(pedido.de ?? pedido.campo ?? '').trim());
-
-        if (!campoHijo || !campoPadre) {
-          console.warn('[flujo] no se puede heredar el archivo: falta el campo', pedido);
-          continue;
-        }
-
-        const respuesta = respuestas.get(campoPadre.id);
-        const archivo = respuesta ? fileValueOf(respuesta) : null;
-        if (!archivo?.bin) continue;
-
-        const nuevo = await this.binaryStorage.copiarPara(archivo.bin, hija.GUID, campoHijo.id);
-        if (!nuevo) {
-          console.warn('[flujo] el archivo del padre no está en este navegador; no se copia', pedido.de);
-          continue;
-        }
-
-        const copia = { ...archivo, bin: nuevo };
-        entradas.push({
-          id: campoHijo.id,
-          ...splitFileValue(campoHijo.fty, copia),
-          fty: campoHijo.fty,
-          hid: !!campoHijo.hid,
-        });
-      }
-
-      if (!entradas.length) return;
-
-      await this.answers.update(hija.ID, { Fields: JSON.stringify(entradas) });
-    } catch (error) {
-      console.warn('[flujo] no se pudo sembrar la actividad hija', error);
-    }
-  }
-
-  /**
-   * Los campos de un formulario por el nombre con el que los pide una regla.
-   *
-   * Por `apiId`, y por el identificador interno cuando el campo no trae
-   * `apiId`: hay esquemas viejos donde no existe, y una regla escrita sobre
-   * ellos nombra el identificador.
-   */
-  private camposPorApiId(survey: Survey | null | undefined): Map<string, FormField> {
-    const salida = new Map<string, FormField>();
-    if (!survey) return salida;
-
-    for (const page of parseQuestions(survey.JSONQuestion)) {
-      for (const field of page.fie) {
-        const clave = String(field.apiId ?? '').trim() || field.id;
-
-        if (!clave || salida.has(clave)) continue;
-
-        salida.set(clave, field);
-      }
-    }
-
-    return salida;
-  }
-
-  /**
-   * Apunta las consignas que pidió el flujo. **No las manda.**
-   *
-   * Salen cuando la actividad esté arriba con sus archivos confirmados; de eso
-   * se ocupa `DespachoService`, al que se avisa desde el envío. Aquí solo se
-   * dejan en la cola local para que sobrevivan a lo que pase en medio: perder
-   * la conexión, cerrar la pestaña, apagar el equipo.
-   */
-  private async apuntarLasConsignas(answer: SurveyAnswer, incompleta: boolean): Promise<void> {
-    const engine = this.engine();
-    if (!engine) return;
-
-    const pedidos = engine.despachosQuePideElFlujo();
-
-    // Con rastro: esto ha costado varias vueltas y desde fuera «no despacha» se
-    // ve igual tanto si la regla no se disparó como si se descartó aquí.
-    console.debug('[flujo] consignas al guardar', {
-      incompleta,
-      pedidas: pedidos.length,
-      detalle: pedidos,
-    });
-
-    for (const despacho of pedidos) {
-      /*
-       * «Solo si la actividad quedó completa».
-       *
-       * Guardar deja pasar aunque falten obligatorios —se avisa y quien
-       * diligencia decide—, y una consigna que nace de un informe a medias
-       * suele ser un error. Con la marca puesta, en ese caso no sale nada.
-       */
-      if (despacho['soloCompleta'] === true && incompleta) continue;
-
-      /*
-       * El que traiga la regla, el que se acaba de elegir en el diálogo, o uno
-       * mismo.
-       *
-       * «Al mismo que la llenó» el motor no lo resuelve —tiene que dar el mismo
-       * resultado en el simulador, donde no hay nadie diligenciando— así que lo
-       * marca y lo resuelve quien despacha. Aquí sí se sabe quién es.
-       */
-      const destinatario = (
-        String(despacho['destinatario'] ?? '').trim() ||
-        this.elegidos.get(this.claveDeDespacho(despacho)) ||
-        (despacho['mismoUsuario'] === true
-          ? String(this.auth.currentUser()?.UserID ?? '')
-          : '') ||
-        ''
-      ).trim();
-
-      /*
-       * Sin destinatario no se apunta.
-       *
-       * No debería llegar aquí: quien guarda ya lo resolvió en el diálogo. Si
-       * llega, se avisa en vez de callarse — una consigna que desaparece sin
-       * decir nada es lo peor que puede pasar con esto.
-       */
-      if (!destinatario) {
-        console.warn('[despacho] descartado: sin a quién enviarlo', despacho);
-        continue;
-      }
-
-      await this.despachos.apuntar({
-        AnswerGUID: answer.GUID,
-        Que: String(despacho['que'] ?? 'otro'),
-        SurveyID: String(despacho['formulario'] ?? ''),
-        Destinatario: destinatario,
-        EstadoGUID: String(despacho['estado'] ?? ''),
-        Aviso: String(despacho['aviso'] ?? ''),
-        Hija: despacho['hija'] === true,
-        Regla: String(despacho['regla'] ?? ''),
-        Programado: String(despacho['programado'] ?? ''),
-      });
-    }
-  }
-
-  /**
-   * Apunta los correos que pidió el flujo. **No los manda.**
-   *
-   * Salen cuando la actividad esté arriba con sus archivos confirmados; de eso
-   * se ocupa `CorreoService`, al que se avisa desde el envío. Aquí solo se dejan
-   * en la cola local para que sobrevivan a lo que pase en medio: perder la
-   * conexión, cerrar la pestaña, apagar el equipo.
-   *
-   * Vienen ya escritos del motor —las variables resueltas y escapadas— así que
-   * aquí no hay nada que leer del formulario.
-   */
-  private async apuntarLosCorreos(answer: SurveyAnswer, incompleta: boolean): Promise<void> {
-    const engine = this.engine();
-    if (!engine) return;
-
-    for (const correo of engine.correosQuePideElFlujo()) {
-      /*
-       * «Solo si la actividad quedó completa».
-       *
-       * Lo mismo que en una consigna: guardar deja pasar aunque falten
-       * obligatorios, y un correo que cuenta un informe a medias suele ser un
-       * error. Con la marca puesta, en ese caso no sale nada.
-       */
-      if (correo['soloCompleta'] === true && incompleta) continue;
-
-      await this.correos.apuntar({
-        AnswerGUID: answer.GUID,
-        Llave: String(correo['llave'] ?? ''),
-        Para: String(correo['para'] ?? ''),
-        Copia: String(correo['copia'] ?? ''),
-        CopiaOculta: String(correo['copiaOculta'] ?? ''),
-
-        // Como texto JSON, que es como viaja al servidor. Lo que el motor dejó
-        // es **cuál** archivo se quiere, no el archivo: aquí no hay nada que
-        // abrir.
-        Adjuntos: correo['adjuntos'] ? JSON.stringify(correo['adjuntos']) : '',
-
-        // Los avisos que la regla escribió para la pantalla. Viajan con el
-        // correo y no con el botón: valen igual cuando sale al guardar.
-        MensajeEnviando: String(correo['mensajeEnviando'] ?? ''),
-        MensajeEnviado: String(correo['mensajeEnviado'] ?? ''),
-        Asunto: String(correo['asunto'] ?? ''),
-        Cuerpo: String(correo['cuerpo'] ?? ''),
-        Proveedor: String(correo['proveedor'] ?? ''),
-        Area: String(correo['area'] ?? ''),
-        Programado: String(correo['programado'] ?? ''),
-        Regla: String(correo['regla'] ?? ''),
-      });
-    }
-  }
-
-  /**
-   * Apunta las notificaciones que pidió el flujo. **No las manda.**
-   *
-   * Gemela de `apuntarLosCorreos`, hasta en el motivo: salen cuando la actividad
-   * esté arriba, y aquí solo se dejan en la cola local para que sobrevivan a lo
-   * que pase en medio —perder la conexión, cerrar la pestaña, apagar el equipo—.
-   *
-   * Vienen ya escritas del motor: el texto con las variables puestas y la foto
-   * convertida en dirección. Aquí no hay nada que leer del formulario.
-   */
-  private async apuntarLosPushes(answer: SurveyAnswer, incompleta: boolean): Promise<void> {
-    const engine = this.engine();
-    if (!engine) return;
-
-    for (const push of engine.pushesQuePideElFlujo()) {
-      // «Solo si la actividad quedó completa», igual que en un correo: guardar
-      // deja pasar aunque falten obligatorios, y avisar de un informe a medias
-      // suele ser un error.
-      if (push['soloCompleta'] === true && incompleta) continue;
-
-      await this.pushes.apuntar({
-        AnswerGUID: answer.GUID,
-        Llave: String(push['llave'] ?? ''),
-        Para: String(push['para'] ?? ''),
-        Titulo: String(push['titulo'] ?? ''),
-        Texto: String(push['texto'] ?? ''),
-        Foto: String(push['foto'] ?? ''),
-        Enlace: String(push['enlace'] ?? ''),
-        Programado: String(push['programado'] ?? ''),
-        Regla: String(push['regla'] ?? ''),
-        Disparo: String(push['disparo'] ?? 'guardar'),
-      });
-    }
-  }
-
-  /**
    * Los despachos a los que les falta a quién enviarlos.
    *
    * Salen del flujo marcados con `preguntar`: o la regla dice «pregunta al
@@ -3287,7 +2704,7 @@ export class FormRunnerComponent {
         return false;
       }
 
-      this.elegidos.set(this.claveDeDespacho(despacho), String(elegido.ID));
+      this.elegidos.set(claveDeDespacho(despacho), String(elegido.ID));
     }
 
     return true;
@@ -3333,7 +2750,7 @@ export class FormRunnerComponent {
 
       // Se resuelve sobre el propio encargo: lo que se apunta después ya lleva
       // el usuario dentro y no vuelve a preguntar.
-      this.elegidos.set(this.claveDeDespacho(despacho), String(elegido.ID));
+      this.elegidos.set(claveDeDespacho(despacho), String(elegido.ID));
 
       await this.despachos.apuntar({
         AnswerGUID: answer.GUID,
@@ -3369,14 +2786,7 @@ export class FormRunnerComponent {
    */
   private readonly elegidos = new Map<string, string>();
 
-  /** Con qué se reconoce un despacho entre dos guardados. */
-  private claveDeDespacho(d: Record<string, unknown>): string {
-    // Con la programación dentro: una misma regla puede pedir dos consignas del
-    // mismo formulario para dos fechas distintas, y cada una puede ir a alguien
-    // distinto. Sin ella, la segunda heredaba el destinatario de la primera.
-    return [d['regla'] ?? '', d['que'] ?? '', d['formulario'] ?? '', d['programado'] ?? ''].join('|');
-  }
-
+  
   /** Qué se está despachando mientras el diálogo está abierto, o `null`. */
   readonly pidiendoDestinatario = signal<string | null>(null);
 
@@ -3578,10 +2988,15 @@ export class FormRunnerComponent {
        * configuró el cliente para este formulario, y eso es más concreto que
        * una regla de compañía escrita en el código.
        */
-      await this.abrirLasQuePidioElFlujo(answer);
-      await this.apuntarLasConsignas(answer, incomplete);
-      await this.apuntarLosCorreos(answer, incomplete);
-      await this.apuntarLosPushes(answer, incomplete);
+      const motor = this.engine();
+      if (motor) {
+        const abiertas = await this.encargos.crearLasQuePidioElFlujo(motor, answer);
+        if (abiertas.length) this.abiertasPorElFlujo.set(abiertas);
+
+        await this.encargos.apuntarLasConsignas(motor, answer, incomplete, this.elegidos);
+        await this.encargos.apuntarLosCorreos(motor, answer, incomplete);
+        await this.encargos.apuntarLosPushes(motor, answer, incomplete);
+      }
       await this.aplicarEstadoDelFlujo(this.engine()?.estadoDelFlujo() ?? null);
 
       /*
@@ -3640,7 +3055,7 @@ export class FormRunnerComponent {
        * siguiente sincronización las traía de vuelta tal cual: el campo volvía
        * a «diligenciar» y cada guardado creaba otra hija.
        */
-      if (engineAlGuardar) await this.aplicarEncargosDeHijos(engineAlGuardar, answer);
+      if (engineAlGuardar) await this.encargos.aplicarEncargosDeHijos(engineAlGuardar, answer, this.survey());
 
       // Y si esta actividad es hija de otra, el padre se entera ya: sus
       // reglas de «cuando cambia un hijo» corren sin que nadie lo abra.

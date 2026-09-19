@@ -777,6 +777,7 @@ export function evaluar(flujo: Flujo, contexto: Contexto): Resultado {
   timerDelContexto = contexto.timer ? { ...contexto.timer, hechos: [...(contexto.timer.hechos ?? [])] } : null;
   timerDeLaPasada = timerDelContexto;
   timerTocado = false;
+  flujoDelContexto = flujo;
 
   const ambito = contexto.ambito ?? 'actividad';
   const tablaDeFila = contexto.tabla ?? '';
@@ -874,12 +875,9 @@ export function evaluar(flujo: Flujo, contexto: Contexto): Resultado {
    * ninguno todavía. Se anota como si una regla lo hubiera pedido, y
    * `cerrarTimer` lo devuelve para que quien llama lo guarde.
    */
-  if (!enFila && !timerDeLaPasada) {
+  if (!enFila && (!timerDeLaPasada || timerDeLaPasada.terminado)) {
     const solo = (flujo?.timers ?? []).find((t) => String(t?.arranca ?? '') === contexto.momento);
-    if (solo && String(solo.id ?? '').trim()) {
-      timerDeLaPasada = { id: String(solo.id), inicio: ahoraDelContexto, hechos: [] };
-      timerTocado = true;
-    }
+    if (solo && String(solo.id ?? '').trim()) arrancarTimer(String(solo.id), ahoraDelContexto);
   }
 
   const minutosDelTimer = enFila ? null : minutosTranscurridos(timerDelContexto);
@@ -887,7 +885,7 @@ export function evaluar(flujo: Flujo, contexto: Contexto): Resultado {
   const esDeHito = (r: Regla): boolean => !!String(r.timer?.de ?? '').trim();
 
   const hitoAlcanzado = (r: Regla): boolean => {
-    if (!timerDelContexto || minutosDelTimer === null) return false;
+    if (!timerDelContexto || timerDelContexto.detenido || minutosDelTimer === null) return false;
     if (String(r.timer?.de ?? '').trim() !== timerDelContexto.id) return false;
     return llegoAlHito(r.timer!.en, minutosDelTimer, duracionDelTimer(flujo, timerDelContexto.id));
   };
@@ -1666,6 +1664,28 @@ let permitidasDelContexto: Record<ApiId, string[] | '*'> = {};
 let timerDelContexto: EstadoDelTimer | null = null;
 let timerDeLaPasada: EstadoDelTimer | null = null;
 let timerTocado = false;
+let flujoDelContexto: Flujo | null = null;
+
+/**
+ * Arranca un timer sobre la pasada, si su tope de veces lo permite.
+ *
+ * La cuenta de corridas se hereda del estado anterior —de otro timer, o del
+ * mismo ya terminado o parado— y sube en uno. Con `veces` alcanzado no
+ * arranca y el estado se queda como estaba.
+ */
+function arrancarTimer(id: string, ahora: string): boolean {
+  const corridas = { ...(timerDeLaPasada?.corridas ?? {}) };
+  const hechas = Math.max(0, Math.floor(Number(corridas[id]) || 0));
+
+  const definido = (flujoDelContexto?.timers ?? []).find((t) => String(t?.id ?? '') === id);
+  const tope = Math.max(0, Math.floor(Number(definido?.veces) || 0));
+  if (tope > 0 && hechas >= tope) return false;
+
+  corridas[id] = hechas + 1;
+  timerDeLaPasada = { id, inicio: ahora, hechos: [], corridas };
+  timerTocado = true;
+  return true;
+}
 
 /**
  * Lo que un hito hace **una sola vez**, cuando llega.
@@ -1753,7 +1773,7 @@ function cerrarTimer(flujo: Flujo, resultado: Resultado): void {
 
   // Los hitos alcanzados se apuntan solo sobre el timer con el que se entró:
   // uno recién arrancado empieza de cero y sus hitos llegan en los ticks.
-  if (estado && timerDelContexto && estado.id === timerDelContexto.id && estado.inicio === timerDelContexto.inicio) {
+  if (estado && !estado.detenido && timerDelContexto && estado.id === timerDelContexto.id && estado.inicio === timerDelContexto.inicio) {
     const minutos = minutosTranscurridos(estado);
     const duracion = duracionDelTimer(flujo, estado.id);
 
@@ -4717,14 +4737,18 @@ function aplicar(
     const activo = timerDeLaPasada;
     if (activo && activo.id === id && !activo.terminado) return;
 
-    timerDeLaPasada = { id, inicio: ahora, hechos: [] };
-    timerTocado = true;
+    arrancarTimer(id, ahora);
     return;
   }
 
+  /*
+   * Parar no es borrar: el timer queda terminado y marcado como detenido —
+   * sus hitos ya no corren— y la cuenta de corridas se conserva, que es lo
+   * que hace valer «una sola vez».
+   */
   if (accion.accion === 'detener-timer') {
-    if (timerDeLaPasada) {
-      timerDeLaPasada = null;
+    if (timerDeLaPasada && !timerDeLaPasada.terminado) {
+      timerDeLaPasada = { ...timerDeLaPasada, terminado: true, detenido: true };
       timerTocado = true;
     }
     return;
