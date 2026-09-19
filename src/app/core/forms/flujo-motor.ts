@@ -869,6 +869,19 @@ export function evaluar(flujo: Flujo, contexto: Contexto): Resultado {
    * vuelve a evaluar `timer`, que es lo que hace que el siguiente empiece de
    * cero, como cualquier otro.
    */
+  /*
+   * Un timer que arranca solo: al crear o al abrir, si la actividad no tiene
+   * ninguno todavía. Se anota como si una regla lo hubiera pedido, y
+   * `cerrarTimer` lo devuelve para que quien llama lo guarde.
+   */
+  if (!enFila && !timerDeLaPasada) {
+    const solo = (flujo?.timers ?? []).find((t) => String(t?.arranca ?? '') === contexto.momento);
+    if (solo && String(solo.id ?? '').trim()) {
+      timerDeLaPasada = { id: String(solo.id), inicio: ahoraDelContexto, hechos: [] };
+      timerTocado = true;
+    }
+  }
+
   const minutosDelTimer = enFila ? null : minutosTranscurridos(timerDelContexto);
 
   const esDeHito = (r: Regla): boolean => !!String(r.timer?.de ?? '').trim();

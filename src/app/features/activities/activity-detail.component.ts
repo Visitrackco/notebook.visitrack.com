@@ -16,6 +16,7 @@ import {
 import { Asset, DispatchStatus, LocationForm, Survey, SurveyAnswer } from '../../core/models/entities.model';
 import { DispatchStatusRepository } from '../../core/repositories/entity.repositories';
 import { SurveyAnswerRepository } from '../../core/repositories/survey-answer.repository';
+import { ParientesService } from '../../core/forms/parientes.service';
 import {
   ActivityService,
   ConsistencyIssue,
@@ -76,6 +77,7 @@ export class ActivityDetailComponent {
   private readonly enlaces = inject(EnlacePublicoService);
   private readonly revisions = inject(DataRevisionService);
   private readonly answers = inject(SurveyAnswerRepository);
+  private readonly parientes = inject(ParientesService);
   private readonly dispatch = inject(DispatchStatusRepository);
   private readonly drafts = inject(DraftPolicyService);
   private readonly auth = inject(AuthService);
@@ -666,6 +668,14 @@ export class ActivityDetailComponent {
         UpdatedOn: new Date().toISOString(),
       });
       this.activities.notifyChanged();
+
+      // Si es hija de otra, el padre se entera ya: un estado nuevo es
+      // justo lo que sus reglas de «cuando cambia un hijo» suelen mirar.
+      if (String(answer.ParentGUID ?? '').trim()) {
+        this.parientes
+          .avisarAlPadre({ ...answer, Status: dispatchId })
+          .catch((error) => console.warn('[flujo] no se pudo avisar al padre', error));
+      }
     });
   }
 

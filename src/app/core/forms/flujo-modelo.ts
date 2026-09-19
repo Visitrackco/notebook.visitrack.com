@@ -145,6 +145,14 @@ export interface TimerDeFlujo {
   nombre: string;
   /** Cuántos minutos dura. Al llegar, se cumple el hito `fin`. */
   duracion: number;
+  /**
+   * Cuándo arranca solo, sin que una regla lo pida: al `crear` la actividad
+   * (una sola vez, la primera vez que se abre) o al `abrir`. Vacío o `regla`
+   * es lo de siempre: lo arranca `iniciar-timer`. Solo arranca si la
+   * actividad no tiene ya un timer, corriendo o terminado: reabrir no lo
+   * reinicia.
+   */
+  arranca?: 'regla' | 'crear' | 'abrir';
   /** Lo que se quiera decir de él: para quien diseña, no para el motor. */
   descripcion?: string;
 }
