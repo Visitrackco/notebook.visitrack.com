@@ -15,10 +15,13 @@
 import { Injectable, inject } from '@angular/core';
 
 import { Survey, SurveyAnswer } from '../models/entities.model';
-import { SurveyRepository } from '../repositories/entity.repositories';
+import { DispatchStatusRepository, SurveyRepository } from '../repositories/entity.repositories';
 import { SurveyAnswerRepository } from '../repositories/survey-answer.repository';
 import { ActivityService } from '../services/activity.service';
+import { ActivityInheritsService } from './activity-inherits.service';
 import { Campo, Encargo, EncargoDeHijo, PREFIJO_HIJO, PREFIJO_PADRE } from './flujo-modelo';
+import { FlujoService } from './flujo.service';
+import { FormEngine, leerTimer } from './form-engine';
 import { FormField, parseAnswerFields, parseQuestions } from './form-schema';
 
 export interface LoDeFuera {
@@ -31,6 +34,132 @@ export class ParientesService {
   private readonly answers = inject(SurveyAnswerRepository);
   private readonly surveys = inject(SurveyRepository);
   private readonly activities = inject(ActivityService);
+  private readonly flujos = inject(FlujoService);
+  private readonly estados = inject(DispatchStatusRepository);
+  private readonly inherits = inject(ActivityInheritsService);
+
+  /**
+   * Cómo están los hijos ahora, en una línea: qué hija cuelga de cada
+   * vinculado, en qué estado, si se guardó y cuándo se tocó. Se compara con
+   * `HijosVistos` para saber si algo cambió desde que el padre los miró.
+   */
+  async huellaDeHijos(answer: SurveyAnswer, survey: Survey): Promise<string> {
+    const vinculados = camposPlanos(survey).filter((f) => esVinculado(f.fty));
+    if (!vinculados.length) return '';
+
+    const respuestas = parseAnswerFields(answer.Fields);
+    const partes: string[] = [];
+
+    for (const v of vinculados) {
+      const apiId = (v.apiId ?? '').toString().trim() || v.id;
+      const guardado = respuestas.find((r) => r.id === v.id);
+      const gui = String((guardado?.val as { gui?: unknown })?.gui ?? '').trim();
+      const hijo = gui ? await this.answers.findByGuid(gui) : null;
+
+      partes.push(
+        hijo
+          ? `${apiId}=${gui}|${hijo.Status ?? ''}|${Number(hijo.isSaved ?? 0)}|${hijo.IsDelete ?? ''}|${hijo.UpdatedOn ?? ''}`
+          : `${apiId}=`,
+      );
+    }
+
+    return partes.join(';');
+  }
+
+  /** Apunta en el padre cómo están sus hijos ahora mismo. */
+  async apuntarHijosVistos(answer: SurveyAnswer, survey: Survey): Promise<void> {
+    if (answer.ID == null) return;
+    const huella = await this.huellaDeHijos(answer, survey);
+    if (huella === String(answer.HijosVistos ?? '')) return;
+    await this.answers.update(answer.ID, { HijosVistos: huella });
+  }
+
+  /**
+   * Un hijo acaba de guardarse: el padre se entera **sin abrirse**.
+   *
+   * Se monta el motor del padre a ciegas —sin pantalla— con su flujo, lo de
+   * su familia y su timer, corre el momento «cuando cambia un hijo», y lo
+   * que decidió se escribe en la actividad: los campos que una regla dejó,
+   * el estado que pidió, si se puede volver a entrar, el timer, y lo que
+   * pidió sobre otros hijos. Y se apunta que los hijos ya se vieron, para
+   * que abrir el padre después no lo repita.
+   *
+   * Sin reglas de ese momento no se monta nada: solo se apunta la huella.
+   */
+  async avisarAlPadre(hijo: SurveyAnswer): Promise<void> {
+    const guid = String(hijo.ParentGUID ?? '').trim();
+    if (!guid) return;
+
+    const padre = await this.answers.findByGuid(guid);
+    if (!padre || padre.ID == null) return;
+
+    const survey = await this.surveys.findBySurveyId(String(padre.SurveyID));
+    if (!survey) return;
+
+    const huella = await this.huellaDeHijos(padre, survey);
+    const flujo = await this.flujos.paraFormulario(survey.ID);
+    const reacciona = !!flujo?.reglas?.some((r) => r.activa !== false && r.cuando?.includes('hijo'));
+
+    if (!reacciona) {
+      await this.answers.update(padre.ID, { HijosVistos: huella });
+      return;
+    }
+
+    try {
+      const inherits = await this.inherits.forAnswer(padre, survey.JSONQuestion);
+      const deFuera = await this.deFuera(padre, survey);
+
+      const engine = new FormEngine({
+        questions: survey.JSONQuestion,
+        answers: padre.Fields,
+        inherits,
+        flujo,
+        primeraVez: false,
+        valoresDeFuera: deFuera.valores,
+        camposDeFuera: deFuera.campos,
+        timer: leerTimer(padre.Timer),
+      });
+
+      engine.estadoActividad.set(String(padre.Status ?? ''));
+      engine.correrHijo();
+
+      const cambios: Partial<SurveyAnswer> = { HijosVistos: huella };
+
+      const fields = JSON.stringify(engine.toAnswerFields());
+      if (fields !== String(padre.Fields ?? '')) cambios.Fields = fields;
+
+      const estado = engine.estadoDelFlujo();
+      if (estado && estado !== String(padre.Status ?? '') && (await this.estados.findByDispatchId(Number(estado)))) {
+        cambios.Status = estado;
+      }
+
+      const leyendas = engine.entradaBloqueada();
+      if (leyendas.length) cambios.NoEntrar = leyendas.join(' · ');
+      else if (engine.entradaPermitida() && String(padre.NoEntrar ?? '').trim()) cambios.NoEntrar = '';
+
+      const timer = engine.timer();
+      const timerTexto = timer ? JSON.stringify(timer) : '';
+      if (timerTexto !== String(padre.Timer ?? '')) cambios.Timer = timerTexto;
+
+      if (Object.keys(cambios).length > 1) cambios.UpdatedOn = new Date().toISOString();
+
+      await this.answers.update(padre.ID, cambios);
+
+      console.log('[flujo] el padre reaccionó al hijo:', {
+        padre: padre.GUID,
+        disparadas: engine.hayReglasDe('hijo'),
+        cambios: Object.keys(cambios),
+      });
+
+      // Lo que pidió sobre otros hijos: cambiarles el estado, escribirles.
+      const encargos = engine.encargosDeHijosAlGuardar('hijo');
+      if (encargos.length) await this.ejecutar({ ...padre, ...cambios }, survey, encargos);
+
+      this.activities.notifyChanged();
+    } catch (error) {
+      console.warn('[flujo] el padre no pudo reaccionar al hijo', error);
+    }
+  }
 
   /**
    * Lo que el flujo de esta actividad puede mirar de su familia.

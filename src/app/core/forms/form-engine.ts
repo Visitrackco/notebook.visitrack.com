@@ -29,7 +29,7 @@ import {
   resolveInheritedDefault,
   valoresDelEntorno,
 } from './inherited-defaults';
-import { Ambito, Animacion, Aviso, BotonPintado, Campo, Encargo, EstadoCampo, Flujo, HerenciaDeActividad, LlamadaPintada, Momento, Resultado, ESTADO_DE_LA_ACTIVIDAD, PREFIJO_INTEGRACION } from './flujo-modelo';
+import { Ambito, Animacion, Aviso, BotonPintado, Campo, Encargo, EstadoCampo, EstadoDelTimer, Flujo, HerenciaDeActividad, LlamadaPintada, Momento, Resultado, ESTADO_DE_LA_ACTIVIDAD, PREFIJO_INTEGRACION, TIPOS_VINCULADOS } from './flujo-modelo';
 import {
   camposDeLaRegla,
   camposDeLasReglas,
@@ -133,6 +133,34 @@ export interface FormEngineInput {
 
   /** Los campos de fuera, con el mismo prefijo. Para comparar por texto. */
   camposDeFuera?: Record<string, Campo>;
+
+  /**
+   * El timer que corre sobre la actividad, si alguna regla arrancó uno.
+   *
+   * Lo guarda quien monta el formulario con la actividad (`Timer`) y el
+   * motor lo devuelve cuando cambia; ver [timer]. Ver `TimerDeFlujo`.
+   */
+  timer?: EstadoDelTimer | null;
+}
+
+/** El timer guardado en la actividad, o `null` si no hay o no se lee. */
+export function leerTimer(texto: unknown): EstadoDelTimer | null {
+  const crudo = String(texto ?? '').trim();
+  if (!crudo) return null;
+
+  try {
+    const t = JSON.parse(crudo);
+    if (!t || typeof t !== 'object' || !String(t.id ?? '').trim()) return null;
+
+    return {
+      id: String(t.id),
+      inicio: String(t.inicio ?? ''),
+      hechos: Array.isArray(t.hechos) ? t.hechos.map((h: unknown) => String(h)) : [],
+      ...(t.terminado ? { terminado: true } : {}),
+    };
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -1091,6 +1119,9 @@ export class FormEngine {
     this.valoresDeFuera = { ...this.valoresDeFuera, ...valores };
     this.camposDeFuera = { ...this.camposDeFuera, ...campos };
     this.correrFlujo('cambia', campoQueCambio);
+
+    // Y el padre reacciona: es un hijo el que cambió.
+    this.correrHijo();
   }
 
   /**
@@ -1099,13 +1130,54 @@ export class FormEngine {
    * Crear, eliminar, heredar y cambiar el estado se hacen con la actividad ya
    * entera, así que solo cuentan los de ese momento y los ejecuta quien guarda.
    */
-  encargosDeHijosAlGuardar(): readonly Encargo[] {
+  encargosDeHijosAlGuardar(momento: Momento = 'guardar'): readonly Encargo[] {
     const deHijos = new Set(['crear-hijo', 'eliminar-hijo', 'heredar-al-hijo', 'cambiar-estado-hijo', 'escribir-en-hijo']);
-    return (this.encargosPorMomento()['guardar'] ?? []).filter((e) => deHijos.has(e.que));
+    return (this.encargosPorMomento()[momento] ?? []).filter((e) => deHijos.has(e.que));
   }
 
   /** Si el flujo cerró el cambio de estado (`modo-auditor`). */
   readonly estadoBloqueado = signal(false);
+
+  /**
+   * El timer que corre sobre la actividad. Ver `TimerDeFlujo`.
+   *
+   * Entra con la actividad y lo cambia el motor: una regla lo arranca o lo
+   * para, o llega a un hito. Cada cambio sube [timerCambio] para que quien
+   * monta el formulario lo guarde con la actividad.
+   */
+  readonly timer = signal<EstadoDelTimer | null>(null);
+  readonly timerCambio = signal(0);
+
+  /**
+   * Cuántos minutos faltan para el siguiente hito del timer activo, según
+   * la última evaluación. `null` si no hay timer o ya terminó.
+   */
+  readonly siguienteHito = signal<number | null>(null);
+
+  /** ¿Alguna regla viva corre en ese momento? */
+  hayReglasDe(momento: Momento): boolean {
+    return !!this.flujo?.reglas?.some((r) => r.activa !== false && r.cuando?.includes(momento));
+  }
+
+  /**
+   * «Cuando cambia un hijo»: se crea, se guarda, cambia de estado o se
+   * elimina una actividad hija. Corren todas las reglas de ese momento con
+   * lo que haya de fuera; quien llama las trae al día antes.
+   */
+  correrHijo(): void {
+    if (!this.hayReglasDe('hijo')) return;
+    this.correrFlujo('hijo');
+  }
+
+  /**
+   * Un tick del timer: los hitos que ya se alcanzaron corren —o se reponen,
+   * si ya se habían hecho— y el motor dice cuánto falta para el siguiente.
+   * Sin timer no hay nada que evaluar.
+   */
+  correrTimer(): void {
+    if (!this.timer()) return;
+    this.correrFlujo('timer');
+  }
 
   /**
    * Lo que la **última** evaluación dijo sobre volver a entrar.
@@ -1163,6 +1235,10 @@ export class FormEngine {
     // defecto, o una rama que abre un `def` no aparece hasta la segunda vez que
     // se abre la actividad. Ver [deriveSections].
     this.sections.set(this.deriveSections(initial));
+
+    // El timer con el que llega la actividad, antes de correr nada: «al
+    // abrir» ya puede preguntar cuánto falta.
+    this.timer.set(input.timer ?? null);
 
     if (this.hayFlujo()) {
       this.indexarCampos();
@@ -1291,6 +1367,12 @@ export class FormEngine {
           fty: field.fty,
           opt: field.opt as any,
           pagina: indice + 1,
+
+          // A qué formulario apunta un vinculado: con eso el padre puede
+          // contar los hijos de un formulario concreto (`HIJOS:<fid>@…`).
+          ...(TIPOS_VINCULADOS.includes(String(field.fty ?? '').toLowerCase())
+            ? { fid: String((field as any).fid ?? '').trim() }
+            : {}),
 
           /*
            * La direccion que pinta un campo de tipo imagen.
@@ -1481,7 +1563,23 @@ export class FormEngine {
       ambito: this.ambito,
       tabla: this.tabla,
       origen: this.origenDeLaFila,
+
+      // El timer de la actividad: con él el motor sabe qué hitos llegaron.
+      timer: this.timer(),
     });
+
+    /*
+     * Lo que el motor decidió sobre el timer.
+     *
+     * Solo viene cuando cambió —lo arrancaron, lo pararon, llegó a un hito— y
+     * se publica con un pulso para que quien monta el formulario lo guarde.
+     * Cuánto falta para el siguiente hito viene siempre que hay uno corriendo.
+     */
+    if (resultado.timer !== undefined) {
+      this.timer.set(resultado.timer);
+      this.timerCambio.update((n) => n + 1);
+    }
+    this.siguienteHito.set(resultado.siguienteHito ?? null);
 
     const porId = new Map<string, EstadoCampo>();
 

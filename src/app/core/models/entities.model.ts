@@ -248,6 +248,22 @@ export interface SurveyAnswer {
    */
   FlujoCrear?: string;
 
+  /**
+   * El timer del flujo que corre sobre esta actividad, como JSON
+   * (`{id, inicio, hechos, terminado?}`). Vacío: ninguno. Lo escribe el
+   * formulario cada vez que el motor lo cambia y lo lee al abrir. Vive en
+   * este navegador: el reloj que cuenta es el de aquí.
+   */
+  Timer?: string;
+
+  /**
+   * Cómo estaban los hijos la última vez que el flujo del padre los miró.
+   * Al abrir el padre se compara con cómo están ahora: si cambió, corre el
+   * momento «cuando cambia un hijo». Así un hijo que llegó por
+   * sincronización también se nota, y uno que ya se vio no se repite.
+   */
+  HijosVistos?: string;
+
   LocationTypeID: string;
   LocationID: string;
   LocationGUID: string;

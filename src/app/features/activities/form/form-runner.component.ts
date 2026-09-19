@@ -15,7 +15,7 @@ import {
 import { MatTooltipModule } from '@angular/material/tooltip';
 
 import { ActivityInheritsService } from '../../../core/forms/activity-inherits.service';
-import { FormEngine } from '../../../core/forms/form-engine';
+import { FormEngine, leerTimer } from '../../../core/forms/form-engine';
 import {
   AnswerField,
   FieldValue,
@@ -617,6 +617,37 @@ export class FormRunnerComponent {
      * Se lee la señal fuera del `untracked` para quedar suscrito solo a ella;
      * lo de dentro toca la base y no debe volver a disparar el efecto.
      */
+    /*
+     * El timer, guardado con la actividad cada vez que el motor lo cambia.
+     *
+     * Y un tick cada medio minuto mientras el formulario está abierto: los
+     * hitos llegan por minutos, y evaluar «timer» sin ninguno alcanzado
+     * cuesta lo mismo que no hacer nada. Con la actividad cerrada el tiempo
+     * corre igual: al abrirla, los hitos ya pasados corren de una vez.
+     */
+    effect(() => {
+      const engine = this.engine();
+      if (!engine || !engine.timerCambio()) return;
+
+      untracked(() => {
+        const answer = this.answer();
+        if (answer.ID == null) return;
+
+        const timer = engine.timer();
+        this.answers
+          .update(answer.ID, { Timer: timer ? JSON.stringify(timer) : '' })
+          .catch((error) => console.error('[flujo] no se pudo guardar el timer', error));
+      });
+    });
+
+    const tick = setInterval(() => {
+      const engine = this.engine();
+      const timer = engine?.timer();
+      if (engine && timer && !timer.terminado) engine.correrTimer();
+    }, 30_000);
+
+    inject(DestroyRef).onDestroy(() => clearInterval(tick));
+
     effect(() => {
       const pedido = this.engine()?.estadoDelFlujo() ?? null;
 
@@ -804,6 +835,7 @@ export class FormRunnerComponent {
       primeraVez,
       valoresDeFuera: deFuera.valores,
       camposDeFuera: deFuera.campos,
+      timer: leerTimer(answer.Timer),
     });
 
     this.engine.set(engine);
@@ -821,6 +853,15 @@ export class FormRunnerComponent {
      * guardar dejaría trabajo atrapado sin subir.
      */
     if (await this.cerrarSiNoSePuedeEntrar(engine, answer)) return;
+
+    // Los hitos del timer que ya pasaron con la actividad cerrada corren
+    // ahora, y los ya hechos reponen lo que dejaron.
+    engine.correrTimer();
+
+    // Y si los hijos cambiaron desde la última vez que este padre los miró
+    // —llegaron por sincronización, o se guardaron sin que reaccionara—,
+    // reacciona ahora.
+    void this.reaccionarAHijosSiCambiaron(engine, answer, survey);
 
     // Lo que respondió un servicio es de la actividad que lo pidió: arrastrarlo
     // a la siguiente enseñaría el archivo de otra visita.
@@ -2498,6 +2539,32 @@ export class FormRunnerComponent {
     if (this.engine() !== engine) return;
 
     engine.actualizarLoDeFuera(deFuera.valores, deFuera.campos, campoQueCambio);
+
+    // Ya se miraron: abrir el padre después no vuelve a reaccionar a esto.
+    await this.parientes.apuntarHijosVistos(this.answer(), this.survey());
+  }
+
+  /**
+   * Si los hijos no están como la última vez que el padre los miró, corre
+   * «cuando cambia un hijo» y apunta cómo están ahora.
+   *
+   * Es lo que hace que un hijo diligenciado en otro aparato —que llega por
+   * sincronización— también despierte al padre, y que uno que ya se vio no
+   * lo despierte dos veces.
+   */
+  private async reaccionarAHijosSiCambiaron(engine: FormEngine, answer: SurveyAnswer, survey: Survey): Promise<void> {
+    if (!this.flujoDelFormulario() || answer.ID == null) return;
+
+    try {
+      const huella = await this.parientes.huellaDeHijos(answer, survey);
+      if (huella === String(answer.HijosVistos ?? '')) return;
+      if (this.engine() !== engine) return;
+
+      engine.correrHijo();
+      await this.answers.update(answer.ID, { HijosVistos: huella });
+    } catch (error) {
+      console.warn('[flujo] no se pudo mirar a los hijos al abrir', error);
+    }
   }
 
   private async apuntarNoEntrarSegunElFlujo(): Promise<void> {
@@ -3482,6 +3549,14 @@ export class FormRunnerComponent {
        * a «diligenciar» y cada guardado creaba otra hija.
        */
       if (engineAlGuardar) await this.aplicarEncargosDeHijos(engineAlGuardar, answer);
+
+      // Y si esta actividad es hija de otra, el padre se entera ya: sus
+      // reglas de «cuando cambia un hijo» corren sin que nadie lo abra.
+      if (String(answer.ParentGUID ?? '').trim()) {
+        this.parientes.avisarAlPadre(answer).catch((error) =>
+          console.warn('[flujo] no se pudo avisar al padre', error),
+        );
+      }
 
       void this.dispatch(answer.GUID);
 

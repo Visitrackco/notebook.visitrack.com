@@ -44,6 +44,10 @@ import {
   ESTADO_DE_LA_ACTIVIDAD,
   PREFIJO_FORMULARIO,
   PREFIJO_HIJO,
+  PREFIJO_HIJOS,
+  TIPOS_VINCULADOS,
+  EstadoDelTimer,
+  TimerDeFlujo,
   HerenciaDeActividad,
   TablaHeredada,
   Grafica,
@@ -234,6 +238,90 @@ export function referenciaHijo(apiId: string): { vinculado: string; resto: strin
   if (corte <= 0) return cuerpo ? { vinculado: cuerpo, resto: '' } : null;
 
   return { vinculado: cuerpo.slice(0, corte), resto: cuerpo.slice(corte) };
+}
+
+/** ¿Este campo apunta a una actividad hija? */
+export function esCampoVinculado(campo: Campo | undefined): boolean {
+  return !!campo && TIPOS_VINCULADOS.includes(String(campo.fty ?? '').toLowerCase());
+}
+
+/** Una pregunta sobre todos los hijos, ya desarmada. Ver `PREFIJO_HIJOS`. */
+export interface ReferenciaHijos {
+  /** Solo los hijos de este formulario; vacío, todos. */
+  fid: string;
+  /** `total`, `existen`, `guardados`, `faltan`, `estado`, `todos`. */
+  pregunta: string;
+  /** El estado por el que se pregunta, en `estado` y `todos`. */
+  estado: string;
+}
+
+/**
+ * Desarma `HIJOS@existen`, `HIJOS@estado:5`, `HIJOS:<fid>@todos:5`.
+ * `null` si no es una pregunta sobre los hijos.
+ */
+export function referenciaHijos(apiId: string): ReferenciaHijos | null {
+  if (apiId !== PREFIJO_HIJOS && !apiId.startsWith(PREFIJO_HIJOS + '@') && !apiId.startsWith(PREFIJO_HIJOS + ':')) {
+    return null;
+  }
+
+  const cuerpo = apiId.slice(PREFIJO_HIJOS.length);
+  const arroba = cuerpo.indexOf('@');
+
+  const fid = (arroba >= 0 ? cuerpo.slice(0, arroba) : cuerpo).replace(/^:/, '').trim();
+  const resto = arroba >= 0 ? cuerpo.slice(arroba + 1) : '';
+  const puntos = resto.indexOf(':');
+
+  const pregunta = (puntos >= 0 ? resto.slice(0, puntos) : resto).trim().toLowerCase() || 'existen';
+  const estado = puntos >= 0 ? resto.slice(puntos + 1).trim() : '';
+
+  return { fid, pregunta, estado };
+}
+
+/**
+ * Lo que vale una pregunta sobre los hijos, contando lo que quien llama dejó
+ * en `valores` para cada vinculado (`HIJO:<v>@existe`, `@guardado`, `:estado`).
+ */
+export function valorDeHijos(
+  ref: ReferenciaHijos,
+  valores: Record<ApiId, unknown>,
+  campos: Record<ApiId, Campo>,
+): unknown {
+  const vinculados = Object.values(campos).filter(
+    (c) => esCampoVinculado(c) && !c.esPagina && (!ref.fid || String(c.fid ?? '').trim() === ref.fid),
+  );
+
+  const esSi = (v: unknown): boolean => {
+    const t = String(v ?? '').trim().toLowerCase();
+    return t === 'sí' || t === 'si' || t === 'true' || t === '1';
+  };
+
+  const hijos = vinculados.map((c) => {
+    const llave = `${PREFIJO_HIJO}${c.apiId}`;
+    return {
+      existe: esSi(valores[`${llave}@existe`]),
+      guardado: esSi(valores[`${llave}@guardado`]),
+      estado: String(valores[`${llave}:estado`] ?? '').trim(),
+    };
+  });
+
+  const existen = hijos.filter((h) => h.existe);
+
+  switch (ref.pregunta) {
+    case 'total':
+      return vinculados.length;
+    case 'existen':
+      return existen.length;
+    case 'guardados':
+      return hijos.filter((h) => h.guardado).length;
+    case 'faltan':
+      return vinculados.length - existen.length;
+    case 'estado':
+      return existen.filter((h) => h.estado === ref.estado).length;
+    case 'todos':
+      return existen.length > 0 && existen.every((h) => h.estado === ref.estado) ? 'Sí' : 'No';
+    default:
+      return undefined;
+  }
 }
 
 export function referenciaDetalle(apiId: string): ReferenciaDetalle | null {
@@ -557,6 +645,11 @@ export function leerValor(
     return datoDeLaRuta(datos, apiId.slice(PREFIJO_RESPUESTA.length));
   }
 
+  // Y lo que se pregunta de todos los hijos a la vez: cuántos hay, cuántos
+  // están en un estado. Se cuenta sobre lo que quien llama dejó por hijo.
+  const hijos = referenciaHijos(apiId);
+  if (hijos) return valorDeHijos(hijos, valores, campos);
+
   const ref = referenciaDetalle(apiId);
 
   if (!ref) {
@@ -680,6 +773,11 @@ export function evaluar(flujo: Flujo, contexto: Contexto): Resultado {
   cambiosDelContexto = contexto.cambios ?? {};
   permitidasDelContexto = {};
 
+  // El timer con el que se entra y el que las acciones dejan. Ver `cerrarTimer`.
+  timerDelContexto = contexto.timer ? { ...contexto.timer, hechos: [...(contexto.timer.hechos ?? [])] } : null;
+  timerDeLaPasada = timerDelContexto;
+  timerTocado = false;
+
   const ambito = contexto.ambito ?? 'actividad';
   const tablaDeFila = contexto.tabla ?? '';
   const origen = contexto.origen ?? {};
@@ -692,6 +790,7 @@ export function evaluar(flujo: Flujo, contexto: Contexto): Resultado {
     if (!enFila) {
       aplicarLimitesDeCambios(flujo, r, contexto.campos);
       aplicarComportamientos(flujo, r, contexto.campos);
+      cerrarTimer(flujo, r);
     }
     return r;
   };
@@ -760,12 +859,35 @@ export function evaluar(flujo: Flujo, contexto: Contexto): Resultado {
   const disparo = String(contexto.campoQueCambio ?? '');
   const porUnaIntegracion = disparo.startsWith(PREFIJO_INTEGRACION);
 
-  const reglas = vivas.filter(
-    (r) =>
-      !r.general
-      && (r.cuando?.includes(contexto.momento)
-        || (porUnaIntegracion && camposDeLaRegla(r).includes(disparo))),
-  );
+  /*
+   * Las reglas de hito van solo en el momento `timer`, y solo las del timer
+   * activo que ya llegaron a su minuto.
+   *
+   * Se filtran con el timer **con el que se entró**, no con el que dejen las
+   * acciones: una regla de hito que arranca otro timer no hace que los hitos
+   * del nuevo corran en esta misma pasada; quien llama guarda el estado y
+   * vuelve a evaluar `timer`, que es lo que hace que el siguiente empiece de
+   * cero, como cualquier otro.
+   */
+  const minutosDelTimer = enFila ? null : minutosTranscurridos(timerDelContexto);
+
+  const esDeHito = (r: Regla): boolean => !!String(r.timer?.de ?? '').trim();
+
+  const hitoAlcanzado = (r: Regla): boolean => {
+    if (!timerDelContexto || minutosDelTimer === null) return false;
+    if (String(r.timer?.de ?? '').trim() !== timerDelContexto.id) return false;
+    return llegoAlHito(r.timer!.en, minutosDelTimer, duracionDelTimer(flujo, timerDelContexto.id));
+  };
+
+  const reglas = vivas.filter((r) => {
+    if (r.general) return false;
+    if (esDeHito(r)) return contexto.momento === 'timer' && hitoAlcanzado(r);
+
+    return (
+      r.cuando?.includes(contexto.momento)
+      || (porUnaIntegracion && camposDeLaRegla(r).includes(disparo))
+    );
+  });
 
   /*
    * Cada campo dispara **sus** reglas, no todas.
@@ -790,6 +912,12 @@ export function evaluar(flujo: Flujo, contexto: Contexto): Resultado {
   const disparadores = new Set<string>(
     contexto.campoQueCambio ? [contexto.campoQueCambio] : [],
   );
+
+  // Un vinculado que cambia despierta también a las reglas que preguntan por
+  // **todos** los hijos (`HIJOS@…`), que no nombran a ninguno en concreto.
+  if (contexto.campoQueCambio && esCampoVinculado(contexto.campos[contexto.campoQueCambio])) {
+    disparadores.add(PREFIJO_HIJOS);
+  }
 
   const puedeAvisar = sePuedeAvisar(contexto.momento, contexto.campoQueCambio, contexto.campos);
 
@@ -961,6 +1089,20 @@ export function evaluar(flujo: Flujo, contexto: Contexto): Resultado {
       });
 
       if (cumple) resultado.disparadas.push(regla.id);
+
+      /*
+       * Un hito que ya se hizo solo **repone** lo que deja un estado.
+       *
+       * Al reabrir la actividad, o en cada tick, los hitos ya pasados se
+       * vuelven a evaluar para que lo que dejaron —un campo oculto, la
+       * edición bloqueada— siga puesto. Pero lo que se hace una vez —avisar,
+       * escribir un valor, cambiar el estado, mandar un correo— ya se hizo
+       * cuando el hito llegó, y repetirlo en cada apertura sería un timer
+       * que manda el mismo correo veinte veces.
+       */
+      if (esDeHito(regla) && timerDelContexto?.hechos?.includes(claveDelHito(regla.timer!.en))) {
+        acciones = acciones.filter((a) => !ACCIONES_DE_UNA_VEZ.has(a.accion));
+      }
 
       for (const accion of acciones) {
         /*
@@ -1506,6 +1648,145 @@ let cambiosDelContexto: Record<ApiId, number> = {};
  * de fondo lo que una regla acaba de abrir.
  */
 let permitidasDelContexto: Record<ApiId, string[] | '*'> = {};
+
+/** El timer con el que entró la evaluación, y el que van dejando las acciones. */
+let timerDelContexto: EstadoDelTimer | null = null;
+let timerDeLaPasada: EstadoDelTimer | null = null;
+let timerTocado = false;
+
+/**
+ * Lo que un hito hace **una sola vez**, cuando llega.
+ *
+ * Todo lo demás deja un estado —oculto, obligatorio, bloqueado, un color—
+ * y se repone cada vez que el hito se vuelve a evaluar. Esto no: es lo que se
+ * notaría repetido.
+ */
+const ACCIONES_DE_UNA_VEZ = new Set([
+  'avisar',
+  'animar',
+  'poner-valor',
+  'limpiar',
+  'copiar-de',
+  'heredar',
+  'calcular',
+  'puntuar',
+  'puntuar-tabla',
+  'llenar-tabla',
+  'ir-a-pagina',
+  'despachar',
+  'crear-actividad',
+  'cambiar-estado',
+  'enviar-correo',
+  'enviar-push',
+  'llamar-servicio',
+  'guardar-actividad',
+  'escribir-en-hijo',
+  'cambiar-estado-hijo',
+  'crear-hijo',
+  'eliminar-hijo',
+  'heredar-al-hijo',
+  'iniciar-timer',
+  'detener-timer',
+]);
+
+/** La llave con la que un hito se apunta en `hechos`: `'30'`, `'fin'`. */
+export function claveDelHito(en: number | string): string {
+  const t = String(en ?? '').trim().toLowerCase();
+  if (t === 'fin') return 'fin';
+  const n = Math.max(0, Math.floor(Number(t) || 0));
+  return String(n);
+}
+
+/** Cuántos minutos dura un timer del flujo; cero si no está definido. */
+export function duracionDelTimer(flujo: Flujo, id: string): number {
+  const t = (flujo?.timers ?? []).find((x) => String(x?.id ?? '') === id);
+  return Math.max(0, Math.floor(Number(t?.duracion) || 0));
+}
+
+/**
+ * Cuántos minutos lleva corriendo el timer, con el reloj del contexto.
+ * `null` si no hay timer o si alguna de las dos horas no se lee.
+ */
+export function minutosTranscurridos(timer: EstadoDelTimer | null | undefined): number | null {
+  if (!timer) return null;
+
+  const inicio = aMomento(String(timer.inicio ?? ''));
+  const ahora = aMomento(ahoraDelContexto);
+  if (inicio === null || ahora === null) return null;
+
+  return Math.max(0, Math.floor((ahora - inicio) / 60000));
+}
+
+/** ¿Ya se llegó a este hito? `fin` es la duración del timer. */
+export function llegoAlHito(en: number | string, minutos: number, duracion: number): boolean {
+  const clave = claveDelHito(en);
+  if (clave === 'fin') return duracion > 0 && minutos >= duracion;
+  return minutos >= Number(clave);
+}
+
+/**
+ * Cierra el timer al final de la evaluación: qué hitos se cumplieron y cuánto
+ * falta para el siguiente.
+ *
+ * Los hitos se apuntan como hechos **por haber llegado**, cumpla o no la
+ * condición de su regla: el minuto pasó, y volver a evaluarla al reabrir
+ * no debe repetir lo que se hace una vez. `timer` solo sale en el resultado
+ * cuando algo cambió —lo arrancaron, lo pararon, llegó a un hito— para que
+ * quien llama sepa cuándo hay que guardar.
+ */
+function cerrarTimer(flujo: Flujo, resultado: Resultado): void {
+  let estado = timerDeLaPasada;
+  let cambio = timerTocado;
+
+  // Los hitos alcanzados se apuntan solo sobre el timer con el que se entró:
+  // uno recién arrancado empieza de cero y sus hitos llegan en los ticks.
+  if (estado && timerDelContexto && estado.id === timerDelContexto.id && estado.inicio === timerDelContexto.inicio) {
+    const minutos = minutosTranscurridos(estado);
+    const duracion = duracionDelTimer(flujo, estado.id);
+
+    if (minutos !== null) {
+      const hechos = [...(estado.hechos ?? [])];
+
+      for (const regla of flujo?.reglas ?? []) {
+        if (regla.activa === false || String(regla.timer?.de ?? '') !== estado.id) continue;
+        const clave = claveDelHito(regla.timer!.en);
+        if (!hechos.includes(clave) && llegoAlHito(clave, minutos, duracion)) hechos.push(clave);
+      }
+
+      if (duracion > 0 && minutos >= duracion && !hechos.includes('fin')) hechos.push('fin');
+
+      const terminado = duracion > 0 && minutos >= duracion;
+
+      if (hechos.length !== (estado.hechos ?? []).length || !!estado.terminado !== terminado) {
+        estado = { ...estado, hechos, terminado };
+        cambio = true;
+      }
+    }
+  }
+
+  if (cambio) resultado.timer = estado;
+
+  // Cuánto falta para lo siguiente, para programar el tick.
+  if (estado && !estado.terminado) {
+    const minutos = minutosTranscurridos(estado);
+    const duracion = duracionDelTimer(flujo, estado.id);
+
+    if (minutos !== null) {
+      const hechos = estado.hechos ?? [];
+      let falta: number | null = duracion > 0 ? duracion - minutos : null;
+
+      for (const regla of flujo?.reglas ?? []) {
+        if (regla.activa === false || String(regla.timer?.de ?? '') !== estado.id) continue;
+        const clave = claveDelHito(regla.timer!.en);
+        if (clave === 'fin' || hechos.includes(clave)) continue;
+        const resta = Number(clave) - minutos;
+        if (falta === null || resta < falta) falta = resta;
+      }
+
+      if (falta !== null) resultado.siguienteHito = Math.max(0, falta);
+    }
+  }
+}
 
 /** `@hoy`, `@ahora` u `@hora`, con días o minutos de más o de menos. */
 const TOKEN_DEL_APARATO = /^@(hoy|ahora|hora)\s*(?:([+-])\s*(\d+))?$/i;
@@ -4407,6 +4688,35 @@ function aplicar(
     return;
   }
 
+  /*
+   * Arrancar o parar el timer de la actividad.
+   *
+   * Solo se anota en el estado de la pasada; `cerrarTimer` decide al final
+   * qué se devuelve. Arrancar el que ya corre no lo reinicia —una regla «al
+   * cambiar» lo pediría en cada tecla—; arrancar otro para al que estaba,
+   * porque solo hay uno activo por actividad. Uno que ya terminó sí se
+   * vuelve a arrancar: terminado no es corriendo.
+   */
+  if (accion.accion === 'iniciar-timer') {
+    const id = String(accion.valor ?? '').trim();
+    if (!id) return;
+
+    const activo = timerDeLaPasada;
+    if (activo && activo.id === id && !activo.terminado) return;
+
+    timerDeLaPasada = { id, inicio: ahora, hechos: [] };
+    timerTocado = true;
+    return;
+  }
+
+  if (accion.accion === 'detener-timer') {
+    if (timerDeLaPasada) {
+      timerDeLaPasada = null;
+      timerTocado = true;
+    }
+    return;
+  }
+
   // Las que no son de un campo concreto.
   if (accion.accion === 'bloquear-guardado') {
     const motivo = String(accion.valor ?? 'Falta algo por resolver');
@@ -5239,6 +5549,11 @@ export function camposDeLaRegla(regla: Regla): string[] {
         // guardar el hijo cambia ese campo, y es lo que tiene que despertarla.
         const hijo = referenciaHijo(apiId);
         if (hijo) usados.add(hijo.vinculado);
+
+        // Y una pregunta por todos los hijos se despierta con cualquier
+        // vinculado: `evaluar` mete `HIJOS` entre los disparadores cuando el
+        // campo que cambió es uno de ellos.
+        if (referenciaHijos(apiId)) usados.add(PREFIJO_HIJOS);
       };
 
       anotar(c.campo);

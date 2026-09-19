@@ -874,7 +874,7 @@ function isPendingLocal(record: Record<string, unknown>): boolean {
  * no lo trae. Lo que sí trae el servidor manda.
  */
 function conservarLoLocal(record: Record<string, unknown>, existing: Record<string, unknown>): void {
-  for (const clave of ['FlujoCrear', 'NoEliminar', 'NoEntrar']) {
+  for (const clave of ['FlujoCrear', 'NoEliminar', 'NoEntrar', 'Timer', 'HijosVistos']) {
     if (record[clave] === undefined && existing[clave] !== undefined) record[clave] = existing[clave];
   }
 

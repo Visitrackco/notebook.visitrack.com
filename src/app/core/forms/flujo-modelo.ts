@@ -39,6 +39,9 @@ export interface Flujo {
    */
   limitesDeCambios?: Record<ApiId, number>;
 
+  /** Los timers que una regla puede arrancar. Ver [TimerDeFlujo]. */
+  timers?: TimerDeFlujo[];
+
   /**
    * Cómo se comporta cada campo **durante toda la vida de la actividad**.
    *
@@ -104,11 +107,76 @@ export interface Punto {
  * - `abrir` — cada vez que se abre.
  * - `cambia` — cada vez que se responde un campo.
  * - `guardar` — al pulsar guardar, antes de guardar.
+ * - `hijo` — cuando **cambia un hijo**: se crea, se guarda, cambia de estado
+ *   o se elimina una actividad que cuelga de un campo vinculado de esta. Es
+ *   el momento con el que el padre reacciona a sus hijos —«si los tres
+ *   están aprobados, cierra»—. Quien llama lo dispara al volver del hijo, al
+ *   guardar un hijo desde el mismo aparato y al abrir el padre si sus hijos
+ *   cambiaron desde la última vez que los vio (llegaron por sincronización).
+ * - `timer` — cuando el timer activo de la actividad **llega a un hito**, o
+ *   al abrir la actividad para reponer lo que los hitos ya pasados dejaron.
+ *   Solo corren las reglas de hitos (`Regla.timer`); ver [TimerDeFlujo].
  *
  * Quien llama decide cuándo es la primera vez (lo apunta en la actividad); el
  * motor solo filtra las reglas por el momento que le dicen.
  */
-export type Momento = 'crear' | 'abrir' | 'cambia' | 'guardar';
+export type Momento = 'crear' | 'abrir' | 'cambia' | 'guardar' | 'hijo' | 'timer';
+
+/**
+ * Un timer del formulario: una cuenta de minutos que una regla arranca sobre
+ * una actividad, y que dispara reglas al llegar a cada hito.
+ *
+ * Se define aquí, en el flujo, y se arranca con la acción `iniciar-timer`
+ * desde cualquier regla («al guardar, si es urgente, inicia el timer de
+ * atención»). Lo que pasa a cada minuto se escribe como **reglas de hito**:
+ * reglas con `timer: {de, en}` que el motor evalúa cuando el timer activo es
+ * `de` y ya pasaron `en` minutos desde que arrancó (`en: 'fin'` es al
+ * terminar). Sus acciones son las de siempre: avisar, bloquear, cambiar el
+ * estado, escribir un campo, enviar un correo.
+ *
+ * Una actividad lleva **un solo timer activo** a la vez: arrancar otro para
+ * al que estaba. Arrancar el que ya corre no lo reinicia. El estado —cuál
+ * corre, desde cuándo y qué hitos ya se cumplieron— viaja con la actividad
+ * en `Contexto.timer` y el motor lo devuelve en `Resultado.timer` cuando
+ * cambia; quien llama lo guarda y programa el siguiente tick.
+ */
+export interface TimerDeFlujo {
+  id: string;
+  nombre: string;
+  /** Cuántos minutos dura. Al llegar, se cumple el hito `fin`. */
+  duracion: number;
+  /** Lo que se quiera decir de él: para quien diseña, no para el motor. */
+  descripcion?: string;
+}
+
+/** En qué hito de qué timer corre una regla. Ver [TimerDeFlujo]. */
+export interface HitoDeTimer {
+  /** El `id` del timer. */
+  de: string;
+  /** A los cuántos minutos, o `fin` al terminar. */
+  en: number | 'fin';
+}
+
+/**
+ * Cómo va el timer de una actividad.
+ *
+ * Lo guarda quien llama con la actividad y se lo pasa al motor en cada
+ * evaluación; el motor lo devuelve en `Resultado.timer` cuando cambia.
+ */
+export interface EstadoDelTimer {
+  /** El timer que corre (o que ya terminó). */
+  id: string;
+  /** Cuándo arrancó, `aaaa-mm-dd hh:mm` en el reloj del aparato. */
+  inicio: string;
+  /**
+   * Los hitos que ya se cumplieron: `'30'`, `'60'`, `'fin'`. Un hito que ya
+   * está aquí no vuelve a hacer lo que se hace una vez —avisar, escribir,
+   * enviar— pero sí repone lo que deja un estado —ocultar, bloquear—.
+   */
+  hechos: string[];
+  /** Llegó al final: ya no hay más hitos que esperar. */
+  terminado?: boolean;
+}
 
 export interface Regla {
   id: string;
@@ -176,6 +244,16 @@ export interface Regla {
    * forma de escribir una vez lo que se quiere en cualquier tabla.
    */
   md?: ApiId;
+
+  /**
+   * Una regla **de hito**: corre cuando el timer `de` lleva `en` minutos.
+   *
+   * Solo se evalúa en el momento `timer`, y solo si ese timer es el activo
+   * de la actividad y ya llegó al hito. Su `si` es una condición más —casi
+   * siempre vacía—: «a los 30 minutos, si aún no hay foto, avisa». Ver
+   * [TimerDeFlujo].
+   */
+  timer?: HitoDeTimer;
 }
 
 /**
@@ -2317,7 +2395,16 @@ export type TipoAccion =
    * la actividad hija todavía no existe, se cree en ese momento —igual que
    * `crear-hijo`— y reciba los campos. Sin eso, sin hijo no hace nada.
    */
-  | 'heredar-al-hijo';
+  | 'heredar-al-hijo'
+  /**
+   * Arrancar un timer del formulario sobre esta actividad. `valor` es el
+   * `id` del timer. Si ese mismo timer ya corre no lo reinicia; si corre
+   * otro, lo para y arranca este: solo hay un timer activo por actividad.
+   * Ver [TimerDeFlujo].
+   */
+  | 'iniciar-timer'
+  /** Parar el timer activo, sin que llegue a su fin. */
+  | 'detener-timer';
 
 export interface Accion {
   accion: TipoAccion;
@@ -2847,6 +2934,22 @@ export interface Resultado {
   entradaPermitida: boolean;
 
   /**
+   * Cómo queda el timer de la actividad, **solo si cambió** en esta pasada:
+   * una regla lo arrancó o lo paró, o llegó a un hito nuevo. `null` es que
+   * se paró; ausente, que sigue como estaba. Quien llama lo guarda con la
+   * actividad y se lo devuelve en `Contexto.timer`.
+   */
+  timer?: EstadoDelTimer | null;
+
+  /**
+   * Cuántos minutos faltan para el siguiente hito del timer activo (o para
+   * su fin). Solo cuando hay un timer corriendo y le queda algo por llegar:
+   * es lo que quien llama usa para programar el siguiente tick o una
+   * notificación. Cero cuando ya se pasó y falta evaluar el momento `timer`.
+   */
+  siguienteHito?: number;
+
+  /**
    * Lo que el flujo quiere que describa a la actividad —o a la fila.
    *
    * Se anotan y no se escriben: el motor no sabe dónde vive el `JSONTitle` ni
@@ -2919,6 +3022,15 @@ export interface Campo {
   id?: string;
 
   fty: string;
+
+  /**
+   * A qué formulario apunta, cuando es un campo vinculado.
+   *
+   * Es lo que permite contar hijos **de un formulario concreto** —`HIJOS:<fid>@…`—
+   * en un padre que tiene vinculados a formularios distintos. Vacío en todo
+   * lo que no sea un vinculado.
+   */
+  fid?: string;
 
   /**
    * La direccion que pinta un campo de tipo `image`.
@@ -3000,6 +3112,15 @@ export interface Contexto {
    * escribe el flujo— y solo lo mira `limitar-cambios`.
    */
   cambios?: Record<ApiId, number>;
+
+  /**
+   * El timer de la actividad, si alguna regla arrancó uno. Ver [TimerDeFlujo].
+   *
+   * Lo lleva quien llama con la actividad. Con él y con [ahora] el motor
+   * sabe qué hitos ya pasaron, cuáles ya se hicieron y cuánto falta para el
+   * siguiente.
+   */
+  timer?: EstadoDelTimer | null;
 
   /**
    * Con qué se arma la dirección de un archivo, para poder meterla en un correo.
@@ -3137,3 +3258,27 @@ export const ESTADO_DEL_PADRE = 'PADRE:estado';
  * ver `referenciaHijo` y `camposDeLaRegla`.
  */
 export const PREFIJO_HIJO = 'HIJO:';
+
+/**
+ * Con qué nombre pregunta el padre por **todos sus hijos a la vez**.
+ *
+ * Un padre con varios vinculados —tres inspecciones, una firma— necesita
+ * contar: «si los tres están aprobados», «si ya hay dos guardados». Son
+ * identificadores como los agregados de una tabla, y se resuelven sobre lo
+ * que quien llama dejó en `valores` con `HIJO:<vinculado>…` para cada uno:
+ *
+ * - `HIJOS@total` — cuántos campos vinculados tiene el formulario;
+ * - `HIJOS@existen` — cuántos hijos hay creados;
+ * - `HIJOS@guardados` — cuántos se guardaron al menos una vez;
+ * - `HIJOS@faltan` — vinculados sin hijo todavía;
+ * - `HIJOS@estado:<id>` — cuántos hijos están en ese estado;
+ * - `HIJOS@todos:<id>` — «Sí» si todos los hijos que existen están en ese
+ *   estado (y hay al menos uno), «No» si no.
+ *
+ * Con `HIJOS:<fid>@…` se cuentan solo los hijos de ese formulario —el `fid`
+ * del campo vinculado—, para un padre que tiene vinculados a varios.
+ */
+export const PREFIJO_HIJOS = 'HIJOS';
+
+/** Los tipos de campo que apuntan a una actividad hija. */
+export const TIPOS_VINCULADOS: readonly string[] = ['form', 'linkedform', 'webform'];
