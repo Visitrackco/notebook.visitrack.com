@@ -63,7 +63,10 @@ export class LinkedFormService {
     const survey = fid ? await this.surveys.getByIndex('byGUID', fid) : null;
 
     const guid = (value as { gui?: unknown })?.gui;
-    const answer = guid ? await this.answers.findByGuid(String(guid)) : null;
+    const encontrada = guid ? await this.answers.findByGuid(String(guid)) : null;
+
+    // Una hija marcada para borrar ya no está: el campo vuelve a «diligenciar».
+    const answer = encontrada && encontrada.IsDelete !== '1' ? encontrada : null;
 
     return { answer, survey };
   }
@@ -153,9 +156,16 @@ export class LinkedFormService {
       DeletingPolicy: 0,
       IsDelete: '0',
 
-      // Nace como borrador, igual que cualquier actividad recién abierta: si se
-      // sale sin responder nada, no queda un registro vacío por ahí.
-      eraser: 1,
+      /*
+       * No nace como borrador.
+       *
+       * Un borrador se descarta al salir sin responder, o vence por horas, y
+       * entonces el padre se queda apuntando a una hija que ya no existe: el
+       * campo volvía a decir «diligenciar» y creaba otra. La hija está
+       * amarrada al padre desde que se crea, igual que en la app, y se va
+       * cuando se va el padre o cuando el flujo la elimina.
+       */
+      eraser: 0,
       Msg: '',
     };
 
