@@ -760,3 +760,57 @@ vt-page-nav {
   color: var(--vt-warning, #b26a00);
   font-weight: 600;
 }
+
+/* El timer del flujo: la misma tira que los avisos, en el color de acento. */
+.runner__timer {
+  display: flex;
+  gap: var(--vt-space-3);
+  align-items: flex-start;
+  padding: var(--vt-space-3) var(--vt-space-4);
+  background: color-mix(in srgb, var(--vt-primary) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--vt-primary) 32%, transparent);
+  border-radius: var(--vt-radius);
+
+  strong {
+    display: block;
+    font-size: var(--vt-text-sm);
+    color: var(--vt-primary);
+  }
+
+  small {
+    display: block;
+    margin-top: 4px;
+    font-size: var(--vt-text-xs);
+    opacity: 0.85;
+  }
+}
+
+.runner__timer--fin {
+  background: color-mix(in srgb, var(--vt-danger) 8%, transparent);
+  border-color: color-mix(in srgb, var(--vt-danger) 32%, transparent);
+
+  strong {
+    color: var(--vt-danger);
+  }
+}
+
+.runner__timer-cuerpo {
+  flex: 1;
+  min-width: 0;
+}
+
+.runner__timer-barra {
+  display: block;
+  height: 5px;
+  margin-top: 6px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--vt-primary) 18%, transparent);
+  overflow: hidden;
+
+  i {
+    display: block;
+    height: 100%;
+    background: var(--vt-primary);
+    transition: width 0.4s ease;
+  }
+}

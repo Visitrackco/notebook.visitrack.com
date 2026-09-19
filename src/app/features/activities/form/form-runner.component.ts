@@ -562,6 +562,40 @@ export class FormRunnerComponent {
   /** Si no se puede editar, el formulario entero va en solo lectura. */
   readonly soloLectura = computed(() => this.edicionBloqueada().length > 0);
 
+  /** Sube cada medio minuto para que el indicador del timer avance. */
+  private readonly reloj = signal(Date.now());
+
+  /**
+   * El timer que corre sobre la actividad, para enseñarlo.
+   *
+   * Sin esto no hay forma de saber que un timer arrancó ni cuánto le falta:
+   * lo único visible sería lo que hagan sus hitos, y eso llega cuando llega.
+   * «Cuánto falta» lo dice el motor en cada tick (`siguienteHito`).
+   */
+  readonly timerDelFlujo = computed(() => {
+    this.reloj();
+    const engine = this.engine();
+    const timer = engine?.timer();
+    const flujo = this.flujoDelFormulario();
+    if (!engine || !timer) return null;
+
+    const definido = (flujo?.timers ?? []).find((t) => t.id === timer.id);
+    const duracion = Math.max(0, Math.floor(Number(definido?.duracion) || 0));
+    const inicio = Date.parse(String(timer.inicio ?? '').replace(' ', 'T'));
+    const minutos = Number.isFinite(inicio) ? Math.max(0, Math.floor((Date.now() - inicio) / 60000)) : 0;
+    const falta = engine.siguienteHito();
+
+    return {
+      nombre: definido?.nombre || timer.id,
+      minutos: duracion ? Math.min(minutos, duracion) : minutos,
+      duracion,
+      terminado: !!timer.terminado,
+      hechos: (timer.hechos ?? []).length,
+      siguiente: timer.terminado || falta === null ? null : Math.max(0, falta),
+      porcentaje: duracion ? Math.min(100, Math.round((minutos / duracion) * 100)) : 0,
+    };
+  });
+
   /** El aviso de obligatorios está abierto. */
   readonly askingRequired = signal(false);
 
@@ -644,6 +678,7 @@ export class FormRunnerComponent {
       const engine = this.engine();
       const timer = engine?.timer();
       if (engine && timer && !timer.terminado) engine.correrTimer();
+      this.reloj.set(Date.now());
     }, 30_000);
 
     inject(DestroyRef).onDestroy(() => clearInterval(tick));
@@ -2567,6 +2602,22 @@ export class FormRunnerComponent {
     }
   }
 
+  /** Escribe en la actividad el timer tal como lo tiene el motor ahora. */
+  private async apuntarTimerDelFlujo(engine: FormEngine): Promise<void> {
+    const answer = this.answer();
+    if (answer.ID == null) return;
+
+    const timer = engine.timer();
+    const texto = timer ? JSON.stringify(timer) : '';
+    if (texto === String(answer.Timer ?? '')) return;
+
+    try {
+      await this.answers.update(answer.ID, { Timer: texto });
+    } catch (error) {
+      console.error('[flujo] no se pudo guardar el timer', error);
+    }
+  }
+
   private async apuntarNoEntrarSegunElFlujo(): Promise<void> {
     const engine = this.engine();
     const answer = this.answer();
@@ -3422,6 +3473,14 @@ export class FormRunnerComponent {
        * entonces ya no hay quien enseñe nada.
        */
       this.decirLosAvisosNuevos(engineAlGuardar.avisosDelFlujo());
+
+      /*
+       * Y el timer que «al guardar» haya arrancado o parado, escrito aquí
+       * mismo por lo mismo que los avisos: el `effect` que lo guarda puede
+       * no llegar a correr antes de que `commit` salga de la pantalla, y un
+       * timer arrancado al guardar se perdía sin dejar rastro.
+       */
+      await this.apuntarTimerDelFlujo(engineAlGuardar);
 
       if (bloqueos.length) {
         this.avisarQueNoSePuedeGuardar(bloqueos);

@@ -145,6 +145,42 @@
       </aside>
     }
 
+    <!-- El timer del flujo, a la vista: cuál corre, cuánto lleva y cuánto
+         falta para el siguiente hito. Sin esto un timer es invisible hasta
+         que un hito hace algo. -->
+    @if (timerDelFlujo(); as t) {
+      <aside class="runner__timer" [class.runner__timer--fin]="t.terminado">
+        <span class="runner__blocking-icon">
+          <vt-icon name="timer" [size]="19" />
+        </span>
+        <div class="runner__timer-cuerpo">
+          <strong>
+            Timer «{{ t.nombre }}»
+            @if (t.terminado) {
+              · terminado
+            } @else if (t.duracion) {
+              · {{ t.minutos }} de {{ t.duracion }} min
+            } @else {
+              · {{ t.minutos }} min
+            }
+          </strong>
+          @if (t.duracion) {
+            <span class="runner__timer-barra"><i [style.width.%]="t.porcentaje"></i></span>
+          }
+          <small>
+            @if (t.terminado) {
+              Llegó al final: sus hitos ya corrieron.
+            } @else if (t.siguiente !== null) {
+              Siguiente hito {{ t.siguiente <= 0 ? 'ahora' : 'en ' + t.siguiente + ' min' }}
+              @if (t.hechos) { · {{ t.hechos }} {{ t.hechos === 1 ? 'hito cumplido' : 'hitos cumplidos' }} }
+            } @else {
+              Sin hitos por llegar.
+            }
+          </small>
+        </div>
+      </aside>
+    }
+
     <!-- Recordatorio de lo que quedó pendiente tras «Revisar campos». Se
          mantiene a la vista mientras se corrigen, para no tener que volver a
          intentar guardar solo para saber qué falta. -->

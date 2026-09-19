@@ -120,6 +120,11 @@ import { Component, input } from '@angular/core';
           <path d="M4.5 6v12c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3V6" />
           <path d="M4.5 12c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3" />
         }
+        @case ('timer') {
+          <circle cx="12" cy="13" r="8" />
+          <path d="M12 9v4l2.5 2" />
+          <path d="M10 2.5h4" />
+        }
         @case ('lock') {
           <rect x="5" y="11" width="14" height="10" rx="2" />
           <path d="M8 11V7a4 4 0 0 1 8 0v4" />
