@@ -1130,6 +1130,11 @@ export class FormEngine {
    * Crear, eliminar, heredar y cambiar el estado se hacen con la actividad ya
    * entera, así que solo cuentan los de ese momento y los ejecuta quien guarda.
    */
+  /** Los encargos que dejó la pasada de ese momento, **en el orden en que se escribieron las acciones**. */
+  encargosDe(momento: Momento): readonly Encargo[] {
+    return this.encargosPorMomento()[momento] ?? [];
+  }
+
   encargosDeHijosAlGuardar(momento: Momento = 'guardar'): readonly Encargo[] {
     const deHijos = new Set(['crear-hijo', 'eliminar-hijo', 'heredar-al-hijo', 'cambiar-estado-hijo', 'escribir-en-hijo']);
     return (this.encargosPorMomento()[momento] ?? []).filter((e) => deHijos.has(e.que));

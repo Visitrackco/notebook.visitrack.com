@@ -2802,7 +2802,17 @@ export interface Encargo {
     /** Al guardar el padre: crear, eliminar o heredar al hijo. `valor` es un [EncargoDeHijo]. */
     | 'crear-hijo'
     | 'eliminar-hijo'
-    | 'heredar-al-hijo';
+    | 'heredar-al-hijo'
+    /**
+     * Guardar la actividad ahora mismo.
+     *
+     * Va también como encargo —y no solo como la bandera `guardarAhora`— por
+     * el **orden**: quien ejecuta sin pantalla recorre los encargos tal como
+     * las acciones se escribieron, y así «cambiar el estado y guardar» guarda
+     * con el estado ya puesto, y «guardar y cambiar el estado» guarda primero.
+     * `valor` es nulo.
+     */
+    | 'guardar-actividad';
   valor: unknown;
   /** Qué regla lo pidió, para poder decirlo si algo sale mal. */
   regla: string;

@@ -101,15 +101,15 @@ export class FlujoSinPantallaService {
     if (momento === 'hijo') engine.correrHijo();
     else engine.correrTimer();
 
+    /*
+     * Primero lo que es **estado** de la actividad: los campos que una regla
+     * dejó, si se puede volver a entrar, el timer. Con eso escrito, lo que
+     * se guarde y se envíe después ya lo lleva.
+     */
     const cambios: Partial<SurveyAnswer> = { ...extra };
 
     const fields = JSON.stringify(engine.toAnswerFields());
     if (fields !== String(answer.Fields ?? '')) cambios.Fields = fields;
-
-    const estado = engine.estadoDelFlujo();
-    if (estado && estado !== String(answer.Status ?? '') && (await this.estados.findByDispatchId(Number(estado)))) {
-      cambios.Status = estado;
-    }
 
     const leyendas = engine.entradaBloqueada();
     if (leyendas.length) cambios.NoEntrar = leyendas.join(' · ');
@@ -124,14 +124,51 @@ export class FlujoSinPantallaService {
     await this.answers.update(answer.ID, cambios);
     this.timers().apuntar(answer.GUID, timer);
 
-    const actualizado = { ...answer, ...cambios };
+    /*
+     * Y los encargos **en el orden en que se escribieron las acciones**, uno
+     * detrás de otro y esperando a cada uno.
+     *
+     * Es lo que hace que «cambiar el estado y guardar» guarde con el estado
+     * ya puesto, y que «guardar y cambiar el estado» guarde primero. Lo que
+     * no es ni estado ni guardar —crear actividades, consignas, correos,
+     * avisos, hijos— corre junto, en el sitio del primero de ellos. Si el
+     * estado cambia **después** de haber guardado, se vuelve a enviar para
+     * que arriba quede el estado nuevo.
+     */
+    const actualizado: SurveyAnswer = { ...answer, ...cambios };
     const encargos = this.encargos();
-    await encargos.ejecutarTodo(engine, actualizado, survey, { momento });
+    let restoHecho = false;
+    let guardado = false;
+    let estadoTrasGuardar = false;
 
-    if (engine.guardarAhora()) {
-      engine.guardarAhora.set(false);
-      await encargos.guardarSinPantalla(engine, actualizado);
+    for (const encargo of engine.encargosDe(momento)) {
+      if (encargo.que === 'cambiar-estado') {
+        const estado = String(encargo.valor ?? '').trim();
+        if (!estado || estado === String(actualizado.Status ?? '')) continue;
+        if (!(await this.estados.findByDispatchId(Number(estado)))) continue;
+
+        await this.answers.update(answer.ID, { Status: estado, UpdatedOn: new Date().toISOString() });
+        actualizado.Status = estado;
+        cambios.Status = estado;
+        if (guardado) estadoTrasGuardar = true;
+        continue;
+      }
+
+      if (encargo.que === 'guardar-actividad') {
+        await encargos.guardarSinPantalla(engine, actualizado);
+        guardado = true;
+        estadoTrasGuardar = false;
+        continue;
+      }
+
+      if (!restoHecho) {
+        restoHecho = true;
+        await encargos.ejecutarTodo(engine, actualizado, survey, { momento });
+      }
     }
+
+    engine.guardarAhora.set(false);
+    if (guardado && estadoTrasGuardar) await encargos.enviar(actualizado.GUID);
 
     console.log(`[flujo] ${momento} sin pantalla sobre ${answer.GUID}:`, {
       cambios: Object.keys(cambios),

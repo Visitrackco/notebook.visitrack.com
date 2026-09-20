@@ -4844,6 +4844,9 @@ function aplicar(
 
   if (accion.accion === 'guardar-actividad') {
     resultado.guardarAhora = true;
+    // Y en su sitio entre los encargos, para que quien ejecuta sin pantalla
+    // respete el orden en que se escribieron las acciones.
+    resultado.encargos.push({ que: 'guardar-actividad', valor: null, regla });
     return;
   }
 
