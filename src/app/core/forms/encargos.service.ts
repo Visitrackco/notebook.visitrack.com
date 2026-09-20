@@ -107,6 +107,17 @@ export class EncargosDelFlujoService {
 
   /** La subida y lo que sale con ella. Ver `dispatch` en la pantalla. */
   async enviar(guid: string): Promise<void> {
+    /*
+     * Si la cola ya está subiendo otra cosa —lo normal: el hijo que acaba de
+     * guardarse todavía está subiendo cuando el padre reacciona— `run`
+     * vuelve sin hacer nada, y el padre se quedaba marcado como pendiente
+     * hasta la siguiente vuelta. Se espera a que la cola quede libre (hasta
+     * un minuto) y entonces se sube.
+     */
+    for (let espera = 0; this.pendingUploads.running() && espera < 120; espera++) {
+      await new Promise((r) => setTimeout(r, 500));
+    }
+
     try {
       await this.pendingUploads.run(guid);
     } catch (error) {
