@@ -14,6 +14,7 @@
  */
 import { Injectable, Injector, inject } from '@angular/core';
 
+import { ANSWER_STATE } from '../models/activity.model';
 import { SurveyAnswer } from '../models/entities.model';
 import { DispatchStatusRepository, SurveyRepository } from '../repositories/entity.repositories';
 import { SurveyAnswerRepository } from '../repositories/survey-answer.repository';
@@ -168,7 +169,22 @@ export class FlujoSinPantallaService {
     }
 
     engine.guardarAhora.set(false);
-    if (guardado && estadoTrasGuardar) await encargos.enviar(actualizado.GUID);
+
+    /*
+     * Un estado nuevo **sube**, aunque la regla no diga «guardar».
+     *
+     * Cambiar el estado sin subirlo dejaba el padre con un estado que solo
+     * existía en este navegador. Si la actividad ya se había guardado alguna
+     * vez, el cambio se envía como la actualización de siempre; una que aún
+     * no se ha guardado no se sube por un estado: eso lo decide quien la
+     * guarde.
+     */
+    const estadoCambio = String(actualizado.Status ?? '') !== String(answer.Status ?? '');
+    const yaGuardada = Number(answer.isSaved ?? 0) !== ANSWER_STATE.UNSAVED;
+
+    if (estadoCambio && yaGuardada && (!guardado || estadoTrasGuardar)) {
+      await encargos.guardarSinPantalla(engine, actualizado);
+    }
 
     console.log(`[flujo] ${momento} sin pantalla sobre ${answer.GUID}:`, {
       cambios: Object.keys(cambios),
