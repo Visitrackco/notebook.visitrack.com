@@ -4,6 +4,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { ENTITY_LABELS } from '../../../core/sync/entity-mappers';
 import { SyncService } from '../../../core/sync/sync.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { SurveyRepository } from '../../../core/repositories/entity.repositories';
 import { ConnectivityService } from '../../../core/services/connectivity.service';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
 
@@ -46,6 +47,7 @@ export class LoadingComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly connectivity = inject(ConnectivityService);
   private readonly auth = inject(AuthService);
+  private readonly surveys = inject(SurveyRepository);
 
   readonly sync = inject(SyncService);
 
@@ -86,21 +88,31 @@ export class LoadingComponent {
     }
 
     try {
-      /**
-       * Entrar vuelve a pedir **todo**.
-       *
-       * El servidor lleva por separado qué le corresponde al usuario y qué le
-       * falta a cada equipo, y lo segundo se desajusta con facilidad: una
-       * descarga que se cortó a la mitad deja filas marcadas como entregadas
-       * que nunca llegaron, y a partir de ahí ese equipo no las vuelve a pedir
-       * jamás. El síntoma es este — sincronizar y que no baje nada.
-       *
-       * Iniciar sesión es el momento adecuado para deshacer ese desajuste: es
-       * raro, hay una pantalla contándolo, y la descarga que viene detrás
-       * ignora lo que ya está por GUID, así que volver a pedirlo no duplica
-       * nada ni pisa lo que está pendiente de subir.
-       */
       const session = this.auth.currentUser();
+
+      /*
+       * Con datos ya en este navegador, se entra **de una**.
+       *
+       * Antes entrar volvía a pedir todo al servidor —`prepareDevice` con
+       * reset— y la pantalla retenía hasta que bajara: con miles de
+       * registros eran minutos mirando una barra para llegar a lo mismo que
+       * ya estaba aquí. Ahora, si el usuario ya tiene sus formularios en
+       * IndexedDB, se pasa al inicio y detrás baja solo lo que el servidor
+       * tiene pendiente para este equipo (`isSynced = 0`), que es lo que hace
+       * `download` por su cuenta. Volver a pedirlo todo sigue estando en
+       * Sincronización → «Sincronizar todo», para cuando de verdad haga falta.
+       *
+       * La primera vez en el navegador —sin nada guardado— sí se pide todo y
+       * se espera: sin datos no hay a dónde entrar.
+       */
+      if (session && (await this.tieneDatosLocales(session.UserID))) {
+        this.sync.download().catch((error) =>
+          console.warn('[Carga] la descarga de lo pendiente falló; se reintenta sola', error),
+        );
+
+        await this.enter();
+        return;
+      }
 
       if (session) {
         await this.sync.prepareDevice(session.UserID, session.DeviceID, true);
@@ -120,6 +132,16 @@ export class LoadingComponent {
     }
 
     await this.enter();
+  }
+
+  /** ¿Este navegador ya tiene los formularios del usuario? */
+  private async tieneDatosLocales(userId: string | number): Promise<boolean> {
+    try {
+      const formularios = await this.surveys.findByUser(Number(userId));
+      return formularios.length > 0;
+    } catch {
+      return false;
+    }
   }
 
   /** Sigue a donde el usuario iba. */
