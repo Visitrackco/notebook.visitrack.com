@@ -156,7 +156,7 @@ import { AvisoQueFlotaService } from './aviso-que-flota.service';
         place-items: center;
         width: 34px;
         height: 34px;
-        color: #fff;
+        color: var(--vt-on-brand, #fff);
         font-size: 0.9rem;
         font-weight: 700;
         background: var(--vt-brand);

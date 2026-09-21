@@ -56,7 +56,7 @@
 
 .chat__sin-vivo {
   font-size: 0.7rem;
-  color: #b26b00;
+  color: var(--vt-warning);
 }
 
 .chat__lista {
@@ -152,7 +152,7 @@
   height: 34px;
   font-size: 0.85rem;
   font-weight: 700;
-  color: #fff;
+  color: var(--vt-surface, #fff);
   background: var(--vt-text-muted);
   border-radius: 50%;
 }
@@ -210,8 +210,8 @@
   flex: none;
   padding: 0 0.4rem;
   font-size: 0.7rem;
-  color: #fff;
-  background: #c0392b;
+  color: var(--vt-on-brand, #fff);
+  background: var(--vt-brand);
   border-radius: 999px;
 }
 
@@ -269,16 +269,16 @@
 .chat__punto {
   width: 7px;
   height: 7px;
-  background: #b9bec7;
+  background: var(--vt-border-strong);
   border-radius: 50%;
 }
 
 .chat__uno[data-estado="activo"] .chat__punto {
-  background: #1e7e34;
+  background: var(--vt-success);
 }
 
 .chat__uno[data-estado="ausente"] .chat__punto {
-  background: #e08a00;
+  background: var(--vt-warning);
 }
 
 /* El lienzo: la caja que se desplaza y, encima, el botón de ir abajo. */
@@ -336,7 +336,7 @@
   font-size: 0.7rem;
   font-weight: 700;
   line-height: 20px;
-  color: #fff;
+  color: var(--vt-on-brand, #fff);
   text-align: center;
   background: var(--vt-brand);
   border-radius: 10px;
@@ -374,8 +374,8 @@
 }
 
 .chat__mensaje--mio .chat__burbuja {
-  color: #fff;
-  background: #c0392b;
+  color: var(--vt-on-brand, #fff);
+  background: var(--vt-brand);
   border-bottom-right-radius: 6px;
   border-bottom-left-radius: 14px;
 }
@@ -390,7 +390,7 @@
   display: block;
   font-size: 0.72rem;
   font-weight: 700;
-  color: #c0392b;
+  color: var(--vt-brand);
 }
 
 .chat__texto {
@@ -477,7 +477,7 @@
   font: inherit;
   font-size: 0.8rem;
   cursor: pointer;
-  background: rgb(0 0 0 / 8%);
+  background: color-mix(in srgb, currentcolor 10%, transparent);
   border: 0;
   border-radius: var(--vt-radius-sm);
 }
@@ -534,9 +534,9 @@
   place-items: center;
   width: 2.2rem;
   height: 2.2rem;
-  color: #fff;
+  color: var(--vt-on-brand, #fff);
   cursor: pointer;
-  background: #c0392b;
+  background: var(--vt-brand);
   border: 0;
   border-radius: 50%;
 }
@@ -584,7 +584,7 @@
 .chat__buzon-boca { fill: color-mix(in srgb, currentColor 14%, var(--vt-surface, #fff)); }
 .chat__buzon-fondo { fill: color-mix(in srgb, currentColor 28%, var(--vt-surface, #fff)); }
 .chat__buzon-tapa { fill: color-mix(in srgb, var(--vt-brand) 30%, var(--vt-surface, #fff)); stroke: color-mix(in srgb, var(--vt-brand) 55%, currentColor); stroke-width: 2; stroke-linejoin: round; transform-origin: 62px 64px; animation: chat-buzon-tapa 2.8s ease-in-out infinite; }
-.chat__buzon-bandera { fill: color-mix(in srgb, #c0392b 70%, transparent); }
+.chat__buzon-bandera { fill: color-mix(in srgb, var(--vt-brand) 70%, transparent); }
 .chat__buzon-nada { stroke: currentColor; stroke-width: 2; opacity: 0.35; stroke-dasharray: 2 4; }
 
 .chat__buzon-titulo {
@@ -657,8 +657,8 @@
 .chat__mirando {
   padding: 0 0.4rem;
   font-size: 0.68rem;
-  color: #1e7e34;
-  background: rgb(30 126 52 / 12%);
+  color: var(--vt-success);
+  background: var(--vt-success-bg);
   border-radius: 999px;
 }
 
@@ -695,9 +695,9 @@
   font-size: 0.72rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: #fff;
-  background: #c0392b;
-  border-color: #c0392b;
+  color: var(--vt-on-brand, #fff);
+  background: var(--vt-brand);
+  border-color: var(--vt-brand);
   animation: chat-latido 1s ease-in-out infinite;
 }
 
@@ -718,8 +718,8 @@
   padding: 0.3rem var(--vt-space-3);
   margin: 0;
   font-size: 0.75rem;
-  color: #b26b00;
-  background: #fff7e6;
+  color: var(--vt-warning);
+  background: var(--vt-warning-bg);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -763,7 +763,7 @@
   width: 96px;
   height: 96px;
   font-size: 2.2rem;
-  color: #fff;
+  color: var(--vt-on-brand, #fff);
   background: var(--vt-primary, #c62828);
   border-radius: 50%;
 
@@ -823,7 +823,7 @@
   padding: 0.85rem 2.6rem;
   font: inherit;
   font-weight: 600;
-  color: #fff;
+  color: var(--vt-on-brand, #fff);
   cursor: pointer;
   background: var(--vt-primary, #c62828);
   border: 0;
