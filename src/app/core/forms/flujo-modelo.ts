@@ -1789,6 +1789,39 @@ export const SONIDO_DEL_TONO: Record<TonoDeAviso, SonidoDeAviso> = {
  * por dónde se diligencie. Es exactamente lo que estos motores existen para
  * evitar. Aquí sale ya decidido y quien lo recibe solo obedece.
  */
+/**
+ * Un enlace que una regla quiere abrir. Ver la acción `abrir-enlace`.
+ *
+ * `url` es la dirección con sus llaves; `parametros` lo que se le pega detrás
+ * (`?a=1&b=2`), cada valor escapado. `confirmar` lo pregunta antes de salir:
+ * abrir algo sin avisar, mientras alguien diligencia, se siente como que la
+ * aplicación se fue sola.
+ */
+export interface EnlaceDeFlujo {
+  url: string;
+  /** Cada parámetro con su nombre y lo que vale (con llaves, si hace falta). */
+  parametros?: { nombre: string; valor: string }[];
+  /** Qué se lee en el botón o en la pregunta. Vacío: «Abrir enlace». */
+  titulo?: string;
+  /** Preguntar antes de abrir. Por omisión, sí. */
+  confirmar?: boolean;
+  /**
+   * En la misma pantalla en vez de salir (el navegador cambia de página, la
+   * app abre su propio visor). Por omisión, fuera.
+   */
+  dentro?: boolean;
+}
+
+/** Un enlace ya armado, listo para abrir. Ver [Resultado.enlaces]. */
+export interface EnlacePedido {
+  /** La dirección con todo resuelto: llaves y parámetros. */
+  url: string;
+  titulo: string;
+  confirmar: boolean;
+  dentro: boolean;
+  regla?: string;
+}
+
 export interface Aviso {
   /** Lo que dice, con las variables ya reemplazadas. */
   texto: string;
@@ -2427,7 +2460,20 @@ export type TipoAccion =
    */
   | 'iniciar-timer'
   /** Parar el timer activo, sin que llegue a su fin. */
-  | 'detener-timer';
+  | 'detener-timer'
+  /**
+   * Abrir un enlace: una página, un mapa, un WhatsApp, otro sistema.
+   *
+   * `valor` es un [EnlaceDeFlujo] —o, en los flujos más simples, la dirección
+   * a secas—. La dirección admite las mismas llaves que un correo o un aviso
+   * (`{CLIENTE}`, `{DETALLE:EQUIPOS:TOTAL@suma}`, `{FOTO.url}`), y además
+   * puede llevar parámetros aparte para no tener que escribirlos a mano: cada
+   * uno con su nombre y lo que vale, y el motor los pega ya escapados.
+   *
+   * El motor no abre nada —no sabe de navegadores ni de aplicaciones— y lo
+   * deja en [Resultado.enlaces]; quien llama lo abre.
+   */
+  | 'abrir-enlace';
 
 export interface Accion {
   accion: TipoAccion;
@@ -2872,6 +2918,15 @@ export interface Resultado {
    * todos salían iguales; ver [Aviso] para por qué se decide aquí.
    */
   avisos: Aviso[];
+
+  /**
+   * Los enlaces que alguna regla quiere abrir. Ver `abrir-enlace`.
+   *
+   * Se anotan y no se abren: el motor tiene que dar el mismo resultado en el
+   * simulador, donde abrir una página sería una sorpresa. Quien llama los
+   * abre —y solo los nuevos, como con los avisos.
+   */
+  enlaces: EnlacePedido[];
 
   /**
    * Los botones que el flujo dibuja **debajo de los campos**, en orden.

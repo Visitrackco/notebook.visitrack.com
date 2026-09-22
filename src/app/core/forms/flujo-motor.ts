@@ -26,6 +26,8 @@ import {
   Condicion,
   Animacion,
   Aviso,
+  EnlaceDeFlujo,
+  EnlacePedido,
   TonoDeAviso,
   SonidoDeAviso,
   TONOS_DE_AVISO,
@@ -744,6 +746,7 @@ export function evaluar(flujo: Flujo, contexto: Contexto): Resultado {
     encargos: [],
     pisadas: [],
     avisos: [],
+    enlaces: [],
     animaciones: [],
     botones: [],
     integraciones: [],
@@ -979,6 +982,7 @@ export function evaluar(flujo: Flujo, contexto: Contexto): Resultado {
     resultado.encargos = [];
     resultado.pisadas = [];
     resultado.avisos = [];
+    resultado.enlaces = [];
     resultado.animaciones = [];
     resultado.botones = [];
     resultado.integraciones = [];
@@ -2959,6 +2963,53 @@ function esUnIdentificador(nombre: string, campos: Record<ApiId, Campo>): boolea
  * [comoHtml] decide qué se hace con lo sustituido: escaparlo, para el cuerpo, o
  * dejarlo en una línea, para el asunto y las direcciones. Ver [escaparHtml].
  */
+/** El enlace de la accion, venga como objeto o como la direccion a secas. */
+export function enlaceDeLaAccion(valor: unknown): EnlaceDeFlujo {
+  if (valor && typeof valor === 'object') return valor as EnlaceDeFlujo;
+
+  return { url: String(valor ?? '') };
+}
+
+/**
+ * La direccion final: las llaves resueltas y los parametros pegados detras.
+ *
+ * Cada valor va escapado (`encodeURIComponent`), que es lo que hace que un
+ * nombre con espacios o un texto con `&` no rompan la direccion. Lo escrito a
+ * mano en la propia `url` se respeta tal cual: quien la escribio ya decidio
+ * como iba. Vacia si no queda direccion, o si no empieza por algo que se pueda
+ * abrir —`javascript:` y compania no se abren jamas.
+ */
+export function armarEnlace(
+  pedido: EnlaceDeFlujo,
+  valores: Record<ApiId, unknown>,
+  campos: Record<ApiId, Campo>,
+  urlDeBinarios = '',
+): string {
+  const base = conLasVariables(String(pedido?.url ?? ''), valores, campos, false, urlDeBinarios).trim();
+  if (!base) return '';
+
+  const esquema = base.split(':')[0].toLowerCase();
+  const conEsquema = base.includes(':');
+
+  // Lo que se puede abrir: la web, un correo, un telefono, un mapa, otra
+  // aplicacion. Y una direccion sin esquema, que se entiende como `https`.
+  if (conEsquema && ['javascript', 'data', 'vbscript', 'file'].includes(esquema)) return '';
+
+  const partes = (pedido?.parametros ?? [])
+    .map((p) => ({
+      nombre: String(p?.nombre ?? '').trim(),
+      valor: conLasVariables(String(p?.valor ?? ''), valores, campos, false, urlDeBinarios).trim(),
+    }))
+    .filter((p) => p.nombre)
+    .map((p) => `${encodeURIComponent(p.nombre)}=${encodeURIComponent(p.valor)}`);
+
+  const url = conEsquema || base.startsWith('/') ? base : `https://${base}`;
+
+  if (!partes.length) return url;
+
+  return url + (url.includes('?') ? '&' : '?') + partes.join('&');
+}
+
 export function conLasVariables(
   texto: string,
   valores: Record<ApiId, unknown>,
@@ -4317,6 +4368,34 @@ function aplicar(
    * Y no impide guardar, a diferencia de `bloquear-guardado`. Son dos cosas
    * distintas que se confundían todo el rato: una avisa y la otra para.
    */
+  /*
+   * Abrir un enlace, armado con lo que hay respondido.
+   *
+   * Se calla mientras se escribe, por lo mismo que un aviso: sacar a alguien
+   * de la pantalla a mitad de una palabra es peor que esperar a que levante
+   * el dedo. Ver `sePuedeAvisar`.
+   */
+  if (accion.accion === 'abrir-enlace') {
+    if (!puedeAvisar) return;
+
+    const pedido = enlaceDeLaAccion(accion.valor);
+    const url = armarEnlace(pedido, valores, campos, urlDeBinarios);
+    if (!url) return;
+
+    // Sin repetir: dos reglas que abren lo mismo son un enlace, no dos.
+    if (resultado.enlaces.some((e) => e.url === url)) return;
+
+    resultado.enlaces.push({
+      url,
+      titulo: conLasVariables(String(pedido.titulo ?? ''), valores, campos, false, urlDeBinarios).trim(),
+      confirmar: pedido.confirmar !== false,
+      dentro: pedido.dentro === true,
+      regla,
+    });
+
+    return;
+  }
+
   if (accion.accion === 'avisar') {
     // Se calla mientras se escribe. Ver `puedeAvisar`.
     if (!puedeAvisar) return;

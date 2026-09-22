@@ -29,7 +29,7 @@ import {
   resolveInheritedDefault,
   valoresDelEntorno,
 } from './inherited-defaults';
-import { Ambito, Animacion, Aviso, BotonPintado, Campo, Encargo, EstadoCampo, EstadoDelTimer, Flujo, HerenciaDeActividad, LlamadaPintada, Momento, Resultado, ESTADO_DE_LA_ACTIVIDAD, PREFIJO_INTEGRACION, TIPOS_VINCULADOS } from './flujo-modelo';
+import { Ambito, Animacion, Aviso, BotonPintado, Campo, Encargo, EnlacePedido, EstadoCampo, EstadoDelTimer, Flujo, HerenciaDeActividad, LlamadaPintada, Momento, Resultado, ESTADO_DE_LA_ACTIVIDAD, PREFIJO_INTEGRACION, TIPOS_VINCULADOS } from './flujo-modelo';
 import {
   camposDeLaRegla,
   camposDeLasReglas,
@@ -141,6 +141,16 @@ export interface FormEngineInput {
    * motor lo devuelve cuando cambia; ver [timer]. Ver `TimerDeFlujo`.
    */
   timer?: EstadoDelTimer | null;
+
+  /**
+   * En qué estado llega la actividad.
+   *
+   * Se recibe al montar y no solo por la señal: el momento «al abrir» corre
+   * dentro del constructor, antes de que nadie pueda ponerlo desde fuera, y
+   * sin esto una regla de «al abrir» que pregunta por el estado lo leía
+   * vacío — justo la que decide si esta actividad se puede editar.
+   */
+  estado?: string;
 }
 
 /** El timer guardado en la actividad, o `null` si no hay o no se lee. */
@@ -277,6 +287,18 @@ export class FormEngine {
 
   /** Los avisos que hay que enseñar, por la regla que los pide. Ver [archivarPorRegla]. */
   private readonly avisosPorRegla = signal<Record<string, readonly Aviso[]>>({});
+
+  /** Los enlaces que alguna regla quiere abrir, por regla. Ver `abrir-enlace`. */
+  private readonly enlacesPorRegla = signal<Record<string, readonly EnlacePedido[]>>({});
+
+  /** Los enlaces vigentes, sin repetir por dirección. */
+  readonly enlacesDelFlujo = computed<EnlacePedido[]>(() => {
+    const vistos = new Set<string>();
+
+    return Object.values(this.enlacesPorRegla())
+      .flat()
+      .filter((e) => (vistos.has(e.url) ? false : (vistos.add(e.url), true)));
+  });
 
   /**
    * Todo lo que el flujo quiere avisar ahora mismo, sin repetir.
@@ -1253,6 +1275,7 @@ export class FormEngine {
     // El timer con el que llega la actividad, antes de correr nada: «al
     // abrir» ya puede preguntar cuánto falta.
     this.timer.set(input.timer ?? null);
+    if (input.estado !== undefined) this.estadoActividad.set(String(input.estado));
 
     if (this.hayFlujo()) {
       this.indexarCampos();
@@ -1705,6 +1728,10 @@ export class FormEngine {
 
     this.avisosPorRegla.set(
       this.archivarPorRegla(this.avisosPorRegla(), resultado.avisos ?? [], evaluadas),
+    );
+
+    this.enlacesPorRegla.set(
+      this.archivarPorRegla(this.enlacesPorRegla(), resultado.enlaces ?? [], evaluadas),
     );
 
     this.animacionesPorRegla.set(

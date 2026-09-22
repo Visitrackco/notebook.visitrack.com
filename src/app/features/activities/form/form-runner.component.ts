@@ -84,7 +84,7 @@ import {
   IntegracionesApi,
   comoSeVeLaRespuesta,
 } from '../../../core/forms/integraciones.api';
-import { Aviso, LlamadaPintada } from '../../../core/forms/flujo-modelo';
+import { Aviso, EnlacePedido, LlamadaPintada } from '../../../core/forms/flujo-modelo';
 import { FlujoGraficaComponent } from './flujo-grafica/flujo-grafica.component';
 import { PageNavComponent } from './page-nav/page-nav.component';
 import { MasterDetailPanelsService } from './master-detail-row/master-detail-panels.service';
@@ -805,6 +805,21 @@ export class FormRunnerComponent {
     });
 
     /*
+     * Los enlaces que una regla quiere abrir.
+     *
+     * Como los avisos: solo los nuevos, y se olvidan cuando su regla deja de
+     * pedirlos —si vuelve a cumplirse, se vuelve a ofrecer, que es
+     * información nueva—. Con confirmación por omisión: abrir algo sin
+     * avisar, a mitad de un formulario, se siente como que la aplicación se
+     * fue sola.
+     */
+    effect(() => {
+      const ahora = this.engine()?.enlacesDelFlujo() ?? [];
+
+      untracked(() => this.abrirLosEnlacesNuevos(ahora));
+    });
+
+    /*
      * Las caritas que pida el flujo, **solo cuando aparecen**.
      *
      * Es la misma norma que los avisos y aquí importa más todavía: el resultado
@@ -912,6 +927,7 @@ export class FormRunnerComponent {
       valoresDeFuera: deFuera.valores,
       camposDeFuera: deFuera.campos,
       timer: leerTimer(answer.Timer),
+      estado: String(answer.Status ?? ''),
     });
 
     this.engine.set(engine);
@@ -2883,6 +2899,41 @@ export class FormRunnerComponent {
       tone: 'error',
       sonido: 'alerta',
     });
+  }
+
+  /** Los enlaces ya abiertos, por dirección. Ver [abrirLosEnlacesNuevos]. */
+  private readonly enlacesAbiertos = new Set<string>();
+
+  private abrirLosEnlacesNuevos(enlaces: readonly EnlacePedido[]): void {
+    for (const enlace of enlaces) {
+      if (this.enlacesAbiertos.has(enlace.url)) continue;
+
+      this.enlacesAbiertos.add(enlace.url);
+
+      const abrir = () => {
+        // «Dentro» en el navegador es esta misma pestaña; fuera, una nueva.
+        if (enlace.dentro) window.location.assign(enlace.url);
+        else window.open(enlace.url, '_blank', 'noopener');
+      };
+
+      if (!enlace.confirmar) {
+        abrir();
+        continue;
+      }
+
+      const que = enlace.titulo || 'Abrir enlace';
+      if (confirm(`${que}
+
+${enlace.url}`)) abrir();
+    }
+
+    // Se olvida por dirección, que es con lo que se recordó: un enlace que
+    // deja de pedirse se olvida, y si su regla vuelve a cumplirse se vuelve
+    // a ofrecer.
+    const vigentes = new Set(enlaces.map((e) => e.url));
+    for (const url of [...this.enlacesAbiertos]) {
+      if (!vigentes.has(url)) this.enlacesAbiertos.delete(url);
+    }
   }
 
   private decirLosAvisosNuevos(avisos: readonly Aviso[]): void {

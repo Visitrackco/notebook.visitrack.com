@@ -94,9 +94,9 @@ export class FlujoSinPantallaService {
       valoresDeFuera: deFuera.valores,
       camposDeFuera: deFuera.campos,
       timer: leerTimer(answer.Timer),
+      estado: String(answer.Status ?? ''),
     });
 
-    engine.estadoActividad.set(String(answer.Status ?? ''));
     engine.otroTimerCorriendo = this.timers().otroCorre(answer.GUID);
 
     if (momento === 'hijo') engine.correrHijo();
