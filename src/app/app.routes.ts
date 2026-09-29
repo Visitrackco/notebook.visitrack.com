@@ -371,6 +371,16 @@ export const routes: Routes = [
           import('./features/profile/profile.component').then((m) => m.ProfileComponent),
       },
       {
+        // Renovar el identificador de un navegador que trae uno demasiado
+        // largo. La abre el armazón al arrancar. Ver `RenovarEquipoComponent`.
+        path: 'renovar-equipo',
+        title: 'Actualizar el equipo · Visitrack',
+        loadComponent: () =>
+          import('./features/profile/renovar-equipo/renovar-equipo.component').then(
+            (m) => m.RenovarEquipoComponent,
+          ),
+      },
+      {
         path: 'sincronizacion',
         title: 'Sincronización · Visitrack',
         loadComponent: () => import('./features/sync/sync.component').then((m) => m.SyncComponent),

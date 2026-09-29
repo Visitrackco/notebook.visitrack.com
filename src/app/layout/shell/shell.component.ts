@@ -16,6 +16,7 @@ import { CommandPaletteComponent } from '../../shared/components/command-palette
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { ShortcutsHelpComponent } from '../../shared/components/shortcuts-help/shortcuts-help.component';
 import { MenuCountersService } from '../../core/services/menu-counters.service';
+import { equipoPorRenovar } from '../../features/profile/renovar-equipo/renovar-equipo.component';
 
 /** Clave donde se recuerda si la barra quedó colapsada. */
 const SIDEBAR_KEY = 'visitrack.sidebarCollapsed';
@@ -342,6 +343,15 @@ export class ShellComponent {
     void this.push.refrescar().then(() => this.push.escuchar());
 
     this.registerShortcuts();
+
+    /*
+     * Un navegador con un identificador de más de 20 caracteres —de versiones
+     * anteriores— se manda a renovarlo. Aquí porque este armazón solo existe
+     * con sesión; los enlaces públicos usan otro y no pasan por esto.
+     */
+    if (equipoPorRenovar()) {
+      setTimeout(() => void this.router.navigateByUrl('/renovar-equipo'), 800);
+    }
   }
 
   /** Enciende las notificaciones desde la tira. Ver `PushService`. */
