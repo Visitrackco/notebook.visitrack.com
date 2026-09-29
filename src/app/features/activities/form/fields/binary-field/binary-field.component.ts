@@ -469,7 +469,7 @@ export class BinaryFieldComponent implements OnDestroy {
       }
 
       this.error.set('');
-      await this.store(file, file.name, check.ext);
+      await this.store(file, file.name, check.ext, 'galeria');
       return;
     }
 
@@ -479,16 +479,24 @@ export class BinaryFieldComponent implements OnDestroy {
     // lo que la convierte en evidencia.
     if (this.isImage()) {
       this.pendingImage.set(file);
+      this.origenPendiente = 'galeria';
       this.overlay.set('editor');
       return;
     }
 
-    await this.store(file, file.name, this.extensionOf(file.name));
+    await this.store(file, file.name, this.extensionOf(file.name), 'galeria');
   }
+
+  /**
+   * De dónde vino la imagen que está en el editor, para guardarla con su
+   * origen al terminar: el editor recibe tanto fotos de cámara como archivos.
+   */
+  private origenPendiente = '';
 
   /** La cámara entregó una foto: pasa al editor. */
   onCaptured(blob: Blob): void {
     this.pendingImage.set(blob);
+    this.origenPendiente = 'camara';
     this.overlay.set('editor');
   }
 
@@ -496,13 +504,13 @@ export class BinaryFieldComponent implements OnDestroy {
   async onEdited(blob: Blob): Promise<void> {
     this.overlay.set('none');
     this.pendingImage.set(null);
-    await this.store(blob, '', 'jpg');
+    await this.store(blob, '', 'jpg', this.origenPendiente);
   }
 
   /** La firma terminó. */
   async onSigned(result: { blob: Blob; name: string }): Promise<void> {
     this.overlay.set('none');
-    await this.store(result.blob, result.name, 'png');
+    await this.store(result.blob, result.name, 'png', 'firma');
   }
 
   /**
@@ -523,7 +531,7 @@ export class BinaryFieldComponent implements OnDestroy {
       return;
     }
 
-    await this.store(blob, '', this.config().ext);
+    await this.store(blob, '', this.config().ext, 'camara');
   }
 
   /**
@@ -533,7 +541,7 @@ export class BinaryFieldComponent implements OnDestroy {
    * escribir, para no dejar contenido huérfano ocupando espacio que nadie va a
    * reclamar.
    */
-  private async store(blob: Blob, sig: string, ext: string): Promise<void> {
+  private async store(blob: Blob, sig: string, ext: string, origen = ''): Promise<void> {
     this.busy.set(true);
     this.error.set('');
 
@@ -546,6 +554,7 @@ export class BinaryFieldComponent implements OnDestroy {
         ext: ext || 'bin',
         sig,
         replaces: this.value()?.bin,
+        origen,
       });
 
       this.valueChange.emit(value);

@@ -46,6 +46,8 @@ export interface SaveBinaryInput {
   typeId?: number;
   /** GUID a reemplazar. Su archivo se borra antes de escribir el nuevo. */
   replaces?: string;
+  /** De dónde salió: `camara`, `galeria` o `firma`. Ver `BinaryResource.Origen`. */
+  origen?: string;
 }
 
 /**
@@ -178,6 +180,7 @@ export class BinaryStorageService {
       BinaryState: BinaryState.Pending,
       VerifyAttempts: 0,
       VerifiedOn: '',
+      Origen: input.origen ?? '',
     };
 
     await this.binaries.put(resource);

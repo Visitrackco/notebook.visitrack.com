@@ -203,6 +203,12 @@ export interface BinaryResource {
 
   /** Estado real respecto al bucket. Es el que manda. */
   BinaryState: BinaryState;
+
+  /**
+   * De dónde salió: `camara`, `galeria` (un archivo elegido del equipo) o
+   * `firma`. Viaja al subirlo, igual que en la app. Vacío en los de antes.
+   */
+  Origen?: string;
   VerifyAttempts: number;
   VerifiedOn: string;
 }

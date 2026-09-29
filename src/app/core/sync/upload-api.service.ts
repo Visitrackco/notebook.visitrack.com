@@ -3,6 +3,8 @@ import { Injectable, inject } from '@angular/core';
 import { firstValueFrom, timeout } from 'rxjs';
 
 import { apiBaseUrl } from '../config/api-base';
+import { esModoPublico } from '../config/modo-publico';
+import { DeviceService } from '../services/device.service';
 import { BinaryResource } from '../models/sync.model';
 
 /** Respuesta normalizada de cualquiera de estas llamadas. */
@@ -56,6 +58,18 @@ export interface BucketReport extends UploadResult {
 @Injectable({ providedIn: 'root' })
 export class UploadApiService {
   private readonly http = inject(HttpClient);
+  private readonly device = inject(DeviceService);
+
+  /**
+   * El equipo que hace el envío. El servidor lo guarda en el `ChangesLog` y en
+   * `SurveysAnswers.Sync_LastUpdatedBy`, igual que con la app.
+   *
+   * Un enlace público no tiene equipo propio: va como `enlace-publico`, el
+   * mismo con el que se siembra su sesión.
+   */
+  private get deviceId(): string {
+    return esModoPublico() ? 'enlace-publico' : this.device.getDeviceId();
+  }
 
   private get baseUrl(): string {
     /*
@@ -94,6 +108,8 @@ export class UploadApiService {
     form.append('CompanyID', String(companyId));
     form.append('UserID', resource.UserID);
     form.append('TypeBinarie', String(resource.TypeBinarie));
+    form.append('Origen', resource.Origen ?? '');
+    form.append('DeviceID', this.deviceId);
 
     try {
       const response = await firstValueFrom(
@@ -125,7 +141,8 @@ export class UploadApiService {
         this.http
           .put<{ status?: boolean; error?: string }>(
             `${this.baseUrl}/createdSurveysAnswers`,
-            row,
+            // El que traiga la fila manda; si no trae, el de este navegador.
+            { ...row, DeviceID: String(row['DeviceID'] ?? '').trim() || this.deviceId },
             { headers: { 'Content-Type': 'application/json' } },
           )
           .pipe(timeout(120_000)),
