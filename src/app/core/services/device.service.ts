@@ -47,13 +47,31 @@ export class DeviceService {
     return { browser, os, description: `${browser} · ${os}` };
   }
 
+  /**
+   * `web-` y 16 caracteres aleatorios: 20 en total.
+   *
+   * El identificador viaja a los registros de la base —`ChangesLog`,
+   * `SurveysAnswers.Sync_LastUpdatedBy`, versiones— y varias de esas columnas
+   * son cortas: con 20 cabe en todas sin recortarse. 16 caracteres
+   * hexadecimales son 64 bits al azar, de sobra para no repetirse.
+   *
+   * Solo afecta a los navegadores **nuevos**: el que ya tiene uno guardado lo
+   * conserva, porque cambiarlo haría que el servidor lo tratara como otro
+   * equipo y volviera a entregarle todo desde cero.
+   */
   private generateId(): string {
-    // crypto.randomUUID no está en navegadores viejos ni fuera de contextos
-    // seguros (http sin localhost), así que hay un respaldo.
-    if (globalThis.crypto?.randomUUID) return `web-${globalThis.crypto.randomUUID()}`;
+    const bytes = new Uint8Array(8);
 
-    const random = Math.random().toString(36).slice(2);
-    return `web-${Date.now().toString(36)}-${random}`;
+    // getRandomValues está hasta en contextos no seguros; Math.random queda de
+    // respaldo para entornos sin crypto.
+    if (globalThis.crypto?.getRandomValues) {
+      globalThis.crypto.getRandomValues(bytes);
+    } else {
+      for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
+    }
+
+    const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+    return `web-${hex}`;
   }
 
   private detectBrowser(ua: string): string {
