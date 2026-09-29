@@ -6,6 +6,7 @@ import { SurveyAnswerRepository } from '../repositories/survey-answer.repository
 import { AuthService } from '../services/auth.service';
 import { DataRevisionService } from '../sync/data-revision.service';
 import { parseAnswerFields, parseQuestions } from './form-schema';
+import { nuevoGuid } from '../../shared/utils/guid';
 
 /**
  * Sufijo que hace que un campo del hijo herede del padre.
@@ -107,7 +108,7 @@ export class LinkedFormService {
     const now = new Date().toISOString();
 
     const child: SurveyAnswer = {
-      GUID: crypto.randomUUID(),
+      GUID: nuevoGuid(),
       SurveyID: String(survey.SurveyID),
       UserID: String(user.UserID),
       CompanyID: String(user.CompanyID ?? ''),

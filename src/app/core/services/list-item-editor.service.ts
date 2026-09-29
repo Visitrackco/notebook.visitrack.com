@@ -8,6 +8,7 @@ import { ListDetailRepository } from '../repositories/entity.repositories';
 import { AuthService } from './auth.service';
 import { titlesFrom } from './location-editor.service';
 import { DataRevisionService } from '../sync/data-revision.service';
+import { nuevoGuid } from '../../shared/utils/guid';
 
 /** Lo que hace falta para dar de alta un ítem. */
 export interface NewListItem {
@@ -73,7 +74,7 @@ export class ListItemEditorService {
     if (!user) throw new Error('No hay una sesión activa.');
 
     const owner = resolveCatalogOwnerId(user);
-    const guid = crypto.randomUUID();
+    const guid = nuevoGuid();
     const listId = String(input.definition.ListIDBD ?? '');
 
     const record: ListDetail = {

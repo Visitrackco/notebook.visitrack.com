@@ -11,6 +11,7 @@ import { AuthService } from '../services/auth.service';
 import { DatabaseService } from '../database/database.service';
 import { BinaryData } from '../models/sync.model';
 import { DataRevisionService } from './data-revision.service';
+import { aBytes, comoBlob } from '../../shared/utils/bytes';
 
 /** Un archivo referenciado por una consigna. */
 export interface DispatchFile {
@@ -303,7 +304,8 @@ export class DispatchFilesService {
         this.db.request<BinaryData | undefined>(tx.objectStore('BinariesData').get(guid)),
       );
 
-      return data?.blob ? URL.createObjectURL(data.blob) : null;
+      const blob = comoBlob(data);
+      return blob ? URL.createObjectURL(blob) : null;
     } catch {
       return null;
     }
@@ -365,11 +367,14 @@ export class DispatchFilesService {
   }
 
   private async storeBlob(guid: string, blob: Blob): Promise<void> {
+    const bytes = await aBytes(blob);
+
     await this.db.transaction('BinariesData', 'readwrite', (tx) =>
       this.db.request(
         tx.objectStore('BinariesData').put({
           GUID: guid,
-          blob,
+          // Bytes y no el Blob: ver `BinaryData`.
+          bytes,
           mimeType: blob.type || 'application/octet-stream',
           createdAt: new Date().toISOString(),
         } satisfies BinaryData),

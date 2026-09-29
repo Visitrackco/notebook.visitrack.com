@@ -38,6 +38,7 @@ import { comoLoGuarda } from './flujo-motor';
 import { LinkedFormService } from './linked-form.service';
 import { readRows } from './master-detail';
 import { ParientesService, esVinculado } from './parientes.service';
+import { nuevoGuid } from '../../shared/utils/guid';
 
 /** La llave con la que se recuerda a quién va cada consigna pedida. */
 export function claveDeDespacho(d: Record<string, unknown>): string {
@@ -475,7 +476,7 @@ export class EncargosDelFlujoService {
 
           // Es una fila de otra actividad: identificador propio y de la tabla
           // que la recibe.
-          GUID: crypto.randomUUID(),
+          GUID: nuevoGuid(),
           id: tablaHija.id,
           LinkedAnswerGUID: '',
         }));

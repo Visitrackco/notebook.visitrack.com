@@ -3,6 +3,7 @@ import { Injectable } from '@angular/core';
 import { ANSWER_STATE } from '../models/activity.model';
 import { Asset, LocationForm, Survey, SurveyAnswer } from '../models/entities.model';
 import { BaseRepository } from './base.repository';
+import { nuevoGuid } from '../../shared/utils/guid';
 
 /** Datos mínimos para crear una actividad. */
 export interface CreateAnswerInput {
@@ -152,7 +153,7 @@ export class SurveyAnswerRepository extends BaseRepository<SurveyAnswer> {
     const now = new Date().toISOString();
 
     return {
-      GUID: crypto.randomUUID(),
+      GUID: nuevoGuid(),
       SurveyID: input.survey.SurveyID,
       UserID: input.userId,
       CompanyID: String(input.companyId ?? ''),

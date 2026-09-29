@@ -13,6 +13,7 @@ import {
 import { ToastService } from '../../../core/services/toast.service';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
 import { ChatApi, SalaResumen } from '../chat.api';
+import { nuevoGuid } from '../../../shared/utils/guid';
 
 /**
  * Lo que se está mandando a una sala.
@@ -120,14 +121,14 @@ export class CompartirEnSalaComponent {
         await this.api.escribir(sala.id, {
           tipo: 'actividad',
           texto: que.guid,
-          clientId: crypto.randomUUID(),
+          clientId: nuevoGuid(),
         });
       } else {
         const ficha = await this.api.subirAdjunto(sala.id, que.blob, que.nombre);
 
         await this.api.escribir(sala.id, {
           tipo: 'archivo',
-          clientId: crypto.randomUUID(),
+          clientId: nuevoGuid(),
           adjuntos: [ficha],
         });
       }

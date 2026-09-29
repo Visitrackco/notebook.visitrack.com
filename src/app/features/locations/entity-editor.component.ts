@@ -14,6 +14,7 @@ import {
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { ToTopComponent } from '../../shared/components/to-top/to-top.component';
 import { FieldHostComponent } from '../activities/form/fields/field-host.component';
+import { nuevoGuid } from '../../shared/utils/guid';
 
 /** Qué se está editando. */
 type Subject = 'location' | 'asset';
@@ -162,7 +163,7 @@ export class EntityEditorComponent {
     this.types.set(types);
 
     if (!guid) {
-      this.entityGuid.set(crypto.randomUUID());
+      this.entityGuid.set(nuevoGuid());
       this.name.set('');
       this.chooseType(this.startingType(types));
       return;
@@ -222,7 +223,7 @@ export class EntityEditorComponent {
     this.types.set(types);
 
     if (assetGuid === 'nuevo') {
-      this.entityGuid.set(crypto.randomUUID());
+      this.entityGuid.set(nuevoGuid());
       this.name.set('');
       this.chooseType(this.startingType(types));
       return;

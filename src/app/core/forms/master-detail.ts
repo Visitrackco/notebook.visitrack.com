@@ -1,4 +1,5 @@
 import { AnswerField, FormPage, parseQuestions } from './form-schema';
+import { nuevoGuid } from '../../shared/utils/guid';
 
 /**
  * Una fila de un campo MasterDetail.
@@ -99,7 +100,7 @@ export interface NewRowInput {
  */
 export function createRow(input: NewRowInput): MasterDetailRow {
   return {
-    GUID: crypto.randomUUID(),
+    GUID: nuevoGuid(),
     Name: input.itemName,
 
     JSONValues: [

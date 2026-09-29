@@ -210,7 +210,15 @@ export interface BinaryResource {
 /** Contenido de un archivo. Se guarda aparte para no cargarlo al listar. */
 export interface BinaryData {
   GUID: string;
-  blob: Blob;
+  /**
+   * El contenido como `Blob`: así se guardaba antes. Safari en navegación
+   * privada no deja guardar un `Blob` en IndexedDB y fallaba toda foto; los
+   * archivos nuevos van en [bytes]. Este campo se sigue leyendo para los que ya
+   * estaban guardados.
+   */
+  blob?: Blob;
+  /** El contenido como bytes: lo que se guarda desde ahora. */
+  bytes?: ArrayBuffer;
   mimeType: string;
   createdAt: string;
 }

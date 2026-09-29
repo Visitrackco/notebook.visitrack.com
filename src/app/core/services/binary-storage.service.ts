@@ -15,6 +15,8 @@ import {
   compressImage,
   presetOf,
 } from '../../shared/utils/image';
+import { nuevoGuid } from '../../shared/utils/guid';
+import { aBytes, comoBlob } from '../../shared/utils/bytes';
 
 /**
  * Valor que guarda un campo binario dentro de `Fields`.
@@ -139,14 +141,17 @@ export class BinaryStorageService {
     const blob =
       input.type === BinaryType.Image ? await compressImage(input.blob, await this.preset()) : input.blob;
 
-    const guid = crypto.randomUUID().slice(0, 49);
+    const guid = nuevoGuid().slice(0, 49);
+    const bytes = await aBytes(blob);
     const now = Date.now();
 
     await this.db.transaction('BinariesData', 'readwrite', (tx) =>
       this.db.request(
         tx.objectStore('BinariesData').put({
           GUID: guid,
-          blob,
+          // Bytes y no el Blob: Safari en navegación privada rechaza guardar
+          // un Blob en IndexedDB. Ver `BinaryData`.
+          bytes,
           mimeType: blob.type || 'application/octet-stream',
           createdAt: new Date().toISOString(),
         } satisfies BinaryData),
@@ -310,13 +315,16 @@ export class BinaryStorageService {
     const [origen, blob] = await Promise.all([this.find(guidOrigen), this.loadBlob(guidOrigen)]);
     if (!origen || !blob) return null;
 
-    const guid = crypto.randomUUID().slice(0, 49);
+    const guid = nuevoGuid().slice(0, 49);
+    const bytes = await aBytes(blob);
 
     await this.db.transaction('BinariesData', 'readwrite', (tx) =>
       this.db.request(
         tx.objectStore('BinariesData').put({
           GUID: guid,
-          blob,
+          // Bytes y no el Blob: Safari en navegación privada rechaza guardar
+          // un Blob en IndexedDB. Ver `BinaryData`.
+          bytes,
           mimeType: blob.type || 'application/octet-stream',
           createdAt: new Date().toISOString(),
         } satisfies BinaryData),
@@ -352,7 +360,7 @@ export class BinaryStorageService {
       this.db.request<BinaryData | undefined>(tx.objectStore('BinariesData').get(guid)),
     );
 
-    return data?.blob ?? null;
+    return comoBlob(data);
   }
 
   /**
@@ -440,3 +448,4 @@ export class BinaryStorageService {
     return `${(value / (1024 * 1024)).toFixed(1)} MB`;
   }
 }
+

@@ -33,6 +33,7 @@ import {
   propiedadesDe,
 } from './chat.api';
 import { FotoDeChatComponent } from './foto-de-chat.component';
+import { nuevoGuid } from '../../shared/utils/guid';
 
 /**
  * El chat en el diligenciador.
@@ -404,7 +405,7 @@ export class ChatComponent implements OnDestroy {
      * envío que sí llegó pero cuya respuesta se perdió escribe el mensaje dos
      * veces; con él, el servidor devuelve el de la primera vez.
      */
-    const clientId = crypto.randomUUID();
+    const clientId = nuevoGuid();
 
     this.texto.set('');
 
@@ -457,7 +458,7 @@ export class ChatComponent implements OnDestroy {
       this.agregarMensaje(
         await this.api.escribir(sala.id, {
           tipo: 'archivo',
-          clientId: crypto.randomUUID(),
+          clientId: nuevoGuid(),
           texto: this.texto().trim(),
           adjuntos: [ficha],
         }),
