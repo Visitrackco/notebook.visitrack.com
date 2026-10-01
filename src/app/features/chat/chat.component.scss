@@ -873,3 +873,111 @@
 @media (prefers-reduced-motion: reduce) {
   .chat__punto-escribe { animation: none; opacity: 0.7; }
 }
+
+/* ── Borrar un mensaje (solo quien administra la sala) ───────────────────── */
+
+.chat__burbuja {
+  position: relative;
+}
+
+.chat__borrar {
+  position: absolute;
+  top: -0.6rem;
+  right: -0.6rem;
+  display: none;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  color: var(--vt-danger);
+  cursor: pointer;
+  background: var(--vt-surface, #fff);
+  border: 1px solid var(--vt-border);
+  border-radius: 50%;
+  box-shadow: var(--vt-card-shadow);
+}
+
+.chat__mensaje:hover .chat__borrar,
+.chat__borrar:focus-visible {
+  display: grid;
+}
+
+/* En pantallas táctiles no hay «pasar por encima»: el botón se ve siempre. */
+@media (hover: none) {
+  .chat__borrar {
+    display: grid;
+  }
+}
+
+/* ── Elegir un formulario para el acceso directo ─────────────────────────── */
+
+.chat__velo {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(0 0 0 / 0.4);
+}
+
+.chat__elegir {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  width: min(28rem, 100%);
+  max-height: 80vh;
+  padding: 1rem;
+  color: var(--vt-ink);
+  background: var(--vt-surface, var(--vt-bg));
+  border-radius: var(--vt-radius-sm);
+  box-shadow: var(--vt-card-shadow-hover);
+}
+
+.chat__elegir-cabeza {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+
+  small {
+    color: var(--vt-text-muted);
+  }
+}
+
+.chat__elegir-busca {
+  padding: 0.5rem 0.7rem;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--vt-border);
+  border-radius: var(--vt-radius-sm);
+}
+
+.chat__elegir-lista {
+  flex: 1;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  overflow-y: auto;
+  list-style: none;
+
+  button {
+    width: 100%;
+    padding: 0.55rem 0.4rem;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+    background: none;
+    border: 0;
+    border-bottom: 1px solid var(--vt-border);
+
+    &:hover {
+      background: color-mix(in srgb, currentcolor 6%, transparent);
+    }
+  }
+}
+
+.chat__elegir-nada {
+  padding: 0.6rem 0.4rem;
+  color: var(--vt-text-muted);
+}

@@ -96,8 +96,15 @@ export interface MensajeDeSala {
    * compartido hace un mes dejaría de abrirse. Por eso el GUID nunca se pinta:
    * para quien lee no significa nada, es materia prima de la dirección.
    */
-  tipo: 'texto' | 'archivo' | 'voz' | 'actividad';
+  tipo: 'texto' | 'archivo' | 'voz' | 'actividad' | 'formulario';
   texto: string;
+
+  /**
+   * Un acceso directo a un formulario (`tipo === 'formulario'`): su ID y el
+   * nombre que tiene hoy, que pone el servidor. Quien lo recibe puede crear
+   * una actividad de ese formulario con un clic, si lo tiene.
+   */
+  formulario?: { id: number; nombre: string };
   segundos: number;
   clientId: string;
   creadoEn: string;
@@ -235,7 +242,7 @@ export class ChatApi {
     salaId: number,
     datos: {
       texto?: string;
-      tipo?: 'texto' | 'archivo' | 'voz' | 'actividad';
+      tipo?: 'texto' | 'archivo' | 'voz' | 'actividad' | 'formulario';
       clientId?: string;
       segundos?: number;
       adjuntos?: FichaDeAdjunto[];
@@ -245,6 +252,17 @@ export class ChatApi {
       this.http.post<MensajeDeSala>(`${this.base}/salas/${salaId}/mensajes`, datos, {
         headers: this.cabeceras,
       }),
+    );
+  }
+
+  /** Borra un mensaje. Solo quien administra la sala: el servidor lo exige. */
+  borrar(salaId: number, mensajeId: number): Promise<unknown> {
+    return firstValueFrom(
+      this.http.post(
+        `${this.base}/salas/${salaId}/mensajes/${mensajeId}/borrar`,
+        {},
+        { headers: this.cabeceras },
+      ),
     );
   }
 

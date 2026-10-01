@@ -13,7 +13,15 @@ import {
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
-import { ActivityService } from '../../core/services/activity.service';
+import {
+  ActivityService,
+  readRequirements,
+  resolveNextStep,
+} from '../../core/services/activity.service';
+import { resolveCatalogOwnerId } from '../../core/config/company-rules';
+import { Survey } from '../../core/models/entities.model';
+import { SurveyRepository } from '../../core/repositories/entity.repositories';
+import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast.service';
 import { IconComponent } from '../../shared/components/icon/icon.component';
@@ -61,6 +69,7 @@ import { nuevoGuid } from '../../shared/utils/guid';
     PdfPreviewComponent,
     FotoDeChatComponent,
     MediaViewerComponent,
+    ConfirmDialogComponent,
   ],
   templateUrl: './chat.component.html',
   styleUrl: './chat.component.scss',
@@ -160,6 +169,31 @@ export class ChatComponent implements OnDestroy {
   /** Quién soy, para saber de qué lado va cada burbuja. */
   private readonly yoId = Number(this.auth.currentUser()?.UserID ?? 0);
 
+  private readonly formulariosLocales = inject(SurveyRepository);
+
+  /** Si administro la sala abierta: solo así se puede borrar un mensaje. */
+  readonly soyAdmin = computed(() =>
+    this.gente().some((g) => g.userId === this.yoId && g.esAdmin),
+  );
+
+  /** El mensaje que se va a borrar, mientras se confirma. */
+  readonly porBorrar = signal<MensajeDeSala | null>(null);
+  readonly borrando = signal(false);
+
+  /** La lista para compartir un acceso directo, mientras está abierta. */
+  readonly eligiendoFormulario = signal(false);
+  readonly formularios = signal<Survey[]>([]);
+  readonly buscaFormulario = signal('');
+  readonly formulariosVisibles = computed(() => {
+    const busca = this.buscaFormulario().trim().toLowerCase();
+    return busca
+      ? this.formularios().filter((f) => f.Title.toLowerCase().includes(busca))
+      : this.formularios();
+  });
+
+  /** El acceso directo que se está abriendo, para no crear dos veces. */
+  readonly creandoDesde = signal(0);
+
   /** El número más alto que ya está pintado. Con esto se pide lo que falta. */
   private ultimoVisto = 0;
 
@@ -201,6 +235,17 @@ export class ChatComponent implements OnDestroy {
 
         const suya = lista.find((s) => s.id === pedida);
         if (suya) void this.abrir(suya, false);
+      });
+    });
+
+    // Lo que borró quien administra la sala: se quita de la vista.
+    effect(() => {
+      const b = this.socket.borrado();
+      if (!b) return;
+
+      untracked(() => {
+        if (this.abierta()?.id !== b.salaId) return;
+        this.mensajes.update((lista) => lista.filter((m) => m.id !== b.id));
       });
     });
 
@@ -471,6 +516,114 @@ export class ChatComponent implements OnDestroy {
   }
 
   /** Abre o descarga un adjunto pidiendo su dirección en ese momento. */
+  /** Borra el mensaje que se estaba confirmando. Solo quien administra. */
+  async borrarMensaje(): Promise<void> {
+    const sala = this.abierta();
+    const m = this.porBorrar();
+    if (!sala || !m || this.borrando()) return;
+
+    this.borrando.set(true);
+    try {
+      await this.api.borrar(sala.id, m.id);
+      this.mensajes.update((lista) => lista.filter((x) => x.id !== m.id));
+      this.porBorrar.set(null);
+    } catch {
+      this.toasts.show({
+        title: 'No se pudo borrar el mensaje.',
+        detail: 'Solo quien administra la sala puede borrar mensajes.',
+        tone: 'error',
+      });
+    } finally {
+      this.borrando.set(false);
+    }
+  }
+
+  /** Abre la lista de mis formularios para compartir un acceso directo. */
+  async abrirFormularios(): Promise<void> {
+    const user = this.auth.currentUser();
+    if (!user) return;
+
+    this.buscaFormulario.set('');
+    this.formularios.set(await this.formulariosLocales.findByUser(resolveCatalogOwnerId(user)));
+    this.eligiendoFormulario.set(true);
+  }
+
+  /**
+   * Comparte un acceso directo a un formulario: va su ID, y quien lo recibe
+   * ve «Crear actividad». Ver `crearDesde`.
+   */
+  async compartirFormulario(f: Survey): Promise<void> {
+    const sala = this.abierta();
+    if (!sala) return;
+
+    this.eligiendoFormulario.set(false);
+
+    try {
+      this.agregarMensaje(
+        await this.api.escribir(sala.id, {
+          tipo: 'formulario',
+          clientId: nuevoGuid(),
+          texto: String(f.SurveyID),
+        }),
+      );
+    } catch {
+      this.toasts.show({ title: 'No se pudo compartir el formulario.', tone: 'error' });
+    }
+  }
+
+  /**
+   * «Crear actividad» de un acceso directo.
+   *
+   * Lo mismo que el botón de crear del listado de ese formulario —crea la
+   * actividad y lleva a la ubicación, al activo o al formulario, según lo que
+   * pida—, **si este usuario tiene ese formulario**. Los formularios son por
+   * usuario; a quien no se le asignó se le dice, en vez de fallar callado.
+   */
+  async crearDesde(m: MensajeDeSala): Promise<void> {
+    const id = String(m.formulario?.id ?? m.texto ?? '').trim();
+    const nombre = m.formulario?.nombre || 'ese formulario';
+    const user = this.auth.currentUser();
+    if (!id || !user || this.creandoDesde()) return;
+
+    this.creandoDesde.set(m.id);
+    try {
+      const survey = await this.actividades.findSurvey(id);
+      const esMio = survey && survey.IsDeleted !== 1 &&
+        Number(survey.UserID) === Number(resolveCatalogOwnerId(user));
+
+      if (!survey || !esMio) {
+        this.toasts.show({
+          title: `No tienes el formulario «${nombre}».`,
+          detail: 'Pide que te lo asignen y sincroniza.',
+          tone: 'warning',
+        });
+        return;
+      }
+
+      if (survey.CreateEnabled === 0) {
+        this.toasts.show({ title: 'Ese formulario no permite crear actividades.', tone: 'warning' });
+        return;
+      }
+
+      const answer = await this.actividades.create(survey);
+      const paso = resolveNextStep(readRequirements(survey), answer);
+
+      if (paso === 'form') {
+        await this.router.navigate(['/formularios', survey.SurveyID, 'actividad', answer.GUID]);
+        return;
+      }
+
+      await this.router.navigate(
+        ['/formularios', survey.SurveyID, paso === 'location' ? 'ubicaciones' : 'activos'],
+        { queryParams: { actividad: answer.GUID } },
+      );
+    } catch {
+      this.toasts.show({ title: 'No se pudo crear la actividad.', tone: 'error' });
+    } finally {
+      this.creandoDesde.set(0);
+    }
+  }
+
   /** Abre el PDF de una actividad compartida. */
   verActividad(guid: string): void {
     const limpio = (guid ?? '').trim();

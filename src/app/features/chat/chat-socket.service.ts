@@ -59,6 +59,9 @@ export class ChatSocketService {
   /** El último mensaje que llegó. La sala abierta lo recoge. */
   readonly mensaje = signal<MensajeDeSala | null>(null);
 
+  /** El último mensaje que borró quien administra una sala. */
+  readonly borrado = signal<{ salaId: number; id: number } | null>(null);
+
   /** El último cambio de presencia. */
   readonly presencia = signal<PresenciaDeUno | null>(null);
 
@@ -233,6 +236,10 @@ export class ChatSocketService {
      * descarga de siempre, si no hay una en curso, y no más de una cada 20 s.
      */
     this.socket.on('sync:pendiente', () => void this.alPedirSincronizar());
+
+    this.socket.on('mensaje:borrado', (b: { salaId: number; id: number }) =>
+      this.borrado.set({ salaId: Number(b?.salaId), id: Number(b?.id) }),
+    );
 
     this.socket.on('mensaje', (m: MensajeDeSala) => {
       this.mensaje.set(m);

@@ -126,6 +126,19 @@
         @for (m of mensajes(); track m.clientId || m.seq) {
           <article class="chat__mensaje" [class.chat__mensaje--mio]="esMio(m)">
             <div class="chat__burbuja" [class.chat__burbuja--enviando]="m.enviando">
+              <!-- Borrar es de quien administra la sala; los demás no lo ven. -->
+              @if (soyAdmin() && m.id) {
+                <button
+                  type="button"
+                  class="chat__borrar"
+                  title="Eliminar mensaje"
+                  aria-label="Eliminar mensaje"
+                  (click)="porBorrar.set(m)"
+                >
+                  <vt-icon name="trash" [size]="14" />
+                </button>
+              }
+
               @if (!esMio(m)) {
                 <span class="chat__autor">{{ m.autor }}</span>
               }
@@ -147,6 +160,25 @@
                   </span>
 
                   <span class="chat__actividad-ver">Ver PDF</span>
+                </button>
+              } @else if (m.tipo === 'formulario') {
+                <!-- Un acceso directo: «Crear actividad» de ese formulario. -->
+                <button
+                  type="button"
+                  class="chat__actividad"
+                  [disabled]="creandoDesde() === m.id"
+                  (click)="crearDesde(m)"
+                >
+                  <span class="chat__actividad-icono">⚡</span>
+
+                  <span class="chat__actividad-texto">
+                    <strong>{{ m.formulario?.nombre || 'Formulario ' + m.texto }}</strong>
+                    <small>Acceso directo</small>
+                  </span>
+
+                  <span class="chat__actividad-ver">
+                    {{ creandoDesde() === m.id ? 'Creando…' : 'Crear actividad' }}
+                  </span>
                 </button>
               } @else if (m.texto) {
                 <p class="chat__texto">{{ m.texto }}</p>
@@ -292,6 +324,16 @@
           📎
         </label>
 
+        <button
+          type="button"
+          class="chat__clip"
+          title="Compartir un acceso directo a un formulario"
+          aria-label="Compartir un acceso directo a un formulario"
+          (click)="abrirFormularios()"
+        >
+          ⚡
+        </button>
+
         <textarea
           class="chat__campo"
           rows="1"
@@ -375,6 +417,53 @@
     titulo="Actividad compartida"
     (cerrado)="actividadVista.set('')"
   />
+}
+
+<vt-confirm-dialog
+  [open]="!!porBorrar()"
+  tone="danger"
+  icon="trash"
+  title="¿Eliminar el mensaje?"
+  message="Se borra para todos los de la sala, con sus fotos o archivos. No se puede deshacer."
+  confirmLabel="Eliminar"
+  cancelLabel="Cancelar"
+  [busy]="borrando()"
+  (confirm)="borrarMensaje()"
+  (cancel)="porBorrar.set(null)"
+/>
+
+<!-- Mis formularios, para compartir un acceso directo. -->
+@if (eligiendoFormulario()) {
+  <div class="chat__velo" (click)="eligiendoFormulario.set(false)">
+    <div class="chat__elegir" role="dialog" aria-label="Compartir un formulario" (click)="$event.stopPropagation()">
+      <header class="chat__elegir-cabeza">
+        <strong>Acceso directo a un formulario</strong>
+        <small>Quien lo reciba podrá crear una actividad con un clic.</small>
+      </header>
+
+      <input
+        class="chat__elegir-busca"
+        type="search"
+        placeholder="Buscar formulario"
+        [ngModel]="buscaFormulario()"
+        (ngModelChange)="buscaFormulario.set($event)"
+      />
+
+      <ul class="chat__elegir-lista">
+        @for (f of formulariosVisibles(); track f.SurveyID) {
+          <li>
+            <button type="button" (click)="compartirFormulario(f)">{{ f.Title }}</button>
+          </li>
+        } @empty {
+          <li class="chat__elegir-nada">No hay formularios.</li>
+        }
+      </ul>
+
+      <button type="button" class="vt-btn vt-btn-ghost" (click)="eligiendoFormulario.set(false)">
+        Cancelar
+      </button>
+    </div>
+  </div>
 }
 
 @if (fotoVista(); as vista) {
