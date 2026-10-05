@@ -1,4 +1,14 @@
 <div class="shell" [class.shell--collapsed]="collapsed()">
+  <!-- «Entrar como»: mientras se ve una cuenta ajena, un aviso fijo lo dice y
+       ofrece volver. Ver `AuthService.enterAs`. -->
+  @if (auth.isImpersonating()) {
+    <div class="shell__impersonando" role="status">
+      <vt-icon name="user" [size]="16" />
+      <span>Estás viendo la cuenta de <strong>{{ auth.impersonatingName() }}</strong>.</span>
+      <button type="button" (click)="salirDeImpersonacion()">Salir</button>
+    </div>
+  }
+
   <!-- Capa que oscurece el contenido cuando el menú móvil está abierto -->
   @if (mobileOpen()) {
     <div class="shell__scrim" (click)="closeMobile()"></div>

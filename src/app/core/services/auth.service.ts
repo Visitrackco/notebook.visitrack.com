@@ -77,6 +77,46 @@ export class AuthService {
   /** Hay sesión abierta. */
   readonly isAuthenticated = computed(() => this.currentUser() !== null);
 
+  /**
+   * «Entrar como»: si esta pestaña está viendo la cuenta de otro usuario.
+   *
+   * Guarda el login del administrador al que hay que volver y el nombre de la
+   * cuenta que se está viendo. Vive en `localStorage` para sobrevivir a una
+   * recarga: la suplantación no puede desaparecer al refrescar la página, o
+   * quien da soporte creería que ya salió cuando no. Ver `enterAs`.
+   */
+  readonly impersonatingAdmin = signal<string>(this.readImp('admin'));
+  readonly impersonatingName = signal<string>(this.readImp('name'));
+  readonly isImpersonating = computed(() => this.impersonatingAdmin() !== '');
+
+  private static readonly IMP_ADMIN = 'visitrack.imp.admin';
+  private static readonly IMP_NAME = 'visitrack.imp.name';
+
+  private readImp(cual: 'admin' | 'name'): string {
+    try {
+      const k = cual === 'admin' ? AuthService.IMP_ADMIN : AuthService.IMP_NAME;
+      return localStorage.getItem(k) ?? '';
+    } catch {
+      return '';
+    }
+  }
+
+  private writeImp(adminLogin: string, name: string): void {
+    try {
+      if (adminLogin) {
+        localStorage.setItem(AuthService.IMP_ADMIN, adminLogin);
+        localStorage.setItem(AuthService.IMP_NAME, name);
+      } else {
+        localStorage.removeItem(AuthService.IMP_ADMIN);
+        localStorage.removeItem(AuthService.IMP_NAME);
+      }
+    } catch {
+      // Sin almacenamiento la suplantación sigue en memoria durante la sesión.
+    }
+    this.impersonatingAdmin.set(adminLogin);
+    this.impersonatingName.set(name);
+  }
+
   /** Nombre completo del usuario activo. */
   readonly displayName = computed(() => {
     const user = this.currentUser();
@@ -498,6 +538,78 @@ export class AuthService {
   /** Cuentas disponibles en este navegador. */
   async listAccounts(): Promise<User[]> {
     return this.users.listAccounts();
+  }
+
+  /**
+   * «Entrar como»: abre la cuenta de otro usuario de la empresa para soporte.
+   *
+   * No es una clave maestra. Se llama con la sesión del superadministrador ya
+   * abierta —su token viaja en la cabecera— y su propia contraseña, que el
+   * servidor confirma. El servidor comprueba que sea superadmin, que el destino
+   * sea de su empresa, y registra el acceso. Ver `Impersonar.js`.
+   *
+   * La cuenta del administrador queda guardada en este navegador: al salir se
+   * vuelve a ella sin pedir nada.
+   */
+  async enterAs(targetLogin: string, myPassword: string): Promise<LoginResult> {
+    const destino = targetLogin.trim().toLowerCase();
+    if (!destino) return { success: false, message: 'Escribe la cuenta a la que quieres entrar.' };
+    if (!myPassword) return { success: false, message: 'Confirma con tu contraseña.' };
+
+    const admin = this.currentUser();
+    if (!admin) return { success: false, message: 'Necesitas tu sesión abierta.' };
+
+    try {
+      const response = await firstValueFrom(
+        this.api.post<LoginResponse>('/impersonate', {
+          login: destino,
+          password: myPassword,
+          deviceid: this.device.getDeviceId(),
+          platform: 'web',
+          devicename: this.device.getDeviceInfo().description,
+        }),
+      );
+
+      const data = response?.response ?? response?.body;
+      if (!response?.status || !data) {
+        return { success: false, message: response?.error ?? response?.message ?? 'No se pudo entrar a la cuenta.' };
+      }
+
+      // La cuenta destino, sin contraseña: no la conocemos ni hace falta.
+      const user = await this.persistFromResponse(destino, '', data);
+      this.currentUser.set(user);
+
+      try {
+        await this.savePermissions(user.UserID, data);
+      } catch (error) {
+        console.warn('[Auth] No se pudieron guardar los permisos del destino', error);
+      }
+
+      this.writeImp(admin.Login, fullName(user) || destino);
+      this.sessionEndedReason.set('');
+      void this.loadCompanyLogo(user.CompanyID, user.UserID);
+
+      return { success: true };
+    } catch (error) {
+      const apiError = error as ApiError;
+      return { success: false, message: apiError?.message ?? 'No se pudo entrar a la cuenta.' };
+    }
+  }
+
+  /**
+   * Vuelve a la cuenta del administrador tras «Entrar como».
+   *
+   * Su cuenta sigue guardada en este navegador, así que basta con reactivarla.
+   * Devuelve el login del administrador, o '' si no había suplantación.
+   */
+  async exitImpersonation(): Promise<string> {
+    const admin = this.impersonatingAdmin();
+    this.writeImp('', '');
+
+    if (!admin) return '';
+
+    await this.switchAccount(admin);
+    return admin;
   }
 
   /**

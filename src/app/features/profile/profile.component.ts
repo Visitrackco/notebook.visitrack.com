@@ -1,6 +1,10 @@
 import { Component, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { Router } from '@angular/router';
+
+import { PermissionsService } from '../../core/services/permissions.service';
+import { ToastService } from '../../core/services/toast.service';
 
 import { environment } from '../../../environments/environment';
 import { DatabaseService } from '../../core/database/database.service';
@@ -34,7 +38,7 @@ import { ZonaHorariaService } from '../../core/services/zona-horaria.service';
 @Component({
   selector: 'vt-profile',
   standalone: true,
-  imports: [IconComponent, MatSlideToggleModule, SessionsComponent, MisFirmasComponent],
+  imports: [IconComponent, FormsModule, MatSlideToggleModule, SessionsComponent, MisFirmasComponent],
   templateUrl: './profile.component.html',
   styleUrl: './profile.component.scss',
 })
@@ -47,6 +51,43 @@ export class ProfileComponent {
   readonly auth = inject(AuthService);
   readonly connectivity = inject(ConnectivityService);
   readonly theme = inject(ThemeService);
+  readonly permisos = inject(PermissionsService);
+  private readonly toasts = inject(ToastService);
+
+  // ── «Entrar como» (solo superadministradores) ───────────────────────────
+  readonly entrarComoAbierto = signal(false);
+  readonly impLogin = signal('');
+  readonly impClave = signal('');
+  readonly impError = signal('');
+  readonly impTrabajando = signal(false);
+
+  abrirEntrarComo(): void {
+    this.impLogin.set('');
+    this.impClave.set('');
+    this.impError.set('');
+    this.entrarComoAbierto.set(true);
+  }
+
+  async confirmarEntrarComo(): Promise<void> {
+    if (this.impTrabajando()) return;
+
+    this.impTrabajando.set(true);
+    this.impError.set('');
+
+    const res = await this.auth.enterAs(this.impLogin(), this.impClave());
+
+    if (res.success) {
+      this.entrarComoAbierto.set(false);
+      this.impTrabajando.set(false);
+      // La cuenta destino es nueva en este navegador: hay que descargar sus
+      // datos. La pantalla de carga hace la preparación y la bajada.
+      await this.router.navigateByUrl('/cargando');
+      return;
+    }
+
+    this.impError.set(res.message ?? 'No se pudo entrar a la cuenta.');
+    this.impTrabajando.set(false);
+  }
 
   // Con qué hora se están pintando las fechas, para poder mirarlo en vez de
   // deducirlo. Ver `ZonaHorariaService`.

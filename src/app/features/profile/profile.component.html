@@ -452,6 +452,28 @@
           <vt-mis-firmas />
         </section>
 
+        @if (permisos.isSuperAdmin()) {
+          <section class="profile__panel">
+            <header class="profile__panel-head">
+              <span class="profile__panel-icon">
+                <vt-icon name="shield" [size]="18" />
+              </span>
+              <div>
+                <h2>Soporte</h2>
+              </div>
+            </header>
+
+            <p class="profile__hint">
+              Abre la cuenta de un usuario de tu empresa para darle soporte. Queda registrado
+              que fuiste tú; se confirma con tu contraseña.
+            </p>
+            <button type="button" class="profile__action" (click)="abrirEntrarComo()">
+              <vt-icon name="user" [size]="16" />
+              Entrar como otro usuario
+            </button>
+          </section>
+        }
+
         <section class="profile__panel">
           <header class="profile__panel-head">
             <span class="profile__panel-icon">
@@ -512,6 +534,51 @@
             <span class="profile__hint">Necesitas conexión para traerlo.</span>
           }
         </section>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- «Entrar como»: cuenta destino + mi contraseña. Ver `enterAs`. -->
+@if (entrarComoAbierto()) {
+  <div class="imp-velo" (click)="entrarComoAbierto.set(false)">
+    <div class="imp-caja" role="dialog" aria-label="Entrar como otro usuario" (click)="$event.stopPropagation()">
+      <h2 class="imp-titulo">Entrar como otro usuario</h2>
+      <p class="imp-texto">
+        Abres la cuenta de un usuario de tu empresa para darle soporte. Queda registrado que
+        fuiste tú. Confirma con tu propia contraseña.
+      </p>
+
+      <label class="imp-label">Cuenta (login) del usuario</label>
+      <input
+        class="imp-input"
+        type="text"
+        autocomplete="off"
+        [ngModel]="impLogin()"
+        (ngModelChange)="impLogin.set($event)"
+      />
+
+      <label class="imp-label">Tu contraseña</label>
+      <input
+        class="imp-input"
+        type="password"
+        autocomplete="current-password"
+        [ngModel]="impClave()"
+        (ngModelChange)="impClave.set($event)"
+        (keyup.enter)="confirmarEntrarComo()"
+      />
+
+      @if (impError()) {
+        <p class="imp-error">{{ impError() }}</p>
+      }
+
+      <div class="imp-botones">
+        <button type="button" class="vt-btn vt-btn-ghost" [disabled]="impTrabajando()" (click)="entrarComoAbierto.set(false)">
+          Cancelar
+        </button>
+        <button type="button" class="vt-btn vt-btn--primary" [disabled]="impTrabajando()" (click)="confirmarEntrarComo()">
+          {{ impTrabajando() ? 'Entrando…' : 'Entrar' }}
+        </button>
       </div>
     </div>
   </div>

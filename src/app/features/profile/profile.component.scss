@@ -849,3 +849,48 @@
   color: var(--vt-text-muted);
   font-size: 0.85em;
 }
+
+/* «Entrar como»: ventana para la cuenta destino y la contraseña. */
+.imp-velo {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(0 0 0 / 0.45);
+}
+
+.imp-caja {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: min(26rem, 100%);
+  padding: 1.25rem;
+  color: var(--vt-ink);
+  background: var(--vt-surface, var(--vt-bg));
+  border-radius: var(--vt-radius-sm);
+  box-shadow: var(--vt-card-shadow-hover);
+}
+
+.imp-titulo { margin: 0; font-size: 1.1rem; }
+.imp-texto { margin: 0 0 0.4rem; color: var(--vt-text-muted); font-size: 0.85rem; }
+.imp-label { font-size: 0.78rem; color: var(--vt-text-muted); }
+
+.imp-input {
+  padding: 0.55rem 0.7rem;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--vt-border);
+  border-radius: var(--vt-radius-sm);
+}
+
+.imp-error { margin: 0; color: var(--vt-danger); font-size: 0.82rem; }
+
+.imp-botones {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}

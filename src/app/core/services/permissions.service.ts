@@ -65,6 +65,10 @@ export class PermissionsService {
   /** Rol del usuario. `null` mientras no se ha leído. */
   private readonly roleId = signal<number | null>(null);
 
+  /** Si el usuario es superadministrador de Module (permiso `SUPERADMIN`). */
+  private readonly superadmin = signal(false);
+  readonly isSuperAdmin = computed(() => this.superadmin());
+
   readonly canCreateLocations = computed(() => !this.restricted(NO_ENTITIES));
   readonly canEditLocations = this.canCreateLocations;
   readonly canDeleteLocations = this.canCreateLocations;
@@ -121,15 +125,22 @@ export class PermissionsService {
   private async load(userId: string | undefined): Promise<void> {
     if (!userId) {
       this.roleId.set(null);
+      this.superadmin.set(false);
       return;
     }
 
     try {
       const permissions = await this.roles.findByUser(String(userId));
       this.roleId.set(permissions[0]?.RoleID ?? null);
+      this.superadmin.set(
+        permissions.some(
+          (p) => p.PermissionCode === 'SUPERADMIN' || p.ModuleKey === 'SUPERADMIN',
+        ),
+      );
     } catch (error) {
       console.error('[Permisos] no se pudo leer el rol', error);
       this.roleId.set(null);
+      this.superadmin.set(false);
     }
 
     await this.loadListModule();

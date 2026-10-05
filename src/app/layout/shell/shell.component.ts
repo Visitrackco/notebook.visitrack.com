@@ -354,6 +354,14 @@ export class ShellComponent {
     }
   }
 
+  /** Vuelve a la cuenta del administrador tras «Entrar como». */
+  async salirDeImpersonacion(): Promise<void> {
+    const admin = await this.auth.exitImpersonation();
+    // La cuenta del administrador ya estaba en este navegador: a su inicio,
+    // sin volver a descargar nada.
+    await this.router.navigateByUrl(admin ? '/inicio' : '/login');
+  }
+
   /** Enciende las notificaciones desde la tira. Ver `PushService`. */
   async activarPush(): Promise<void> {
     await this.push.activar();

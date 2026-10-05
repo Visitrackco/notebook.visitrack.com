@@ -864,3 +864,30 @@
     margin: var(--vt-space-3) var(--vt-space-2) 0;
   }
 }
+
+/* «Entrar como»: aviso fijo mientras se ve una cuenta ajena. */
+.shell__impersonando {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  color: #fff;
+  background: #8e1b1b;
+
+  span { flex: 1; }
+
+  button {
+    padding: 0.25rem 0.75rem;
+    font: inherit;
+    font-weight: 700;
+    color: #8e1b1b;
+    cursor: pointer;
+    background: #fff;
+    border: 0;
+    border-radius: var(--vt-radius-sm);
+  }
+}
