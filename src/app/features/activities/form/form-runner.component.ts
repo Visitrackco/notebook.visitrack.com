@@ -1,5 +1,3 @@
-import { FormsModule } from '@angular/forms';
-
 import { esModoPublico } from '../../../core/config/modo-publico';
 import {
   Component,
@@ -122,7 +120,6 @@ const PREFIJO_DESCRIPTIVO_DE_FLUJO = 'flujo:';
   selector: 'vt-form-runner',
   standalone: true,
   imports: [
-    FormsModule,
     FieldHostComponent,
     FlujoBotonesComponent,
     FlujoLlamadasComponent,
@@ -3309,53 +3306,6 @@ ${enlace.url}`)) abrir();
     return abiertas.length === 1
       ? `${cola} El flujo abrió una actividad de «${abiertas[0]}».`
       : `${cola} El flujo abrió ${abiertas.length} actividades nuevas.`;
-  }
-
-  // ── Buscador de campos ────────────────────────────────────────────────────
-  readonly buscadorAbierto = signal(false);
-  readonly buscaCampo = signal('');
-
-  /** Todos los campos con etiqueta, con su página, para el buscador. */
-  readonly indiceDeCampos = computed(() => {
-    const engine = this.engine();
-    if (!engine) return [] as { id: string; lab: string; page: number }[];
-    // Se recalcula con el motor; `pages` es estable tras cargar.
-    engine.page();
-    const res: { id: string; lab: string; page: number }[] = [];
-    engine.pages.forEach((pg, i) => {
-      for (const f of pg.fie) {
-        const lab = (f.lab || '').trim();
-        if (!lab || f.fty === 'page') continue;
-        res.push({ id: f.id, lab, page: i });
-      }
-    });
-    return res;
-  });
-
-  readonly camposFiltrados = computed(() => {
-    const q = this.buscaCampo().trim().toLowerCase();
-    const todos = this.indiceDeCampos();
-    return q ? todos.filter((c) => c.lab.toLowerCase().includes(q)) : todos;
-  });
-
-  abrirBuscador(): void {
-    this.buscaCampo.set('');
-    this.buscadorAbierto.set(true);
-  }
-
-  /** Va a la página del campo, hace scroll hasta él y lo resalta un instante. */
-  async irAlCampo(id: string, page: number): Promise<void> {
-    this.buscadorAbierto.set(false);
-    await this.goToPage(page);
-
-    // Tras el repintado: el campo puede estar en otra página y aún no existir.
-    setTimeout(() => {
-      const el = document.getElementById(`field-${id}`);
-      if (!el) return;
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      el.classList.add('runner__field--resaltado');
-      setTimeout(() => el.classList.remove('runner__field--resaltado'), 1800);
-    });
   }
 
   /** Salta al campo que falta y lo deja enfocado. */

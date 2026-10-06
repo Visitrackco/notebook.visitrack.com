@@ -218,41 +218,6 @@
     }
 
     <!-- ── Campos ──────────────────────────────────────────────────────────── -->
-    <!-- Buscador de campos: salta al campo por su nombre y lo resalta. -->
-    <div class="runner__buscar">
-      <button type="button" class="runner__buscar-btn" (click)="abrirBuscador()">
-        <vt-icon name="search" [size]="16" />
-        Buscar campo
-      </button>
-    </div>
-
-    @if (buscadorAbierto()) {
-      <div class="runner__buscar-velo" (click)="buscadorAbierto.set(false)">
-        <div class="runner__buscar-caja" (click)="$event.stopPropagation()">
-          <input
-            class="runner__buscar-input"
-            type="search"
-            autofocus
-            placeholder="Buscar campo por nombre"
-            [ngModel]="buscaCampo()"
-            (ngModelChange)="buscaCampo.set($event)"
-          />
-          <ul class="runner__buscar-lista">
-            @for (c of camposFiltrados(); track c.id) {
-              <li>
-                <button type="button" (click)="irAlCampo(c.id, c.page)">
-                  <span>{{ c.lab }}</span>
-                  <small>Página {{ c.page + 1 }}</small>
-                </button>
-              </li>
-            } @empty {
-              <li class="runner__buscar-nada">No hay campos con ese nombre.</li>
-            }
-          </ul>
-        </div>
-      </div>
-    }
-
     <div class="runner__fields" #fields>
       <!-- La clave lleva el sello del campo: cuando el flujo le reescribe el
            valor, el control se rehace en vez de quedarse con lo que el usuario
