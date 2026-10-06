@@ -3348,19 +3348,14 @@ ${enlace.url}`)) abrir();
     this.buscadorAbierto.set(false);
     await this.goToPage(page);
 
-    // El campo puede estar en otra página y aún no existir en el DOM: se
-    // reintenta hasta que aparezca (en la misma página, al primer intento) y
-    // entonces se hace el scroll exacto.
-    for (let i = 0; i < 12; i++) {
+    // Tras el repintado: el campo puede estar en otra página y aún no existir.
+    setTimeout(() => {
       const el = document.getElementById(`field-${id}`);
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        el.classList.add('runner__field--resaltado');
-        setTimeout(() => el.classList.remove('runner__field--resaltado'), 1600);
-        return;
-      }
-      await new Promise((r) => setTimeout(r, 50));
-    }
+      if (!el) return;
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('runner__field--resaltado');
+      setTimeout(() => el.classList.remove('runner__field--resaltado'), 1800);
+    });
   }
 
   /** Salta al campo que falta y lo deja enfocado. */
