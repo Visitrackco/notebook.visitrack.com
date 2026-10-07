@@ -319,7 +319,35 @@ export type FieldValue =
   | FileValue
   /** Tabla de detalle: sus filas, cada una con su sub-formulario. */
   | DetailRowValue[]
+  /** Escaneo de código (barras/QR) capturado a mano en la web: `{val, txt, for}`. */
+  | ScanValue
+  /** Documento de identidad: `{docName, docNumber}`. */
+  | DocumentValue
+  /** Dirección de negocio: `{st1, st2, cit, sta, pos}`. */
+  | AddressValue
   | null;
+
+/** Escaneo de código. En la web se captura a mano; la app además trae geo. */
+export interface ScanValue {
+  val: string;
+  txt: string;
+  for: string;
+}
+
+/** Documento de identidad (cédula). */
+export interface DocumentValue {
+  docName: string;
+  docNumber: string;
+}
+
+/** Dirección de negocio, en partes. */
+export interface AddressValue {
+  st1: string;
+  st2: string;
+  cit: string;
+  sta: string;
+  pos: string;
+}
 
 /** Una respuesta guardada, tal como vive en `SurveyAnswers.Fields`. */
 export interface AnswerField {
@@ -659,9 +687,14 @@ const DISPLAY_ONLY = new Set([
   'hyperlink',
   'image',
   // El formulario vinculado no se dibuja en la web. Van los dos nombres: la
-  // app lo llama `form` y el diseñador web lo emite como `webform`.
+  // app lo llama `form` y el diseñador web lo emite como `webform`. (El
+  // `webform` con URL sí se dibuja —un iframe— pero tampoco guarda respuesta,
+  // así que también es de solo presentación.)
   'form',
   'webform',
+  // NFC: no hay lectura fiable de etiquetas desde el navegador. Se anuncia que
+  // no está disponible en web y no se exige, para no bloquear el guardado.
+  'scanrfidtag',
 ]);
 
 /**
@@ -743,6 +776,19 @@ export function valueToText(value: FieldValue): string {
   // vacío en el listado se lee como «sin responder», y sí se respondió.
   const file = asFile(value);
   if (file) return file.sig || 'Archivo adjunto';
+
+  // Los campos nuevos de la web (escaneo manual, documento, dirección) guardan
+  // un objeto con claves propias. Se resumen con lo legible de cada uno.
+  if (typeof value === 'object') {
+    const v = value as Partial<ScanValue & DocumentValue & AddressValue>;
+    if (typeof v.txt === 'string') return v.txt;
+    if (typeof v.docNumber === 'string' || typeof v.docName === 'string') {
+      return [v.docName, v.docNumber].filter(Boolean).join(' · ');
+    }
+    if (typeof v.st1 === 'string' || typeof v.cit === 'string') {
+      return [v.st1, v.st2, v.cit, v.sta, v.pos].filter(Boolean).join(', ');
+    }
+  }
 
   return '';
 }

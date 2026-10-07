@@ -403,8 +403,120 @@
   @case ('form') {
     <ng-container *ngTemplateOutlet="linkedTpl" />
   }
+  <!-- `webform` con URL: se renderiza aquí dentro en un iframe (equivalente web
+       del WebView del móvil). Sin URL, es el formulario vinculado de siempre. Se
+       distinguen por el contenido de la plantilla. -->
   @case ('webform') {
-    <ng-container *ngTemplateOutlet="linkedTpl" />
+    @if (esUrlWebform()) {
+      <vt-webform-field [field]="f" [answerGuid]="answerGuid()" />
+    } @else {
+      <ng-container *ngTemplateOutlet="linkedTpl" />
+    }
+  }
+
+  <!-- ── Lista de Visitrack (ítems) ─────────────────────────────────────────
+       Igual que el desplegable: resuelve la lista por `ent`/`lst` y guarda la
+       opción elegida. -->
+  @case ('list') {
+    <vt-list-field
+      [field]="f"
+      [readOnly]="readOnly()"
+      [invalid]="invalid()"
+      [bloqueadas]="opcionesDelFlujo()?.bloqueadas ?? []"
+      [value]="listValue()"
+      [parentValue]="parentValue()"
+      [answerGuid]="answerGuid()"
+      (valueChange)="onListChange($event)"
+    />
+  }
+
+  <!-- ── Escaneo de código (barras / QR) ────────────────────────────────────
+       En la web no hay lector de cámara fiable en escritorio: se captura a mano
+       el código. El valor se guarda igual que lo escribe la app. -->
+  @case ('scanbarcode') {
+    <ng-container *ngTemplateOutlet="scanTpl" />
+  }
+  @case ('scanqrcode') {
+    <ng-container *ngTemplateOutlet="scanTpl" />
+  }
+
+  <!-- ── NFC: no disponible en web ──────────────────────────────────────────
+       No hay forma fiable de leer etiquetas NFC desde el navegador. -->
+  @case ('scanrfidtag') {
+    <p class="fld__nodisponible">
+      Este campo no es posible usarse en la versión web.
+    </p>
+  }
+
+  <!-- ── Documento de identidad (cédula) ────────────────────────────────────
+       En la web no se escanea la cédula física: se escriben el nombre y el
+       número a mano, que en la app también son editables. -->
+  @case ('document') {
+    <div class="fld__pareja">
+      <mat-form-field appearance="outline" class="fld__control">
+        <mat-label>Nombre</mat-label>
+        <input
+          matInput
+          [value]="documentValue().docName"
+          [readonly]="readOnly()"
+          (input)="onDocument('docName', $event)"
+        />
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="fld__control">
+        <mat-label>Número de documento</mat-label>
+        <input
+          matInput
+          inputmode="numeric"
+          [value]="documentValue().docNumber"
+          [readonly]="readOnly()"
+          (input)="onDocument('docNumber', $event)"
+        />
+      </mat-form-field>
+    </div>
+    @if (ayuda()) {
+      <p class="fld__hint">{{ ayuda() }}</p>
+    }
+    @if (invalid()) {
+      <p class="fld__error">Este campo es obligatorio.</p>
+    }
+  }
+
+  <!-- ── Dirección de negocio ───────────────────────────────────────────────
+       Partes separadas, como las guarda la app (st1, st2, ciudad, depto, cp). -->
+  @case ('address') {
+    <div class="fld__direccion">
+      <mat-form-field appearance="outline" class="fld__control fld__control--ancho">
+        <mat-label>Dirección</mat-label>
+        <input matInput [value]="addressValue().st1" [readonly]="readOnly()"
+          (input)="onAddress('st1', $event)" />
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="fld__control fld__control--ancho">
+        <mat-label>Complemento</mat-label>
+        <input matInput [value]="addressValue().st2" [readonly]="readOnly()"
+          (input)="onAddress('st2', $event)" />
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="fld__control">
+        <mat-label>Ciudad</mat-label>
+        <input matInput [value]="addressValue().cit" [readonly]="readOnly()"
+          (input)="onAddress('cit', $event)" />
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="fld__control">
+        <mat-label>Departamento / Estado</mat-label>
+        <input matInput [value]="addressValue().sta" [readonly]="readOnly()"
+          (input)="onAddress('sta', $event)" />
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="fld__control">
+        <mat-label>Código postal</mat-label>
+        <input matInput [value]="addressValue().pos" [readonly]="readOnly()"
+          (input)="onAddress('pos', $event)" />
+      </mat-form-field>
+    </div>
+    @if (ayuda()) {
+      <p class="fld__hint">{{ ayuda() }}</p>
+    }
+    @if (invalid()) {
+      <p class="fld__error">Este campo es obligatorio.</p>
+    }
   }
 
   <!-- ── Texto, número, fecha, hora, correo, teléfono, dirección ────────── -->
@@ -483,6 +595,25 @@
     [parentGuid]="answerGuid()"
     (valueChange)="valueChange.emit($event)"
   />
+</ng-template>
+
+<!-- Escaneo de barras y QR: en la web se escribe o se pega el código. Comparten
+     plantilla porque lo único que cambia entre los dos es el tipo que se guarda,
+     y eso lo resuelve el manejador según el `fty`. -->
+<ng-template #scanTpl>
+  <mat-form-field appearance="outline" class="fld__control">
+    <input
+      matInput
+      [value]="scanText()"
+      [placeholder]="f.pho || 'Escribe o pega el código'"
+      [readonly]="readOnly()"
+      (input)="onScan($event)"
+    />
+    <mat-hint>El escaneo con cámara no está disponible en la versión web; ingresa el código a mano.</mat-hint>
+    @if (invalid()) {
+      <mat-error>Este campo es obligatorio.</mat-error>
+    }
+  </mat-form-field>
 </ng-template>
 
 <!-- Los tipos que faltan se anuncian con su nombre y el del campo. Un hueco en

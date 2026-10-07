@@ -256,6 +256,43 @@
   color: var(--vt-danger);
 }
 
+/* Aviso de que un tipo de campo no se puede usar en la web (p. ej. NFC). En
+   gris y con borde suave: no es un error, es una limitación de la plataforma. */
+.fld__nodisponible {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px dashed var(--vt-text-subtle);
+  border-radius: 10px;
+  font-size: var(--vt-text-sm);
+  color: var(--vt-text-subtle);
+}
+
+/* Documento: nombre y número, lado a lado cuando hay sitio. */
+.fld__pareja {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* Dirección de negocio: rejilla de partes; la calle ocupa toda la fila. */
+.fld__direccion {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.fld__control--ancho {
+  grid-column: 1 / -1;
+}
+
+/* En pantallas angostas, cada caja en su renglón. */
+@media (max-width: 560px) {
+  .fld__pareja,
+  .fld__direccion {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ── Área de texto con formato ─────────────────────────────────────────────── */
 
 /* Etiqueta encima, como en los campos de archivo: el «control» es un editor

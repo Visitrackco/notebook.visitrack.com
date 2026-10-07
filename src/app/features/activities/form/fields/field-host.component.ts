@@ -16,10 +16,13 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTimepickerModule } from '@angular/material/timepicker';
 
 import {
+  AddressValue,
+  DocumentValue,
   FieldValue,
   FileValue,
   FormField,
   ResolvedDescriptor,
+  ScanValue,
   asFile,
   asGeo,
   asOption,
@@ -39,6 +42,7 @@ import { ListFieldComponent, ListSelection } from './list-field/list-field.compo
 import { MasterDetailFieldComponent } from './master-detail-field/master-detail-field.component';
 import { RichTextFieldComponent } from './rich-text-field/rich-text-field.component';
 import { LinkedFormFieldComponent } from './linked-form-field/linked-form-field.component';
+import { WebformFieldComponent } from './webform-field/webform-field.component';
 
 /**
  * Formatos de fecha y hora.
@@ -112,6 +116,7 @@ const VT_DATE_FORMATS: MatDateFormats = {
     ListFieldComponent,
     MasterDetailFieldComponent,
     RichTextFieldComponent,
+    WebformFieldComponent,
     NgTemplateOutlet,
     FormsModule,
     MatCheckboxModule,
@@ -644,6 +649,93 @@ export class FieldHostComponent {
 
   onText(event: Event): void {
     this.valueChange.emit((event.target as HTMLInputElement | HTMLTextAreaElement).value);
+  }
+
+  // ── Campos nuevos (adaptados del móvil) ──────────────────────────────────────
+
+  /**
+   * ¿El `webform` trae una URL? Entonces es el campo de web embebida (iframe);
+   * si no, es el formulario vinculado. El tipo es el mismo y se separan por el
+   * contenido de la plantilla, igual que en el móvil. Ver `esUrlWebForm` allí.
+   */
+  readonly esUrlWebform = computed(() => {
+    const plantilla = String(this.field().val || this.field().url || '').trim().toLowerCase();
+    return plantilla.startsWith('http://') || plantilla.startsWith('https://');
+  });
+
+  /**
+   * El valor de un escaneo (barras/QR). En la web se captura a mano, así que
+   * solo hace falta el texto; la app además guarda la geolocalización.
+   */
+  readonly scanText = computed(() => {
+    const v = this.value();
+    if (v && typeof v === 'object' && !Array.isArray(v) && 'val' in v) {
+      return String((v as ScanValue).val ?? '');
+    }
+    return '';
+  });
+
+  /** El valor de un documento de identidad, para rellenar las dos cajas. */
+  readonly documentValue = computed<DocumentValue>(() => {
+    const v = this.value();
+    if (v && typeof v === 'object' && !Array.isArray(v) && 'docNumber' in v) {
+      const d = v as DocumentValue;
+      return { docName: String(d.docName ?? ''), docNumber: String(d.docNumber ?? '') };
+    }
+    return { docName: '', docNumber: '' };
+  });
+
+  /** El valor de una dirección de negocio, por partes. */
+  readonly addressValue = computed<AddressValue>(() => {
+    const v = this.value();
+    if (v && typeof v === 'object' && !Array.isArray(v) && 'st1' in v) {
+      const a = v as AddressValue;
+      return {
+        st1: String(a.st1 ?? ''),
+        st2: String(a.st2 ?? ''),
+        cit: String(a.cit ?? ''),
+        sta: String(a.sta ?? ''),
+        pos: String(a.pos ?? ''),
+      };
+    }
+    return { st1: '', st2: '', cit: '', sta: '', pos: '' };
+  });
+
+  /**
+   * Llega el texto escaneado a mano. El `for` dice de qué tipo de código es,
+   * según el campo. Se emite `null` cuando queda vacío para que un obligatorio
+   * siga contando como pendiente.
+   */
+  onScan(event: Event): void {
+    const txt = (event.target as HTMLInputElement).value.trim();
+    if (!txt) {
+      this.valueChange.emit(null);
+      return;
+    }
+    const tipo = this.field().fty === 'scanqrcode' ? 'qr_code' : 'barcode';
+    this.valueChange.emit({ val: txt, txt, for: tipo });
+  }
+
+  /** Cambia una de las dos cajas del documento. */
+  onDocument(part: 'docName' | 'docNumber', event: Event): void {
+    const actual = this.documentValue();
+    const siguiente: DocumentValue = {
+      ...actual,
+      [part]: (event.target as HTMLInputElement).value,
+    };
+    const vacio = !siguiente.docName.trim() && !siguiente.docNumber.trim();
+    this.valueChange.emit(vacio ? null : siguiente);
+  }
+
+  /** Cambia una de las partes de la dirección. */
+  onAddress(part: keyof AddressValue, event: Event): void {
+    const actual = this.addressValue();
+    const siguiente: AddressValue = {
+      ...actual,
+      [part]: (event.target as HTMLInputElement).value,
+    };
+    const vacio = !Object.values(siguiente).some((parte) => parte.trim());
+    this.valueChange.emit(vacio ? null : siguiente);
   }
 
   /**
