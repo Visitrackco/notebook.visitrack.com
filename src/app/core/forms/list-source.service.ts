@@ -751,17 +751,35 @@ export class ListSourceService {
     ownerId: number,
     typeGuid: string,
     search: string,
+    location = '',
   ): Promise<ListSource> {
     // En un enlace publico, en linea. Ver la nota de `fromLocations`.
     if (esModoPublico()) return this.deLaRedPorTipo('activo', typeGuid, search);
 
+    const sede = String(location ?? '').trim();
+    const porSede = sede !== '' && sede !== '0';
+
     // Sin búsqueda basta con la primera página. Con búsqueda hay que
     // recorrerlos todos: lo escrito puede estar en el último de veinte mil.
-    const found = await this.assets.findByTypeGuid(
+    // Acotados a una sede tampoco: la página se cortaría antes de llegar a los
+    // suyos.
+    const delTipo = await this.assets.findByTypeGuid(
       ownerId,
       typeGuid,
-      search ? undefined : PAGE,
+      search || porSede ? undefined : PAGE,
     );
+
+    // Por el identificador de la sede o, si se creó en este dispositivo y aún
+    // no lo tiene, por su GUID. Ver `AssetRepository.findByLocationGuid`.
+    const found = porSede
+      ? delTipo.filter(
+          (a) => String(a.LocationID) === sede || String(a.LocationGUID ?? '') === sede,
+        )
+      : delTipo;
+
+    if (porSede && found.length === 0 && delTipo.length > 0) {
+      return none('Esta ubicación no tiene activos de este tipo.');
+    }
 
     // Los descriptivos son los mismos para todos: los define el tipo, y todos
     // los de esta consulta son del mismo tipo. Se leen del primero.
@@ -927,12 +945,17 @@ export class ListSourceService {
     return this.fromLocations(owner, typeGuid, search);
   }
 
-  /** Activos de un tipo. */
-  async assetsOfType(typeGuid: string, search: string): Promise<ListSource> {
+  /**
+   * Activos de un tipo.
+   *
+   * @param location la ubicación de la actividad (`LocationID` o GUID). Con
+   *   ella, solo los activos que cuelgan de esa sede; vacía, todos los del tipo.
+   */
+  async assetsOfType(typeGuid: string, search: string, location = ''): Promise<ListSource> {
     const owner = this.ownerId();
     if (owner === null) return none('No hay una sesión activa.');
 
-    return this.fromAssets(owner, typeGuid, search);
+    return this.fromAssets(owner, typeGuid, search, location);
   }
 
   /**

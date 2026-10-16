@@ -810,6 +810,10 @@ export class MasterDetailFieldComponent {
             parentField: this.parentValue() || undefined,
             parent: this.inheritedParent() || undefined,
             ...this.inheritedFilter(),
+            // Activos: los de la ubicación de la actividad, si tiene. Ofrecer
+            // los de otra sede sería ofrecer una respuesta equivocada; sin
+            // ubicación, todos los del tipo.
+            ...(config.origin === 'assets' ? { loc: this.answerContext().loc } : {}),
           },
           this.step(),
         ),

@@ -306,7 +306,7 @@ export class MasterDetailSourceService {
         return this.lists.locationsOfType(config.typeGuid, search);
 
       case 'assets':
-        return this.lists.assetsOfType(config.typeGuid, search);
+        return this.lists.assetsOfType(config.typeGuid, search, context.loc);
 
       case 'items':
         return this.lists.itemsOfType(ref, config.typeGuid, {
