@@ -187,6 +187,11 @@ export class CommandPaletteComponent {
       make('Pendientes por subir', 'cloud-upload', '/pendientes'),
       make('Correos del flujo', 'mail', '/correos-flujo'),
       make('Notificaciones del flujo', 'bell', '/avisos-flujo'),
+      // Con «cerca» y «entradas» en lo que se busca: nadie piensa en «evento».
+      {
+        ...make('Eventos de geocerca', 'geocerca-eventos', '/geocerca-eventos'),
+        haystack: 'eventos de geocerca geocercas cerca entradas salidas llegadas historial /geocerca-eventos',
+      },
       make('Ubicaciones', 'map-pin', '/ubicaciones'),
       // Con «etiqueta» y «qr» en lo que se busca: nadie escribe «escanear»
       // cuando lo que tiene delante es un código pegado en un equipo.

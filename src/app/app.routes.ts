@@ -440,6 +440,19 @@ export const routes: Routes = [
        * `titulo` y `texto` llegan en la dirección: son lo que decía la alerta, y
        * así se enseñan aunque no haya red para traer el evento.
        */
+      /**
+       * El historial de eventos de geocerca. Los filtros van en la dirección
+       * (`?desde=…&hasta=…&geocerca=…&pagina=…`) para que «Volver» desde el
+       * detalle regrese a la misma página.
+       */
+      {
+        path: 'geocerca-eventos',
+        title: 'Eventos de geocerca · Visitrack',
+        loadComponent: () =>
+          import('./features/geocerca-eventos/geocerca-eventos.component').then(
+            (m) => m.GeocercaEventosComponent,
+          ),
+      },
       {
         path: 'geocerca-evento/:clave',
         title: 'Evento de geocerca · Visitrack',

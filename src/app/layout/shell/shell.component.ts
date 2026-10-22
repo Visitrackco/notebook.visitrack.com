@@ -240,6 +240,14 @@ export class ShellComponent {
         run: go('/avisos-flujo'),
       },
       {
+        // `g e` de eventos: `g g` sería incómodo y `g c` ya está repetido.
+        id: 'go-geofence-events',
+        keys: 'g e',
+        label: 'Eventos de geocerca',
+        group: 'Navegación',
+        run: go('/geocerca-eventos'),
+      },
+      {
         id: 'go-locations',
         keys: 'g u',
         label: 'Ubicaciones',

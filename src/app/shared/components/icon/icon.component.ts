@@ -243,6 +243,11 @@ import { Component, input } from '@angular/core';
         @case ('barcode') {
           <path d="M4 6v12M7 6v12M10.5 6v12M13 6v12M16.5 6v12M20 6v12" />
         }
+        @case ('geocerca-eventos') {
+          <!-- La cerca en trazos, con las manecillas dentro: lo que pasó en ella, en el tiempo. -->
+          <circle cx="12" cy="12" r="8.5" stroke-dasharray="2.4 2.6" />
+          <path d="M12 7.8V12l2.8 1.8" />
+        }
         @case ('flash') {
           <path d="M13 3 5 13.5h6L10 21l8-10.5h-6L13 3Z" />
         }

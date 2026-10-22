@@ -4,7 +4,7 @@
 <section class="ge">
   <button type="button" class="ge__volver" (click)="volver()">
     <vt-icon name="chevron" [size]="16" class="ge__volver-ico" />
-    Volver
+    {{ desdeLaLista() ? 'Volver a los eventos' : 'Volver' }}
   </button>
 
   <!-- La alerta tal como llegó: es lo que la persona acaba de tocar. -->

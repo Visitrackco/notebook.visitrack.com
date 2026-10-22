@@ -1,0 +1,211 @@
+<!--
+  Eventos de geocerca: lo que dispararon las geocercas, del más reciente al más
+  viejo. Tocar uno abre su detalle.
+-->
+<section class="gev">
+  <header class="gev__cab">
+    <span class="gev__ico" aria-hidden="true"><vt-icon name="geocerca-eventos" [size]="22" /></span>
+    <div class="gev__cab-texto">
+      <h1 class="gev__titulo">Eventos de geocerca</h1>
+      <p class="gev__sub">
+        Cada vez que entraste, saliste, pasaste cerca o hiciste algo dentro de una geocerca
+        con un flujo activo. Toca uno para ver el detalle y el mapa.
+      </p>
+    </div>
+    <button
+      type="button"
+      class="gev__btn gev__btn--icono"
+      (click)="cargar()"
+      [disabled]="cargando()"
+      aria-label="Recargar"
+      title="Recargar"
+    >
+      <vt-icon name="refresh" [size]="18" />
+    </button>
+  </header>
+
+  <!-- Filtros: rango de fechas y geocerca. Viven en la dirección. -->
+  <form class="gev__filtros" (submit)="$event.preventDefault()" aria-label="Filtros">
+    <div class="gev__rapidos" role="group" aria-label="Rango rápido">
+      <button type="button" class="gev__chip" [class.gev__chip--activo]="esRango(1)" (click)="ultimosDias(1)">
+        Hoy
+      </button>
+      <button type="button" class="gev__chip" [class.gev__chip--activo]="esRango(7)" (click)="ultimosDias(7)">
+        7 días
+      </button>
+      <button type="button" class="gev__chip" [class.gev__chip--activo]="esRango(30)" (click)="ultimosDias(30)">
+        30 días
+      </button>
+    </div>
+
+    <label class="gev__campo">
+      <span>Desde</span>
+      <input
+        type="date"
+        [value]="filtro().desde"
+        [max]="filtro().hasta"
+        (change)="cambiarDesde($any($event.target).value)"
+      />
+    </label>
+    <label class="gev__campo">
+      <span>Hasta</span>
+      <input
+        type="date"
+        [value]="filtro().hasta"
+        [min]="filtro().desde"
+        (change)="cambiarHasta($any($event.target).value)"
+      />
+    </label>
+    <label class="gev__campo gev__campo--ancho">
+      <span>Geocerca</span>
+      <select (change)="cambiarGeocerca($any($event.target).value)">
+        <option value="" [selected]="filtro().geocerca === null">Todas</option>
+        @for (g of geocercas(); track g.id) {
+          <option [value]="g.id" [selected]="filtro().geocerca === g.id">
+            {{ g.nombre || 'Geocerca ' + g.id }}
+          </option>
+        }
+      </select>
+    </label>
+
+    @if (hayFiltrosPropios()) {
+      <button type="button" class="gev__enlace" (click)="limpiar()">Quitar filtros</button>
+    }
+  </form>
+
+  @if (sinRed() && !cargando()) {
+    <p class="gev__aviso" role="status">
+      <vt-icon name="connection-off" [size]="16" />
+      <span>
+        Sin conexión: se muestran los eventos guardados en este navegador.
+        <span class="gev__aviso-sub">Guarda solo los de la última semana.</span>
+      </span>
+      <button type="button" class="gev__enlace" (click)="cargar()">Reintentar</button>
+    </p>
+  }
+
+  @if (cargando() && !resultado()) {
+    <!-- La primera carga: un esqueleto con la forma de la lista. -->
+    <ul class="gev__lista" aria-busy="true" aria-label="Cargando eventos">
+      @for (i of [1, 2, 3, 4, 5]; track i) {
+        <li class="gev__fila gev__fila--esqueleto" aria-hidden="true">
+          <span class="gev__tipo gev__tipo--otro"></span>
+          <span class="gev__barras"><span></span><span></span></span>
+        </li>
+      }
+    </ul>
+    <span class="gev__oculto" role="status">Cargando los eventos…</span>
+  } @else if (fallo()) {
+    <div class="gev__vacio">
+      <span class="gev__vacio-ico gev__vacio-ico--mal"><vt-icon name="alert" [size]="26" /></span>
+      <p class="gev__vacio-tit">No pudimos leer los eventos</p>
+      <p class="gev__sub">Ni el servidor ni este navegador respondieron. Prueba otra vez en un momento.</p>
+      <button type="button" class="gev__btn" (click)="cargar()">
+        <vt-icon name="refresh" [size]="16" /> Reintentar
+      </button>
+    </div>
+  } @else if (!filas().length) {
+    <!-- El hueco explica: en blanco se leería como algo que falló. -->
+    <div class="gev__vacio">
+      <span class="gev__vacio-ico"><vt-icon name="geocerca-eventos" [size]="26" /></span>
+      @if (hayFiltrosPropios()) {
+        <p class="gev__vacio-tit">Ningún evento con estos filtros</p>
+        <p class="gev__sub">Prueba con un rango de fechas más amplio o con todas las geocercas.</p>
+        <button type="button" class="gev__btn" (click)="limpiar()">Quitar filtros</button>
+      } @else {
+        <p class="gev__vacio-tit">Sin eventos en los últimos 7 días</p>
+        <p class="gev__sub">
+          Aparecen aquí en cuanto una geocerca de tus flujos se dispare, desde el teléfono o
+          con esta pestaña abierta.
+        </p>
+      }
+    </div>
+  } @else {
+    <div class="gev__resumen" [class.gev__resumen--cargando]="cargando()">
+      <span>{{ rangoTexto() }}</span>
+      @if (pendientes() > 0) {
+        <span class="gev__pill gev__pill--pendiente">
+          {{ pendientes() }} pendiente{{ pendientes() === 1 ? '' : 's' }} de enviar
+        </span>
+      }
+    </div>
+
+    <div class="gev__dias" [class.gev__dias--cargando]="cargando()">
+      @for (g of grupos(); track g.dia) {
+        <section class="gev__dia">
+          <h2 class="gev__dia-tit">{{ g.titulo }}</h2>
+          <ul class="gev__lista">
+            @for (f of g.filas; track f.clave) {
+              <li>
+                <button type="button" class="gev__fila" (click)="abrir(f)">
+                  <span class="gev__tipo" [class]="'gev__tipo ' + claseDeTipo(f.tipo)" aria-hidden="true">
+                    <vt-icon [name]="iconoDeTipo(f.tipo)" [size]="18" />
+                  </span>
+
+                  <span class="gev__cuerpo">
+                    <span class="gev__evento">{{ f.evento || 'Evento de geocerca' }}</span>
+                    <span class="gev__meta">
+                      @if (f.geocerca?.nombre) {
+                        <span class="gev__geocerca">{{ f.geocerca?.nombre }}</span>
+                      }
+                      @if (f.dentro !== null) {
+                        <span
+                          class="gev__estado"
+                          [class.gev__estado--dentro]="f.dentro"
+                          [class.gev__estado--fuera]="!f.dentro"
+                        >
+                          {{ f.dentro ? 'Dentro' : 'Fuera' }}@if (f.distanciaMetros !== null) {
+                            · {{ distancia(f.distanciaMetros) }}
+                          }
+                        </span>
+                      }
+                    </span>
+                    @if (f.flujo || f.regla) {
+                      <span class="gev__flujo">
+                        {{ f.flujo }}@if (f.flujo && f.regla) {
+                          ·
+                        }{{ f.regla }}
+                      </span>
+                    }
+                  </span>
+
+                  <span class="gev__lado">
+                    <span class="gev__hora">{{ hora(f.en) }}</span>
+                    @if (f.pendiente) {
+                      <span class="gev__pill gev__pill--pendiente" title="Este navegador aún no lo ha contado al servidor">
+                        Pendiente de enviar
+                      </span>
+                    }
+                  </span>
+                  <vt-icon name="chevron" [size]="16" class="gev__flecha" />
+                </button>
+              </li>
+            }
+          </ul>
+        </section>
+      }
+    </div>
+
+    @if (paginas() > 1) {
+      <nav class="gev__paginas" aria-label="Páginas">
+        <button
+          type="button"
+          class="gev__btn"
+          (click)="irAPagina(numeroDePagina() - 1)"
+          [disabled]="numeroDePagina() <= 1 || cargando()"
+        >
+          Anterior
+        </button>
+        <span class="gev__pagina">Página {{ numeroDePagina() }} de {{ paginas() }}</span>
+        <button
+          type="button"
+          class="gev__btn"
+          (click)="irAPagina(numeroDePagina() + 1)"
+          [disabled]="numeroDePagina() >= paginas() || cargando()"
+        >
+          Siguiente
+        </button>
+      </nav>
+    }
+  }
+</section>

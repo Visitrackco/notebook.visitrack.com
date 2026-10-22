@@ -1,0 +1,483 @@
+/*
+ * Eventos de geocerca. Con los tokens de la plataforma: el modo oscuro se
+ * resuelve donde ya se resuelve y esta pantalla no sabe nada de colores.
+ */
+
+:host {
+  display: block;
+  width: 100%;
+}
+
+.gev {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vt-space-4);
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+/* ── Cabecera ──────────────────────────────────────────────────────────────── */
+
+.gev__cab {
+  display: flex;
+  gap: var(--vt-space-4);
+  align-items: flex-start;
+}
+
+.gev__ico {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  color: var(--vt-icon-blue-fg);
+  background: var(--vt-icon-blue-bg);
+  border-radius: var(--vt-radius-full);
+}
+
+.gev__cab-texto {
+  flex: 1;
+  min-width: 0;
+}
+
+.gev__titulo {
+  margin: 0 0 var(--vt-space-1);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--vt-text);
+}
+
+.gev__sub {
+  margin: 0;
+  max-width: 62ch;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--vt-text-muted);
+}
+
+/* ── Botones ───────────────────────────────────────────────────────────────── */
+
+.gev__btn {
+  display: inline-flex;
+  gap: var(--vt-space-2);
+  align-items: center;
+  justify-content: center;
+  padding: var(--vt-space-2) var(--vt-space-4);
+  color: var(--vt-text);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-border);
+  border-radius: var(--vt-radius);
+}
+
+.gev__btn:hover:not(:disabled) { background: var(--vt-surface-3); }
+
+.gev__btn:disabled {
+  color: var(--vt-text-subtle);
+  cursor: default;
+}
+
+.gev__btn--icono {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+}
+
+.gev__enlace {
+  padding: 0;
+  color: var(--vt-primary);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: none;
+  border: 0;
+}
+
+.gev__enlace:hover { text-decoration: underline; }
+
+/* ── Filtros ───────────────────────────────────────────────────────────────── */
+
+.gev__filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vt-space-3);
+  align-items: flex-end;
+  padding: var(--vt-space-4);
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-border);
+  border-radius: var(--vt-radius-lg);
+}
+
+.gev__rapidos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vt-space-2);
+  width: 100%;
+}
+
+.gev__chip {
+  padding: 4px 12px;
+  color: var(--vt-text-muted);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--vt-surface-2);
+  border: 1px solid var(--vt-border);
+  border-radius: var(--vt-radius-full);
+}
+
+.gev__chip:hover { color: var(--vt-text); }
+
+.gev__chip--activo {
+  color: var(--vt-icon-blue-fg);
+  background: var(--vt-icon-blue-bg);
+  border-color: transparent;
+}
+
+.gev__campo {
+  display: flex;
+  flex: 1 1 140px;
+  flex-direction: column;
+  gap: var(--vt-space-1);
+  min-width: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--vt-text-muted);
+}
+
+.gev__campo--ancho { flex: 2 1 200px; }
+
+.gev__campo input,
+.gev__campo select {
+  width: 100%;
+  min-width: 0;
+  height: 40px;
+  padding: 0 var(--vt-space-3);
+  color: var(--vt-text);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 400;
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-border-strong);
+  border-radius: var(--vt-radius);
+  color-scheme: light dark;
+}
+
+.gev__campo input:focus-visible,
+.gev__campo select:focus-visible {
+  outline: 2px solid var(--vt-primary);
+  outline-offset: 1px;
+}
+
+.gev__filtros .gev__enlace {
+  align-self: center;
+  height: 40px;
+}
+
+/* ── Aviso sin red ─────────────────────────────────────────────────────────── */
+
+.gev__aviso {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vt-space-2);
+  align-items: center;
+  margin: 0;
+  padding: var(--vt-space-2) var(--vt-space-3);
+  font-size: 0.85rem;
+  color: var(--vt-info);
+  background: var(--vt-info-bg);
+  border-radius: var(--vt-radius);
+}
+
+.gev__aviso > span { flex: 1; min-width: 12rem; }
+
+.gev__aviso-sub { color: var(--vt-text-muted); }
+
+/* ── La lista ──────────────────────────────────────────────────────────────── */
+
+.gev__resumen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vt-space-2);
+  align-items: center;
+  font-size: 0.85rem;
+  color: var(--vt-text-muted);
+}
+
+.gev__dias {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vt-space-5);
+  transition: opacity 0.15s;
+}
+
+/* Recargando con datos ya en pantalla: se atenúan en vez de desaparecer. */
+.gev__dias--cargando { opacity: 0.55; pointer-events: none; }
+
+.gev__dia-tit {
+  margin: 0 0 var(--vt-space-2);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--vt-text-subtle);
+}
+
+.gev__dia-tit::first-letter { text-transform: uppercase; }
+
+.gev__lista {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vt-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gev__fila {
+  display: flex;
+  gap: var(--vt-space-3);
+  align-items: center;
+  width: 100%;
+  padding: var(--vt-space-3) var(--vt-space-4);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-border);
+  border-radius: var(--vt-radius-lg);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.gev__fila:hover {
+  border-color: var(--vt-border-strong);
+  box-shadow: var(--vt-shadow-sm);
+}
+
+.gev__fila:focus-visible {
+  outline: 2px solid var(--vt-primary);
+  outline-offset: 2px;
+}
+
+.gev__tipo {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--vt-radius-full);
+}
+
+.gev__tipo--entrar { color: var(--vt-icon-green-fg); background: var(--vt-icon-green-bg); }
+.gev__tipo--salir { color: var(--vt-danger); background: var(--vt-danger-bg); }
+.gev__tipo--momento { color: var(--vt-icon-blue-fg); background: var(--vt-icon-blue-bg); }
+.gev__tipo--otro { color: var(--vt-icon-amber-fg); background: var(--vt-icon-amber-bg); }
+
+.gev__cuerpo {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.gev__evento {
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--vt-text);
+  overflow-wrap: anywhere;
+}
+
+.gev__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vt-space-1) var(--vt-space-2);
+  align-items: center;
+  font-size: 0.8rem;
+  color: var(--vt-text-muted);
+}
+
+.gev__geocerca { font-weight: 600; }
+
+.gev__estado {
+  padding: 1px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: var(--vt-radius-full);
+}
+
+.gev__estado--dentro { color: var(--vt-success); background: var(--vt-success-bg); }
+.gev__estado--fuera { color: var(--vt-danger); background: var(--vt-danger-bg); }
+
+.gev__flujo {
+  overflow: hidden;
+  font-size: 0.78rem;
+  color: var(--vt-text-subtle);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gev__lado {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: var(--vt-space-1);
+  align-items: flex-end;
+}
+
+.gev__hora {
+  font-family: var(--vt-font-mono);
+  font-size: 0.8rem;
+  color: var(--vt-text-muted);
+  white-space: nowrap;
+}
+
+.gev__flecha {
+  flex: none;
+  color: var(--vt-text-subtle);
+}
+
+/* Con la palabra dentro y no solo el color. */
+.gev__pill {
+  padding: 2px 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+  border-radius: var(--vt-radius-full);
+}
+
+.gev__pill--pendiente {
+  color: var(--vt-warning);
+  background: var(--vt-warning-bg);
+}
+
+/* En el teléfono la hora y la pastilla bajan bajo el texto. */
+@media (max-width: 560px) {
+  .gev__fila {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    padding: var(--vt-space-3);
+  }
+
+  .gev__lado {
+    flex-direction: row;
+    flex-wrap: wrap;
+    order: 3;
+    width: 100%;
+    padding-left: calc(38px + var(--vt-space-3));
+    align-items: center;
+  }
+
+  .gev__flecha { align-self: center; }
+}
+
+/* ── Páginas ───────────────────────────────────────────────────────────────── */
+
+.gev__paginas {
+  display: flex;
+  gap: var(--vt-space-3);
+  align-items: center;
+  justify-content: center;
+  padding: var(--vt-space-2) 0 var(--vt-space-4);
+}
+
+.gev__pagina {
+  font-size: 0.85rem;
+  color: var(--vt-text-muted);
+}
+
+/* ── Cargando, vacío y error ───────────────────────────────────────────────── */
+
+.gev__fila--esqueleto { cursor: default; }
+
+.gev__fila--esqueleto:hover {
+  border-color: var(--vt-border);
+  box-shadow: none;
+}
+
+.gev__barras {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gev__barras span,
+.gev__fila--esqueleto .gev__tipo {
+  background: var(--vt-surface-3);
+  animation: gev-latido 1.2s ease-in-out infinite;
+}
+
+.gev__barras span {
+  height: 10px;
+  border-radius: var(--vt-radius-full);
+}
+
+.gev__barras span:first-child { width: 60%; }
+.gev__barras span:last-child { width: 35%; }
+
+@keyframes gev-latido {
+  50% { opacity: 0.45; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gev__barras span,
+  .gev__fila--esqueleto .gev__tipo { animation: none; }
+}
+
+.gev__oculto {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.gev__vacio {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vt-space-2);
+  align-items: center;
+  padding: var(--vt-space-10) var(--vt-space-4);
+  text-align: center;
+  background: var(--vt-surface);
+  border: 1px dashed var(--vt-border-strong);
+  border-radius: var(--vt-radius-lg);
+}
+
+.gev__vacio .gev__sub { max-width: 46ch; }
+
+.gev__vacio .gev__btn { margin-top: var(--vt-space-2); }
+
+.gev__vacio-ico {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin-bottom: var(--vt-space-1);
+  color: var(--vt-icon-blue-fg);
+  background: var(--vt-icon-blue-bg);
+  border-radius: var(--vt-radius-full);
+}
+
+.gev__vacio-ico--mal {
+  color: var(--vt-danger);
+  background: var(--vt-danger-bg);
+}
+
+.gev__vacio-tit {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--vt-text);
+}

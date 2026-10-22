@@ -50,6 +50,10 @@ export class GeocercaEventoComponent {
   readonly clave = input.required<string>();
   readonly titulo = input<string | undefined>();
   readonly texto = input<string | undefined>();
+  /** `eventos` si se llegó desde el historial «Eventos de geocerca». */
+  readonly volverA = input<string | undefined>(undefined, { alias: 'volver' });
+
+  readonly desdeLaLista = computed(() => this.volverA() === 'eventos');
 
   readonly cargando = signal(true);
   readonly eleccion = signal<Eleccion | null>(null);
@@ -128,6 +132,13 @@ export class GeocercaEventoComponent {
   }
 
   volver(): void {
+    // Desde la lista, a la lista: «atrás» conserva sus filtros y su página; si
+    // se abrió el enlace suelto, la lista desde el principio.
+    if (this.desdeLaLista()) {
+      if (history.length > 1) this.location.back();
+      else void this.router.navigate(['/geocerca-eventos']);
+      return;
+    }
     if (history.length > 1) this.location.back();
     else void this.router.navigate(['/inicio']);
   }

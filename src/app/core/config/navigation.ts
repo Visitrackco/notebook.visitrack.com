@@ -142,6 +142,13 @@ export const NAVIGATION: NavSection[] = [
         description: 'Las que pidió una regla, y si ya salieron',
       },
       {
+        key: 'geofence-events',
+        label: 'Eventos de geocerca',
+        route: '/geocerca-eventos',
+        icon: 'geocerca-eventos',
+        description: 'Cuándo entraste, saliste o actuaste en una geocerca',
+      },
+      {
         key: 'link',
         label: 'Vincular teléfono',
         route: '/vincular',
