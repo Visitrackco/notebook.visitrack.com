@@ -7,6 +7,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { ChatSocketService } from '../../features/chat/chat-socket.service';
 import { CompanyLogoService } from '../../core/services/company-logo.service';
 import { ConnectivityService } from '../../core/services/connectivity.service';
+import { GeocercasService } from '../../core/geocercas/geocercas.service';
 import { PendingUploadService } from '../../core/sync/pending-upload.service';
 import { PushService } from '../../core/services/push.service';
 import { DispatchCounterService } from '../../core/services/dispatch-counter.service';
@@ -76,6 +77,14 @@ export class ShellComponent {
   readonly chat = inject(ChatSocketService);
   readonly auth = inject(AuthService);
   readonly connectivity = inject(ConnectivityService);
+
+  /*
+   * Las geocercas, también desde el armazón: como el chat, un servicio de raíz
+   * no existe hasta que alguien lo pide, y tienen que vigilarse en cualquier
+   * pantalla. Se enciende y se apaga solo con la sesión. Público porque el
+   * indicador de la cabecera lee su estado.
+   */
+  readonly geocercas = inject(GeocercasService);
 
   readonly navigation = NAVIGATION;
 

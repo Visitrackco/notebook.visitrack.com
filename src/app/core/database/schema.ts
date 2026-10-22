@@ -59,8 +59,10 @@ export const DB_NAME_PUBLICO = 'VisitrackPublico';
  *  - 4: store `CorreosFlujo` — los correos que pide una regla, por encolar.
  *  - 5: store `PushFlujo` — las notificaciones que pide una regla, por encolar.
  *  - 6: store `Firmas` — las firmas guardadas de cada persona, para reutilizar.
+ *  - 7: stores `FlujosGeocerca` (entidad 101) y `EventosGeocerca` — los flujos de
+ *       geocerca y la cola de lo que dispararon, por contar a cloud-gold.
  */
-export const DB_VERSION = 6;
+export const DB_VERSION = 7;
 
 /** Definición de un índice secundario dentro de un store. */
 export interface IndexDefinition {
@@ -291,6 +293,29 @@ export const DB_SCHEMA: readonly StoreDefinition[] = [
       ...CATALOG_INDEXES,
       { name: 'bySurveyID', keyPath: 'SurveyID' },
       { name: 'byIsActive', keyPath: 'IsActive' },
+    ],
+  },
+  {
+    name: 'FlujosGeocerca',
+    keyPath: 'ID',
+    description:
+      'Flujos de geocerca (entidad 101). `JSONMovil` lo arma cloud-gold: las reglas («al entrar», ' +
+      '«al salir», «cerca de un punto», «al quedarse») con las geocercas ya resueltas —polígono, ' +
+      'puntos, horario—. Los vigila `GeocercasService` mientras la pestaña esté abierta. `GUID` va ' +
+      'vacío, como en `Workflows`.',
+    indexes: [...CATALOG_INDEXES, { name: 'byIsActive', keyPath: 'IsActive' }],
+  },
+  {
+    name: 'EventosGeocerca',
+    keyPath: 'ID',
+    autoIncrement: true,
+    description:
+      'Lo que disparó una geocerca y falta contarle a cloud-gold (`/geofence-flows/eventos`). Es ' +
+      'la tabla `eventos` de `geocercas_nativo.db` del teléfono: `Enviado = 1` cuando el servidor ' +
+      'confirma la clave; lo enviado y lo de más de una semana se limpia.',
+    indexes: [
+      { name: 'byUserID', keyPath: 'UserID' },
+      { name: 'byEnviado', keyPath: 'Enviado' },
     ],
   },
   {

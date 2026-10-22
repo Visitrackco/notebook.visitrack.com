@@ -8,6 +8,7 @@ import { SyncService } from '../../core/sync/sync.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ConnectivityService } from '../../core/services/connectivity.service';
 import { IconComponent } from '../../shared/components/icon/icon.component';
+import { FlujosGuardadosComponent, TipoDeFlujo } from './flujos-guardados/flujos-guardados.component';
 
 /**
  * Sincronización.
@@ -19,7 +20,7 @@ import { IconComponent } from '../../shared/components/icon/icon.component';
 @Component({
   selector: 'vt-sync',
   standalone: true,
-  imports: [IconComponent, MatTableModule, MatMenuModule],
+  imports: [IconComponent, MatTableModule, MatMenuModule, FlujosGuardadosComponent],
   templateUrl: './sync.component.html',
   styleUrl: './sync.component.scss',
 })
@@ -34,6 +35,32 @@ export class SyncComponent {
   readonly feedback = signal('');
 
   readonly cards = this.status.cards;
+
+  /**
+   * Qué flujos se están consultando, o `null`.
+   *
+   * Al tocar «Flujos de formularios» (100) o «Flujos de geocerca» (101) se abre
+   * debajo de la tabla la lista de los que hay guardados en este navegador.
+   */
+  readonly verFlujos = signal<TipoDeFlujo | null>(null);
+
+  /** El tipo de flujo de una fila, si la fila es de flujos. */
+  tipoDeFlujo(card: EntityCard): TipoDeFlujo | null {
+    if (card.entity === 100) return 'formulario';
+    if (card.entity === 101) return 'geocerca';
+    return null;
+  }
+
+  abrirFlujos(card: EntityCard): void {
+    const tipo = this.tipoDeFlujo(card);
+    if (!tipo) return;
+    this.verFlujos.set(this.verFlujos() === tipo ? null : tipo);
+    if (this.verFlujos()) {
+      setTimeout(() =>
+        document.getElementById('sync-flujos')?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+      );
+    }
+  }
 
   /** Columnas de la tabla, en orden. */
   readonly columns = ['entity', 'local', 'server', 'missing', 'status', 'actions'];

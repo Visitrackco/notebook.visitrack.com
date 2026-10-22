@@ -31,6 +31,7 @@ export const ENTITY_TO_STORE: Record<number, string> = {
   35: 'WorkZones',
   79: 'Surveys',
   100: 'Workflows',
+  101: 'FlujosGeocerca',
 };
 
 /** Nombre legible de cada entidad, para la interfaz. */
@@ -48,6 +49,7 @@ export const ENTITY_LABELS: Record<number, string> = {
   35: 'Zonas de trabajo',
   79: 'Formularios',
   100: 'Flujos de formularios',
+  101: 'Flujos de geocerca',
 };
 
 /** Qué contiene cada entidad, en una línea, para la tarjeta. */
@@ -65,6 +67,7 @@ export const ENTITY_HINTS: Record<number, string> = {
   35: 'Agrupan las ubicaciones que puedes ver',
   79: 'Los formularios que puedes diligenciar',
   100: 'La lógica configurable de cada formulario',
+  101: 'Qué pasa al entrar, salir o acercarse a una geocerca',
 };
 
 /**
@@ -80,9 +83,9 @@ export const ENTITY_HINTS: Record<number, string> = {
  *
  * Los flujos (100) van justo detrás de los formularios: son su lógica, y
  * cuando un formulario no se comporta como debería, lo primero que hay que
- * poder mirar es si sus flujos llegaron.
+ * poder mirar es si sus flujos llegaron. Los de geocerca (101) van a su lado.
  */
-export const ENTITY_ORDER: number[] = [35, 1, 2, 12, 10, 79, 100, 0, 7, 8, 14, 15];
+export const ENTITY_ORDER: number[] = [35, 1, 2, 12, 10, 79, 100, 101, 0, 7, 8, 14, 15];
 
 /** Un registro tal como llega en el stream de sincronización. */
 export interface SyncItem {
@@ -273,6 +276,27 @@ const mapWorkflow: Mapper = (r, userId) => ({
   IsDeleted: flag(r['IsDeleted']),
   CreatedOn: s(r['CreatedOn']),
   UpdatedOn: s(r['UpdatedOn']),
+  SyncOn: 1,
+});
+
+/**
+ * Un flujo de geocerca (entidad 101).
+ *
+ * Réplica de `_mapFlujoGeocerca` en `DBsqlite.dart`. `UserID` es de quien
+ * sincroniza; `GUID` va vacío por lo mismo que en `Workflows`. El borrado
+ * (`MOBDeleted`/`IsDeleted`) lo resuelve el guardado por lotes, igual que en
+ * las demás entidades: sin GUID, se borra por `ID`.
+ */
+const mapFlujoGeocerca: Mapper = (r, userId) => ({
+  ID: n(r['ID']),
+  UserID: userId,
+  CompanyID: n(r['CompanyID']),
+  Name: s(r['Name']),
+  JSONMovil: s(r['JSONMovil']),
+  IsActive: flag(r['IsActive']),
+  IsDeleted: flag(r['IsDeleted']),
+  UpdatedOn: s(r['UpdatedOn']),
+  GUID: '',
   SyncOn: 1,
 });
 
@@ -496,4 +520,5 @@ export const ENTITY_MAPPERS: Record<number, Mapper> = {
   35: mapWorkZone,
   79: mapSurvey,
   100: mapWorkflow,
+  101: mapFlujoGeocerca,
 };

@@ -253,6 +253,18 @@
   color: var(--vt-text-subtle);
 }
 
+.sync__ver-flujos {
+  padding: 0;
+  margin-top: 2px;
+  font-size: var(--vt-text-xs);
+  font-weight: 600;
+  color: var(--vt-primary);
+  text-decoration: underline;
+  cursor: pointer;
+  background: none;
+  border: 0;
+}
+
 .sync__num {
   text-align: right !important;
   white-space: nowrap;

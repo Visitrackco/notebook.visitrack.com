@@ -130,6 +130,18 @@
           <td mat-cell *matCellDef="let card">
             <span class="sync__name">{{ card.label }}</span>
             <span class="sync__hint">{{ card.hint }}</span>
+            <!-- Los flujos se pueden consultar: es lo primero que hay que mirar
+                 cuando un formulario o una geocerca no hace lo esperado. -->
+            @if (tipoDeFlujo(card)) {
+              <button
+                type="button"
+                class="sync__ver-flujos"
+                [attr.aria-expanded]="verFlujos() === tipoDeFlujo(card)"
+                (click)="abrirFlujos(card)"
+              >
+                {{ verFlujos() === tipoDeFlujo(card) ? 'Ocultar los flujos' : 'Ver los flujos' }}
+              </button>
+            }
           </td>
         </ng-container>
 
@@ -226,4 +238,10 @@
       </table>
     </div>
   </section>
+
+  @if (verFlujos(); as tipo) {
+    <div id="sync-flujos">
+      <vt-flujos-guardados [tipo]="tipo" (cerrar)="verFlujos.set(null)" />
+    </div>
+  }
 </div>

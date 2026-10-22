@@ -15,6 +15,7 @@ import { DataRevisionService } from '../sync/data-revision.service';
 import { AuthService } from './auth.service';
 import { BinaryStorageService } from './binary-storage.service';
 import { DraftPolicyService } from './draft-policy.service';
+import { MomentosDeLaAppService } from '../geocercas/momentos-de-la-app.service';
 
 /**
  * Qué pantalla toca antes de poder diligenciar.
@@ -187,6 +188,7 @@ export class ActivityService {
   private readonly drafts = inject(DraftPolicyService);
   private readonly revisions = inject(DataRevisionService);
   private readonly auth = inject(AuthService);
+  private readonly momentosApp = inject(MomentosDeLaAppService);
 
   /**
    * Contador que sube con cada cambio en las actividades.
@@ -314,6 +316,9 @@ export class ActivityService {
     });
 
     this.notifyChanged();
+
+    // Las reglas de geocerca «al crear una actividad», en segundo plano.
+    this.momentosApp.avisar('actividad-crear', { answerGuid: answer.GUID, surveyId: survey.SurveyID });
     return answer;
   }
 
@@ -381,6 +386,9 @@ export class ActivityService {
     await this.binaryStorage.removeByAnswer(answer.GUID);
 
     this.notifyChanged();
+
+    // Las reglas de geocerca «al eliminar una actividad», en segundo plano.
+    this.momentosApp.avisar('actividad-eliminar', { answerGuid: answer.GUID, surveyId: answer.SurveyID });
     return result;
   }
 

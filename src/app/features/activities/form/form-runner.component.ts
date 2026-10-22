@@ -37,6 +37,7 @@ import { EncargoDeHijo } from '../../../core/forms/flujo-modelo';
 import { LinkedFormService } from '../../../core/forms/linked-form.service';
 import { BinaryStorageService } from '../../../core/services/binary-storage.service';
 import { ActivityService } from '../../../core/services/activity.service';
+import { MomentosDeLaAppService } from '../../../core/geocercas/momentos-de-la-app.service';
 import { AlertSoundService } from '../../../core/services/alert-sound.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { CorreoService } from '../../../core/services/correo.service';
@@ -137,6 +138,7 @@ const PREFIJO_DESCRIPTIVO_DE_FLUJO = 'flujo:';
 export class FormRunnerComponent {
   private readonly answers = inject(SurveyAnswerRepository);
   private readonly activities = inject(ActivityService);
+  private readonly momentosApp = inject(MomentosDeLaAppService);
   private readonly parientes = inject(ParientesService);
   private readonly encargos = inject(EncargosDelFlujoService);
   private readonly timers = inject(TimerGlobalService);
@@ -2971,6 +2973,10 @@ ${enlace.url}`)) abrir();
     const answer = this.answer();
     if (answer.ID == null) return;
 
+    // Para las reglas de geocerca: guardarla por primera vez no es lo mismo
+    // que volver a guardar una que ya estaba guardada.
+    const primeraVez = Number(answer.isSaved ?? 0) === ANSWER_STATE.UNSAVED;
+
     /*
      * El flujo, con el momento «al guardar», por aquí y no solo en [save].
      *
@@ -3125,6 +3131,12 @@ ${enlace.url}`)) abrir();
 
       await this.answers.markSaved(answer.ID, pendingFiles > 0, completedOn);
       marca(`guardada (${pendingFiles} archivo(s) por confirmar)`);
+
+      // Las reglas de geocerca «al guardar / al actualizar», sin esperar al GPS.
+      this.momentosApp.avisar(primeraVez ? 'actividad-guardar' : 'actividad-actualizar', {
+        answerGuid: answer.GUID,
+        surveyId: answer.SurveyID,
+      });
 
       this.activities.notifyChanged();
       this.feedback.set(this.describeSave(incomplete, pendingFiles));

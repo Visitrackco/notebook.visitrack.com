@@ -445,6 +445,13 @@
   background: rgb(251 191 36 / 14%);
 }
 
+/* Geocercas: la misma pastilla que la conexión, en otro tono para no
+   confundirlas. Ámbar (la variante «offline») cuando no hay ubicación. */
+.shell__geocercas:not(.shell__connection--offline) {
+  color: #93c5fd;
+  background: rgb(147 197 253 / 14%);
+}
+
 /* ── Menú de cuenta ────────────────────────────────────────────────────────── */
 
 .shell__account {

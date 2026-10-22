@@ -192,6 +192,25 @@
         <span>{{ connectivity.isOnline() ? 'En línea' : 'Sin conexión' }}</span>
       </div>
 
+      <!-- Geocercas: discreto, solo cuando hay flujos de geocerca que vigilar.
+           En la web se vigilan mientras la pestaña esté abierta. -->
+      @if (geocercas.visible()) {
+        <div
+          class="shell__connection shell__geocercas"
+          [class.shell__connection--offline]="geocercas.estado() !== 'vigilando'"
+          [title]="
+            geocercas.estado() === 'vigilando'
+              ? 'Se vigilan ' + geocercas.flujosActivos() + ' flujos de geocerca mientras esta pestaña esté abierta.'
+              : geocercas.estado() === 'sin-permiso'
+                ? 'Hay flujos de geocerca, pero el navegador no deja leer la ubicación. Permítela en la configuración del sitio.'
+                : 'Hay flujos de geocerca, pero este navegador no da la ubicación.'
+          "
+        >
+          <vt-icon name="map-pin" [size]="17" />
+          <span>{{ geocercas.estado() === 'vigilando' ? 'Geocercas activas' : 'Geocercas sin ubicación' }}</span>
+        </div>
+      }
+
       <div class="shell__account">
         <button type="button" class="shell__account-btn" (click)="toggleAccountMenu()">
           <span class="shell__avatar">{{ userInitials() }}</span>

@@ -64,7 +64,11 @@ export class FlujoSinPantallaService {
     const flujo = await this.flujos.paraFormulario(answer.SurveyID);
     if (!flujo) return null;
 
-    const tiene = (flujo.reglas ?? []).some((r) => r.activa !== false && r.cuando?.includes(momento));
+    // Las de hito corren en `timer` por llevar `timer: {de, en}`, aunque su
+    // `cuando` no lo diga: el motor las elige así (`esDeHito`).
+    const tiene = (flujo.reglas ?? []).some(
+      (r) => r.activa !== false && (r.cuando?.includes(momento) || (momento === 'timer' && !!r.timer)),
+    );
     return tiene ? flujo : null;
   }
 

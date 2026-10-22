@@ -11,6 +11,7 @@ import { ZonaHorariaService } from './zona-horaria.service';
 import { ConnectivityService } from './connectivity.service';
 import { DeviceService } from './device.service';
 
+import { MomentosDeLaAppService } from '../geocercas/momentos-de-la-app.service';
 /** Resultado de un intento de inicio de sesión. */
 export interface LoginResult {
   success: boolean;
@@ -56,6 +57,9 @@ export class AuthService {
   private readonly device = inject(DeviceService);
   private readonly connectivity = inject(ConnectivityService);
   private readonly logo = inject(CompanyLogoService);
+
+  /** Para las reglas de geocerca «al iniciar / cerrar sesión». */
+  private readonly momentosApp = inject(MomentosDeLaAppService);
 
   /** Usuario con sesión abierta. `null` si no hay ninguna. */
   readonly currentUser = signal<User | null>(null);
@@ -278,6 +282,9 @@ export class AuthService {
       // El logo se trae en segundo plano: la aplicación no espera por él.
       void this.loadCompanyLogo(user.CompanyID, user.UserID);
 
+      // Las reglas de geocerca «al iniciar sesión», sin esperar al GPS.
+      this.momentosApp.avisar('sesion-iniciar');
+
       return { success: true };
     } catch (error) {
       const apiError = error as ApiError;
@@ -320,6 +327,9 @@ export class AuthService {
 
     const user = await this.users.upsertAndActivate(stored);
     this.currentUser.set(user);
+
+    // Sin red el evento queda en cola y se cuenta al volver.
+    this.momentosApp.avisar('sesion-iniciar');
 
     return { success: true, offline: true };
   }
@@ -487,6 +497,14 @@ export class AuthService {
   }
 
   async logout(): Promise<void> {
+    /*
+     * Las reglas de geocerca «al cerrar sesión», **antes** de cerrarla: con la
+     * sesión revocada cloud-gold ya no acepta el evento. Es lo único que se
+     * espera, y con tope —8 s, solo si hay alguna regla de ese momento—:
+     * cerrar sesión no puede quedarse colgado esperando al GPS.
+     */
+    await this.momentosApp.avisarYEsperar('sesion-cerrar', null, 8000);
+
     /**
      * Se avisa al servidor para que cierre la sesión de verdad.
      *

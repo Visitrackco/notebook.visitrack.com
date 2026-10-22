@@ -529,7 +529,11 @@ export function parseQuestions(raw: unknown): FormPage[] {
 
   if (!Array.isArray(decoded)) return [];
 
-  return decoded
+  // Sin tocar el objeto de quien llama: la limpieza escribe en los campos.
+  if (typeof raw !== 'string') decoded = structuredClone(decoded) as unknown[];
+  limpiarSeccionesHuerfanas(decoded as unknown[]);
+
+  return (decoded as unknown[])
     .filter((page): page is FormPage => Boolean(page) && typeof page === 'object')
     .filter((page) => !page.hid)
     .map((page) => ({
@@ -537,6 +541,55 @@ export function parseQuestions(raw: unknown): FormPage[] {
       hid: false,
       fie: Array.isArray(page.fie) ? page.fie : [],
     }));
+}
+
+/**
+ * Quita las secciones que ninguna opción abre.
+ *
+ * Un campo con `sect` solo se ve con su sección abierta. Si en el diseñador
+ * la opción que la abría pasó a «None» y el campo conservó su `sect`, nadie la
+ * vuelve a abrir y el campo quedaba oculto para siempre. Una sección sin
+ * opción que la abra es como si no existiera: el campo pasa a mandar con su
+ * `hid`. Una opción abre si tiene `act_data` y su acción no es «None» (`act`
+ * 0 o vacío); sin `act`, se respeta el `act_data` como siempre. Igual que
+ * `SeccionesDelFormulario` en la app.
+ */
+export function limpiarSeccionesHuerfanas(paginas: unknown[]): void {
+  const seccion = (valor: unknown): string =>
+    typeof valor === 'string' ? valor.trim() : Array.isArray(valor) && valor.length ? String(valor[0] ?? '').trim() : '';
+
+  const abre = (o: Record<string, unknown>): boolean => {
+    if (!seccion(o['act_data'])) return false;
+    if (!('act' in o)) return true;
+    const act = String(o['act'] ?? '').trim();
+    return act !== '' && act !== '0';
+  };
+
+  const recorrer = (nodo: unknown, hacer: (m: Record<string, unknown>) => void): void => {
+    if (Array.isArray(nodo)) {
+      for (const v of nodo) recorrer(v, hacer);
+    } else if (nodo && typeof nodo === 'object') {
+      const mapa = nodo as Record<string, unknown>;
+      hacer(mapa);
+      for (const v of Object.values(mapa)) if (v && typeof v === 'object') recorrer(v, hacer);
+    }
+  };
+
+  const opcionesDe = (m: Record<string, unknown>): Record<string, unknown>[] =>
+    Array.isArray(m['opt']) ? (m['opt'] as unknown[]).filter((o): o is Record<string, unknown> => !!o && typeof o === 'object') : [];
+
+  const abiertas = new Set<string>();
+  recorrer(paginas, (m) => {
+    for (const o of opcionesDe(m)) if (abre(o)) abiertas.add(seccion(o['act_data']));
+  });
+
+  recorrer(paginas, (m) => {
+    // La opción en «None» que conserva su `act_data` tampoco la abre al elegirla.
+    for (const o of opcionesDe(m)) if (!abre(o) && seccion(o['act_data'])) o['act_data'] = [];
+
+    const sect = seccion(m['sect']);
+    if (sect && !abiertas.has(sect)) m['sect'] = [];
+  });
 }
 
 /**
