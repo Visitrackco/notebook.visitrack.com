@@ -319,7 +319,7 @@ export type FieldValue =
   | FileValue
   /** Tabla de detalle: sus filas, cada una con su sub-formulario. */
   | DetailRowValue[]
-  /** Escaneo de código (barras/QR) capturado a mano en la web: `{val, txt, for}`. */
+  /** Escaneo de código (barras/QR), con la cámara o a mano: `{val, txt, for}`. */
   | ScanValue
   /** Documento de identidad: `{docName, docNumber}`. */
   | DocumentValue
@@ -327,7 +327,7 @@ export type FieldValue =
   | AddressValue
   | null;
 
-/** Escaneo de código. En la web se captura a mano; la app además trae geo. */
+/** Escaneo de código, con la cámara o a mano. La app además trae geo. */
 export interface ScanValue {
   val: string;
   txt: string;

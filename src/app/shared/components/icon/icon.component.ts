@@ -230,6 +230,22 @@ import { Component, input } from '@angular/core';
           <path d="M6.5 12.8h.01M10 12.8h.01M13.5 12.8h.01M17 12.8h.01" />
           <path d="M8 15.6h8" />
         }
+        @case ('scan') {
+          <path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2" />
+          <path d="M7 12h10" />
+        }
+        @case ('qr') {
+          <rect x="4" y="4" width="6" height="6" rx="1" />
+          <rect x="14" y="4" width="6" height="6" rx="1" />
+          <rect x="4" y="14" width="6" height="6" rx="1" />
+          <path d="M14 14h2v2h-2zM18 14h2M14 18v2M17 17v3h3v-3" />
+        }
+        @case ('barcode') {
+          <path d="M4 6v12M7 6v12M10.5 6v12M13 6v12M16.5 6v12M20 6v12" />
+        }
+        @case ('flash') {
+          <path d="M13 3 5 13.5h6L10 21l8-10.5h-6L13 3Z" />
+        }
       }
     </svg>
   `,

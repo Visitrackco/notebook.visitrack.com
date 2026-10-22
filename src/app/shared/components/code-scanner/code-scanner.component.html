@@ -1,0 +1,123 @@
+<div class="esc" role="dialog" aria-modal="true" [attr.aria-label]="titulo()">
+  <header class="esc__bar">
+    <button #cerrar type="button" class="esc__btn" (click)="close()" aria-label="Cerrar" title="Cerrar (Esc)">
+      <vt-icon name="close" [size]="20" />
+    </button>
+
+    <span class="esc__title">{{ titulo() }}</span>
+
+    <!-- Con varias cámaras, cuál. Un portátil con cámara web y otra externa, o
+         un teléfono con tres traseras: la de partida no siempre enfoca de cerca. -->
+    @if (camaras().length > 1) {
+      <select
+        class="esc__camaras"
+        aria-label="Cámara"
+        title="Cambiar de cámara"
+        [value]="camaraElegida()"
+        (change)="onCamara($event)"
+      >
+        @for (camara of camaras(); track camara.id) {
+          <option [value]="camara.id" [selected]="camara.id === camaraElegida()">{{ camara.etiqueta }}</option>
+        }
+      </select>
+    }
+
+    @if (hayLinterna() && listo()) {
+      <button
+        type="button"
+        class="esc__btn"
+        [class.esc__btn--on]="linterna()"
+        (click)="alternarLinterna()"
+        [attr.aria-pressed]="linterna()"
+        [attr.aria-label]="linterna() ? 'Apagar la linterna' : 'Encender la linterna'"
+        [title]="linterna() ? 'Apagar la linterna' : 'Encender la linterna'"
+      >
+        <vt-icon name="flash" [size]="18" />
+      </button>
+    }
+  </header>
+
+  <div class="esc__stage">
+    <video #video class="esc__video" playsinline muted></video>
+
+    @if (fallo(); as f) {
+      <div class="esc__fallo" role="alert">
+        <vt-icon name="alert" [size]="30" />
+        <p>{{ f.mensaje }}</p>
+
+        <div class="esc__fallo-acciones">
+          @if (f.reintentable) {
+            <button type="button" class="esc__accion" (click)="reintentar()">
+              <vt-icon name="refresh" [size]="16" />
+              <span>Reintentar</span>
+            </button>
+          }
+          @if (permitirManual()) {
+            <button type="button" class="esc__accion esc__accion--primaria" (click)="escribirAMano()">
+              <vt-icon name="keyboard" [size]="16" />
+              <span>Escribir el código a mano</span>
+            </button>
+          }
+        </div>
+      </div>
+    } @else {
+      <!-- El recuadro: un hueco en el velo oscuro. Lo de fuera se ve apagado
+           para que la vista vaya sola a donde hay que poner el código. -->
+      <div
+        #ventana
+        class="esc__ventana"
+        [class.esc__ventana--barras]="modoActual() === 'barras'"
+        [class.esc__ventana--leido]="leyo()"
+        aria-hidden="true"
+      >
+        <span class="esc__esquina esc__esquina--si"></span>
+        <span class="esc__esquina esc__esquina--sd"></span>
+        <span class="esc__esquina esc__esquina--ii"></span>
+        <span class="esc__esquina esc__esquina--id"></span>
+        @if (listo() && !leyo()) {
+          <span class="esc__barrido"></span>
+        }
+      </div>
+
+      <p class="esc__indicacion" [class.esc__indicacion--leido]="leyo()" aria-live="polite">
+        {{ iniciando() ? 'Abriendo la cámara…' : indicacion() }}
+      </p>
+    }
+  </div>
+
+  <footer class="esc__tools">
+    <!-- QR o barras, como dos pestañas en una píldora. Solo cambia la forma del
+         recuadro: se reconocen todos los formatos en los dos. -->
+    <div class="esc__modos" role="radiogroup" aria-label="Tipo de código">
+      <button
+        type="button"
+        role="radio"
+        class="esc__modo"
+        [class.esc__modo--on]="modoActual() === 'qr'"
+        [attr.aria-checked]="modoActual() === 'qr'"
+        (click)="cambiarModo('qr')"
+      >
+        <vt-icon name="qr" [size]="16" />
+        <span>Código QR</span>
+      </button>
+      <button
+        type="button"
+        role="radio"
+        class="esc__modo"
+        [class.esc__modo--on]="modoActual() === 'barras'"
+        [attr.aria-checked]="modoActual() === 'barras'"
+        (click)="cambiarModo('barras')"
+      >
+        <vt-icon name="barcode" [size]="16" />
+        <span>Código de barras</span>
+      </button>
+    </div>
+
+    @if (permitirManual() && !fallo()) {
+      <button type="button" class="esc__manual" (click)="escribirAMano()">
+        <vt-icon name="keyboard" [size]="16" />
+        <span>Escribir a mano</span>
+      </button>
+    }
+  </footer>
+</div>

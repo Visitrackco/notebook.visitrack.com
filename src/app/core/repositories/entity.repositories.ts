@@ -17,6 +17,7 @@ import {
   UserConfig,
   WorkZone,
 } from '../models/entities.model';
+import { etiquetaCoincide, normalizarEtiqueta } from '../services/buscar-por-etiqueta';
 import { BaseRepository } from './base.repository';
 
 /**
@@ -170,6 +171,20 @@ export class LocationRepository extends BaseRepository<LocationForm> {
     });
   }
 
+  /**
+   * Ubicaciones cuya etiqueta (`TagUID`) es este código. La usa el escáner para
+   * comenzar actividades; ver `buscar-por-etiqueta`.
+   */
+  async findByTag(userId: number, codigo: string): Promise<LocationForm[]> {
+    if (!normalizarEtiqueta(codigo)) return [];
+
+    return this.query({
+      index: 'byUserID',
+      range: userId,
+      filter: (l) => l.isDeleted !== '1' && etiquetaCoincide(l.TagUID, codigo),
+    });
+  }
+
   /** Busca por nombre, dirección o etiqueta. Sin distinguir mayúsculas. */
   async search(userId: number, term: string): Promise<LocationForm[]> {
     const needle = term.trim().toLowerCase();
@@ -316,6 +331,17 @@ export class AssetRepository extends BaseRepository<Asset> {
         a.isDeleted !== '1' &&
         Number(a.UserID) === Number(userId) &&
         belongsToLocation(a, locationId, locationGuid),
+    });
+  }
+
+  /** Activos cuya etiqueta (`TagUID`) es este código. Ver `LocationRepository.findByTag`. */
+  async findByTag(userId: number, codigo: string): Promise<Asset[]> {
+    if (!normalizarEtiqueta(codigo)) return [];
+
+    return this.query({
+      index: 'byUserID',
+      range: userId,
+      filter: (a) => a.isDeleted !== '1' && etiquetaCoincide(a.TagUID, codigo),
     });
   }
 

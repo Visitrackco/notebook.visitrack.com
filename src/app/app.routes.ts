@@ -364,6 +364,20 @@ export const routes: Routes = [
           ),
       },
 
+      /**
+       * Escanear la etiqueta de una sede o un equipo para comenzar allí.
+       *
+       * El botón de escanear de «Apps» en el móvil. Es una ruta y no solo un
+       * diálogo para que la paleta y la cabecera puedan llevar a ella, y para
+       * que la lista de varios resultados tenga dónde quedarse. Ver
+       * `EscanearComponent`.
+       */
+      {
+        path: 'escanear',
+        title: 'Escanear código · Visitrack',
+        loadComponent: () =>
+          import('./features/escanear/escanear.component').then((m) => m.EscanearComponent),
+      },
       {
         path: 'perfil',
         title: 'Mi perfil · Visitrack',

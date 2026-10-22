@@ -10,6 +10,12 @@
       </p>
     </div>
 
+    <!-- Encontrar una sede por su etiqueta sin buscarla en la lista. -->
+    <a class="locs__scan" routerLink="/escanear" title="Escanear la etiqueta de una ubicación o un activo">
+      <vt-icon name="scan" [size]="17" />
+      Escanear código
+    </a>
+
     @if (canCreate()) {
       <a class="locs__new" routerLink="/ubicaciones/nueva">
         <vt-icon name="plus" [size]="17" />

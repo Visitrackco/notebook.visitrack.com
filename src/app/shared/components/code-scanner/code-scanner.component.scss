@@ -1,0 +1,378 @@
+@use '../../styles/overlay';
+
+/**
+ * Escáner.
+ *
+ * Sobre negro en los dos temas, como la cámara de fotos: es una vista de
+ * cámara, y un marco claro alrededor de la imagen en vivo deslumbra y le resta
+ * contraste justo a lo que hay que mirar. Pantalla completa en el teléfono y
+ * ventana grande en el escritorio, por lo que explica [overlay.shell].
+ *
+ * Los colores del recuadro son los del móvil: rojo mientras busca, verde al
+ * leer. No salen de los tokens de estado porque estos cambian con el tema, y
+ * aquí el fondo es negro siempre.
+ */
+
+$rojo: #e0464c;
+$verde: #34c77b;
+
+:host {
+  @include overlay.shell;
+
+  /* Por encima de la paleta de comandos y de los avisos: mientras el escáner
+     está abierto tiene la cámara, y nada debería taparlo. */
+  z-index: 70;
+}
+
+.esc {
+  @include overlay.panel;
+
+  display: flex;
+  flex-direction: column;
+  color: rgb(255 255 255 / 92%);
+  background: #000;
+
+  /* En el escritorio, una ventana más estrecha que la de fotos: un código no
+     necesita 1100 px de ancho, y así se ve que es un paso y no otra pantalla. */
+  width: min(760px, 92vw);
+  height: min(820px, 88vh);
+}
+
+.esc__bar {
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--vt-space-2);
+  align-items: center;
+  padding: var(--vt-space-3) var(--vt-space-4);
+}
+
+.esc__btn {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  color: inherit;
+  background: rgb(255 255 255 / 12%);
+  border: 0;
+  border-radius: var(--vt-radius-full);
+  cursor: pointer;
+
+  &:hover {
+    background: rgb(255 255 255 / 22%);
+  }
+
+  &:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+  }
+}
+
+.esc__btn--on {
+  color: #1a1400;
+  background: #fde047;
+
+  &:hover {
+    background: #facc15;
+  }
+}
+
+.esc__title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--vt-text-sm);
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.esc__camaras {
+  max-width: 40%;
+  padding: 7px 10px;
+  font-family: var(--vt-font);
+  font-size: var(--vt-text-xs);
+  color: #fff;
+  background: rgb(255 255 255 / 12%);
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: var(--vt-radius-full);
+
+  option {
+    color: #111;
+  }
+}
+
+.esc__stage {
+  position: relative;
+  display: grid;
+  flex: 1;
+  place-items: center;
+  min-height: 0;
+  overflow: hidden;
+
+  /* El recuadro se mide contra el escenario (`cqw`/`cqh`) y no contra la
+     ventana del navegador: en el escritorio el escáner es una ventana dentro de
+     otra, y un 70 % de la pantalla se saldría de ella. */
+  container-type: size;
+}
+
+/* `cover` y no `contain`, al revés que en la cámara de fotos: aquí no se
+   captura una imagen, se apunta. Las bandas negras de `contain` dejarían el
+   recuadro flotando fuera de la imagen en una pantalla alargada. */
+.esc__video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.esc__ventana {
+  position: relative;
+  width: min(72cqw, 62cqh, 320px);
+  aspect-ratio: 1;
+
+  /* Un poco por encima del centro, como en el móvil: debajo va la indicación. */
+  margin-bottom: 8cqh;
+  border-radius: 14px;
+
+  /* El velo: una sombra enorme alrededor del hueco. Así el hueco se mueve y se
+     redimensiona con el recuadro sin calcular nada. */
+  box-shadow: 0 0 0 200vmax rgb(0 0 0 / 55%);
+  transition:
+    width 180ms ease,
+    aspect-ratio 180ms ease;
+}
+
+.esc__ventana--barras {
+  width: min(88cqw, 560px, 130cqh);
+  aspect-ratio: 100 / 42;
+}
+
+/* Las cuatro esquinas, en el color del estado. */
+.esc__esquina {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border: 0 solid $rojo;
+  transition: border-color 150ms ease;
+}
+
+.esc__esquina--si {
+  top: 0;
+  left: 0;
+  border-top-width: 4px;
+  border-left-width: 4px;
+  border-top-left-radius: 14px;
+}
+
+.esc__esquina--sd {
+  top: 0;
+  right: 0;
+  border-top-width: 4px;
+  border-right-width: 4px;
+  border-top-right-radius: 14px;
+}
+
+.esc__esquina--ii {
+  bottom: 0;
+  left: 0;
+  border-bottom-width: 4px;
+  border-left-width: 4px;
+  border-bottom-left-radius: 14px;
+}
+
+.esc__esquina--id {
+  right: 0;
+  bottom: 0;
+  border-right-width: 4px;
+  border-bottom-width: 4px;
+  border-bottom-right-radius: 14px;
+}
+
+.esc__ventana--leido {
+  background: rgb(52 199 123 / 18%);
+
+  .esc__esquina {
+    border-color: $verde;
+  }
+}
+
+/* La línea que barre: dice que se está buscando, no que esté congelado. */
+.esc__barrido {
+  position: absolute;
+  right: 10%;
+  left: 10%;
+  height: 2px;
+  background: $rojo;
+  border-radius: 2px;
+  box-shadow: 0 0 10px rgb(224 70 76 / 80%);
+  animation: esc-barrido 1.8s ease-in-out infinite alternate;
+}
+
+@keyframes esc-barrido {
+  from {
+    top: 12%;
+  }
+
+  to {
+    top: 88%;
+  }
+}
+
+.esc__indicacion {
+  position: absolute;
+  right: var(--vt-space-6);
+  bottom: 9cqh;
+  left: var(--vt-space-6);
+  margin: 0;
+  font-size: var(--vt-text-sm);
+  font-weight: 500;
+  line-height: 1.4;
+  color: #fff;
+  text-align: center;
+  text-shadow: 0 1px 3px rgb(0 0 0 / 60%);
+}
+
+.esc__indicacion--leido {
+  font-weight: 650;
+  color: $verde;
+}
+
+.esc__fallo {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--vt-space-3);
+  align-items: center;
+  justify-content: center;
+  padding: var(--vt-space-6);
+  color: rgb(255 255 255 / 88%);
+  text-align: center;
+  background: #0c0e12;
+
+  vt-icon {
+    color: var(--vt-warning, #fbbf24);
+  }
+
+  p {
+    max-width: 44ch;
+    margin: 0;
+    font-size: var(--vt-text-sm);
+    line-height: 1.55;
+  }
+}
+
+.esc__fallo-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vt-space-2);
+  justify-content: center;
+  margin-top: var(--vt-space-2);
+
+  vt-icon {
+    color: inherit;
+  }
+}
+
+.esc__accion {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  padding: 9px 16px;
+  font-family: var(--vt-font);
+  font-size: var(--vt-text-sm);
+  font-weight: 600;
+  color: #fff;
+  background: rgb(255 255 255 / 12%);
+  border: 1px solid rgb(255 255 255 / 20%);
+  border-radius: var(--vt-radius-full);
+  cursor: pointer;
+
+  &:hover {
+    background: rgb(255 255 255 / 20%);
+  }
+}
+
+.esc__accion--primaria {
+  color: #111;
+  background: #fff;
+  border-color: #fff;
+
+  &:hover {
+    background: rgb(255 255 255 / 85%);
+  }
+}
+
+.esc__tools {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  gap: var(--vt-space-3);
+  align-items: center;
+  padding: var(--vt-space-4) var(--vt-space-4) max(var(--vt-space-5), env(safe-area-inset-bottom));
+}
+
+.esc__modos {
+  display: inline-flex;
+  padding: 4px;
+  background: rgb(255 255 255 / 12%);
+  border-radius: var(--vt-radius-full);
+}
+
+.esc__modo {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  padding: 8px 14px;
+  font-family: var(--vt-font);
+  font-size: var(--vt-text-xs);
+  font-weight: 600;
+  color: rgb(255 255 255 / 75%);
+  white-space: nowrap;
+  background: transparent;
+  border: 0;
+  border-radius: var(--vt-radius-full);
+  cursor: pointer;
+
+  &:hover:not(.esc__modo--on) {
+    color: #fff;
+  }
+}
+
+.esc__modo--on {
+  color: #111;
+  background: #fff;
+}
+
+.esc__manual {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  padding: 6px 10px;
+  font-family: var(--vt-font);
+  font-size: var(--vt-text-xs);
+  font-weight: 600;
+  color: rgb(255 255 255 / 70%);
+  background: transparent;
+  border: 0;
+  border-radius: var(--vt-radius);
+  cursor: pointer;
+
+  &:hover {
+    color: #fff;
+    text-decoration: underline;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .esc__barrido {
+    top: 50%;
+    animation: none;
+  }
+
+  .esc__ventana {
+    transition: none;
+  }
+}

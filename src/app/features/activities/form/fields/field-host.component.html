@@ -431,8 +431,9 @@
   }
 
   <!-- ── Escaneo de código (barras / QR) ────────────────────────────────────
-       En la web no hay lector de cámara fiable en escritorio: se captura a mano
-       el código. El valor se guarda igual que lo escribe la app. -->
+       Con la cámara (`vt-code-scanner`) o escrito a mano, que queda de respaldo
+       para quien no tiene cámara o tiene el código en un papel. Los dos caminos
+       guardan lo mismo, igual que lo escribe la app. -->
   @case ('scanbarcode') {
     <ng-container *ngTemplateOutlet="scanTpl" />
   }
@@ -597,23 +598,50 @@
   />
 </ng-template>
 
-<!-- Escaneo de barras y QR: en la web se escribe o se pega el código. Comparten
-     plantilla porque lo único que cambia entre los dos es el tipo que se guarda,
-     y eso lo resuelve el manejador según el `fty`. -->
+<!-- Escaneo de barras y QR: con la cámara o escrito a mano. Comparten plantilla
+     porque lo único que cambia entre los dos es el tipo que se guarda y la forma
+     del recuadro, y eso lo resuelve el manejador según el `fty`. -->
 <ng-template #scanTpl>
   <mat-form-field appearance="outline" class="fld__control">
     <input
+      #scanInput
       matInput
       [value]="scanText()"
-      [placeholder]="f.pho || 'Escribe o pega el código'"
+      [placeholder]="f.pho || 'Escanea, escribe o pega el código'"
       [readonly]="readOnly()"
       (input)="onScan($event)"
     />
-    <mat-hint>El escaneo con cámara no está disponible en la versión web; ingresa el código a mano.</mat-hint>
+    <!-- Sin botón en un campo de solo lectura: un escáner que abre la cámara
+         para no poder guardar nada solo confunde. -->
+    @if (!readOnly()) {
+      <button
+        matIconSuffix
+        type="button"
+        class="fld__scan"
+        (click)="abrirEscaner()"
+        [attr.aria-label]="f.fty === 'scanqrcode' ? 'Escanear el código QR con la cámara' : 'Escanear el código de barras con la cámara'"
+        title="Escanear con la cámara"
+      >
+        <vt-icon name="scan" [size]="20" />
+      </button>
+    }
+    <mat-hint>
+      {{ readOnly() ? 'Campo de solo lectura.' : 'Toca el ícono para escanear con la cámara, o escribe el código.' }}
+    </mat-hint>
     @if (invalid()) {
       <mat-error>Este campo es obligatorio.</mat-error>
     }
   </mat-form-field>
+
+  @if (escaneando()) {
+    <vt-code-scanner
+      [modo]="f.fty === 'scanqrcode' ? 'qr' : 'barras'"
+      [titulo]="f.lab || (f.fty === 'scanqrcode' ? 'Escanear código QR' : 'Escanear código de barras')"
+      (leido)="onEscaneado($event)"
+      (cancel)="escaneando.set(false)"
+      (manual)="escribirCodigo(scanInput)"
+    />
+  }
 </ng-template>
 
 <!-- Los tipos que faltan se anuncian con su nombre y el del campo. Un hueco en

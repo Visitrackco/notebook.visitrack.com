@@ -1,0 +1,94 @@
+<section class="scn">
+  <header class="scn__head">
+    <h1>Escanear código</h1>
+    <p>Lee la etiqueta de una ubicación o de un activo para comenzar una actividad allí.</p>
+  </header>
+
+  <div class="scn__card">
+    <button type="button" class="scn__camara" (click)="escanear()" [disabled]="buscando()">
+      <vt-icon name="scan" [size]="22" />
+      <span>Escanear con la cámara</span>
+    </button>
+
+    <!-- El respaldo de la cámara: el código escrito o pegado. Un lector de
+         códigos USB también escribe aquí, que es como se usa en un mostrador. -->
+    <form class="scn__manual" (submit)="onEnviar($event)">
+      <label class="scn__label" for="scn-codigo">O escribe el código de la etiqueta</label>
+      <div class="scn__fila">
+        <input
+          #caja
+          id="scn-codigo"
+          class="scn__input"
+          type="text"
+          autocomplete="off"
+          autocapitalize="off"
+          spellcheck="false"
+          placeholder="Código de la etiqueta"
+          [value]="buscado()"
+        />
+        <button type="submit" class="scn__buscar" [disabled]="buscando()">Buscar</button>
+      </div>
+    </form>
+  </div>
+
+  @if (buscando()) {
+    <p class="scn__estado" role="status">Buscando «{{ buscado() }}»…</p>
+  } @else if (resultados(); as lista) {
+    @if (lista.length === 0) {
+      <div class="scn__vacio" role="alert">
+        <vt-icon name="alert" [size]="26" />
+        <div>
+          <strong>No existe el código escaneado</strong>
+          <p>
+            Ninguna ubicación ni activo de este dispositivo tiene la etiqueta
+            <code>{{ buscado() }}</code>. Si es nueva, puede que falte sincronizar.
+          </p>
+        </div>
+        <button type="button" class="scn__otra" (click)="escanear()">Escanear otra vez</button>
+      </div>
+    } @else {
+      <div class="scn__lista">
+        <p class="scn__lista-titulo">
+          {{ lista.length === 1 ? 'Un resultado' : lista.length + ' resultados' }} para
+          <code>{{ buscado() }}</code>{{ lista.length > 1 ? '. Elige con cuál vas a trabajar:' : '' }}
+        </p>
+
+        <ul>
+          @for (item of lista; track item.tipo + item.guid) {
+            <li>
+              @if (item.ruta) {
+                <a class="scn__item" [routerLink]="item.ruta">
+                  <span class="scn__item-icono"><vt-icon [name]="item.tipo === 'activo' ? 'box' : 'map-pin'" [size]="18" /></span>
+                  <span class="scn__item-texto">
+                    <strong>{{ item.nombre }}</strong>
+                    <span>{{ item.tipoNombre }}{{ item.detalle ? ' · ' + item.detalle : '' }}</span>
+                  </span>
+                  <vt-icon name="chevron" [size]="16" />
+                </a>
+              } @else {
+                <!-- Un activo cuya sede no está aquí: se enseña para que se sepa
+                     que la etiqueta existe, pero su ficha no se puede abrir. -->
+                <div class="scn__item scn__item--off">
+                  <span class="scn__item-icono"><vt-icon name="box" [size]="18" /></span>
+                  <span class="scn__item-texto">
+                    <strong>{{ item.nombre }}</strong>
+                    <span>{{ item.tipoNombre }} · {{ item.detalle }}</span>
+                  </span>
+                </div>
+              }
+            </li>
+          }
+        </ul>
+      </div>
+    }
+  }
+</section>
+
+@if (escaneando()) {
+  <vt-code-scanner
+    titulo="Escanear etiqueta"
+    (leido)="onLeido($event)"
+    (cancel)="escaneando.set(false)"
+    (manual)="escribir()"
+  />
+}

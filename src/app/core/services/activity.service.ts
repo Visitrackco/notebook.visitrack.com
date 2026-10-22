@@ -322,6 +322,80 @@ export class ActivityService {
     return answer;
   }
 
+  // ── Comenzar desde una ubicación o un activo ───────────────────────────────
+  //
+  // El otro camino de entrada, el del móvil al escanear una etiqueta: no se
+  // parte del formulario para luego elegir dónde, sino de dónde se está para
+  // luego elegir qué formulario.
+
+  /**
+   * Los formularios que se pueden comenzar sobre esta entidad.
+   *
+   * Los mismos que ofrece la ficha del móvil (`getSurveysByTag`): sobre una
+   * ubicación, los que piden **ese tipo** de ubicación; sobre un activo, los que
+   * piden activo de ese tipo. Ofrecer otros sería crear una actividad que el
+   * selector del propio formulario nunca habría dejado armar.
+   *
+   * Por el cruce de nombres que documenta `entity-mappers`, la entidad guarda el
+   * identificador numérico del tipo en `…TypeGUID` y el GUID en `…TypeGD`; el
+   * formulario puede traer cualquiera de los dos, así que se aceptan ambos.
+   * Se dejan fuera los que tienen la creación cerrada por el flujo.
+   */
+  async surveysFor(location: LocationForm, asset: Asset | null): Promise<Survey[]> {
+    const surveys = await this.surveys.findByUser(this.ownerId);
+    const tipos = (a: unknown, b: unknown) =>
+      [a, b].map((v) => String(v ?? '').trim()).filter((v) => v && v !== '0');
+
+    const deUbicacion = tipos(location.LocationTypeGUID, location.LocationTypeGD);
+    const deActivo = asset ? tipos(asset.AssetTypeGUID, asset.AssetTypeGD) : [];
+
+    return surveys.filter((survey) => {
+      if (survey.CreateEnabled === 0) return false;
+      const requirements = readRequirements(survey);
+
+      if (asset) {
+        return requirements.requiresAsset && deActivo.includes(requirements.assetTypeGuid.trim());
+      }
+
+      return requirements.requiresLocation && deUbicacion.includes(requirements.locationTypeGuid.trim());
+    });
+  }
+
+  /**
+   * Crea una actividad ya asociada a la ubicación (y al activo, si lo hay).
+   *
+   * La ubicación de un activo se asocia también cuando el formulario la pide:
+   * el activo es de esa sede, y dejar que se eligiera otra produciría justo la
+   * inconsistencia que `checkConsistency` detiene. Si el tipo de la sede no es
+   * el que pide el formulario se deja sin asociar, y el flujo normal la pide.
+   *
+   * @returns La actividad y el paso que le queda, para que quien llama navegue.
+   */
+  async createFor(
+    survey: Survey,
+    location: LocationForm,
+    asset: Asset | null,
+  ): Promise<{ answer: SurveyAnswer; step: ActivityStep }> {
+    const requirements = readRequirements(survey);
+    let answer: SurveyAnswer = await this.create(survey);
+
+    const tipoDeSede = [location.LocationTypeGUID, location.LocationTypeGD].map((v) =>
+      String(v ?? '').trim(),
+    );
+    const sedeSirve = !asset || tipoDeSede.includes(requirements.locationTypeGuid.trim());
+
+    if (requirements.requiresLocation && sedeSirve && answer.ID != null) {
+      answer = (await this.answers.attachLocation(answer.ID, location)) ?? answer;
+    }
+
+    if (asset && answer.ID != null) {
+      answer = (await this.answers.attachAsset(answer.ID, asset)) ?? answer;
+    }
+
+    this.notifyChanged();
+    return { answer, step: resolveNextStep(requirements, answer) };
+  }
+
   /** Asocia la ubicación elegida y avisa al resto de la interfaz. */
   async attachLocation(answer: SurveyAnswer, location: LocationForm): Promise<SurveyAnswer | null> {
     if (answer.ID == null) return null;

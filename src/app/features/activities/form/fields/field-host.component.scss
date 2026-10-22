@@ -82,6 +82,30 @@
   width: 100%;
 }
 
+/* El botón de escanear dentro de la caja del código: redondo y del tamaño de
+   un dedo, que es como se pulsa en el teléfono con el equipo delante. */
+.fld__scan {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin-right: 4px;
+  color: var(--vt-primary);
+  background: transparent;
+  border: 0;
+  border-radius: var(--vt-radius-full);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--vt-brand-tint, rgb(0 0 0 / 6%));
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--vt-primary);
+    outline-offset: 1px;
+  }
+}
+
 /**
  * Marca de obligatorio.
  *

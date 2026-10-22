@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 
 import { IconComponent } from '../../../../../shared/components/icon/icon.component';
+import { describeCameraError, motivoSinCamara } from '../../../../../shared/utils/camara';
 
 /**
  * Cámara en vivo.
@@ -67,8 +68,9 @@ export class CameraCaptureComponent implements OnDestroy {
     this.error.set('');
     this.ready.set(false);
 
-    if (!navigator.mediaDevices?.getUserMedia) {
-      this.error.set('Este navegador no permite usar la cámara.');
+    const sinCamara = motivoSinCamara();
+    if (sinCamara) {
+      this.error.set(sinCamara);
       return;
     }
 
@@ -173,21 +175,5 @@ export class CameraCaptureComponent implements OnDestroy {
     if (video) video.srcObject = null;
 
     this.ready.set(false);
-  }
-}
-
-/** Traduce el error de `getUserMedia` a algo accionable. */
-function describeCameraError(error: unknown): string {
-  const name = error instanceof DOMException ? error.name : '';
-
-  switch (name) {
-    case 'NotAllowedError':
-      return 'No se concedió el permiso de cámara. Habilítalo desde el icono de la barra de direcciones y vuelve a intentarlo.';
-    case 'NotFoundError':
-      return 'No se encontró ninguna cámara en este dispositivo.';
-    case 'NotReadableError':
-      return 'La cámara está siendo usada por otra aplicación. Ciérrala e inténtalo de nuevo.';
-    default:
-      return 'No se pudo abrir la cámara. Comprueba que la página esté en HTTPS.';
   }
 }

@@ -33,6 +33,7 @@ import {
 import { FormEngine } from '../../../../core/forms/form-engine';
 import { Flujo } from '../../../../core/forms/flujo-modelo';
 import { GpsReading } from '../../../../core/services/geolocation.service';
+import { CodeScannerComponent } from '../../../../shared/components/code-scanner/code-scanner.component';
 import { IconComponent } from '../../../../shared/components/icon/icon.component';
 import { BinaryFieldComponent } from './binary-field/binary-field.component';
 import { DerivedFieldComponent } from './derived-field/derived-field.component';
@@ -107,6 +108,7 @@ const VT_DATE_FORMATS: MatDateFormats = {
   selector: 'vt-field-host',
   standalone: true,
   imports: [
+    CodeScannerComponent,
     LinkedFormFieldComponent,
     BinaryFieldComponent,
     DerivedFieldComponent,
@@ -664,8 +666,8 @@ export class FieldHostComponent {
   });
 
   /**
-   * El valor de un escaneo (barras/QR). En la web se captura a mano, así que
-   * solo hace falta el texto; la app además guarda la geolocalización.
+   * El valor de un escaneo (barras/QR). En la web basta el texto —leído con la
+   * cámara o escrito—; la app además guarda la geolocalización.
    */
   readonly scanText = computed(() => {
     const v = this.value();
@@ -702,12 +704,43 @@ export class FieldHostComponent {
   });
 
   /**
-   * Llega el texto escaneado a mano. El `for` dice de qué tipo de código es,
+   * Llega el código escrito a mano. El `for` dice de qué tipo de código es,
    * según el campo. Se emite `null` cuando queda vacío para que un obligatorio
    * siga contando como pendiente.
    */
   onScan(event: Event): void {
-    const txt = (event.target as HTMLInputElement).value.trim();
+    this.guardarCodigo((event.target as HTMLInputElement).value);
+  }
+
+  /** El escáner de cámara está abierto. */
+  readonly escaneando = signal(false);
+
+  abrirEscaner(): void {
+    if (this.readOnly()) return;
+    this.escaneando.set(true);
+  }
+
+  /**
+   * Llega el código leído por la cámara.
+   *
+   * Pasa por el mismo `guardarCodigo` que lo escrito a mano: el mismo `for` y
+   * el mismo formato. Que la cámara guardara algo distinto haría que un mismo
+   * código se viera de dos formas en Visitrack según cómo se capturó.
+   */
+  onEscaneado(texto: string): void {
+    this.escaneando.set(false);
+    if (this.readOnly()) return;
+    this.guardarCodigo(texto);
+  }
+
+  /** Sin cámara: se cierra el escáner y se deja el cursor en la caja. */
+  escribirCodigo(caja: HTMLInputElement): void {
+    this.escaneando.set(false);
+    setTimeout(() => caja.focus());
+  }
+
+  private guardarCodigo(valor: string): void {
+    const txt = valor.trim();
     if (!txt) {
       this.valueChange.emit(null);
       return;

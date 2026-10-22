@@ -177,6 +177,20 @@
 
       <div class="shell__topbar-spacer"></div>
 
+      <!-- Escanear la etiqueta de una sede o un equipo y comenzar allí. En la
+           cabecera y no solo en el menú porque es lo que se hace de pie, con el
+           equipo delante y el teléfono en una mano: a un toque, siempre. -->
+      <a
+        class="shell__scan"
+        routerLink="/escanear"
+        routerLinkActive="shell__scan--active"
+        title="Escanear la etiqueta de una ubicación o un activo"
+        aria-label="Escanear código"
+      >
+        <vt-icon name="scan" [size]="18" />
+        <span>Escanear</span>
+      </a>
+
       <!-- Estado de conexión: siempre visible, porque determina si lo que el
            usuario hace se está guardando solo en local o llegando al servidor -->
       <div

@@ -63,7 +63,52 @@
           </span>
         }
       </div>
+
+      <button
+        type="button"
+        class="det__start"
+        [attr.aria-expanded]="choosing()"
+        aria-controls="det-comenzar"
+        (click)="openStart()"
+      >
+        <vt-icon name="plus" [size]="17" />
+        <span>Comenzar actividad</span>
+      </button>
     </header>
+
+    <!-- ── Comenzar actividad ───────────────────────────────────────────────
+         Los formularios que se pueden empezar aquí, con esta entidad ya
+         puesta. Es a donde lleva escanear su etiqueta, igual que en el móvil. -->
+    @if (choosing()) {
+      <section id="det-comenzar" class="det__comenzar" aria-label="Comenzar actividad">
+        @if (startable(); as surveys) {
+          @if (surveys.length === 0) {
+            <p class="det__comenzar-vacio">
+              Ningún formulario de los descargados se diligencia sobre
+              {{ isAsset() ? 'este tipo de activo' : 'este tipo de ubicación' }}.
+            </p>
+          } @else {
+            <p class="det__comenzar-titulo">¿Qué formulario vas a diligenciar?</p>
+            <ul class="det__comenzar-lista">
+              @for (survey of surveys; track survey.SurveyID) {
+                <li>
+                  <button type="button" class="row" [disabled]="starting()" (click)="start(survey)">
+                    <span class="det__comenzar-icono"><vt-icon name="clipboard" [size]="17" /></span>
+                    <span class="det__comenzar-nombre">{{ survey.Title }}</span>
+                    <vt-icon name="chevron" [size]="16" class="det__comenzar-ir" />
+                  </button>
+                </li>
+              }
+            </ul>
+          }
+          @if (startError()) {
+            <p class="det__comenzar-error" role="alert">{{ startError() }}</p>
+          }
+        } @else {
+          <p class="det__comenzar-vacio">Buscando formularios…</p>
+        }
+      </section>
+    }
 
     <nav class="det__tabs">
       <button type="button" [class.det__tab--on]="tab() === 'info'" (click)="show('info')">

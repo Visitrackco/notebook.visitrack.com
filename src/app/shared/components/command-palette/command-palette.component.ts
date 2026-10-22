@@ -188,6 +188,9 @@ export class CommandPaletteComponent {
       make('Correos del flujo', 'mail', '/correos-flujo'),
       make('Notificaciones del flujo', 'bell', '/avisos-flujo'),
       make('Ubicaciones', 'map-pin', '/ubicaciones'),
+      // Con «etiqueta» y «qr» en lo que se busca: nadie escribe «escanear»
+      // cuando lo que tiene delante es un código pegado en un equipo.
+      { ...make('Escanear código', 'scan', '/escanear'), haystack: 'escanear codigo código qr barras etiqueta tag comenzar actividad /escanear' },
       make('Sincronización', 'refresh', '/sincronizacion'),
       make('Archivos', 'file', '/archivos'),
       make('Inicio', 'home', '/inicio'),

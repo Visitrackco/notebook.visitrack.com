@@ -1,9 +1,10 @@
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 
-import { Asset, LocationForm, SurveyAnswer } from '../../core/models/entities.model';
+import { Asset, LocationForm, Survey, SurveyAnswer } from '../../core/models/entities.model';
 import { AssetRepository } from '../../core/repositories/entity.repositories';
 import { SurveyAnswerRepository } from '../../core/repositories/survey-answer.repository';
+import { ActivityService } from '../../core/services/activity.service';
 import { BinaryStorageService } from '../../core/services/binary-storage.service';
 import { LocationEditorService } from '../../core/services/location-editor.service';
 import { PermissionsService } from '../../core/services/permissions.service';
@@ -84,6 +85,7 @@ export class LocationDetailComponent {
   private readonly router = inject(Router);
   private readonly revisions = inject(DataRevisionService);
   private readonly permissions = inject(PermissionsService);
+  private readonly activities = inject(ActivityService);
 
   readonly guid = input('');
 
@@ -293,6 +295,7 @@ export class LocationDetailComponent {
 
     this.loading.set(true);
     this.tab.set('info');
+    this.choosing.set(false);
 
     try {
       const record = await this.editor.findLocation(guid);
@@ -451,6 +454,73 @@ export class LocationDetailComponent {
 
       default:
         return '';
+    }
+  }
+
+  // ── Comenzar una actividad aquí ─────────────────────────────────────────────
+  //
+  // Lo que en el móvil hace la ficha a la que se llega escaneando la etiqueta:
+  // elegir un formulario y empezar la actividad con esta ubicación (o este
+  // activo) ya puesta, sin pasar por su selector.
+
+  /** El panel de formularios está abierto. */
+  readonly choosing = signal(false);
+
+  /** Los formularios que se pueden comenzar aquí. `null` mientras se buscan. */
+  readonly startable = signal<Survey[] | null>(null);
+
+  /** Se está creando la actividad: el panel no admite un segundo clic. */
+  readonly starting = signal(false);
+
+  readonly startError = signal('');
+
+  async openStart(): Promise<void> {
+    if (this.choosing()) {
+      this.choosing.set(false);
+      return;
+    }
+
+    const location = this.location();
+    if (!location) return;
+
+    this.choosing.set(true);
+    this.startError.set('');
+    this.startable.set(null);
+
+    try {
+      this.startable.set(await this.activities.surveysFor(location, this.current()));
+    } catch (error) {
+      console.error('[Ubicaciones] no se pudieron leer los formularios', error);
+      this.startable.set([]);
+    }
+  }
+
+  async start(survey: Survey): Promise<void> {
+    const location = this.location();
+    if (!location || this.starting()) return;
+
+    this.starting.set(true);
+    this.startError.set('');
+
+    try {
+      const { answer, step } = await this.activities.createFor(survey, location, this.current());
+
+      if (step === 'form') {
+        await this.router.navigate(['/formularios', survey.SurveyID, 'actividad', answer.GUID]);
+        return;
+      }
+
+      // Falta algo que esta ficha no resuelve —el activo de un formulario que
+      // pide los dos, o una sede de otro tipo—: lo pide el flujo de siempre.
+      await this.router.navigate(
+        ['/formularios', survey.SurveyID, step === 'location' ? 'ubicaciones' : 'activos'],
+        { queryParams: { actividad: answer.GUID } },
+      );
+    } catch (error) {
+      console.error('[Ubicaciones] no se pudo comenzar la actividad', error);
+      this.startError.set('No se pudo comenzar la actividad.');
+    } finally {
+      this.starting.set(false);
     }
   }
 
