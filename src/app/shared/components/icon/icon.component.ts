@@ -177,6 +177,16 @@ import { Component, input } from '@angular/core';
           <path d="M21 3 10.5 13.5" />
           <path d="M21 3 14.5 21l-4-7.5L3 9.5 21 3Z" />
         }
+        @case ('bell') {
+          <path d="M6 9.5a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15.5 6 9.5Z" />
+          <path d="M10 20.5a2.2 2.2 0 0 0 4 0" />
+        }
+        @case ('phone-link') {
+          <rect x="6.5" y="2.5" width="11" height="19" rx="2.2" />
+          <path d="M11 18.5h2" />
+          <path d="M10.3 10.8a2 2 0 0 1 0-2.8l1-1a2 2 0 0 1 2.8 2.8l-.5.5" />
+          <path d="M13.7 10.2a2 2 0 0 1 0 2.8l-1 1a2 2 0 0 1-2.8-2.8l.5-.5" />
+        }
         @case ('cloud-upload') {
           <path d="M7 18.5a4 4 0 0 1-.4-8A5.5 5.5 0 0 1 17.4 9.5a3.8 3.8 0 0 1 .6 7.5" />
           <path d="M12 21v-8" />

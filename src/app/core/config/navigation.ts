@@ -138,14 +138,14 @@ export const NAVIGATION: NavSection[] = [
         key: 'flow-pushes',
         label: 'Notificaciones del flujo',
         route: '/avisos-flujo',
-        icon: 'send',
+        icon: 'bell',
         description: 'Las que pidió una regla, y si ya salieron',
       },
       {
         key: 'link',
         label: 'Vincular teléfono',
         route: '/vincular',
-        icon: 'send',
+        icon: 'phone-link',
         description: 'Trae aquí lo que tienes en el teléfono',
       },
       {
