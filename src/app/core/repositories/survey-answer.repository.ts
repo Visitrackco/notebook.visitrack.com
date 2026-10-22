@@ -1,7 +1,8 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 
 import { ANSWER_STATE } from '../models/activity.model';
 import { Asset, LocationForm, Survey, SurveyAnswer } from '../models/entities.model';
+import { DataRevisionService } from '../sync/data-revision.service';
 import { BaseRepository } from './base.repository';
 import { nuevoGuid } from '../../shared/utils/guid';
 
@@ -35,6 +36,72 @@ export interface CreateAnswerInput {
 @Injectable({ providedIn: 'root' })
 export class SurveyAnswerRepository extends BaseRepository<SurveyAnswer> {
   protected readonly storeName = 'SurveyAnswers';
+
+  private readonly revisiones = inject(DataRevisionService);
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Avisar de los cambios
+  // ───────────────────────────────────────────────────────────────────────────
+
+  /*
+   * Toda escritura que cambia **qué actividades hay o en qué punto están**
+   * sube el latido de actividades (`DataRevisionService.touchActivities`).
+   *
+   * Antes lo encendía a mano cada servicio que creaba o cambiaba una
+   * actividad, y los que nacen por fuera de la pantalla —una geocerca, un
+   * timer, un flujo, una consigna, el hijo de un formulario vinculado— se lo
+   * saltaban: el conteo del formulario y el listado quedaban viejos hasta
+   * recargar. Aquí pasan todos. Escribir respuestas mientras se llena el
+   * formulario no cuenta: el autoguardado no cambia el listado y lo haría
+   * recargar a cada tecla.
+   */
+  private static readonly CAMPOS_DEL_LISTADO: readonly (keyof SurveyAnswer)[] = [
+    'Status',
+    'isSaved',
+    'eraser',
+    'IsDelete',
+    'CompletedOn',
+    'IsUpload',
+    'LocationID',
+    'AssetID',
+  ];
+
+  override async put(item: SurveyAnswer): Promise<IDBValidKey> {
+    const clave = await super.put(item);
+    this.revisiones.touchActivities();
+    return clave;
+  }
+
+  override async putMany(items: readonly SurveyAnswer[]): Promise<number> {
+    const n = await super.putMany(items);
+    if (n > 0) this.revisiones.touchActivities();
+    return n;
+  }
+
+  override async add(item: SurveyAnswer): Promise<IDBValidKey | null> {
+    const clave = await super.add(item);
+    if (clave != null) this.revisiones.touchActivities();
+    return clave;
+  }
+
+  override async update(key: IDBValidKey, changes: Partial<SurveyAnswer>): Promise<SurveyAnswer | null> {
+    const actualizada = await super.update(key, changes);
+    if (actualizada && SurveyAnswerRepository.CAMPOS_DEL_LISTADO.some((campo) => campo in changes)) {
+      this.revisiones.touchActivities();
+    }
+    return actualizada;
+  }
+
+  override async delete(key: IDBValidKey): Promise<void> {
+    await super.delete(key);
+    this.revisiones.touchActivities();
+  }
+
+  override async deleteWhere(options: Parameters<BaseRepository<SurveyAnswer>['deleteWhere']>[0]): Promise<number> {
+    const n = await super.deleteWhere(options);
+    if (n > 0) this.revisiones.touchActivities();
+    return n;
+  }
 
   // ───────────────────────────────────────────────────────────────────────────
   // Lectura
