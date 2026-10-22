@@ -1,5 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
+import { Router } from '@angular/router';
 
 import { apiBaseUrlDirecta } from '../config/api-base';
 import { FIREBASE_CONFIG, VAPID_KEY } from '../config/firebase';
@@ -46,6 +47,7 @@ export class PushService {
   private readonly auth = inject(AuthService);
   private readonly device = inject(DeviceService);
   private readonly toasts = inject(ToastService);
+  private readonly router = inject(Router);
 
   readonly estado = signal<EstadoPush>(this.leerEstado());
 
@@ -349,8 +351,28 @@ export class PushService {
     } catch (error) {
       console.warn('[Push] no se pudo pintar la notificacion, se avisa dentro', error);
 
-      this.toasts.info(titulo, cuerpo);
+      // Con destino, el aviso de dentro también lleva: «Ver», como tocar la
+      // notificación. Es lo que abre, p. ej., `geocerca-evento/<clave>`.
+      const enlace = datos['enlace'] || '';
+      this.toasts.show({
+        title: titulo,
+        detail: cuerpo,
+        tone: 'info',
+        ...(enlace ? { action: { label: 'Ver', run: () => this.abrirEnlace(enlace) } } : {}),
+      });
     }
+  }
+
+  /**
+   * Navega al destino de un aviso, como `aDondeVa` del service worker: una ruta
+   * de la aplicación —`chat/12`, sin barra— o una dirección completa.
+   */
+  private abrirEnlace(enlace: string): void {
+    if (/^https?:\/\//i.test(enlace)) {
+      window.open(enlace, '_blank', 'noopener');
+      return;
+    }
+    void this.router.navigateByUrl('/' + enlace.replace(/^[#/]+/, ''));
   }
 
   /**

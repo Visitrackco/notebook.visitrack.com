@@ -299,8 +299,8 @@ export class GeocercasService {
     if (!disparos.length) return;
 
     for (const d of disparos) {
-      await this.guardarEvento(user.UserID, d);
-      this.notificar(d);
+      const clave = await this.guardarEvento(user.UserID, d);
+      this.notificar(d, clave);
 
       for (const a of d.acciones) {
         if (a.accion === 'crear-actividad') {
@@ -393,7 +393,8 @@ export class GeocercasService {
     });
   }
 
-  private async guardarEvento(userId: string, d: Disparo): Promise<void> {
+  /** Guarda el disparo y devuelve su clave: con ella se abre su pantalla. */
+  private async guardarEvento(userId: string, d: Disparo): Promise<string> {
     const clave = nuevoGuid();
     const evento: EventoEnCola = {
       UserID: userId,
@@ -429,6 +430,7 @@ export class GeocercasService {
     } catch (error) {
       console.warn('[Geocercas] no se pudo guardar el evento', error);
     }
+    return clave;
   }
 
   /**
@@ -438,13 +440,20 @@ export class GeocercasService {
    * teléfono—; sin permiso, o si el navegador no la deja crear desde la página,
    * un aviso dentro de la aplicación. Aquí no se pide el permiso: el navegador
    * solo lo concede tras un clic, y para eso está la tira del armazón.
+   *
+   * Tocar la notificación —o «Ver» en el aviso— lleva a la pantalla del
+   * evento (`geocerca-evento/:clave`), con el título y el texto de la alerta.
    */
-  private notificar(d: Disparo): void {
+  private notificar(d: Disparo, clave: string): void {
     d.acciones.forEach((a, i) => {
       if (a.accion !== 'notificar') return;
 
       const titulo = this.rellenar(String(a['titulo'] ?? ''), d) || 'Geocerca';
       const texto = this.rellenar(String(a['texto'] ?? ''), d);
+      const ver = () =>
+        void this.router.navigate(['/geocerca-evento', clave], {
+          queryParams: { titulo, texto: texto || null },
+        });
 
       if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
         try {
@@ -456,6 +465,7 @@ export class GeocercasService {
           aviso.onclick = () => {
             window.focus();
             aviso.close();
+            ver();
           };
           return;
         } catch {
@@ -463,7 +473,14 @@ export class GeocercasService {
         }
       }
 
-      this.toasts.show({ title: titulo, detail: texto, tone: 'info', icon: 'map-pin', duration: 0 });
+      this.toasts.show({
+        title: titulo,
+        detail: texto,
+        tone: 'info',
+        icon: 'map-pin',
+        duration: 0,
+        action: { label: 'Ver', run: ver },
+      });
     });
   }
 
@@ -611,7 +628,13 @@ export class GeocercasService {
     );
   }
 
-  /** Lo ya contado sobra; lo muy viejo también. */
+  /**
+   * Lo de más de una semana sobra.
+   *
+   * Lo ya contado **no** se borra en el acto: es el respaldo de la pantalla del
+   * evento cuando se toca su alerta sin red. La cola sigue mirando solo
+   * `Enviado = 0`, así que guardarlo no reenvía nada.
+   */
   private async limpiar(): Promise<void> {
     try {
       const limite = Date.now() - SEMANA_MS;
@@ -619,7 +642,7 @@ export class GeocercasService {
         const store = tx.objectStore('EventosGeocerca');
         const todos = await this.db.request<EventoEnCola[]>(store.getAll());
         for (const e of todos) {
-          if ((e.Enviado === 1 || e.Creado < limite) && e.ID !== undefined) store.delete(e.ID);
+          if (e.Creado < limite && e.ID !== undefined) store.delete(e.ID);
         }
       });
     } catch {

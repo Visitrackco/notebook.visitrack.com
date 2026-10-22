@@ -312,7 +312,8 @@ export const DB_SCHEMA: readonly StoreDefinition[] = [
     description:
       'Lo que disparó una geocerca y falta contarle a cloud-gold (`/geofence-flows/eventos`). Es ' +
       'la tabla `eventos` de `geocercas_nativo.db` del teléfono: `Enviado = 1` cuando el servidor ' +
-      'confirma la clave; lo enviado y lo de más de una semana se limpia.',
+      'confirma la clave; se guarda una semana (también lo enviado: es el respaldo sin red de la ' +
+      'pantalla del evento, `geocerca-evento/:clave`) y luego se limpia.',
     indexes: [
       { name: 'byUserID', keyPath: 'UserID' },
       { name: 'byEnviado', keyPath: 'Enviado' },

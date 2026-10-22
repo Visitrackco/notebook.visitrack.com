@@ -1,0 +1,181 @@
+<!--
+  Evento de geocerca: lo que decía la alerta y lo que pasó de verdad.
+-->
+<section class="ge">
+  <button type="button" class="ge__volver" (click)="volver()">
+    <vt-icon name="chevron" [size]="16" class="ge__volver-ico" />
+    Volver
+  </button>
+
+  <!-- La alerta tal como llegó: es lo que la persona acaba de tocar. -->
+  <header class="ge__alerta">
+    <span class="ge__ico" aria-hidden="true"><vt-icon name="map-pin" [size]="22" /></span>
+    <div class="ge__alerta-cuerpo">
+      <p class="ge__etiqueta">Evento de geocerca</p>
+      <h1 class="ge__titulo">{{ tituloAlerta() }}</h1>
+      @if (texto()) {
+        <p class="ge__texto">{{ texto() }}</p>
+      }
+    </div>
+  </header>
+
+  @if (cargando()) {
+    <div class="ge__cargando" role="status" aria-live="polite">
+      <span class="ge__rueda" aria-hidden="true"></span>
+      <span>Buscando el evento…</span>
+    </div>
+  } @else if (vista(); as v) {
+    <div class="ge__rejilla">
+      <!-- Qué pasó -->
+      <article class="ge__tarjeta">
+        <h2 class="ge__evento">{{ v.evento || 'Evento de geocerca' }}</h2>
+
+        @if (v.dentro !== null) {
+          <div
+            class="ge__estado"
+            [class.ge__estado--dentro]="v.dentro"
+            [class.ge__estado--fuera]="!v.dentro"
+          >
+            <span class="ge__punto-estado" aria-hidden="true"></span>
+            <strong>{{ v.dentro ? 'Dentro' : 'Fuera' }}</strong>
+            <span class="ge__estado-sub">
+              de la geocerca@if (v.distanciaMetros !== null) {
+                · {{ distancia(v.distanciaMetros) }}
+              }
+            </span>
+          </div>
+        }
+
+        <dl class="ge__datos">
+          @if (v.usuario) {
+            <div><dt>Quién</dt><dd>{{ v.usuario }}</dd></div>
+          }
+          @if (v.en) {
+            <div><dt>Cuándo</dt><dd>{{ cuando(v.en) }}</dd></div>
+          }
+          @if (v.geocerca?.nombre) {
+            <div><dt>Geocerca</dt><dd>{{ v.geocerca?.nombre }}</dd></div>
+          }
+          @if (v.punto?.nombre) {
+            <div><dt>Punto</dt><dd>{{ v.punto?.nombre }}</dd></div>
+          }
+          @if (v.flujo) {
+            <div><dt>Flujo</dt><dd>{{ v.flujo }}</dd></div>
+          }
+          @if (v.regla) {
+            <div><dt>Regla</dt><dd>{{ v.regla }}</dd></div>
+          }
+          @if (v.contexto?.formulario) {
+            <div><dt>Formulario</dt><dd>{{ v.contexto?.formulario }}</dd></div>
+          }
+          <div>
+            <dt>Coordenadas</dt>
+            <dd class="ge__mono">{{ v.lat.toFixed(6) }}, {{ v.lng.toFixed(6) }}</dd>
+          </div>
+        </dl>
+
+        <div class="ge__acciones">
+          <a class="ge__btn" [href]="googleMaps()" target="_blank" rel="noopener">
+            <vt-icon name="map-pin" [size]="16" /> Ver en Google Maps
+          </a>
+          @if (v.contexto) {
+            <button
+              type="button"
+              class="ge__btn ge__btn--fuerte"
+              (click)="abrirActividad()"
+              [disabled]="abriendo()"
+            >
+              <vt-icon name="clipboard" [size]="16" />
+              {{ abriendo() ? 'Abriendo…' : 'Abrir la actividad' }}
+            </button>
+          }
+        </div>
+
+        @if (v.origen === 'local') {
+          <p class="ge__nota">
+            <vt-icon name="connection-off" [size]="14" />
+            Sin respuesta del servidor: se muestra lo que guardó este navegador.
+            <button type="button" class="ge__enlace" (click)="cargar()">Reintentar</button>
+          </p>
+        }
+      </article>
+
+      <!-- Dónde: la foto del mapa o, sin ella, el dibujo -->
+      <figure class="ge__mapa">
+        @if (mostrarFoto()) {
+          <div class="ge__foto" [class.ge__foto--cargando]="foto() === 'cargando'">
+            <img
+              [src]="v.mapaUrl"
+              [alt]="'Mapa de la ubicación del evento: ' + (v.evento || 'evento de geocerca')"
+              loading="eager"
+              (load)="foto.set('lista')"
+              (error)="foto.set('rota')"
+            />
+          </div>
+        } @else if (dibujo(); as d) {
+          <svg
+            class="ge__svg"
+            [attr.viewBox]="'0 0 ' + d.ancho + ' ' + d.alto"
+            role="img"
+            [attr.aria-label]="
+              'Dibujo de la geocerca con la persona ' + (v.dentro ? 'dentro' : 'fuera')
+            "
+          >
+            <rect class="ge__svg-fondo" x="0" y="0" [attr.width]="d.ancho" [attr.height]="d.alto" />
+            @if (d.poligono) {
+              <polygon class="ge__svg-cerca" [attr.points]="d.poligono" />
+            }
+            @for (c of d.circulos; track $index) {
+              <circle class="ge__svg-cerca" [attr.cx]="c.cx" [attr.cy]="c.cy" [attr.r]="c.r" />
+              <circle class="ge__svg-centro" [attr.cx]="c.cx" [attr.cy]="c.cy" r="2" />
+            }
+            <circle
+              class="ge__svg-halo"
+              [class.ge__svg-halo--dentro]="v.dentro"
+              [attr.cx]="d.persona.cx"
+              [attr.cy]="d.persona.cy"
+              r="11"
+            />
+            <circle
+              class="ge__svg-persona"
+              [class.ge__svg-persona--dentro]="v.dentro"
+              [attr.cx]="d.persona.cx"
+              [attr.cy]="d.persona.cy"
+              r="6"
+            />
+          </svg>
+        } @else {
+          <div class="ge__sin-mapa">
+            <vt-icon name="map-pin" [size]="28" />
+            <span>No hay mapa ni geometría para dibujar este evento.</span>
+          </div>
+        }
+        <figcaption class="ge__pie">
+          @if (mostrarFoto()) {
+            Ubicación de la persona cuando pasó el evento.
+          } @else if (dibujo()) {
+            Dibujo aproximado: la geocerca y el punto donde estaba la persona.
+          }
+        </figcaption>
+      </figure>
+    </div>
+  } @else {
+    <!-- Ni servidor ni navegador: que el hueco explique, no que parezca un error. -->
+    <div class="ge__vacio">
+      <vt-icon name="map-pin" [size]="32" />
+      @if (eleccion()?.estado === 'no-existe') {
+        <p class="ge__vacio-tit">Este evento ya no existe</p>
+        <p class="ge__sub">Puede que se haya borrado, o que la alerta fuera de otra cuenta.</p>
+      } @else {
+        <p class="ge__vacio-tit">Todavía no podemos mostrar este evento</p>
+        <p class="ge__sub">
+          No hay conexión con el servidor y este navegador no lo tiene guardado. Lo de
+          arriba es lo que decía la alerta; vuelve a intentarlo cuando haya red.
+        </p>
+        <button type="button" class="ge__btn" (click)="cargar()">
+          <vt-icon name="refresh" [size]="16" /> Reintentar
+        </button>
+      }
+    </div>
+  }
+</section>

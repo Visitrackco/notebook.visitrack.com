@@ -420,6 +420,20 @@ export const routes: Routes = [
             (m) => m.FlowPushesComponent,
           ),
       },
+      /**
+       * A donde lleva tocar una alerta de geocerca (push o aviso del navegador).
+       *
+       * `titulo` y `texto` llegan en la dirección: son lo que decía la alerta, y
+       * así se enseñan aunque no haya red para traer el evento.
+       */
+      {
+        path: 'geocerca-evento/:clave',
+        title: 'Evento de geocerca · Visitrack',
+        loadComponent: () =>
+          import('./features/geocerca-evento/geocerca-evento.component').then(
+            (m) => m.GeocercaEventoComponent,
+          ),
+      },
       {
         path: 'archivos',
         title: 'Archivos · Visitrack',
