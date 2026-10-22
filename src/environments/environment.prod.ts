@@ -26,5 +26,5 @@ export const environment = {
   requestTimeout: 30,
   syncIntervalMinutes: 15,
 
-  appVersion: '0.21.23',
+  appVersion: '0.22.0',
 };
