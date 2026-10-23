@@ -16,6 +16,7 @@ import {
 import { PermissionsService } from '../../core/services/permissions.service';
 import { DraftPolicyService } from '../../core/services/draft-policy.service';
 import { esModoPublico } from '../../core/config/modo-publico';
+import { normalizar } from '../../shared/utils/resaltado';
 import { EntityPickerComponent, PickerItem } from './entity-picker/entity-picker.component';
 
 /** Cuántas ubicaciones se traen por página. */
@@ -252,14 +253,14 @@ export class LocationPickerComponent {
 
     try {
       const all = await this.activities.listLocations(requirements.locationTypeGuid);
-      const needle = term.trim().toLowerCase();
+      const needle = normalizar(term).trim();
 
       this.matches.set(
         all.filter(
           (location) =>
-            location.Name?.toLowerCase().includes(needle) ||
-            location.FullAddress?.toLowerCase().includes(needle) ||
-            location.TagUID?.toLowerCase().includes(needle) ||
+            normalizar(location.Name).includes(needle) ||
+            normalizar(location.FullAddress).includes(needle) ||
+            normalizar(location.TagUID).includes(needle) ||
             descriptorsMatch(this.descriptorsOf(location), needle),
         ),
       );

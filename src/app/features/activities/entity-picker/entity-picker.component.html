@@ -100,16 +100,16 @@
 
             <span class="picker__row-body">
               <span class="picker__row-title">
-                <span class="picker__row-name">{{ item.name }}</span>
+                <span class="picker__row-name"><vt-resaltado [texto]="item.name" [busqueda]="searchTerm()" /></span>
                 @if (item.hint) {
-                  <span class="picker__row-hint">{{ item.hint }}</span>
+                  <span class="picker__row-hint"><vt-resaltado [texto]="item.hint" [busqueda]="searchTerm()" /></span>
                 }
               </span>
 
               <!-- Descriptivos en columnas de etiqueta y valor, como en la app:
                    son los que permiten distinguir dos sedes con nombre parecido. -->
               @if (item.descriptors.length > 0) {
-                <vt-descriptor-table class="picker__dtab" [descriptors]="item.descriptors" />
+                <vt-descriptor-table class="picker__dtab" [descriptors]="item.descriptors" [busqueda]="searchTerm()" />
               }
             </span>
 

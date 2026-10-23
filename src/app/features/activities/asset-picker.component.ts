@@ -15,6 +15,7 @@ import {
 import { PermissionsService } from '../../core/services/permissions.service';
 import { DraftPolicyService } from '../../core/services/draft-policy.service';
 import { esModoPublico } from '../../core/config/modo-publico';
+import { normalizar } from '../../shared/utils/resaltado';
 import { EntityPickerComponent, PickerItem } from './entity-picker/entity-picker.component';
 
 /** Cuántos activos se traen por página. */
@@ -254,14 +255,14 @@ export class AssetPickerComponent {
       const all = await this.activities.listAssets(requirements.assetTypeGuid, this.locationId, {
         locationGuid: this.locationGuid,
       });
-      const needle = term.trim().toLowerCase();
+      const needle = normalizar(term).trim();
 
       this.matches.set(
         all.filter(
           (asset) =>
-            asset.Name?.toLowerCase().includes(needle) ||
-            asset.SerialNumber?.toLowerCase().includes(needle) ||
-            asset.TagUID?.toLowerCase().includes(needle) ||
+            normalizar(asset.Name).includes(needle) ||
+            normalizar(asset.SerialNumber).includes(needle) ||
+            normalizar(asset.TagUID).includes(needle) ||
             descriptorsMatch(this.descriptorsOf(asset), needle),
         ),
       );

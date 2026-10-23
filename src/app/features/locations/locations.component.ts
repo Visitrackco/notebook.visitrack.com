@@ -9,6 +9,8 @@ import { PermissionsService } from '../../core/services/permissions.service';
 import { DataRevisionService } from '../../core/sync/data-revision.service';
 import { resolveCatalogOwnerId } from '../../core/config/company-rules';
 import { DescriptorTableComponent } from '../../shared/components/descriptor-table/descriptor-table.component';
+import { normalizar } from '../../shared/utils/resaltado';
+import { ResaltadoComponent } from '../../shared/components/resaltado/resaltado.component';
 import { ToTopComponent } from '../../shared/components/to-top/to-top.component';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { NearEndDirective } from '../../shared/directives/near-end.directive';
@@ -53,7 +55,7 @@ export interface LocationCard {
 @Component({
   selector: 'vt-locations',
   standalone: true,
-  imports: [DescriptorTableComponent, IconComponent, NearEndDirective, RouterLink, ToTopComponent],
+  imports: [DescriptorTableComponent, IconComponent, NearEndDirective, ResaltadoComponent, RouterLink, ToTopComponent],
   templateUrl: './locations.component.html',
   styleUrl: './locations.component.scss',
 })
@@ -119,14 +121,14 @@ export class LocationsComponent {
   /** Las que pasan el filtro, todas. */
   private readonly matching = computed(() => {
     const type = this.typeFilter();
-    const needle = this.search().trim().toLowerCase();
+    const needle = normalizar(this.search()).trim();
 
     return this.all().filter((card) => {
       if (type && card.typeName !== type) return false;
       if (!needle) return true;
 
       return (
-        card.name.toLowerCase().includes(needle) ||
+        normalizar(card.name).includes(needle) ||
         descriptorsMatch(card.descriptors, needle)
       );
     });

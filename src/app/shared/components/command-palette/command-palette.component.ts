@@ -19,6 +19,8 @@ import { PermisosDeModuleService } from '../../../core/services/permisos-de-modu
 import { ShortcutsService } from '../../../core/services/shortcuts.service';
 import { IconComponent } from '../icon/icon.component';
 import { entityDescriptors } from '../../utils/descriptors';
+import { normalizar } from '../../utils/resaltado';
+import { ResaltadoComponent } from '../resaltado/resaltado.component';
 
 /** Algo a lo que se puede saltar. */
 interface Entry {
@@ -58,7 +60,7 @@ const LIMIT = 12;
 @Component({
   selector: 'vt-command-palette',
   standalone: true,
-  imports: [IconComponent],
+  imports: [IconComponent, ResaltadoComponent],
   templateUrl: './command-palette.component.html',
   styleUrl: './command-palette.component.scss',
 })
@@ -84,7 +86,7 @@ export class CommandPaletteComponent {
   readonly cursor = signal(0);
 
   readonly results = computed(() => {
-    const needle = this.search().trim().toLowerCase();
+    const needle = normalizar(this.search()).trim();
     const all = this.entries();
 
     if (!needle) {
@@ -141,6 +143,8 @@ export class CommandPaletteComponent {
         this.answers.findByUser(String(user.UserID)),
       ]);
 
+      // Lo que se busca, sin tildes: «ubicacion» encuentra «Ubicación», con la
+      // misma regla con la que después se resalta.
       this.entries.set([
         ...this.screens(),
         ...surveys.map((survey) => this.fromSurvey(survey)),
@@ -164,7 +168,7 @@ export class CommandPaletteComponent {
           })),
 
         ...locations.slice(0, 300).map((location) => this.fromLocation(location)),
-      ]);
+      ].map((entry) => ({ ...entry, haystack: normalizar(entry.haystack) })));
     } catch (error) {
       console.error('[Atajos] no se pudo cargar la paleta', error);
     } finally {

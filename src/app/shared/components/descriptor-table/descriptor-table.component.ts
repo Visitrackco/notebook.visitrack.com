@@ -1,6 +1,7 @@
 import { Component, computed, input } from '@angular/core';
 
 import { Descriptor } from '../../utils/descriptors';
+import { ResaltadoComponent } from '../resaltado/resaltado.component';
 
 /**
  * Los descriptivos de una ubicación o un activo, en dos columnas: la etiqueta a
@@ -14,15 +15,21 @@ import { Descriptor } from '../../utils/descriptors';
  * Va con `span` y no con una lista de definiciones (`dl`) porque casi siempre
  * vive dentro de un botón o un enlace —la fila que se toca para elegir—, y ahí
  * solo cabe contenido de frase.
+ *
+ * Con [busqueda], lo escrito en el buscador se marca en la etiqueta y en el
+ * valor: es lo que explica por qué esa fila salió en los resultados.
  */
 @Component({
   selector: 'vt-descriptor-table',
   standalone: true,
+  imports: [ResaltadoComponent],
   template: `
     <span class="dtab">
       @for (item of shown(); track $index) {
-        <span class="dtab__lab">{{ item.lab }}</span>
-        <span class="dtab__val" [class.dtab__val--empty]="!item.val">{{ item.val || '—' }}</span>
+        <span class="dtab__lab"><vt-resaltado [texto]="item.lab" [busqueda]="busqueda()" /></span>
+        <span class="dtab__val" [class.dtab__val--empty]="!item.val"
+          >@if (item.val) {<vt-resaltado [texto]="item.val" [busqueda]="busqueda()" />} @else {—}</span
+        >
       }
     </span>
   `,
@@ -68,6 +75,9 @@ export class DescriptorTableComponent {
 
   /** Cuántos mostrar como mucho. 0 = todos. */
   readonly max = input(0);
+
+  /** Lo escrito en el buscador, para marcarlo. Vacío: no se marca nada. */
+  readonly busqueda = input('');
 
   readonly shown = computed(() => {
     const all = this.descriptors();

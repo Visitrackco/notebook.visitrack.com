@@ -84,7 +84,7 @@
 
             <span class="loc__body">
               <span class="loc__name">
-                {{ card.name }}
+                <vt-resaltado [texto]="card.name" [busqueda]="search()" />
 
                 @if (card.own) {
                   <em class="loc__tag">Creada aquí</em>
@@ -94,7 +94,7 @@
               <span class="loc__type">{{ card.typeName }}</span>
 
               @if (card.descriptors.length > 0) {
-                <vt-descriptor-table class="loc__dtab" [descriptors]="card.descriptors" />
+                <vt-descriptor-table class="loc__dtab" [descriptors]="card.descriptors" [busqueda]="search()" />
               }
 
               @if (card.pending) {

@@ -19,6 +19,8 @@
  * lado; se descarta siempre para no repetirlo.
  */
 
+import { normalizar } from './resaltado';
+
 /** Un descriptivo ya resuelto y listo para pintar. */
 export interface Descriptor {
   /** Identificador del campo de origen. */
@@ -275,21 +277,21 @@ export function parseEntityDescriptors(jsonDescriptor: unknown, jsonValues: unkn
 
 /**
  * ¿La búsqueda cae en el nombre o en algún descriptivo (etiqueta o valor)?
- * Sin distinguir mayúsculas. Es `coincideConDescriptivos` del móvil.
+ * Sin distinguir mayúsculas ni tildes —«bogota» encuentra «Bogotá»—, con la
+ * misma `normalizar` que usa el resaltado: lo que se encuentra es lo que se
+ * marca. Es `coincideConDescriptivos` del móvil.
  */
 export function matchesEntity(name: unknown, descriptors: Descriptor[], needle: string): boolean {
-  const term = needle.trim().toLowerCase();
+  const term = normalizar(needle).trim();
   if (!term) return true;
-  if ((name ?? '').toString().toLowerCase().includes(term)) return true;
+  if (normalizar(name).includes(term)) return true;
   return descriptorsMatch(descriptors, term);
 }
 
-/** ¿Alguno de los descriptivos contiene [needle]? Sin distinguir mayúsculas. */
+/** ¿Alguno de los descriptivos contiene [needle]? Sin mayúsculas ni tildes. */
 export function descriptorsMatch(descriptors: Descriptor[], needle: string): boolean {
-  const term = needle.trim().toLowerCase();
+  const term = normalizar(needle).trim();
   if (!term) return true;
 
-  return descriptors.some(
-    (d) => d.val.toLowerCase().includes(term) || d.lab.toLowerCase().includes(term),
-  );
+  return descriptors.some((d) => normalizar(d.val).includes(term) || normalizar(d.lab).includes(term));
 }

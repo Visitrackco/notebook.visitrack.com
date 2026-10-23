@@ -4,6 +4,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 
 import { DescriptorTableComponent } from '../../../shared/components/descriptor-table/descriptor-table.component';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
+import { ResaltadoComponent } from '../../../shared/components/resaltado/resaltado.component';
 import { Descriptor } from '../../../shared/utils/descriptors';
 
 /** Una opción del selector, ya normalizada. */
@@ -38,7 +39,7 @@ export interface PickerItem {
 @Component({
   selector: 'vt-entity-picker',
   standalone: true,
-  imports: [DescriptorTableComponent, IconComponent, MatButtonModule, MatTooltipModule],
+  imports: [DescriptorTableComponent, IconComponent, MatButtonModule, MatTooltipModule, ResaltadoComponent],
   templateUrl: './entity-picker.component.html',
   styleUrl: './entity-picker.component.scss',
 })

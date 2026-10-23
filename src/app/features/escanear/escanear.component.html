@@ -63,7 +63,7 @@
                     <strong>{{ item.nombre }}</strong>
                     <span>{{ item.tipoNombre }}{{ item.detalle ? ' · ' + item.detalle : '' }}</span>
                     @if (item.descriptivos.length > 0) {
-                      <vt-descriptor-table class="scn__dtab" [descriptors]="item.descriptivos" />
+                      <vt-descriptor-table class="scn__dtab" [descriptors]="item.descriptivos" [busqueda]="buscado()" />
                     }
                   </span>
                   <vt-icon name="chevron" [size]="16" />
@@ -77,7 +77,7 @@
                     <strong>{{ item.nombre }}</strong>
                     <span>{{ item.tipoNombre }} · {{ item.detalle }}</span>
                     @if (item.descriptivos.length > 0) {
-                      <vt-descriptor-table class="scn__dtab" [descriptors]="item.descriptivos" />
+                      <vt-descriptor-table class="scn__dtab" [descriptors]="item.descriptivos" [busqueda]="buscado()" />
                     }
                   </span>
                 </div>

@@ -161,6 +161,17 @@ html {
    */
   --vt-on-state: #ffffff;
 
+  /**
+   * Resaltado de lo buscado (`<vt-resaltado>`): el `<mark>` que señala, en el
+   * nombre y en los descriptivos, dónde cayó la búsqueda.
+   *
+   * En claro, amarillo de marcador con tinta negra: 15,9:1. En oscuro ese
+   * amarillo encandila sobre superficie oscura y con texto blanco quedaría en
+   * 1,1:1; se usa un amarillo profundo, sobre el que el blanco da 4,9:1 (AA).
+   */
+  --vt-resaltado-fondo: #fde047;
+  --vt-resaltado-texto: #000000;
+
   /* Superficies. */
   --vt-bg: #f5f6f8;
   --vt-surface: #ffffff;
@@ -415,6 +426,10 @@ html {
   --vt-brand-fill-hover: color-mix(in srgb, var(--vt-brand-dark) 82%, #000);
   --vt-brand-on-tint: var(--vt-brand-light);
 
+  /* Resaltado de lo buscado: amarillo profundo con texto blanco, 4,9:1. */
+  --vt-resaltado-fondo: #a16207;
+  --vt-resaltado-texto: #ffffff;
+
   /* En oscuro el rojo puro vibra sobre el fondo: se aclara un punto. */
   --vt-brand: #f04b52;
   --vt-brand-dark: #d32029;
@@ -560,6 +575,10 @@ html {
     --vt-brand-fill: var(--vt-brand-dark);
     --vt-brand-fill-hover: color-mix(in srgb, var(--vt-brand-dark) 82%, #000);
     --vt-brand-on-tint: var(--vt-brand-light);
+
+    /* Resaltado de lo buscado: amarillo profundo con texto blanco, 4,9:1. */
+    --vt-resaltado-fondo: #a16207;
+    --vt-resaltado-texto: #ffffff;
 
     --vt-card-shadow:
       0 0 0 1px rgb(255 255 255 / 8%),

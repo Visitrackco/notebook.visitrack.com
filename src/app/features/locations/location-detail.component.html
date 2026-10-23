@@ -262,11 +262,11 @@
                   </span>
 
                   <span class="row__body">
-                    <span class="row__name">{{ item.name }}</span>
-                    <span class="row__sub">{{ item.typeName }}</span>
+                    <span class="row__name"><vt-resaltado [texto]="item.name" [busqueda]="search()" /></span>
+                    <span class="row__sub"><vt-resaltado [texto]="item.typeName" [busqueda]="search()" /></span>
 
                     @if (item.descriptors.length > 0) {
-                      <vt-descriptor-table class="row__dtab" [descriptors]="item.descriptors" />
+                      <vt-descriptor-table class="row__dtab" [descriptors]="item.descriptors" [busqueda]="search()" />
                     }
 
                     @if (item.pending) {

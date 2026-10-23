@@ -13,6 +13,8 @@ import { DataRevisionService } from '../../core/sync/data-revision.service';
 import { ActivityHistoryComponent } from '../history/activity-history.component';
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 import { DescriptorTableComponent } from '../../shared/components/descriptor-table/descriptor-table.component';
+import { normalizar } from '../../shared/utils/resaltado';
+import { ResaltadoComponent } from '../../shared/components/resaltado/resaltado.component';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { ToTopComponent } from '../../shared/components/to-top/to-top.component';
 import { NearEndDirective } from '../../shared/directives/near-end.directive';
@@ -70,6 +72,7 @@ type Tab = 'info' | 'assets' | 'activities' | 'history';
     ActivityHistoryComponent,
     ConfirmDialogComponent,
     DescriptorTableComponent,
+    ResaltadoComponent,
     IconComponent,
     NearEndDirective,
     RouterLink,
@@ -139,7 +142,7 @@ export class LocationDetailComponent {
 
   /** Activos que pasan el filtro y la búsqueda. */
   private readonly matchingAssets = computed(() => {
-    const needle = this.search().trim().toLowerCase();
+    const needle = normalizar(this.search()).trim();
     const type = this.assetType();
 
     return this.assetList().filter((item) => {
@@ -147,8 +150,8 @@ export class LocationDetailComponent {
       if (!needle) return true;
 
       return (
-        item.name.toLowerCase().includes(needle) ||
-        item.typeName.toLowerCase().includes(needle) ||
+        normalizar(item.name).includes(needle) ||
+        normalizar(item.typeName).includes(needle) ||
         descriptorsMatch(item.descriptors, needle)
       );
     });
@@ -156,12 +159,12 @@ export class LocationDetailComponent {
 
   /** Actividades que pasan la búsqueda. */
   private readonly matchingActivities = computed(() => {
-    const needle = this.search().trim().toLowerCase();
+    const needle = normalizar(this.search()).trim();
     if (!needle) return this.activityList();
 
     return this.activityList().filter(
       (item) =>
-        item.title.toLowerCase().includes(needle) ||
+        normalizar(item.title).includes(needle) ||
         descriptorsMatch(item.descriptors, needle),
     );
   });
