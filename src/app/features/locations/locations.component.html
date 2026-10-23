@@ -94,14 +94,7 @@
               <span class="loc__type">{{ card.typeName }}</span>
 
               @if (card.descriptors.length > 0) {
-                <span class="loc__desc">
-                  @for (item of card.descriptors; track item.id) {
-                    <span class="loc__pair">
-                      <b>{{ item.lab }}</b>
-                      <span>{{ item.val }}</span>
-                    </span>
-                  }
-                </span>
+                <vt-descriptor-table class="loc__dtab" [descriptors]="card.descriptors" />
               }
 
               @if (card.pending) {

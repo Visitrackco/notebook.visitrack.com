@@ -109,14 +109,7 @@
               <!-- Descriptivos en columnas de etiqueta y valor, como en la app:
                    son los que permiten distinguir dos sedes con nombre parecido. -->
               @if (item.descriptors.length > 0) {
-                <span class="picker__descriptors">
-                  @for (descriptor of item.descriptors; track descriptor.lab) {
-                    <span class="picker__descriptor">
-                      <em>{{ descriptor.lab }}</em>
-                      <b>{{ descriptor.val || '—' }}</b>
-                    </span>
-                  }
-                </span>
+                <vt-descriptor-table class="picker__dtab" [descriptors]="item.descriptors" />
               }
             </span>
 

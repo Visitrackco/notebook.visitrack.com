@@ -215,6 +215,29 @@ html {
   --vt-on-brand: #ffffff;
 
   /**
+   * Relleno de los botones de marca.
+   *
+   * En claro es la marca misma. En oscuro la marca se aclara (para leerse como
+   * texto o acento sobre superficie oscura), y con ese rojo claro el texto
+   * blanco de un botón se queda en 3,6:1 —por debajo de AA—. El relleno usa
+   * entonces el tono profundo, sobre el que el blanco pasa de 5:1. Todo botón
+   * con fondo de marca y texto `--vt-on-brand` debe pintar el fondo con esto.
+   */
+  --vt-brand-fill: var(--vt-brand);
+  /* El mismo relleno con el cursor encima. */
+  --vt-brand-fill-hover: var(--vt-brand-dark);
+  /* Texto de marca sobre su velo (`--vt-brand-tint`): botones tonales. */
+  --vt-brand-on-tint: var(--vt-brand);
+
+  /**
+   * Borde de los controles: botones con contorno, botones fantasma.
+   *
+   * No es `--vt-border`: ese separa tarjetas y en oscuro queda a 1,3:1, así que
+   * el contorno de un botón desaparecía. Un control necesita 3:1 (WCAG 1.4.11).
+   */
+  --vt-control-border: var(--vt-border-strong);
+
+  /**
    * Tokens del formato.
    *
    * El sujeto de esta aplicación es la planilla de inspección: el formato que
@@ -378,10 +401,19 @@ html {
 
   --vt-text: #eceef2;
   --vt-text-muted: #a2a9b6;
-  --vt-text-subtle: #737b8a;
+  /* #737b8a quedaba en 4,2:1 sobre las tarjetas: por debajo de AA para texto. */
+  --vt-text-subtle: #8b93a1;
+  /* `--vt-primary` se invierte a casi blanco: el texto encima pasa a tinta.
+     Con el blanco del tema claro, los botones «fuertes» quedaban en blanco
+     sobre blanco. */
+  --vt-text-on-primary: #0f1216;
 
   --vt-border: #2a2e37;
   --vt-border-strong: #3b414c;
+  --vt-control-border: #6b7280;
+  --vt-brand-fill: var(--vt-brand-dark);
+  --vt-brand-fill-hover: color-mix(in srgb, var(--vt-brand-dark) 82%, #000);
+  --vt-brand-on-tint: var(--vt-brand-light);
 
   /* En oscuro el rojo puro vibra sobre el fondo: se aclara un punto. */
   --vt-brand: #f04b52;
@@ -519,10 +551,15 @@ html {
 
     --vt-text: #eceef2;
     --vt-text-muted: #a2a9b6;
-    --vt-text-subtle: #737b8a;
+    --vt-text-subtle: #8b93a1;
+    --vt-text-on-primary: #0f1216;
 
     --vt-border: #2a2e37;
     --vt-border-strong: #3b414c;
+    --vt-control-border: #6b7280;
+    --vt-brand-fill: var(--vt-brand-dark);
+    --vt-brand-fill-hover: color-mix(in srgb, var(--vt-brand-dark) 82%, #000);
+    --vt-brand-on-tint: var(--vt-brand-light);
 
     --vt-card-shadow:
       0 0 0 1px rgb(255 255 255 / 8%),
@@ -783,13 +820,11 @@ a {
  * claros donde el blanco se pierde.
  */
 .vt-btn-primary {
-  background: var(--vt-brand);
+  background: var(--vt-brand-fill);
   color: var(--vt-on-brand);
 
   &:not(:disabled):hover {
-    background: var(--vt-brand-dark);
-    /* El hover oscurece el fondo, así que el texto pasa a blanco siempre. */
-    color: #fff;
+    background: var(--vt-brand-fill-hover);
     box-shadow: var(--vt-shadow);
   }
 }
@@ -808,7 +843,7 @@ a {
 .vt-btn-ghost {
   background: transparent;
   color: var(--vt-text-muted);
-  border-color: var(--vt-border);
+  border-color: var(--vt-control-border);
 
   &:not(:disabled):hover {
     background: var(--vt-surface-2);
@@ -818,10 +853,13 @@ a {
 
 .vt-btn-danger {
   background: var(--vt-danger);
-  color: #fff;
+  /* En oscuro el rojo de estado es claro: encima va tinta, no blanco. */
+  color: var(--vt-on-state);
 
   &:not(:disabled):hover {
-    background: #b91c1c;
+    /* Hacia el color del texto: en claro oscurece, en oscuro aclara, y el
+       contraste con la letra se mantiene en los dos. */
+    background: color-mix(in srgb, var(--vt-danger) 85%, var(--vt-text));
   }
 }
 
@@ -924,6 +962,18 @@ a {
   --mat-sys-scrim: rgb(0 0 0 / 45%);
 
   /**
+   * Botones de Material.
+   *
+   * El relleno va con `--vt-brand-fill` y no con `--mat-sys-primary`: en oscuro
+   * la marca es un rojo claro y el texto blanco encima no llegaba a AA. El
+   * contorno de `mat-stroked-button` usaba `--mat-sys-outline`, que en oscuro
+   * quedaba a 1,7:1 contra la tarjeta y el botón parecía texto suelto.
+   */
+  --mat-button-filled-container-color: var(--vt-brand-fill);
+  --mat-button-filled-label-text-color: var(--vt-on-brand);
+  --mat-button-outlined-outline-color: var(--vt-control-border);
+
+  /**
    * La tipografía de Material, atada a la nuestra.
    *
    * `mat.theme()` ya se compila con Roboto, pero cada control resuelve su
@@ -965,11 +1015,23 @@ a {
 
 :root[data-theme='dark'] {
   color-scheme: dark;
+
+  /* Texto sobre el velo de marca (botones tonales, día elegido del calendario,
+     fichas seleccionadas): el rojo profundo sobre el velo oscuro quedaba en
+     3,3:1. El claro pasa de 6:1. */
+  --mat-sys-on-primary-container: var(--vt-brand-light);
+  --mat-sys-on-secondary-container: var(--vt-brand-light);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
     color-scheme: dark;
+
+    /* Texto sobre el velo de marca (botones tonales, día elegido del calendario,
+       fichas seleccionadas): el rojo profundo sobre el velo oscuro quedaba en
+       3,3:1. El claro pasa de 6:1. */
+    --mat-sys-on-primary-container: var(--vt-brand-light);
+    --mat-sys-on-secondary-container: var(--vt-brand-light);
   }
 }
 

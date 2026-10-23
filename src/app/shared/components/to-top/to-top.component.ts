@@ -54,7 +54,7 @@ import { IconComponent } from '../icon/icon.component';
         width: 46px;
         height: 46px;
         color: var(--vt-on-brand);
-        background: var(--vt-brand);
+        background: var(--vt-brand-fill);
         border: 0;
         border-radius: var(--vt-radius-full);
         box-shadow: 0 6px 20px rgb(0 0 0 / 22%);
@@ -67,7 +67,7 @@ import { IconComponent } from '../icon/icon.component';
         }
 
         &:hover {
-          background: var(--vt-brand-dark);
+          background: var(--vt-brand-fill-hover);
         }
       }
 

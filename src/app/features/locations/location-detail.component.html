@@ -266,14 +266,7 @@
                     <span class="row__sub">{{ item.typeName }}</span>
 
                     @if (item.descriptors.length > 0) {
-                      <span class="row__desc">
-                        @for (entry of item.descriptors; track entry.id) {
-                          <span class="row__pair">
-                            <b>{{ entry.lab }}</b>
-                            <span>{{ entry.val }}</span>
-                          </span>
-                        }
-                      </span>
+                      <vt-descriptor-table class="row__dtab" [descriptors]="item.descriptors" />
                     }
 
                     @if (item.pending) {

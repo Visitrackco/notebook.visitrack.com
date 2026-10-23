@@ -12,6 +12,7 @@ import { ActivityHistoryStateService } from '../../core/services/activity-histor
 import { DataRevisionService } from '../../core/sync/data-revision.service';
 import { ActivityHistoryComponent } from '../history/activity-history.component';
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
+import { DescriptorTableComponent } from '../../shared/components/descriptor-table/descriptor-table.component';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { ToTopComponent } from '../../shared/components/to-top/to-top.component';
 import { NearEndDirective } from '../../shared/directives/near-end.directive';
@@ -19,7 +20,7 @@ import {
   Descriptor,
   descriptorsMatch,
   parseAnswerTitles,
-  parseEntityDescriptors,
+  entityDescriptors,
 } from '../../shared/utils/descriptors';
 import { DetailGroup, DetailItem, groupEntityValues } from './entity-detail.model';
 
@@ -68,6 +69,7 @@ type Tab = 'info' | 'assets' | 'activities' | 'history';
   imports: [
     ActivityHistoryComponent,
     ConfirmDialogComponent,
+    DescriptorTableComponent,
     IconComponent,
     NearEndDirective,
     RouterLink,
@@ -378,7 +380,7 @@ export class LocationDetailComponent {
           guid: asset.GUID,
           name: asset.Name || 'Sin nombre',
           typeName: asset.typeTitle || 'Sin tipo',
-          descriptors: parseEntityDescriptors(asset.jsonDescriptor, asset.jsonValues),
+          descriptors: entityDescriptors(asset),
           located: Boolean(asset.Latitude && asset.Longitude),
           pending: asset.CreateWithMovil === '1' && asset.Upload !== '1',
         }))

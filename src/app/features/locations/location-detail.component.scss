@@ -178,7 +178,7 @@
   place-items: center;
   width: 34px;
   height: 34px;
-  color: var(--vt-brand);
+  color: var(--vt-brand-on-tint);
   background: var(--vt-brand-tint);
   border-radius: var(--vt-radius);
 }
@@ -302,7 +302,7 @@
   border-bottom-color: var(--vt-brand) !important;
 
   span {
-    color: var(--vt-brand);
+    color: var(--vt-brand-on-tint);
     background: var(--vt-brand-tint) !important;
   }
 }
@@ -552,11 +552,11 @@
   font-weight: 650;
   color: var(--vt-on-brand);
   text-decoration: none;
-  background: var(--vt-brand);
+  background: var(--vt-brand-fill);
   border-radius: var(--vt-radius-full);
 
   &:hover {
-    background: var(--vt-brand-dark);
+    background: var(--vt-brand-fill-hover);
   }
 }
 
@@ -600,8 +600,8 @@
 }
 
 .row__icon--on {
-  color: #fff;
-  background: var(--vt-brand);
+  color: var(--vt-on-brand);
+  background: var(--vt-brand-fill);
 }
 
 .row__body {
@@ -640,6 +640,11 @@
     font-weight: 650;
     color: var(--vt-text-subtle);
   }
+}
+
+/* Descriptivos de un activo en dos columnas alineadas (`vt-descriptor-table`). */
+.row__dtab {
+  margin-top: 3px;
 }
 
 .row__pending {

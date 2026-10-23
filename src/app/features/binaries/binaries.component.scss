@@ -60,7 +60,7 @@
   font-weight: 600;
   color: var(--vt-text);
   background: var(--vt-surface);
-  border: 1px solid var(--vt-rule-strong);
+  border: 1px solid var(--vt-control-border);
   border-radius: var(--vt-radius-full);
 
   &:hover:not(:disabled) {
@@ -75,11 +75,11 @@
 
 .bins__btn--primary {
   color: var(--vt-on-brand);
-  background: var(--vt-brand);
+  background: var(--vt-brand-fill);
   border-color: transparent;
 
   &:hover:not(:disabled) {
-    background: var(--vt-brand-dark);
+    background: var(--vt-brand-fill-hover);
     border-color: transparent;
   }
 }
@@ -531,7 +531,7 @@
   font-weight: 600;
   color: var(--vt-text);
   background: var(--vt-surface-2);
-  border: 1px solid var(--vt-rule);
+  border: 1px solid var(--vt-control-border);
   border-radius: var(--vt-radius-full);
 
   &:hover:not(:disabled) {

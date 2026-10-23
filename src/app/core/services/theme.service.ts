@@ -411,6 +411,9 @@ export class ThemeService {
     // el texto blanco sobre blanco.
     this.applyFondo();
 
+    // El velo y el texto sobre el relleno de marca también dependen del modo.
+    this.applyBrand();
+
     // Tiñe la barra del navegador en móviles para que no rompa el conjunto.
     const meta = document.querySelector('meta[name="theme-color"]');
     meta?.setAttribute('content', this.isDarkActive() ? '#0d0e11' : '#16181d');
@@ -436,18 +439,33 @@ export class ThemeService {
       return;
     }
 
-    root.style.setProperty('--vt-brand', brand);
-    root.style.setProperty('--vt-brand-dark', this.shade(brand, -0.2));
-    root.style.setProperty('--vt-brand-light', this.shade(brand, 0.22));
+    const oscuro = this.isDarkActive();
+
+    // En oscuro la marca se usa como texto y acento sobre superficies casi
+    // negras, y un verde o un azul de marca —pensados para fondo blanco— se
+    // quedaban por debajo de 4.5:1: los botones con contorno y los enlaces
+    // apenas se leían. Se aclara lo justo para llegar a AA, como hace la hoja
+    // de estilos con el rojo por defecto; el color elegido tal cual pasa a ser
+    // el relleno de los botones (`--vt-brand-dark` → `--vt-brand-fill`).
+    const acento = oscuro ? this.legibleSobreOscuro(brand) : brand;
+
+    root.style.setProperty('--vt-brand', acento);
+    root.style.setProperty('--vt-brand-dark', oscuro ? brand : this.shade(brand, -0.2));
+    root.style.setProperty('--vt-brand-light', this.shade(acento, 0.22));
     root.style.setProperty(
       '--vt-brand-tint',
-      this.isDarkActive() ? this.shade(brand, -0.72) : this.shade(brand, 0.9),
+      oscuro ? this.shade(brand, -0.72) : this.shade(brand, 0.9),
     );
 
     // Texto legible sobre el color elegido. Sin esto, un color claro (ámbar,
     // por ejemplo) deja el texto blanco ilegible, y uno muy oscuro hace lo
     // mismo con el texto negro.
-    root.style.setProperty('--vt-on-brand', this.readableOn(brand));
+    //
+    // Se mide contra el **relleno** de los botones (`--vt-brand-fill`), que en
+    // oscuro es el tono profundo y no la marca: medir contra la marca dejaba
+    // texto blanco sobre un color que no era el que se pintaba.
+    const relleno = oscuro ? brand : acento;
+    root.style.setProperty('--vt-on-brand', this.readableOn(relleno));
   }
 
   /**
@@ -457,11 +475,29 @@ export class ThemeService {
    * porque el ojo es mucho más sensible al verde que al azul. Un amarillo y un
    * azul con el mismo promedio RGB necesitan colores de texto opuestos.
    *
-   * El umbral 0.55 está por encima del 0.5 teórico a propósito: favorece el
-   * texto oscuro en los tonos medios, donde el blanco empieza a costar.
+   * Se elige el de **mayor razón de contraste**, no un umbral de luminancia a
+   * ojo: el umbral anterior (0.55) daba texto blanco a tonos medios —un azul
+   * de 0.29, un rojo claro de 0.24— que con blanco quedan por debajo de 4.5:1.
+   * El cruce real entre los dos está alrededor de 0.18.
    */
   private readableOn(hex: string): string {
-    return this.luminancia(hex) > 0.55 ? '#14161a' : '#ffffff';
+    const l = this.luminancia(hex);
+    const conBlanco = 1.05 / (l + 0.05);
+    const conTinta = (l + 0.05) / (this.luminancia('#14161a') + 0.05);
+    return conTinta > conBlanco ? '#14161a' : '#ffffff';
+  }
+
+  /**
+   * [hex] aclarado lo mínimo para leerse (4.5:1) sobre la superficie oscura
+   * de las tarjetas (`#16181d`). Si ya se lee, se devuelve igual.
+   */
+  private legibleSobreOscuro(hex: string): string {
+    const superficie = this.luminancia('#16181d') + 0.05;
+    for (let paso = 0; paso <= 1; paso += 0.04) {
+      const tono = paso === 0 ? hex : this.shade(hex, paso);
+      if ((this.luminancia(tono) + 0.05) / superficie >= 4.5) return tono;
+    }
+    return '#ffffff';
   }
 
   /**

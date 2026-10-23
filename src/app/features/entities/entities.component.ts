@@ -16,8 +16,9 @@ import { ToastService } from '../../core/services/toast.service';
 import { DataRevisionService } from '../../core/sync/data-revision.service';
 import { EntityUploadService } from '../../core/sync/entity-upload.service';
 import { IconComponent } from '../../shared/components/icon/icon.component';
+import { DescriptorTableComponent } from '../../shared/components/descriptor-table/descriptor-table.component';
 import { ToTopComponent } from '../../shared/components/to-top/to-top.component';
-import { Descriptor, parseEntityDescriptors } from '../../shared/utils/descriptors';
+import { Descriptor, entityDescriptors, parseEntityDescriptors } from '../../shared/utils/descriptors';
 
 /** Qué clase de registro es. Decide el icono y a dónde lleva. */
 type Kind = 'location' | 'asset' | 'item';
@@ -82,7 +83,7 @@ interface EntityCard {
 @Component({
   selector: 'vt-entities',
   standalone: true,
-  imports: [IconComponent, NgTemplateOutlet, RouterLink, ToTopComponent],
+  imports: [DescriptorTableComponent, IconComponent, NgTemplateOutlet, RouterLink, ToTopComponent],
   templateUrl: './entities.component.html',
   styleUrl: './entities.component.scss',
 })
@@ -200,7 +201,7 @@ export class EntitiesComponent {
       kind: 'location',
       name: row.Name || 'Ubicación sin nombre',
       origin: row.typeTitle || 'Ubicación',
-      descriptors: parseEntityDescriptors(row.jsonDescriptor, row.jsonValues),
+      descriptors: entityDescriptors(row),
 
       // Sin identificador de Visitrack, nunca ha estado allá.
       isNew: !row.LocationID,
@@ -221,7 +222,7 @@ export class EntitiesComponent {
       kind: 'asset',
       name: row.Name || 'Activo sin nombre',
       origin: row.typeTitle || 'Activo',
-      descriptors: parseEntityDescriptors(row.JSONTitle, row.jsonValues),
+      descriptors: entityDescriptors(row),
       isNew: !row.AssetID,
 
       updated: row.UpdatedOn || row.CreatedOn || '',

@@ -4,6 +4,7 @@ import { Router, RouterLink } from '@angular/router';
 import { ResultadoDeEtiqueta, normalizarEtiqueta } from '../../core/services/buscar-por-etiqueta';
 import { EtiquetasService } from '../../core/services/etiquetas.service';
 import { CodeScannerComponent } from '../../shared/components/code-scanner/code-scanner.component';
+import { DescriptorTableComponent } from '../../shared/components/descriptor-table/descriptor-table.component';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 
 /**
@@ -29,7 +30,7 @@ import { IconComponent } from '../../shared/components/icon/icon.component';
 @Component({
   selector: 'vt-escanear',
   standalone: true,
-  imports: [CodeScannerComponent, IconComponent, RouterLink],
+  imports: [CodeScannerComponent, DescriptorTableComponent, IconComponent, RouterLink],
   templateUrl: './escanear.component.html',
   styleUrl: './escanear.component.scss',
 })

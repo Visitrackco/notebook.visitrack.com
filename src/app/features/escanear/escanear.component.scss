@@ -57,13 +57,13 @@
   font-size: var(--vt-text-md, var(--vt-text-base));
   font-weight: 700;
   color: var(--vt-on-brand);
-  background: var(--vt-brand);
+  background: var(--vt-brand-fill);
   border: 0;
   border-radius: var(--vt-radius-full);
   cursor: pointer;
 
   &:hover:not(:disabled) {
-    background: var(--vt-brand-dark);
+    background: var(--vt-brand-fill-hover);
   }
 
   &:disabled {
@@ -117,7 +117,7 @@
   font-family: var(--vt-font);
   font-size: var(--vt-text-sm);
   font-weight: 650;
-  color: var(--vt-brand);
+  color: var(--vt-brand-on-tint);
   background: var(--vt-brand-tint);
   border: 1px solid transparent;
   border-radius: var(--vt-radius);
@@ -249,9 +249,14 @@ a.scn__item:hover {
   place-items: center;
   width: 36px;
   height: 36px;
-  color: var(--vt-brand);
+  color: var(--vt-brand-on-tint);
   background: var(--vt-brand-tint);
   border-radius: var(--vt-radius);
+}
+
+/* Descriptivos en dos columnas alineadas (`vt-descriptor-table`). */
+.scn__dtab {
+  margin-top: 2px;
 }
 
 .scn__item-texto {

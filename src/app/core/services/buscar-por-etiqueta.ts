@@ -1,4 +1,5 @@
 import { Asset, LocationForm } from '../models/entities.model';
+import { Descriptor, entityDescriptors } from '../../shared/utils/descriptors';
 
 /**
  * Buscar una ubicación o un activo por la etiqueta que lleva pegada.
@@ -19,6 +20,8 @@ export interface ResultadoDeEtiqueta {
   tipoNombre: string;
   /** Una aclaración: la dirección de la sede o la sede del activo. */
   detalle: string;
+  /** Sus descriptivos (placa, serie…): distinguen dos equipos con el mismo nombre. */
+  descriptivos: Descriptor[];
   /**
    * A dónde lleva: su ficha. `null` cuando no se puede abrir —un activo cuya
    * sede no está en este dispositivo—, porque la ficha de un activo cuelga de
@@ -73,6 +76,7 @@ export function armarResultados(
       nombre: ubicacion.Name || 'Sin nombre',
       tipoNombre: ubicacion.typeTitle || 'Ubicación',
       detalle: limpiarDetalle(ubicacion.FullAddress) || limpiarDetalle(ubicacion.City),
+      descriptivos: entityDescriptors(ubicacion),
       ruta: ['/ubicaciones', ubicacion.GUID],
     }))
     .sort(porNombre);
@@ -87,6 +91,7 @@ export function armarResultados(
         nombre: activo.Name || 'Sin nombre',
         tipoNombre: activo.typeTitle || 'Activo',
         detalle: sede ? `En ${sede.Name || 'su ubicación'}` : 'Su ubicación no está en este dispositivo',
+        descriptivos: entityDescriptors(activo),
         ruta: sede ? ['/ubicaciones', sede.GUID, 'activo', activo.GUID] : null,
       };
     })

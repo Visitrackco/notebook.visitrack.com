@@ -18,6 +18,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { PermisosDeModuleService } from '../../../core/services/permisos-de-module.service';
 import { ShortcutsService } from '../../../core/services/shortcuts.service';
 import { IconComponent } from '../icon/icon.component';
+import { entityDescriptors } from '../../utils/descriptors';
 
 /** Algo a lo que se puede saltar. */
 interface Entry {
@@ -230,7 +231,15 @@ export class CommandPaletteComponent {
       hint: location.typeTitle || 'Ubicación',
       group: 'Ubicaciones',
       icon: 'map-pin',
-      haystack: `${location.Name} ${location.typeTitle} ${location.City}`.toLowerCase(),
+      // Con los valores de sus descriptivos: el código o la placa también la encuentran.
+      haystack: [
+        location.Name,
+        location.typeTitle,
+        location.City,
+        ...entityDescriptors(location).map((d) => d.val),
+      ]
+        .join(' ')
+        .toLowerCase(),
       route: ['/ubicaciones', location.GUID],
     };
   }

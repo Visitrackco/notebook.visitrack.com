@@ -688,7 +688,7 @@
   font-weight: 650;
   color: var(--vt-on-brand);
   letter-spacing: 0.01em;
-  background: var(--vt-brand);
+  background: var(--vt-brand-fill);
   border: 0;
   border-radius: var(--vt-radius-full);
   box-shadow:
@@ -700,7 +700,7 @@
     transform var(--vt-transition);
 
   &:hover:not(:disabled) {
-    background: var(--vt-brand-dark);
+    background: var(--vt-brand-fill-hover);
     box-shadow:
       0 6px 14px -2px rgb(20 22 26 / 26%),
       0 18px 36px -10px color-mix(in srgb, var(--vt-brand) 65%, transparent);

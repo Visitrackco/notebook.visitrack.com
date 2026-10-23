@@ -259,40 +259,9 @@
   color: var(--vt-text-muted);
 }
 
-/**
- * Descriptivos en columnas.
- *
- * Cada uno lleva su etiqueta encima del valor, que es como se leen en la app y
- * lo que permite distinguir dos sedes con nombre parecido. Se reparten el ancho
- * disponible en lugar de apilarse: en una pantalla amplia caben cinco por fila
- * y la lista sigue mostrando muchas opciones a la vez.
- */
-.picker__descriptors {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr));
-  gap: 4px var(--vt-space-4);
-}
-
-.picker__descriptor {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-
-  em {
-    font-size: 10px;
-    font-style: normal;
-    font-weight: 600;
-    color: var(--vt-text-subtle);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-
-  b {
-    font-size: var(--vt-text-xs);
-    font-weight: 500;
-    color: var(--vt-text-muted);
-    overflow-wrap: anywhere;
-  }
+/* Descriptivos en dos columnas alineadas (`vt-descriptor-table`). */
+.picker__dtab {
+  margin-top: 2px;
 }
 
 .picker__row-go {
@@ -378,11 +347,11 @@
   z-index: 20;
   padding-inline: 18px 22px;
   color: var(--vt-on-brand);
-  background: var(--vt-brand);
+  background: var(--vt-brand-fill);
   box-shadow: 0 10px 28px color-mix(in srgb, var(--vt-brand) 40%, transparent);
 
   &:hover {
-    background: var(--vt-brand-dark);
+    background: var(--vt-brand-fill-hover);
   }
 
   /* El botón de Material envuelve lo proyectado en un `span` en línea: el

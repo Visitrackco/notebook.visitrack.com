@@ -113,8 +113,8 @@ import { ToastsComponent } from './shared/components/toasts/toasts.component';
       .app-blocked__card button {
         padding: 11px 22px;
         font-weight: 600;
-        color: #fff;
-        background: var(--vt-brand, #d32029);
+        color: var(--vt-on-brand);
+        background: var(--vt-brand-fill);
         border: 0;
         border-radius: 12px;
       }

@@ -83,11 +83,11 @@
   font-weight: 650;
   color: var(--vt-on-brand);
   text-decoration: none;
-  background: var(--vt-brand);
+  background: var(--vt-brand-fill);
   border-radius: var(--vt-radius-full);
 
   &:hover {
-    background: var(--vt-brand-dark);
+    background: var(--vt-brand-fill-hover);
   }
 }
 
@@ -234,8 +234,8 @@
 }
 
 .loc__pin--on {
-  color: #fff;
-  background: var(--vt-brand);
+  color: var(--vt-on-brand);
+  background: var(--vt-brand-fill);
 }
 
 .loc__body {
@@ -261,7 +261,7 @@
   font-size: 10px;
   font-style: normal;
   font-weight: 700;
-  color: var(--vt-brand);
+  color: var(--vt-brand-on-tint);
   text-transform: uppercase;
   letter-spacing: 0.03em;
   background: var(--vt-brand-tint);
@@ -274,25 +274,9 @@
   color: var(--vt-text-muted);
 }
 
-/* Los descriptivos en una línea seguida: son para reconocer la ubicación de un
-   vistazo, no para leerlos enteros. */
-.loc__desc {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 12px;
+/* Descriptivos en dos columnas alineadas (`vt-descriptor-table`). */
+.loc__dtab {
   margin-top: 4px;
-  font-size: var(--vt-text-xs);
-  color: var(--vt-text-muted);
-}
-
-.loc__pair {
-  display: inline-flex;
-  gap: 5px;
-
-  b {
-    font-weight: 650;
-    color: var(--vt-text-subtle);
-  }
 }
 
 .loc__pending {

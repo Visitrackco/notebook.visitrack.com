@@ -42,7 +42,7 @@
   place-items: center;
   width: 38px;
   height: 38px;
-  color: var(--vt-brand);
+  color: var(--vt-brand-on-tint);
   background: var(--vt-brand-tint);
   border-radius: var(--vt-radius-full);
 }
@@ -177,7 +177,7 @@
   height: 36px;
   font-size: var(--vt-text-xs);
   font-weight: 700;
-  color: var(--vt-brand);
+  color: var(--vt-brand-on-tint);
   background: var(--vt-brand-tint);
   border-radius: var(--vt-radius-full);
 }
@@ -275,12 +275,12 @@
   font-size: var(--vt-text-sm);
   font-weight: 650;
   color: var(--vt-on-brand);
-  background: var(--vt-brand);
+  background: var(--vt-brand-fill);
   border: 0;
   border-radius: var(--vt-radius-full);
 
   &:hover:not(:disabled) {
-    background: var(--vt-brand-dark);
+    background: var(--vt-brand-fill-hover);
   }
 
   &:disabled {

@@ -146,7 +146,7 @@ interface Pendientes {
       height: 60px;
       border-radius: 50%;
       background: var(--vt-brand-tint);
-      color: var(--vt-brand);
+      color: var(--vt-brand-on-tint);
     }
     .re-titulo {
       margin: 0;

@@ -11,7 +11,7 @@ import {
 import {
   Descriptor,
   descriptorsMatch,
-  parseEntityDescriptors,
+  entityDescriptors,
 } from '../../shared/utils/descriptors';
 import { PermissionsService } from '../../core/services/permissions.service';
 import { DraftPolicyService } from '../../core/services/draft-policy.service';
@@ -348,7 +348,7 @@ export class LocationPickerComponent {
   }
 
   private descriptorsOf(location: LocationForm): Descriptor[] {
-    return parseEntityDescriptors(location.jsonDescriptor, location.jsonValues);
+    return entityDescriptors(location);
   }
 
   private toItem(location: LocationForm): PickerItem {

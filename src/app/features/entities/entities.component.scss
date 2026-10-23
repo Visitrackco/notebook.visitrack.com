@@ -53,7 +53,7 @@
   font-size: var(--vt-text-sm);
   font-weight: 650;
   color: var(--vt-on-brand);
-  background: var(--vt-brand);
+  background: var(--vt-brand-fill);
   border: 0;
   border-radius: var(--vt-radius-full);
   transition: opacity var(--vt-transition);
@@ -205,7 +205,7 @@
 
 .ent__tag--new {
   color: var(--vt-on-brand);
-  background: var(--vt-brand);
+  background: var(--vt-brand-fill);
 }
 
 .ent__origin {
@@ -216,28 +216,9 @@
   white-space: nowrap;
 }
 
-/* Los descriptivos en una línea seguida: con cuatro o cinco, cada uno en su
-   píldora convierte la fila en un mosaico ilegible. */
-.ent__desc {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 12px;
+/* Descriptivos en dos columnas alineadas (`vt-descriptor-table`). */
+.ent__dtab {
   margin-top: 2px;
-  font-size: var(--vt-text-xs);
-}
-
-.ent__pair {
-  display: inline-flex;
-  gap: 5px;
-
-  b {
-    font-weight: 600;
-    color: var(--vt-text-muted);
-  }
-
-  span {
-    color: var(--vt-text);
-  }
 }
 
 .ent__waiting {

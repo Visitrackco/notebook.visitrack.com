@@ -117,14 +117,7 @@
     </span>
 
     @if (card.descriptors.length > 0) {
-      <span class="ent__desc">
-        @for (item of card.descriptors.slice(0, 3); track item.lab) {
-          <span class="ent__pair">
-            <b>{{ item.lab }}</b>
-            <span>{{ item.val }}</span>
-          </span>
-        }
-      </span>
+      <vt-descriptor-table class="ent__dtab" [descriptors]="card.descriptors" [max]="3" />
     }
 
     <!-- Esperar a otro registro no es un fallo: decirlo evita que se lea así. -->

@@ -260,9 +260,9 @@
   font-size: 11px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: #fff;
+  color: var(--vt-on-brand);
   text-align: center;
-  background: var(--vt-brand);
+  background: var(--vt-brand-fill);
   border-radius: var(--vt-radius-full);
 }
 
@@ -535,9 +535,9 @@
   font-size: var(--vt-text-xs);
   font-weight: 700;
   line-height: 1;
-  color: #fff;
+  color: var(--vt-on-brand);
   letter-spacing: 0.5px;
-  background: var(--vt-brand);
+  background: var(--vt-brand-fill);
   border-radius: var(--vt-radius-full);
 }
 
@@ -878,8 +878,8 @@
 
 .shell__aviso-push-si {
   padding: 8px 18px;
-  color: var(--vt-text-on-primary);
-  background: var(--vt-brand);
+  color: var(--vt-on-brand);
+  background: var(--vt-brand-fill);
   border: 0;
   border-radius: var(--vt-radius);
   font: inherit;

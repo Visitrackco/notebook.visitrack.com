@@ -8,13 +8,14 @@ import { LocationEditorService } from '../../core/services/location-editor.servi
 import { PermissionsService } from '../../core/services/permissions.service';
 import { DataRevisionService } from '../../core/sync/data-revision.service';
 import { resolveCatalogOwnerId } from '../../core/config/company-rules';
+import { DescriptorTableComponent } from '../../shared/components/descriptor-table/descriptor-table.component';
 import { ToTopComponent } from '../../shared/components/to-top/to-top.component';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { NearEndDirective } from '../../shared/directives/near-end.directive';
 import {
   Descriptor,
   descriptorsMatch,
-  parseEntityDescriptors,
+  entityDescriptors,
 } from '../../shared/utils/descriptors';
 
 /** Una ubicación, con lo que hace falta para pintarla. */
@@ -52,7 +53,7 @@ export interface LocationCard {
 @Component({
   selector: 'vt-locations',
   standalone: true,
-  imports: [IconComponent, NearEndDirective, RouterLink, ToTopComponent],
+  imports: [DescriptorTableComponent, IconComponent, NearEndDirective, RouterLink, ToTopComponent],
   templateUrl: './locations.component.html',
   styleUrl: './locations.component.scss',
 })
@@ -208,7 +209,7 @@ export class LocationsComponent {
         types.get(String(location.LocationTypeGUID))?.Name ||
         'Sin tipo',
 
-      descriptors: parseEntityDescriptors(location.jsonDescriptor, location.jsonValues),
+      descriptors: entityDescriptors(location),
       located: Boolean(location.Latitude && location.Longitude),
       own,
       pending: own && location.Upload !== '1',

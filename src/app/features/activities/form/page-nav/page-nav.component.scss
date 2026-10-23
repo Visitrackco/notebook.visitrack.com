@@ -186,13 +186,13 @@
   font-size: var(--vt-text-sm);
   font-weight: 650;
   color: var(--vt-on-brand);
-  background: var(--vt-brand);
+  background: var(--vt-brand-fill);
   border: 0;
   border-radius: var(--vt-radius-full);
   transition: background var(--vt-transition);
 
   &:hover:not(:disabled) {
-    background: var(--vt-brand-dark);
+    background: var(--vt-brand-fill-hover);
   }
 
   &:disabled {

@@ -87,7 +87,7 @@
   color: var(--vt-text-muted);
   white-space: nowrap;
   background: var(--vt-surface);
-  border: 1px solid var(--vt-border);
+  border: 1px solid var(--vt-control-border);
   border-radius: var(--vt-radius-md);
   transition: border-color 0.15s, color 0.15s;
 }

@@ -107,16 +107,16 @@
   font-weight: 650;
   color: var(--vt-text-muted);
   background: var(--vt-surface);
-  border: 1px solid var(--vt-rule);
+  border: 1px solid var(--vt-control-border);
   border-radius: var(--vt-radius-full);
 
   &:hover {
-    border-color: var(--vt-rule-strong);
+    border-color: var(--vt-text-muted);
   }
 }
 
 .disp__toggle--on {
-  color: var(--vt-brand);
+  color: var(--vt-brand-on-tint);
   background: var(--vt-brand-tint);
   border-color: var(--vt-brand);
 }
@@ -360,7 +360,7 @@
   font-family: var(--vt-font);
   font-size: var(--vt-text-xs);
   font-weight: 650;
-  color: var(--vt-brand);
+  color: var(--vt-brand-on-tint);
   background: var(--vt-brand-tint);
   border: 0;
   border-radius: var(--vt-radius-full);

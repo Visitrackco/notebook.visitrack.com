@@ -183,8 +183,8 @@
     border-color var(--vt-transition);
 
   &:hover {
-    color: #fff;
-    background: var(--vt-brand);
+    color: var(--vt-on-brand);
+    background: var(--vt-brand-fill);
     border-color: var(--vt-brand);
   }
 }
@@ -299,7 +299,7 @@
   gap: 8px;
   padding: 10px;
   background: var(--vt-surface-2);
-  border: 1.5px solid var(--vt-rule);
+  border: 1.5px solid var(--vt-control-border);
   border-radius: var(--vt-radius);
   transition:
     border-color var(--vt-transition),
@@ -454,7 +454,7 @@
   font-size: var(--vt-text-xs);
   font-weight: 600;
   color: var(--vt-on-brand);
-  background: var(--vt-brand);
+  background: var(--vt-brand-fill);
   border-radius: var(--vt-radius-full);
 }
 
@@ -674,7 +674,7 @@
   font-weight: 600;
   color: var(--vt-text);
   background: var(--vt-surface-2);
-  border: 1px solid var(--vt-rule-strong);
+  border: 1px solid var(--vt-control-border);
   border-radius: var(--vt-radius-full);
   transition:
     background var(--vt-transition),

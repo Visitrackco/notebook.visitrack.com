@@ -130,7 +130,7 @@
 /* Desplegado se marca con el color de la aplicación: es un interruptor, y un
    interruptor tiene que decir en qué posición está sin abrir nada. */
 .detail__context-toggle--open {
-  color: var(--vt-brand);
+  color: var(--vt-brand-on-tint);
   background: var(--vt-brand-tint);
   border-color: var(--vt-brand);
 }

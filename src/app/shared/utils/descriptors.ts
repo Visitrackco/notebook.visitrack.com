@@ -134,62 +134,154 @@ export function parseAnswerTitles(raw: unknown): Descriptor[] {
 }
 
 /**
- * Descriptivos de una ubicación o un activo, cruzando definición y valores.
+ * Lista de un JSON que puede venir como arreglo o envuelto en `{ fie: [...] }`.
+ * Devuelve `[]` ante cualquier fallo.
+ */
+function parseJsonFields(raw: unknown): unknown[] {
+  const text = (raw ?? '').toString().trim();
+  if (!text) return [];
+
+  try {
+    let decoded: unknown = JSON.parse(text);
+    if (decoded && typeof decoded === 'object' && !Array.isArray(decoded)) {
+      decoded = (decoded as { fie?: unknown }).fie ?? [];
+    }
+    return Array.isArray(decoded) ? decoded : [];
+  } catch {
+    return [];
+  }
+}
+
+/** El `id` de una entrada: `ftyId` (lo que escribe el editor) o `id`. */
+function idOf(entry: Record<string, unknown>): string {
+  return (entry['ftyId'] ?? entry['id'] ?? '').toString();
+}
+
+/**
+ * Valor legible de una entrada que ya trae `val` (`JSONTitle` o un descriptor
+ * con valor), sin depender de su `fty`: un desplegable o un radio guardado sin
+ * tipo llega como `{id, txt}`, y una selección múltiple como lista.
+ */
+function ownValueOf(entry: Record<string, unknown>): string {
+  const value = entry['val'];
+
+  if (Array.isArray(value)) {
+    return value
+      .map((item) =>
+        item && typeof item === 'object'
+          ? ((item as { txt?: unknown }).txt ?? '').toString()
+          : String(item),
+      )
+      .map((text) => text.trim())
+      .filter(Boolean)
+      .join(', ');
+  }
+
+  if (value && typeof value === 'object') {
+    return stripHtml(((value as { txt?: unknown }).txt ?? '').toString());
+  }
+
+  return stripHtml((value ?? '').toString());
+}
+
+/** Lo que hace falta de una ubicación o un activo para sacar sus descriptivos. */
+export interface EntityDescriptorSource {
+  /** Definición del tipo: `[{id, lab}]`, casi nunca con `val`. */
+  jsonDescriptor?: unknown;
+  /** Valores diligenciados, por `id` (lista o `{fie: [...]}`). */
+  jsonValues?: unknown;
+  /** Lo escrito localmente al editar: `[{ftyId|id, lab, val}]`. */
+  JSONTitle?: unknown;
+}
+
+/**
+ * Los descriptivos de una ubicación o un activo, listos para pintar, en el
+ * orden de la definición. Es la misma regla que `descriptivosDe` del móvil.
+ *
+ * ## De dónde salen
+ *
+ * - `jsonDescriptor` es la **definición** del tipo: `id` del campo y `lab`. El
+ *   valor vive en `jsonValues`, en la entrada con ese mismo `id`.
+ * - `JSONTitle` es lo que se escribe al editar y lo que traen algunos activos
+ *   viejos: ya trae `lab` y `val`. Los activos que bajan del servidor lo traen
+ *   **vacío**, por eso no basta con leerlo a él solo.
+ *
+ * Si un `id` está en las dos, gana el valor escrito en `JSONTitle`, que es el
+ * más reciente. Lo de `JSONTitle` que la definición no conoce (activos viejos,
+ * o un tipo al que le quitaron el descriptivo) se muestra al final.
+ */
+export function entityDescriptors(source: EntityDescriptorSource): Descriptor[] {
+  const valuesById = new Map<string, unknown>();
+  for (const entry of parseJsonFields(source.jsonValues)) {
+    if (!entry || typeof entry !== 'object') continue;
+    const id = (entry as { id?: unknown }).id;
+    if (id != null) valuesById.set(String(id), entry);
+  }
+
+  // Lo escrito en `JSONTitle`, por id; sin id, se guarda aparte para el final.
+  const written = new Map<string, Record<string, unknown>>();
+  const loose: Record<string, unknown>[] = [];
+  for (const entry of parseJsonFields(source.JSONTitle)) {
+    if (!entry || typeof entry !== 'object') continue;
+    const item = entry as Record<string, unknown>;
+    if (item['lab'] === DEFAULT_LABEL) continue;
+
+    const id = idOf(item);
+    if (id) written.set(id, item);
+    else loose.push(item);
+  }
+
+  const result: Descriptor[] = [];
+  const seen = new Set<string>();
+
+  for (const entry of parseJsonFields(source.jsonDescriptor)) {
+    if (!entry || typeof entry !== 'object') continue;
+    const item = entry as Record<string, unknown>;
+    if (item['lab'] === DEFAULT_LABEL) continue;
+
+    const id = idOf(item);
+    seen.add(id);
+
+    const mine = written.get(id);
+    let val = mine ? ownValueOf(mine) : '';
+    if (!val) val = ownValueOf(item);
+    if (!val) val = stripHtml(resolveDescriptorValue(valuesById.get(id)));
+
+    const lab = (item['lab'] ?? mine?.['lab'] ?? '').toString().trim();
+    if (!lab && !val) continue;
+    result.push({ id, lab, val });
+  }
+
+  const extra = [...[...written].filter(([id]) => !seen.has(id)).map(([, item]) => item), ...loose];
+  for (const item of extra) {
+    const lab = (item['lab'] ?? '').toString().trim();
+    const val = ownValueOf(item);
+    if (!lab && !val) continue;
+    result.push({ id: idOf(item) || undefined, lab, val });
+  }
+
+  return result;
+}
+
+/**
+ * Descriptivos cruzando solo definición y valores (sin `JSONTitle`).
  *
  * @param jsonDescriptor Definición: qué campos se muestran y con qué etiqueta.
  * @param jsonValues     Valores diligenciados de esa entidad.
  */
-export function parseEntityDescriptors(
-  jsonDescriptor: unknown,
-  jsonValues: unknown,
-): Descriptor[] {
-  const descriptors = parseJsonArray(jsonDescriptor);
-  if (descriptors.length === 0) return [];
+export function parseEntityDescriptors(jsonDescriptor: unknown, jsonValues: unknown): Descriptor[] {
+  return entityDescriptors({ jsonDescriptor, jsonValues });
+}
 
-  // Índice por id para resolver cada descriptor en un paso y no recorrer la
-  // lista de valores una vez por descriptor.
-  const valuesById = new Map<string, unknown>();
-
-  const rawValues = (jsonValues ?? '').toString().trim();
-  if (rawValues) {
-    try {
-      let decoded: unknown = JSON.parse(rawValues);
-      // Algunos registros envuelven los campos en `{ fie: [...] }`.
-      if (decoded && typeof decoded === 'object' && !Array.isArray(decoded)) {
-        decoded = (decoded as { fie?: unknown }).fie ?? [];
-      }
-      if (Array.isArray(decoded)) {
-        for (const entry of decoded) {
-          if (!entry || typeof entry !== 'object') continue;
-          const id = (entry as { id?: unknown }).id;
-          if (id != null) valuesById.set(String(id), entry);
-        }
-      }
-    } catch {
-      // Sin valores, los descriptivos que ya traigan `val` siguen sirviendo.
-    }
-  }
-
-  const result: Descriptor[] = [];
-
-  for (const entry of descriptors) {
-    if (!entry || typeof entry !== 'object') continue;
-
-    const item = entry as { id?: unknown; lab?: unknown; val?: unknown };
-    const lab = (item.lab ?? '').toString();
-    if (lab === DEFAULT_LABEL) continue;
-
-    const id = (item.id ?? '').toString();
-
-    // El descriptor puede traer el valor ya resuelto (así lo escribe el móvil);
-    // solo si viene vacío hay que ir a buscarlo a los valores.
-    let val = stripHtml((item.val ?? '').toString());
-    if (!val) val = stripHtml(resolveDescriptorValue(valuesById.get(id)));
-
-    result.push({ id, lab, val });
-  }
-
-  return result;
+/**
+ * ¿La búsqueda cae en el nombre o en algún descriptivo (etiqueta o valor)?
+ * Sin distinguir mayúsculas. Es `coincideConDescriptivos` del móvil.
+ */
+export function matchesEntity(name: unknown, descriptors: Descriptor[], needle: string): boolean {
+  const term = needle.trim().toLowerCase();
+  if (!term) return true;
+  if ((name ?? '').toString().toLowerCase().includes(term)) return true;
+  return descriptorsMatch(descriptors, term);
 }
 
 /** ¿Alguno de los descriptivos contiene [needle]? Sin distinguir mayúsculas. */

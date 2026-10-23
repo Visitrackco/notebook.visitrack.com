@@ -10,7 +10,7 @@ import {
 import {
   Descriptor,
   descriptorsMatch,
-  parseEntityDescriptors,
+  entityDescriptors,
 } from '../../shared/utils/descriptors';
 import { PermissionsService } from '../../core/services/permissions.service';
 import { DraftPolicyService } from '../../core/services/draft-policy.service';
@@ -385,12 +385,9 @@ export class AssetPickerComponent {
   }
 
   private descriptorsOf(asset: Asset): Descriptor[] {
-    // Los activos traen sus descriptivos en `JSONTitle` cuando bajan resueltos
-    // del servidor; si no, se cruzan igual que en las ubicaciones.
-    const fromTitle = parseEntityDescriptors(asset.JSONTitle, asset.jsonValues);
-    if (fromTitle.length > 0) return fromTitle;
-
-    return parseEntityDescriptors(asset.jsonDescriptor, asset.jsonValues);
+    // Definición del tipo + valores, con lo escrito en `JSONTitle` por encima:
+    // los activos que bajan del servidor traen `JSONTitle` vacío.
+    return entityDescriptors(asset);
   }
 
   private toItem(asset: Asset): PickerItem {

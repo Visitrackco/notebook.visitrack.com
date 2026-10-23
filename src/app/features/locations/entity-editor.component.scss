@@ -157,7 +157,7 @@
   margin: 0;
   font-size: var(--vt-text-xs);
   font-weight: 650;
-  color: var(--vt-brand);
+  color: var(--vt-brand-on-tint);
   background: var(--vt-brand-tint);
   border-radius: var(--vt-radius-full);
 }
@@ -182,7 +182,7 @@
 
 .edit__page--on {
   color: var(--vt-on-brand) !important;
-  background: var(--vt-brand) !important;
+  background: var(--vt-brand-fill) !important;
 }
 
 .edit__fields {
@@ -286,12 +286,12 @@
   font-size: var(--vt-text-sm);
   font-weight: 650;
   color: var(--vt-on-brand);
-  background: var(--vt-brand);
+  background: var(--vt-brand-fill);
   border: 0;
   border-radius: var(--vt-radius-full);
 
   &:hover:not(:disabled) {
-    background: var(--vt-brand-dark);
+    background: var(--vt-brand-fill-hover);
   }
 
   &:disabled {

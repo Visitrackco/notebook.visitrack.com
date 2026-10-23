@@ -63,12 +63,12 @@
   font-size: var(--vt-text-sm);
   font-weight: 650;
   color: var(--vt-on-brand);
-  background: var(--vt-brand);
+  background: var(--vt-brand-fill);
   border: 0;
   border-radius: var(--vt-radius-full);
 
   &:hover:not(:disabled) {
-    background: var(--vt-brand-dark);
+    background: var(--vt-brand-fill-hover);
   }
 
   &:disabled {
@@ -158,12 +158,13 @@
 }
 
 .pedit__tool--on {
-  color: #fff;
-  background: var(--vt-brand);
+  color: var(--vt-on-brand);
+  background: var(--vt-brand-fill);
 }
 
 .pedit__tool--primary {
-  color: #fff;
+  /* El verde de estado se aclara en oscuro: el trazo va con su pareja. */
+  color: var(--vt-on-state);
   background: var(--vt-success);
 
   &:hover:not(:disabled) {

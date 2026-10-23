@@ -159,7 +159,7 @@ import { AvisoQueFlotaService } from './aviso-que-flota.service';
         color: var(--vt-on-brand, #fff);
         font-size: 0.9rem;
         font-weight: 700;
-        background: var(--vt-brand);
+        background: var(--vt-brand-fill);
         border-radius: var(--vt-radius-full, 999px);
       }
 

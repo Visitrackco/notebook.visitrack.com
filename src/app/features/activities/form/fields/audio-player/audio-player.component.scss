@@ -24,13 +24,13 @@
   width: 48px;
   height: 48px;
   color: var(--vt-on-brand);
-  background: var(--vt-brand);
+  background: var(--vt-brand-fill);
   border: 0;
   border-radius: 50%;
   transition: transform 0.12s ease;
 
   &:hover {
-    background: var(--vt-brand-dark);
+    background: var(--vt-brand-fill-hover);
   }
 
   &:active {
