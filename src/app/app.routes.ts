@@ -2,8 +2,10 @@ import { Routes } from '@angular/router';
 
 import { esModoPublico } from './core/config/modo-publico';
 import { authGuard, guestGuard } from './core/guards/auth.guard';
+import { permisoDeModuleGuard } from './core/guards/permiso-de-module.guard';
 import { publicoGuard } from './core/guards/publico.guard';
 import { surveyGuard } from './core/guards/survey.guard';
+import { PERMISO_SEGUIMIENTO_GEOCERCAS } from './core/services/permisos-de-module.service';
 
 /**
  * Rutas de la aplicación.
@@ -448,6 +450,9 @@ export const routes: Routes = [
       {
         path: 'geocerca-eventos',
         title: 'Eventos de geocerca · Visitrack',
+        // Solo con el seguimiento por geocercas. El detalle de un evento, no:
+        // se abre desde una push y no lee el GPS.
+        canActivate: [permisoDeModuleGuard(PERMISO_SEGUIMIENTO_GEOCERCAS)],
         loadComponent: () =>
           import('./features/geocerca-eventos/geocerca-eventos.component').then(
             (m) => m.GeocercaEventosComponent,

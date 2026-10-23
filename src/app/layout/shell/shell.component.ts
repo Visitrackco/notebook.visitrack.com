@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
 import { environment } from '../../../environments/environment';
@@ -8,6 +8,7 @@ import { ChatSocketService } from '../../features/chat/chat-socket.service';
 import { CompanyLogoService } from '../../core/services/company-logo.service';
 import { ConnectivityService } from '../../core/services/connectivity.service';
 import { GeocercasService } from '../../core/geocercas/geocercas.service';
+import { PermisosDeModuleService } from '../../core/services/permisos-de-module.service';
 import { PendingUploadService } from '../../core/sync/pending-upload.service';
 import { PushService } from '../../core/services/push.service';
 import { DispatchCounterService } from '../../core/services/dispatch-counter.service';
@@ -86,7 +87,40 @@ export class ShellComponent {
    */
   readonly geocercas = inject(GeocercasService);
 
-  readonly navigation = NAVIGATION;
+  private readonly permisosDeModule = inject(PermisosDeModuleService);
+
+  /**
+   * El menú, sin lo que pide una clave de Module que no se tiene.
+   *
+   * Una sección que se queda sin nada que enseñar desaparece entera, título
+   * incluido: un encabezado solo no lleva a ningún sitio.
+   */
+  readonly navigation = computed(() =>
+    NAVIGATION.map((section) => ({
+      ...section,
+      items: section.items.filter(
+        (item) => !item.permission || this.permisosDeModule.tiene(item.permission)(),
+      ),
+    })).filter((section) => section.items.length > 0),
+  );
+
+  /**
+   * `g e` solo con el seguimiento por geocercas: un atajo que lleva a una
+   * pantalla que el guardia rechaza sería una tecla que no hace nada.
+   */
+  private readonly atajoDeGeocercas = effect((onCleanup) => {
+    if (!this.permisosDeModule.seguimientoGeocercas()) return;
+
+    const quitar = untracked(() => this.shortcuts.register({
+      // `g e` de eventos: `g g` sería incómodo y `g c` ya está repetido.
+      id: 'go-geofence-events',
+      keys: 'g e',
+      label: 'Eventos de geocerca',
+      group: 'Navegación',
+      run: () => void this.router.navigate(['/geocerca-eventos']),
+    }));
+    onCleanup(quitar);
+  });
 
   private readonly vigilarElChat = effect(() => {
     const ahora = this.chatCount();
@@ -239,14 +273,7 @@ export class ShellComponent {
         group: 'Navegación',
         run: go('/avisos-flujo'),
       },
-      {
-        // `g e` de eventos: `g g` sería incómodo y `g c` ya está repetido.
-        id: 'go-geofence-events',
-        keys: 'g e',
-        label: 'Eventos de geocerca',
-        group: 'Navegación',
-        run: go('/geocerca-eventos'),
-      },
+      // `g e` (eventos de geocerca) va aparte, con su permiso: ver `atajoDeGeocercas`.
       {
         id: 'go-locations',
         keys: 'g u',

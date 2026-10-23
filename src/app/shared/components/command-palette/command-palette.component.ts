@@ -15,6 +15,7 @@ import { LocationForm, Survey } from '../../../core/models/entities.model';
 import { LocationRepository, SurveyRepository } from '../../../core/repositories/entity.repositories';
 import { SurveyAnswerRepository } from '../../../core/repositories/survey-answer.repository';
 import { AuthService } from '../../../core/services/auth.service';
+import { PermisosDeModuleService } from '../../../core/services/permisos-de-module.service';
 import { ShortcutsService } from '../../../core/services/shortcuts.service';
 import { IconComponent } from '../icon/icon.component';
 
@@ -67,6 +68,7 @@ export class CommandPaletteComponent {
   private readonly answers = inject(SurveyAnswerRepository);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly permisosDeModule = inject(PermisosDeModuleService);
 
   private readonly field = viewChild<ElementRef<HTMLInputElement>>('field');
 
@@ -188,10 +190,16 @@ export class CommandPaletteComponent {
       make('Correos del flujo', 'mail', '/correos-flujo'),
       make('Notificaciones del flujo', 'bell', '/avisos-flujo'),
       // Con «cerca» y «entradas» en lo que se busca: nadie piensa en «evento».
-      {
-        ...make('Eventos de geocerca', 'geocerca-eventos', '/geocerca-eventos'),
-        haystack: 'eventos de geocerca geocercas cerca entradas salidas llegadas historial /geocerca-eventos',
-      },
+      // Solo con el seguimiento por geocercas, como el menú y el atajo.
+      ...(this.permisosDeModule.seguimientoGeocercas()
+        ? [
+            {
+              ...make('Eventos de geocerca', 'geocerca-eventos', '/geocerca-eventos'),
+              haystack:
+                'eventos de geocerca geocercas cerca entradas salidas llegadas historial /geocerca-eventos',
+            },
+          ]
+        : []),
       make('Ubicaciones', 'map-pin', '/ubicaciones'),
       // Con «etiqueta» y «qr» en lo que se busca: nadie escribe «escanear»
       // cuando lo que tiene delante es un código pegado en un equipo.

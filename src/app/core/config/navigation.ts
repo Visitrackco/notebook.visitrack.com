@@ -20,6 +20,10 @@ export interface NavItem {
   /**
    * Permiso necesario para verla. Si se omite, la sección es visible para
    * cualquier usuario autenticado.
+   *
+   * Es una clave de **Module** (`LOCATOR_GEOFENCE_TRACKING`…) y se mira con el
+   * chequeo estricto de `PermisosDeModuleService`: mientras Module no la dé, la
+   * sección no aparece.
    */
   permission?: string;
   /** true si todavía no está implementada: se muestra deshabilitada. */
@@ -147,6 +151,7 @@ export const NAVIGATION: NavSection[] = [
         route: '/geocerca-eventos',
         icon: 'geocerca-eventos',
         description: 'Cuándo entraste, saliste o actuaste en una geocerca',
+        permission: 'LOCATOR_GEOFENCE_TRACKING',
       },
       {
         key: 'link',

@@ -9,6 +9,7 @@ import { SurveyAnswerRepository } from '../repositories/survey-answer.repository
 import { ActivityService } from '../services/activity.service';
 import { AuthService } from '../services/auth.service';
 import { ConnectivityService } from '../services/connectivity.service';
+import { PermisosDeModuleService } from '../services/permisos-de-module.service';
 import { ToastService } from '../services/toast.service';
 import { SyncService } from '../sync/sync.service';
 import { nuevoGuid } from '../../shared/utils/guid';
@@ -85,6 +86,16 @@ interface EventoEnCola {
  * Se enciende sola con la sesión, se recarga al terminar cada sincronización
  * y se apaga al cerrar sesión. El permiso de ubicación solo se pide si hay
  * algún flujo activo.
+ *
+ * ## Solo con el permiso de Module
+ *
+ * Todo esto exige `LOCATOR_GEOFENCE_TRACKING` (ver `PermisosDeModuleService`,
+ * que es estricto: sin respuesta de Module, no). Sin él no se enciende la
+ * vigía, no se evalúan los momentos y **no se le pide la ubicación al
+ * navegador**: ni `watchPosition` ni `getCurrentPosition`. Si se pierde con la
+ * vigía encendida —se lo quitan en Module, cierra sesión— se apaga en el acto.
+ * El backend deja de repartirle flujos, pero la web no depende de eso: los que
+ * ya bajaron siguen en la base local.
  */
 @Injectable({ providedIn: 'root' })
 export class GeocercasService {
@@ -98,6 +109,10 @@ export class GeocercasService {
   private readonly connectivity = inject(ConnectivityService);
   private readonly router = inject(Router);
   private readonly bus = inject(MomentosDeLaAppService);
+  private readonly permisos = inject(PermisosDeModuleService);
+
+  /** Si puede seguirla por geocercas. Estricto: ver `PermisosDeModuleService`. */
+  readonly permitido = this.permisos.seguimientoGeocercas;
 
   /** Cuántos flujos activos se están vigilando. */
   readonly flujosActivos = signal(0);
@@ -106,7 +121,7 @@ export class GeocercasService {
   readonly estado = signal<EstadoDeGeocercas>('apagada');
 
   /** Si el indicador del armazón tiene algo que decir. */
-  readonly visible = computed(() => this.estado() !== 'apagada');
+  readonly visible = computed(() => this.permitido() && this.estado() !== 'apagada');
 
   private vigia: VigiaDeGeocercas | null = null;
   private momentos: MomentosDeGeocerca | null = null;
@@ -128,6 +143,15 @@ export class GeocercasService {
       untracked(() => {
         if (!id) void this.apagar();
         else if (id !== this.usuario) void this.recargar();
+      });
+    });
+
+    // Con el permiso se enciende; al perderlo, se apaga en el acto.
+    effect(() => {
+      const ok = this.permitido();
+      untracked(() => {
+        if (!ok) void this.apagar();
+        else if (this.auth.currentUser()) void this.recargar();
       });
     });
 
@@ -156,9 +180,19 @@ export class GeocercasService {
       return;
     }
 
+    // Sin el permiso no hay vigía: ni GPS ni flujos cargados.
+    if (!this.permitido()) {
+      await this.apagar();
+      return;
+    }
+
     const generacion = ++this.generacion;
     const flujos = await this.flujosActivosDe(resolveCatalogOwnerId(user));
     if (generacion !== this.generacion) return;
+    if (!this.permitido()) {
+      await this.apagar();
+      return;
+    }
 
     // Otra persona en el mismo navegador: su vigía, con su propio estado.
     if (this.usuario !== user.UserID || !this.vigia) {
@@ -219,6 +253,7 @@ export class GeocercasService {
 
   private encenderGps(): void {
     if (this.watchId !== null) return;
+    if (!this.permitido()) return;
 
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
       this.estado.set('sin-gps');
@@ -259,6 +294,11 @@ export class GeocercasService {
   }
 
   private alLlegar(pos: GeolocationPosition): void {
+    // Una lectura que llega justo después de perder el permiso no se usa.
+    if (!this.permitido()) {
+      this.detenerGps();
+      return;
+    }
     const { latitude, longitude, accuracy } = pos.coords;
     if (Number.isFinite(accuracy) && accuracy > PRECISION_MAXIMA) return;
 
@@ -336,6 +376,12 @@ export class GeocercasService {
 
     const user = this.auth.currentUser();
     if (!user) return;
+
+    // Recién iniciada la sesión el permiso puede estar en camino: se espera a
+    // Module (con tope) antes de decir que no.
+    if (!this.permitido()) await this.permisos.listo();
+    if (!this.permitido()) return;
+
     // Recién iniciada la sesión, la recarga del efecto puede ir en paralelo y
     // abortar esta: se insiste un par de veces hasta tener los flujos de quien es.
     for (let i = 0; i < 3 && (!this.vigia || !this.momentos || this.usuario !== user.UserID); i++) {
@@ -349,7 +395,11 @@ export class GeocercasService {
     const flujos = vigia.flujosCargados;
     if (!MomentosDeGeocerca.hayReglaPara(flujos, momento)) return;
 
+    // Por si se perdió mientras se cargaban los flujos: sin permiso, no se lee el GPS.
+    if (!this.permitido()) return;
+
     const lectura = await this.lecturaFresca(esperaGpsMs);
+    if (!this.permitido()) return;
     if (!lectura) {
       console.info(
         `[Geocercas] «${momento}» no se evaluó: no hay una ubicación fresca ni una reciente (menos de 2 min).`,

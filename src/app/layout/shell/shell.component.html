@@ -41,7 +41,7 @@
     </div>
 
     <nav class="shell__nav">
-      @for (section of navigation; track section.title) {
+      @for (section of navigation(); track section.title) {
         @if (section.title && !collapsed()) {
           <h2 class="shell__nav-title">{{ section.title }}</h2>
         } @else if (section.title && collapsed()) {
