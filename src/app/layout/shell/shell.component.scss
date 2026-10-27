@@ -939,3 +939,41 @@
     border-radius: var(--vt-radius-sm);
   }
 }
+
+/* Versión nueva publicada: barra amarilla fija arriba. */
+.shell__version {
+  position: sticky;
+  top: 0;
+  z-index: 61;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+  padding: 0.55rem 1rem;
+  font-size: 0.88rem;
+  color: #3d2e00;
+  background: #ffd23f;
+  border-bottom: 1px solid #e0b100;
+
+  span { flex: 1 1 16rem; }
+
+  button {
+    padding: 0.3rem 0.85rem;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    border-radius: var(--vt-radius-sm);
+  }
+}
+
+.shell__version-si {
+  color: #fff;
+  background: #1f1f1f;
+  border: 0;
+}
+
+.shell__version-no {
+  color: #3d2e00;
+  background: transparent;
+  border: 1px solid #b38f00;
+}

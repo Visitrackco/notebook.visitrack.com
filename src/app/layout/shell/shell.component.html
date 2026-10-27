@@ -9,6 +9,20 @@
     </div>
   }
 
+  <!-- Versión nueva publicada: la barra amarilla pide recargar. No recarga
+       sola: quien está llenando algo decide cuándo. Ver NuevaVersionService. -->
+  @if (version.hayNueva() && !version.pospuesta()) {
+    <div class="shell__version" role="status">
+      <vt-icon name="alert" [size]="18" />
+      <span>
+        <strong>Hay una nueva versión de Visitrack.</strong>
+        Actualízala por favor: lo que estás llenando queda guardado.
+      </span>
+      <button type="button" class="shell__version-si" (click)="version.actualizar()">Actualizar</button>
+      <button type="button" class="shell__version-no" (click)="version.posponer()">Más tarde</button>
+    </div>
+  }
+
   <!-- Capa que oscurece el contenido cuando el menú móvil está abierto -->
   @if (mobileOpen()) {
     <div class="shell__scrim" (click)="closeMobile()"></div>

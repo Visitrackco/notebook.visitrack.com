@@ -18,6 +18,7 @@ import { CommandPaletteComponent } from '../../shared/components/command-palette
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { ShortcutsHelpComponent } from '../../shared/components/shortcuts-help/shortcuts-help.component';
 import { MenuCountersService } from '../../core/services/menu-counters.service';
+import { NuevaVersionService } from '../../core/services/nueva-version.service';
 import { equipoPorRenovar } from '../../features/profile/renovar-equipo/renovar-equipo.component';
 
 /** Clave donde se recuerda si la barra quedó colapsada. */
@@ -62,6 +63,8 @@ export class ShellComponent {
   private readonly pendingUploads = inject(PendingUploadService);
   // Publico: la plantilla lee su estado para decidir si ofrece la tira.
   readonly push = inject(PushService);
+  /** La barra amarilla de «hay una versión nueva». */
+  readonly version = inject(NuevaVersionService);
   private readonly counters = inject(MenuCountersService);
 
   /*
@@ -364,6 +367,7 @@ export class ShellComponent {
      * que no sube el trabajo de nadie a la cuenta equivocada.
      */
     this.pendingUploads.start();
+    this.version.iniciar();
 
     /**
      * El mantenimiento de borradores arranca con el armazón.
