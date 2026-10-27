@@ -5,7 +5,7 @@
         <span class="rea__icon"><vt-icon name="send" [size]="19" /></span>
 
         <div class="rea__titles">
-          <strong>Reasignar actividad</strong>
+          <strong>{{ varias() ? 'Reasignar ' + todas().length + ' actividades' : 'Reasignar actividad' }}</strong>
           @if (label()) {
             <small>{{ label() }}</small>
           }
@@ -20,9 +20,28 @@
            venía buscando «compartir» tiene que enterarse ahora. -->
       <p class="rea__warn">
         <vt-icon name="alert" [size]="15" />
-        La actividad pasa a ser de esa persona y <strong>se quita de este
-        equipo</strong>. No podrás seguir editándola.
+        @if (varias()) {
+          Las actividades pasan a ser de esa persona y <strong>se quitan de este
+          equipo</strong>. No podrás seguir editándolas.
+        } @else {
+          La actividad pasa a ser de esa persona y <strong>se quita de este
+          equipo</strong>. No podrás seguir editándola.
+        }
       </p>
+
+      <!-- Con varias, se dice antes de elegir cuántas van y cuáles se quedan. -->
+      @if (varias() && !loading() && aptas().length && omitidas().length) {
+        <div class="rea__blocked">
+          <vt-icon name="alert" [size]="20" />
+          <p>
+            Se reasignarán {{ aptas().length }} de {{ todas().length }}.
+            {{ omitidas().length === 1 ? 'Esta no se puede:' : 'Estas no se pueden:' }}
+            @for (motivo of omitidas(); track $index) {
+              <br />· {{ motivo }}
+            }
+          </p>
+        </div>
+      }
 
       @if (blocked()) {
         <div class="rea__blocked">
@@ -54,7 +73,7 @@
 
           <button type="button" class="rea__go" [disabled]="working()" (click)="confirm()">
             <vt-icon name="send" [size]="16" />
-            {{ working() ? 'Reasignando…' : 'Reasignar' }}
+            {{ working() ? 'Reasignando…' : varias() ? 'Reasignar ' + aptas().length : 'Reasignar' }}
           </button>
         </footer>
       } @else {

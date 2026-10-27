@@ -54,6 +54,16 @@
         <button
           mat-icon-button
           type="button"
+          [class.acts__on]="seleccionando()"
+          (click)="alternarSeleccion()"
+          [matTooltip]="seleccionando() ? 'Dejar de seleccionar' : 'Seleccionar varias'"
+          [attr.aria-label]="seleccionando() ? 'Dejar de seleccionar' : 'Seleccionar varias'"
+        >
+          <vt-icon name="check" [size]="20" />
+        </button>
+        <button
+          mat-icon-button
+          type="button"
           (click)="refresh()"
           matTooltip="Refrescar y limpiar borradores caducados"
           aria-label="Refrescar"
@@ -318,8 +328,27 @@
     } @else {
       <div class="acts__list">
         @for (card of cards(); track trackByGuid($index, card)) {
-          <article [class]="'acts__card acts__card--' + card.state.tone" [class.acts__card--bloqueada]="!!card.answer.NoEntrar">
-            <button type="button" class="acts__card-main" (click)="open(card)">
+          <article
+            [class]="'acts__card acts__card--' + card.state.tone"
+            [class.acts__card--bloqueada]="!!card.answer.NoEntrar"
+            [class.acts__card--marcada]="marcadas().has(card.answer.GUID)"
+          >
+            <button
+              type="button"
+              class="acts__card-main"
+              (click)="onCardClick(card)"
+              (contextmenu)="onCardContext($event, card)"
+              [attr.aria-pressed]="seleccionando() ? marcadas().has(card.answer.GUID) : null"
+            >
+              <!-- En modo selección, la casilla va primero: es lo que se toca. -->
+              @if (seleccionando()) {
+                <span class="acts__check" aria-hidden="true">
+                  @if (marcadas().has(card.answer.GUID)) {
+                    <vt-icon name="check" [size]="15" />
+                  }
+                </span>
+              }
+
               <!-- La bolita lleva el estado: es lo primero que se busca al
                    repasar la lista, y un disco de color se localiza de un
                    vistazo sin leer nada. -->
@@ -448,16 +477,18 @@
               </span>
             </button>
 
-            <button
-              mat-icon-button
-              type="button"
-              class="acts__more"
-              (click)="openActions(card)"
-              matTooltip="Opciones"
-              aria-label="Opciones de la actividad"
-            >
-              <vt-icon name="menu" [size]="18" />
-            </button>
+            @if (!seleccionando()) {
+              <button
+                mat-icon-button
+                type="button"
+                class="acts__more"
+                (click)="openActions(card)"
+                matTooltip="Opciones"
+                aria-label="Opciones de la actividad"
+              >
+                <vt-icon name="menu" [size]="18" />
+              </button>
+            }
           </article>
         }
       </div>
@@ -466,7 +497,65 @@
     <!-- Botón flotante: acompaña el desplazamiento en listas largas, donde un
          botón en la cabecera quedaría fuera de pantalla justo cuando hace falta.
          No se pinta si el formulario solo recibe consignas. -->
-    @if (puedeCrear()) {
+    <!-- Barra de la selección: abajo y fija, donde va el pulgar. Sustituye al
+         botón de nueva actividad mientras se selecciona. -->
+    @if (seleccionando()) {
+      <div class="acts__lote" role="toolbar" aria-label="Acciones sobre las seleccionadas">
+        <div class="acts__lote-info">
+          <strong class="vt-figure">{{ marcadasCards().length }}</strong>
+          {{ marcadasCards().length === 1 ? 'seleccionada' : 'seleccionadas' }}
+          @if (trabajando()) {
+            <span class="acts__lote-trabajando">· {{ trabajando() }}</span>
+          }
+        </div>
+
+        <div class="acts__lote-botones">
+          <button type="button" class="acts__lote-btn" (click)="marcarTodas()" [disabled]="!!trabajando()">
+            Todas
+          </button>
+          <button
+            type="button"
+            class="acts__lote-btn"
+            (click)="reprocesarVarias()"
+            [disabled]="!marcadasCards().length || !!trabajando()"
+            matTooltip="Vuelve a subir sus archivos"
+          >
+            <vt-icon name="cloud-upload" [size]="16" />
+            <span>Reprocesar archivos</span>
+          </button>
+          <button
+            type="button"
+            class="acts__lote-btn"
+            (click)="reasignarVarias()"
+            [disabled]="!marcadasCards().length || !!trabajando()"
+            matTooltip="Pasarlas a otro usuario"
+          >
+            <vt-icon name="send" [size]="16" />
+            <span>Reasignar</span>
+          </button>
+          <button
+            type="button"
+            class="acts__lote-btn acts__lote-btn--peligro"
+            (click)="pedirEliminarVarias()"
+            [disabled]="!marcadasCards().length || !!trabajando()"
+          >
+            <vt-icon name="trash" [size]="16" />
+            <span>Eliminar</span>
+          </button>
+          <button
+            type="button"
+            class="acts__lote-cerrar"
+            (click)="salirDeSeleccion()"
+            [disabled]="!!trabajando()"
+            aria-label="Dejar de seleccionar"
+          >
+            <vt-icon name="close" [size]="18" />
+          </button>
+        </div>
+      </div>
+    }
+
+    @if (puedeCrear() && !seleccionando()) {
     <button type="button" class="acts__fab" (click)="createActivity()" [disabled]="creating()">
       <span class="acts__fab-icon">
         <vt-icon name="clipboard" [size]="19" />
@@ -486,6 +575,19 @@
       cancelLabel="Conservar"
       (confirm)="remove()"
       (cancel)="removing.set(false)"
+    />
+
+    <vt-confirm-dialog
+      [open]="borrandoVarias() !== null"
+      tone="danger"
+      icon="trash"
+      [title]="borrandoVariasTitulo()"
+      [message]="borrandoVariasMensaje()"
+      [detail]="borrandoVariasDetalle()"
+      [confirmLabel]="borrandoVarias()?.aptas?.length ? 'Eliminar' : 'Entendido'"
+      cancelLabel="Conservar"
+      (confirm)="eliminarVarias()"
+      (cancel)="borrandoVarias.set(null)"
     />
 
     @if (selected(); as chosen) {
@@ -513,11 +615,12 @@
 <!-- Entregar la actividad a otra persona. Vive fuera del panel de acciones
      porque tiene sus propios pasos: elegir, confirmar y esperar al servidor. -->
 <vt-reassign-dialog
-  [open]="reassigning() !== null"
+  [open]="reassigning() !== null || reasignandoVarias() !== null"
   [answer]="reassigning()?.answer ?? null"
-  [label]="reassignLabel()"
+  [answers]="reasignandoVarias() ?? []"
+  [label]="reasignandoVarias() ? '' : reassignLabel()"
   (done)="onReassigned($event)"
-  (cancel)="reassigning.set(null)"
+  (cancel)="cancelarReasignar()"
 />
 
 @if (pdfCard(); as card) {

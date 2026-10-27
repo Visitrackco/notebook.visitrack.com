@@ -20,6 +20,14 @@ import { IconComponent } from '../../../shared/components/icon/icon.component';
  * personas que ya no están. Sin conexión no se puede reasignar, y eso también
  * se dice.
  */
+/** Cómo terminó: a quién, cuántas pasaron y por qué no las demás. */
+export interface ReasignacionHecha {
+  person: Colleague;
+  hechas: number;
+  fallidas: string[];
+  omitidas: string[];
+}
+
 @Component({
   selector: 'vt-reassign-dialog',
   standalone: true,
@@ -35,10 +43,18 @@ export class ReassignDialogComponent {
   /** Actividad que se va a entregar. */
   readonly answer = input<SurveyAnswer | null>(null);
 
+  /**
+   * Varias de una vez, a la misma persona. Si viene, manda sobre [answer].
+   *
+   * Cada una se revisa con las mismas reglas que una sola: las que no se
+   * pueden entregar se omiten con su motivo y las demás siguen.
+   */
+  readonly answers = input<SurveyAnswer[]>([]);
+
   /** Con qué se reconoce en el aviso: la sede, el activo. */
   readonly label = input('');
 
-  readonly done = output<Colleague>();
+  readonly done = output<ReasignacionHecha>();
   readonly cancel = output<void>();
 
   readonly loading = signal(false);
@@ -63,8 +79,28 @@ export class ReassignDialogComponent {
    */
   readonly pendingEntities = signal('');
 
+  /** Lo que se va a entregar: las varias, o la una. */
+  readonly todas = computed(() => {
+    const varias = this.answers();
+    if (varias.length) return varias;
+    const una = this.answer();
+    return una ? [una] : [];
+  });
+
+  readonly varias = computed(() => this.todas().length > 1);
+
+  /** Con varias: las que sí se pueden entregar, y por qué no las demás. */
+  readonly aptas = signal<SurveyAnswer[]>([]);
+  readonly omitidas = signal<string[]>([]);
+
   readonly blocked = computed(() => {
-    const answer = this.answer();
+    if (this.varias()) {
+      return this.loading() || this.aptas().length
+        ? ''
+        : 'Ninguna de las seleccionadas se puede reasignar. ' + (this.omitidas()[0] ?? '');
+    }
+
+    const answer = this.answer() ?? this.todas()[0] ?? null;
     if (!answer) return '';
 
     const reason = this.service.canReassign(answer);
@@ -111,12 +147,20 @@ export class ReassignDialogComponent {
   }
 
   private async load(): Promise<void> {
-    const answer = this.answer();
+    const todas = this.todas();
+    const answer = todas[0];
     if (!answer) return;
 
     this.loading.set(true);
 
     try {
+      if (this.varias()) {
+        await this.revisarVarias(todas);
+        if (!this.aptas().length) return;
+        this.colleagues.set(await this.service.colleagues());
+        return;
+      }
+
       this.pendingFiles.set(await this.service.pendingFiles(answer.GUID));
       this.pendingEntities.set(await this.service.pendingEntities(answer));
 
@@ -133,6 +177,35 @@ export class ReassignDialogComponent {
     }
   }
 
+  /** Las mismas tres comprobaciones de una sola, para cada una. */
+  private async revisarVarias(todas: SurveyAnswer[]): Promise<void> {
+    const aptas: SurveyAnswer[] = [];
+    const omitidas: string[] = [];
+
+    for (const a of todas) {
+      const nombre = a.LocationName || a.Consecutive || 'Actividad';
+      const regla = this.service.canReassign(a);
+      if (regla) {
+        omitidas.push(`${nombre}: ${regla}`);
+        continue;
+      }
+      const archivos = await this.service.pendingFiles(a.GUID);
+      if (archivos > 0) {
+        omitidas.push(`${nombre}: tiene archivos sin terminar de subir.`);
+        continue;
+      }
+      const entidades = await this.service.pendingEntities(a);
+      if (entidades) {
+        omitidas.push(`${nombre}: ${entidades}`);
+        continue;
+      }
+      aptas.push(a);
+    }
+
+    this.aptas.set(aptas);
+    this.omitidas.set(omitidas);
+  }
+
   onSearch(event: Event): void {
     this.search.set((event.target as HTMLInputElement).value);
   }
@@ -147,17 +220,34 @@ export class ReassignDialogComponent {
 
   /** Entrega la actividad. */
   async confirm(): Promise<void> {
-    const answer = this.answer();
     const person = this.chosen();
+    const lista = this.varias() ? this.aptas() : this.todas();
 
-    if (!answer || !person || this.working()) return;
+    if (!lista.length || !person || this.working()) return;
 
     this.working.set(true);
     this.error.set('');
 
     try {
-      await this.service.reassign(answer, person);
-      this.done.emit(person);
+      if (!this.varias()) {
+        await this.service.reassign(lista[0], person);
+        this.done.emit({ person, hechas: 1, fallidas: [], omitidas: [] });
+        return;
+      }
+
+      // Una por una: si una falla en el servidor, las demás siguen.
+      let hechas = 0;
+      const fallidas: string[] = [];
+      for (const a of lista) {
+        try {
+          await this.service.reassign(a, person);
+          hechas++;
+        } catch (error) {
+          const nombre = a.LocationName || a.Consecutive || 'Actividad';
+          fallidas.push(`${nombre}: ${error instanceof Error ? error.message : 'no se pudo'}`);
+        }
+      }
+      this.done.emit({ person, hechas, fallidas, omitidas: this.omitidas() });
     } catch (error) {
       this.error.set(
         error instanceof Error ? error.message : 'No se pudo reasignar la actividad.',

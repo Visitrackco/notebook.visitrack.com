@@ -36,13 +36,12 @@ import {
 } from '../../core/services/retention-policy.service';
 import { Descriptor, descriptorsMatch, parseAnswerTitles } from '../../shared/utils/descriptors';
 import { SeedPalette, seedGradient, seedPalette } from '../../shared/utils/seed-color';
-import { Colleague } from '../../core/services/reassign.service';
 import { ToastService } from '../../core/services/toast.service';
 import {
   CompartirEnSalaComponent,
   ParaCompartir,
 } from '../chat/compartir-en-sala/compartir-en-sala.component';
-import { ReassignDialogComponent } from './reassign-dialog/reassign-dialog.component';
+import { ReasignacionHecha, ReassignDialogComponent } from './reassign-dialog/reassign-dialog.component';
 import { ZonaHorariaService } from '../../core/services/zona-horaria.service';
 import { etiquetaDeConsigna } from '../../shared/utils/fecha-consigna';
 import {
@@ -457,11 +456,233 @@ export class ActivitiesComponent {
    * Se recarga el listado porque el servicio la quitó de este dispositivo: si
    * siguiera en pantalla, abrirla llevaría a una actividad que ya no existe.
    */
-  async onReassigned(person: Colleague): Promise<void> {
+  async onReassigned(r: ReasignacionHecha): Promise<void> {
+    const eranVarias = this.reasignandoVarias() !== null;
     this.reassigning.set(null);
+    this.reasignandoVarias.set(null);
 
-    this.toasts.success('Actividad reasignada', `Ahora es de ${person.name}.`);
+    if (!eranVarias) {
+      this.toasts.success('Actividad reasignada', `Ahora es de ${r.person.name}.`);
+    } else {
+      const sinHacer = [...r.omitidas, ...r.fallidas];
+      if (r.hechas) {
+        this.toasts.success(
+          r.hechas === 1 ? '1 actividad reasignada' : `${r.hechas} actividades reasignadas`,
+          `Ahora son de ${r.person.name}.`,
+        );
+      }
+      if (sinHacer.length) {
+        this.toasts.warning(
+          sinHacer.length === 1 ? '1 no se reasignó' : `${sinHacer.length} no se reasignaron`,
+          sinHacer.slice(0, 3).join(' · ') + (sinHacer.length > 3 ? ' …' : ''),
+        );
+      }
+      this.salirDeSeleccion();
+    }
+
     await this.load(this.surveyId());
+  }
+
+  // ── Selección de varias ────────────────────────────────────────────────────
+  //
+  // Solo tres acciones en lote: eliminar, reasignar y reprocesar archivos. Cada
+  // una con las mismas reglas que sobre una sola; las que no las cumplen se
+  // omiten y se dice cuántas y por qué, en vez de detener todo el lote.
+
+  /** Modo selección: el clic marca en vez de abrir. */
+  readonly seleccionando = signal(false);
+
+  /** GUIDs marcados. */
+  readonly marcadas = signal<ReadonlySet<string>>(new Set());
+
+  /** Lo que se está haciendo con el lote, para la barra. Vacío si nada. */
+  readonly trabajando = signal('');
+
+  /** Las marcadas que siguen en la lista (un borrado o una recarga las quita). */
+  readonly marcadasCards = computed(() => {
+    const m = this.marcadas();
+    return this.all().filter((c) => m.has(c.answer.GUID));
+  });
+
+  /** Varias que se están reasignando; `null` si ninguna. */
+  readonly reasignandoVarias = signal<SurveyAnswer[] | null>(null);
+
+  /** Confirmación de borrado de varias: las que sí y por qué no las demás. */
+  readonly borrandoVarias = signal<{ aptas: ActivityCard[]; omitidas: string[] } | null>(null);
+
+  empezarSeleccion(card?: ActivityCard): void {
+    this.seleccionando.set(true);
+    if (card) this.marcadas.set(new Set([card.answer.GUID]));
+  }
+
+  salirDeSeleccion(): void {
+    this.seleccionando.set(false);
+    this.marcadas.set(new Set());
+  }
+
+  alternarSeleccion(): void {
+    if (this.seleccionando()) this.salirDeSeleccion();
+    else this.empezarSeleccion();
+  }
+
+  alternar(card: ActivityCard): void {
+    const m = new Set(this.marcadas());
+    if (m.has(card.answer.GUID)) m.delete(card.answer.GUID);
+    else m.add(card.answer.GUID);
+    this.marcadas.set(m);
+  }
+
+  /** Todas las visibles con el filtro actual; si ya lo están, ninguna. */
+  marcarTodas(): void {
+    const visibles = this.cards().map((c) => c.answer.GUID);
+    const todas = visibles.length > 0 && visibles.every((g) => this.marcadas().has(g));
+    this.marcadas.set(todas ? new Set() : new Set(visibles));
+  }
+
+  /** El clic de la ficha: abre, o marca en modo selección. */
+  onCardClick(card: ActivityCard): void {
+    if (this.seleccionando()) this.alternar(card);
+    else void this.open(card);
+  }
+
+  /**
+   * Pulsación larga en el teléfono (o clic derecho): entra a seleccionar con
+   * esa ya marcada. Es el gesto que se espera de una lista en el móvil.
+   */
+  onCardContext(event: Event, card: ActivityCard): void {
+    event.preventDefault();
+    if (this.seleccionando()) this.alternar(card);
+    else this.empezarSeleccion(card);
+  }
+
+  cancelarReasignar(): void {
+    this.reassigning.set(null);
+    this.reasignandoVarias.set(null);
+  }
+
+  private nombreDe(card: ActivityCard): string {
+    return card.answer.LocationName || card.descriptors[0]?.val || card.answer.Consecutive || 'Actividad';
+  }
+
+  async reprocesarVarias(): Promise<void> {
+    const lote = this.marcadasCards();
+    if (!lote.length || this.trabajando()) return;
+
+    this.trabajando.set('Marcando archivos…');
+    let archivos = 0;
+    try {
+      for (const card of lote) archivos += await this.activities.reprocessBinaries(card.answer.GUID);
+    } finally {
+      this.trabajando.set('');
+    }
+
+    this.toasts.success(
+      archivos === 0
+        ? 'Ninguna tenía archivos'
+        : archivos === 1
+          ? 'Se marcó 1 archivo para volver a subirse'
+          : `Se marcaron ${archivos} archivos para volver a subirse`,
+      lote.length === 1 ? 'De 1 actividad.' : `De ${lote.length} actividades.`,
+    );
+    this.salirDeSeleccion();
+  }
+
+  reasignarVarias(): void {
+    const lote = this.marcadasCards();
+    if (!lote.length || this.trabajando()) return;
+    this.reasignandoVarias.set(lote.map((c) => c.answer));
+  }
+
+  /**
+   * Revisa cuáles se pueden borrar —las mismas reglas que una sola: lo que
+   * prohíba el flujo y los archivos a medio subir— y pide confirmación.
+   */
+  async pedirEliminarVarias(): Promise<void> {
+    const lote = this.marcadasCards();
+    if (!lote.length || this.trabajando()) return;
+
+    this.trabajando.set('Revisando…');
+    const aptas: ActivityCard[] = [];
+    const omitidas: string[] = [];
+    try {
+      for (const card of lote) {
+        const prohibido = String(card.answer.NoEliminar ?? '').trim();
+        if (prohibido) {
+          omitidas.push(`${this.nombreDe(card)}: ${prohibido}`);
+          continue;
+        }
+        if (card.answer.eraser !== 1 && (await this.activities.countBlockingBinaries(card.answer.GUID)) > 0) {
+          omitidas.push(`${this.nombreDe(card)}: tiene archivos sin terminar de subir`);
+          continue;
+        }
+        aptas.push(card);
+      }
+    } finally {
+      this.trabajando.set('');
+    }
+
+    this.borrandoVarias.set({ aptas, omitidas });
+  }
+
+  readonly borrandoVariasTitulo = computed(() => {
+    const b = this.borrandoVarias();
+    if (!b) return '';
+    if (!b.aptas.length) return 'Ninguna se puede eliminar';
+    return b.aptas.length === 1 ? '¿Eliminar 1 actividad?' : `¿Eliminar ${b.aptas.length} actividades?`;
+  });
+
+  readonly borrandoVariasMensaje = computed(() =>
+    this.borrandoVarias()?.aptas.length
+      ? 'Se borrarán con los archivos que tengan asociados. Las que ya están en Visitrack también se borran allí. No se puede deshacer.'
+      : 'Ninguna de las seleccionadas cumple las condiciones para eliminarse.',
+  );
+
+  readonly borrandoVariasDetalle = computed(() => {
+    const b = this.borrandoVarias();
+    if (!b?.omitidas.length) return '';
+    const cuantas =
+      b.omitidas.length === 1 ? 'Esta no se puede eliminar' : `Estas ${b.omitidas.length} no se pueden eliminar`;
+    return `${cuantas}: ${b.omitidas.slice(0, 5).join(' · ')}${b.omitidas.length > 5 ? ' …' : ''}`;
+  });
+
+  async eliminarVarias(): Promise<void> {
+    const b = this.borrandoVarias();
+    this.borrandoVarias.set(null);
+    if (!b?.aptas.length) return;
+
+    this.trabajando.set(`Eliminando ${b.aptas.length}…`);
+    let hechas = 0;
+    let enVisitrack = 0;
+    const fallidas: string[] = [];
+    try {
+      for (const card of b.aptas) {
+        try {
+          const r = await this.activities.remove(card.answer);
+          hechas++;
+          if (r === 'flagged') enVisitrack++;
+        } catch (error) {
+          console.error('[Activities] no se pudo eliminar', error);
+          fallidas.push(`${this.nombreDe(card)}: no se pudo`);
+        }
+      }
+    } finally {
+      this.trabajando.set('');
+    }
+
+    if (hechas) {
+      this.toasts.success(
+        hechas === 1 ? '1 actividad eliminada' : `${hechas} actividades eliminadas`,
+        enVisitrack ? 'Las que ya estaban en Visitrack se borran allí en la próxima sincronización.' : undefined,
+      );
+    }
+    const sinHacer = [...b.omitidas, ...fallidas];
+    if (sinHacer.length) {
+      this.toasts.warning(
+        sinHacer.length === 1 ? '1 no se eliminó' : `${sinHacer.length} no se eliminaron`,
+        sinHacer.slice(0, 3).join(' · ') + (sinHacer.length > 3 ? ' …' : ''),
+      );
+    }
+    this.salirDeSeleccion();
   }
 
   private reassignBlocker(card: ActivityCard): string | undefined {

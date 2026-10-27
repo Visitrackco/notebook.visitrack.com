@@ -894,3 +894,120 @@
   color: var(--mat-sys-on-error-container, #7a1c1c);
   background: var(--mat-sys-error-container, #fde2e1);
 }
+
+// ── Selección de varias ──────────────────────────────────────────────────────
+
+.acts__check {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin-top: 2px;
+  color: #fff;
+  border: 2px solid var(--vt-border-strong);
+  border-radius: 6px;
+}
+
+.acts__card--marcada {
+  outline: 2px solid var(--vt-brand);
+  outline-offset: -2px;
+
+  .acts__check {
+    background: var(--vt-brand);
+    border-color: var(--vt-brand);
+  }
+}
+
+.acts__lote {
+  position: fixed;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  z-index: 50;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.9rem;
+  align-items: center;
+  justify-content: center;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  padding: 0.55rem 0.6rem 0.55rem 1rem;
+  color: var(--vt-text);
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-border);
+  border-radius: 16px;
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.2),
+    0 2px 6px rgba(0, 0, 0, 0.12);
+  transform: translateX(-50%);
+}
+
+.acts__lote-info {
+  font-size: var(--vt-text-sm);
+  white-space: nowrap;
+
+  strong {
+    font-size: var(--vt-text-md);
+  }
+}
+
+.acts__lote-trabajando {
+  color: var(--vt-text-subtle);
+}
+
+.acts__lote-botones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.acts__lote-btn {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+  padding: 0.45rem 0.8rem;
+  font: inherit;
+  font-size: var(--vt-text-sm);
+  font-weight: 650;
+  color: var(--vt-text);
+  white-space: nowrap;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--vt-border-strong);
+  border-radius: 10px;
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.45;
+  }
+}
+
+.acts__lote-btn--peligro {
+  color: #fff;
+  background: #c62828;
+  border-color: #c62828;
+}
+
+.acts__lote-cerrar {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  color: var(--vt-text-subtle);
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+}
+
+// En el teléfono, la barra ocupa el ancho y los botones solo llevan su ícono.
+@media (max-width: 600px) {
+  .acts__lote {
+    width: calc(100vw - 32px);
+  }
+
+  .acts__lote-btn span {
+    display: none;
+  }
+}
