@@ -5,6 +5,8 @@ import { environment } from '../../../environments/environment';
 import { ApiFetchService } from '../services/api-fetch.service';
 import { DatabaseService } from '../database/database.service';
 import { SurveyRepository } from '../repositories/entity.repositories';
+import { SurveyAnswerRepository } from '../repositories/survey-answer.repository';
+import { fechaDeConsigna } from '../../shared/utils/fecha-consigna';
 import { UserRepository } from '../repositories/user.repository';
 import { AlertSoundService } from '../services/alert-sound.service';
 import { DataRevisionService } from './data-revision.service';
@@ -90,6 +92,7 @@ export class SyncService {
   private readonly brillantexMail = inject(BrillantexMailService);
   private readonly users = inject(UserRepository);
   private readonly surveys = inject(SurveyRepository);
+  private readonly answers = inject(SurveyAnswerRepository);
   private readonly revisions = inject(DataRevisionService);
   private readonly sonidos = inject(AlertSoundService);
   private readonly connectivity = inject(ConnectivityService);
@@ -268,6 +271,7 @@ export class SyncService {
          */
         void this.sonidos.sonar(saved > 0 ? 'ok' : 'info');
 
+        await this.rellenarFechasDeConsignas(session.UserID);
         await this.markLastSync(session.UserID);
         return saved;
       } catch (error) {
@@ -786,6 +790,48 @@ export class SyncService {
       }
     } catch (error) {
       console.warn('[Sync] no se pudo pedir la fecha de los formularios', error);
+    }
+  }
+
+  /**
+   * Pone la fecha a las consignas que bajaron antes de que se guardara.
+   *
+   * Una consigna ya bajada no vuelve a bajar mientras no cambie en el
+   * servidor, así que las que llegaron antes de la 0.24.3 se quedarían sin
+   * fecha para siempre. Se reconocen porque no tienen el campo (`undefined`):
+   * las que bajan ahora lo traen, aunque sea vacío. Se piden a
+   * `/fechasConsignas` y se les escribe; a las que el servidor no devuelve se
+   * les pone vacío, para no volver a preguntar por ellas.
+   *
+   * Si el servidor no tiene el endpoint todavía, no se toca nada y se intenta
+   * en la siguiente descarga.
+   */
+  private async rellenarFechasDeConsignas(userId: string): Promise<void> {
+    try {
+      const sinFecha = (await this.answers.findByUser(userId)).filter(
+        (a) => a.Sheduled === '1' && a.DueDate === undefined && a.ID != null,
+      );
+      if (!sinFecha.length) return;
+
+      const base = environment.useLocalApi ? environment.localApiUrl : environment.apiUrl;
+      const reply = await this.api.fetch(`${base}/fechasConsignas`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ UserID: userId, GUIDs: sinFecha.map((a) => a.GUID) }),
+      });
+      if (!reply.ok) return;
+
+      const result = (await reply.json()) as { status?: boolean; response?: Record<string, unknown>[] };
+      if (result?.status !== true || !Array.isArray(result.response)) return;
+
+      const porGuid = new Map(result.response.map((r) => [String(r['GUID']).toLowerCase(), r]));
+
+      for (const a of sinFecha) {
+        const fila = porGuid.get(String(a.GUID).toLowerCase());
+        await this.answers.update(a.ID!, { DueDate: fila ? fechaDeConsigna(fila) : '' });
+      }
+    } catch (error) {
+      console.warn('[Sync] no se pudo pedir la fecha de las consignas', error);
     }
   }
 

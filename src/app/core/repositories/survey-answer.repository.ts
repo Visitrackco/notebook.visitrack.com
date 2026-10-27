@@ -64,6 +64,7 @@ export class SurveyAnswerRepository extends BaseRepository<SurveyAnswer> {
     'IsUpload',
     'LocationID',
     'AssetID',
+    'DueDate',
   ];
 
   override async put(item: SurveyAnswer): Promise<IDBValidKey> {
