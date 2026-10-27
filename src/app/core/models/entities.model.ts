@@ -227,6 +227,13 @@ export interface SurveyAnswer {
   Consecutive?: string;
 
   /**
+   * Para cuándo es la consigna, `YYYY-MM-DD HH:mm` en hora local de quien la
+   * hace. Vacío o ausente: no es consigna o bajó antes de guardarse. Ver
+   * `fechaDeConsigna`.
+   */
+  DueDate?: string;
+
+  /**
    * Por qué el flujo no deja eliminar esta actividad. Vacío o ausente: sí.
    *
    * Lo escribe el formulario cuando una regla `bloquear-eliminar` se cumple,

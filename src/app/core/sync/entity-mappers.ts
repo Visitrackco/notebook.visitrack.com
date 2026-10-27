@@ -16,6 +16,8 @@
  *   por definición, ya está en el servidor.
  */
 
+import { fechaDeConsigna } from '../../shared/utils/fecha-consigna';
+
 /** Códigos de entidad del backend. No son arbitrarios: los define `MOB_SyncByDevice`. */
 export const ENTITY_TO_STORE: Record<number, string> = {
   0: 'DispatchStatus',
@@ -502,6 +504,7 @@ const mapSurveyAnswer: Mapper = (r, userId) => ({
   Msg: '',
   eraser: 0,
   Consecutive: s(r['Consecutive']),
+  DueDate: fechaDeConsigna(r),
   VTEntityID: s(r['GUID']),
 });
 

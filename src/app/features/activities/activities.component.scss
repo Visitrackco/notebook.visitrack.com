@@ -498,6 +498,19 @@
   color: var(--vt-text-subtle);
 }
 
+.acts__due {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--vt-text-sm);
+  font-weight: 800;
+  color: var(--vt-text);
+
+  vt-icon {
+    color: var(--vt-brand);
+  }
+}
+
 .acts__tags {
   display: flex;
   flex-wrap: wrap;

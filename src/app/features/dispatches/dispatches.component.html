@@ -39,6 +39,14 @@
       </label>
     }
 
+    <label class="disp__filter">
+      <vt-icon name="timer" [size]="15" />
+
+      <select [value]="orden()" (change)="onOrdenPicked($event)" aria-label="Ordenar por">
+        <option value="programada">Ordenar por fecha programada</option>
+        <option value="recibida">Ordenar por fecha recibida</option>
+      </select>
+    </label>
   </div>
 
   @if (loading()) {
@@ -72,6 +80,15 @@
               </span>
 
               <span class="disp__name">{{ card.surveyTitle }}</span>
+
+              <!-- Para cuándo es, en negrilla: es lo primero que se busca al
+                   recibirla. -->
+              @if (card.dueLabel) {
+                <span class="disp__due">
+                  <vt-icon name="timer" [size]="14" />
+                  {{ card.dueLabel }}
+                </span>
+              }
 
               @if (card.place) {
                 <span class="disp__place">

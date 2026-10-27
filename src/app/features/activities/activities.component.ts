@@ -44,6 +44,7 @@ import {
 } from '../chat/compartir-en-sala/compartir-en-sala.component';
 import { ReassignDialogComponent } from './reassign-dialog/reassign-dialog.component';
 import { ZonaHorariaService } from '../../core/services/zona-horaria.service';
+import { etiquetaDeConsigna } from '../../shared/utils/fecha-consigna';
 import {
   ActionItem,
   ActivityAction,
@@ -63,6 +64,8 @@ export interface ActivityCard {
   created: string;
   /** GUID recortado para mostrar sin ocupar toda la línea. */
   shortGuid: string;
+  /** Para cuándo es, si es una consigna: «lun 2 nov · 8:00 a. m.». */
+  due: string;
 
   /**
    * Cuándo se retirará del equipo, si el formulario tiene regla de borrado.
@@ -84,7 +87,7 @@ export interface ActivityCard {
 }
 
 /** Por qué campo se ordena el listado. */
-type SortField = 'UpdatedOn' | 'CreatedOn';
+type SortField = 'UpdatedOn' | 'CreatedOn' | 'DueDate';
 
 /**
  * Actividades de un formulario.
@@ -285,6 +288,11 @@ export class ActivitiesComponent {
     return [...result].sort((a, b) => {
       const left = (a.answer[field] ?? '').toString();
       const right = (b.answer[field] ?? '').toString();
+
+      // Por fecha programada, las que no son consigna van al final en los dos
+      // sentidos: no tienen fecha, no van «antes» ni «después» de ninguna.
+      if (field === 'DueDate' && !left !== !right) return left ? -1 : 1;
+
       return descending ? right.localeCompare(left) : left.localeCompare(right);
     });
   });
@@ -563,6 +571,7 @@ export class ActivitiesComponent {
       updated: this.zona.comoTexto(answer.UpdatedOn, kFechaCorta),
       created: this.zona.comoTexto(answer.CreatedOn, kFechaCorta),
       shortGuid: shortenGuid(answer.GUID),
+      due: etiquetaDeConsigna(answer.DueDate),
       retires: expires ? timeLeft(expires) : '',
       borrador: this.cuantoLeQuedaAlBorrador(answer),
     };
@@ -908,7 +917,8 @@ export class ActivitiesComponent {
       return;
     }
     this.sortField.set(field);
-    this.sortDescending.set(true);
+    // La programada, lo más próximo primero; las demás, lo más reciente.
+    this.sortDescending.set(field !== 'DueDate');
   }
 
   clearFilters(): void {

@@ -253,6 +253,18 @@
                 <span class="acts__arrow">{{ sortDescending() ? '↓' : '↑' }}</span>
               }
             </button>
+            <button
+              mat-stroked-button
+              type="button"
+              [class.acts__sort--on]="sortField() === 'DueDate'"
+              (click)="setSort('DueDate')"
+              matTooltip="Fecha y hora de la consigna. Pulsa de nuevo para invertir el orden"
+            >
+              Programada
+              @if (sortField() === 'DueDate') {
+                <span class="acts__arrow">{{ sortDescending() ? '↓' : '↑' }}</span>
+              }
+            </button>
           </div>
         </div>
 
@@ -345,6 +357,15 @@
                     </span>
                   }
                 </span>
+
+                <!-- Para cuándo es la consigna, en negrilla: es lo primero que
+                     se busca al recibirla. -->
+                @if (card.due) {
+                  <span class="acts__due">
+                    <vt-icon name="timer" [size]="14" />
+                    {{ card.due }}
+                  </span>
+                }
 
                 <span class="acts__tags">
                   <span class="acts__state">{{ card.state.label }}</span>

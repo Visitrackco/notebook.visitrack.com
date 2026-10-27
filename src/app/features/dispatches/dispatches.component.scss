@@ -196,6 +196,19 @@
   color: var(--vt-text-subtle);
 }
 
+.disp__due {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--vt-text-sm);
+  font-weight: 800;
+  color: var(--vt-text);
+
+  vt-icon {
+    color: var(--vt-brand);
+  }
+}
+
 .disp__name {
   font-size: var(--vt-text-base);
   font-weight: 650;

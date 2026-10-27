@@ -15,6 +15,10 @@ import { IconComponent } from '../../shared/components/icon/icon.component';
 import { ToTopComponent } from '../../shared/components/to-top/to-top.component';
 import { NearEndDirective } from '../../shared/directives/near-end.directive';
 import { Descriptor, descriptorsMatch, parseAnswerTitles } from '../../shared/utils/descriptors';
+import { etiquetaDeConsigna } from '../../shared/utils/fecha-consigna';
+
+/** Cómo se ordena la lista. */
+type Orden = 'programada' | 'recibida';
 
 /** Una consigna, lista para pintar. */
 interface DispatchCard {
@@ -32,6 +36,10 @@ interface DispatchCard {
   /** Cuándo llegó. */
   received: string;
   receivedLabel: string;
+
+  /** Para cuándo es, `YYYY-MM-DD HH:mm`, y cómo se lee. Vacío si no trae. */
+  due: string;
+  dueLabel: string;
 
   descriptors: Descriptor[];
 
@@ -59,7 +67,8 @@ interface DispatchCard {
  * Hasta ahora quedaban repartidas dentro de cada formulario, mezcladas con las
  * actividades creadas por el propio usuario. Con tres formularios eso son tres
  * pantallas que revisar para saber qué hay pendiente, y ninguna responde la
- * pregunta completa. Aquí están todas, ordenadas por lo que llegó antes.
+ * pregunta completa. Aquí están todas, ordenadas por para cuándo son (o por
+ * lo que llegó antes, si se pide).
  *
  * ## Qué no se hace aquí
  *
@@ -90,6 +99,12 @@ export class DispatchesComponent {
   /** Filtro por formulario. Vacío es «todos». */
   readonly surveyFilter = signal('');
 
+  /**
+   * Por para cuándo es, lo más próximo primero: es lo que se busca al
+   * recibirlas. Las que no traen fecha van al final.
+   */
+  readonly orden = signal<Orden>('programada');
+
   private readonly all = signal<DispatchCard[]>([]);
   private readonly shown = signal(DispatchesComponent.PAGE);
 
@@ -114,12 +129,20 @@ export class DispatchesComponent {
     const needle = this.search().trim().toLowerCase();
     const survey = this.surveyFilter();
 
-    return this.all().filter((card) => {
-      if (survey && card.surveyTitle !== survey) return false;
-      if (!needle) return true;
+    const orden = this.orden();
 
-      return card.haystack.includes(needle) || descriptorsMatch(card.descriptors, needle);
-    });
+    return this.all()
+      .filter((card) => {
+        if (survey && card.surveyTitle !== survey) return false;
+        if (!needle) return true;
+
+        return card.haystack.includes(needle) || descriptorsMatch(card.descriptors, needle);
+      })
+      .sort((a, b) => {
+        if (orden === 'recibida') return (a.received || '').localeCompare(b.received || '');
+        if (!a.due !== !b.due) return a.due ? -1 : 1;
+        return a.due.localeCompare(b.due) || (a.received || '').localeCompare(b.received || '');
+      });
   });
 
   readonly visible = computed(() => this.matching().slice(0, this.shown()));
@@ -168,9 +191,8 @@ export class DispatchesComponent {
         answers
           // Lo que distingue una consigna: la asignó la plataforma.
           .filter((answer) => answer.Sheduled === '1' && answer.IsDelete !== '1')
-          .map((answer) => this.toCard(answer, byId, byDispatch))
-          // Lo que llegó antes, primero: es lo que lleva más tiempo esperando.
-          .sort((a, b) => (a.received || '').localeCompare(b.received || '')),
+          // El orden lo pone `matching`, según lo elegido.
+          .map((answer) => this.toCard(answer, byId, byDispatch)),
       );
     } catch (error) {
       console.error('[Consignas] no se pudieron cargar', error);
@@ -203,6 +225,9 @@ export class DispatchesComponent {
 
       received: answer.Received || answer.CreatedOn || '',
       receivedLabel: when(answer.Received || answer.CreatedOn || ''),
+
+      due: answer.DueDate || '',
+      dueLabel: etiquetaDeConsigna(answer.DueDate),
 
       // El primero es el nombre del formulario, que ya va como título.
       descriptors: titles.slice(1),
@@ -246,6 +271,11 @@ export class DispatchesComponent {
 
   onSurveyPicked(event: Event): void {
     this.surveyFilter.set((event.target as HTMLSelectElement).value);
+    this.reset();
+  }
+
+  onOrdenPicked(event: Event): void {
+    this.orden.set((event.target as HTMLSelectElement).value as Orden);
     this.reset();
   }
 
