@@ -9,6 +9,18 @@
         }
       </p>
     </div>
+
+    @if (hayConsignas()) {
+      <button
+        type="button"
+        class="disp__seleccionar"
+        [class.disp__seleccionar--on]="seleccionando()"
+        (click)="alternarSeleccion()"
+      >
+        <vt-icon [name]="seleccionando() ? 'close' : 'check'" [size]="16" />
+        {{ seleccionando() ? 'Cancelar' : 'Seleccionar' }}
+      </button>
+    }
   </header>
 
   <!-- Buscador y filtros se quedan arriba: con veinte consignas, cambiar de
@@ -59,11 +71,25 @@
     <ul class="disp__list">
       @for (card of visible(); track card.guid) {
         <li class="disp__row">
+          <!-- Seleccionando, el enlace se queda sin destino y el clic marca. -->
           <a
             class="disp__item"
             [class.disp__item--done]="card.done"
-            [routerLink]="['/formularios', card.surveyId, 'actividad', card.guid]"
+            [class.disp__item--marcada]="marcadas().has(card.guid)"
+            [routerLink]="seleccionando() ? null : ['/formularios', card.surveyId, 'actividad', card.guid]"
+            (click)="onItemClick(card)"
+            (contextmenu)="onItemContext($event, card)"
+            [attr.role]="seleccionando() ? 'checkbox' : null"
+            [attr.aria-checked]="seleccionando() ? marcadas().has(card.guid) : null"
           >
+            @if (seleccionando()) {
+              <span class="disp__check" aria-hidden="true">
+                @if (marcadas().has(card.guid)) {
+                  <vt-icon name="check" [size]="15" />
+                }
+              </span>
+            }
+
             <!-- El color del estado es el lenguaje con el que cada cliente
                  organiza su operación: va primero y ocupa el costado entero. -->
             <span class="disp__state" [style.background]="card.statusColor"></span>
@@ -116,7 +142,9 @@
               </span>
             }
 
-            <vt-icon name="chevron" [size]="18" class="disp__go" />
+            @if (!seleccionando()) {
+              <vt-icon name="chevron" [size]="18" class="disp__go" />
+            }
           </a>
 
           <!-- ── Lo que la plataforma adjuntó ──────────────────────────────
@@ -200,5 +228,82 @@
     </div>
   }
 </section>
+
+<!-- Barra de la selección: abajo y fija, donde va el pulgar. -->
+@if (seleccionando()) {
+  <div class="disp__lote" role="toolbar" aria-label="Acciones sobre las seleccionadas">
+    <div class="disp__lote-info">
+      <strong>{{ marcadasCards().length }}</strong>
+      {{ marcadasCards().length === 1 ? 'seleccionada' : 'seleccionadas' }}
+      @if (trabajando()) {
+        <span class="disp__lote-trabajando">· {{ trabajando() }}</span>
+      }
+    </div>
+
+    <div class="disp__lote-botones">
+      <button type="button" class="disp__lote-btn" (click)="marcarTodas()" [disabled]="!!trabajando()">
+        Todas
+      </button>
+      <button
+        type="button"
+        class="disp__lote-btn"
+        (click)="reprocesarVarias()"
+        [disabled]="!marcadasCards().length || !!trabajando()"
+        title="Vuelve a subir sus archivos"
+      >
+        <vt-icon name="cloud-upload" [size]="16" />
+        <span>Reprocesar archivos</span>
+      </button>
+      <button
+        type="button"
+        class="disp__lote-btn"
+        (click)="reasignarVarias()"
+        [disabled]="!marcadasCards().length || !!trabajando()"
+        title="Pasarlas a otro usuario"
+      >
+        <vt-icon name="send" [size]="16" />
+        <span>Reasignar</span>
+      </button>
+      <button
+        type="button"
+        class="disp__lote-btn disp__lote-btn--peligro"
+        (click)="pedirEliminarVarias()"
+        [disabled]="!marcadasCards().length || !!trabajando()"
+      >
+        <vt-icon name="trash" [size]="16" />
+        <span>Eliminar</span>
+      </button>
+      <button
+        type="button"
+        class="disp__lote-cerrar"
+        (click)="salirDeSeleccion()"
+        [disabled]="!!trabajando()"
+        aria-label="Dejar de seleccionar"
+      >
+        <vt-icon name="close" [size]="18" />
+      </button>
+    </div>
+  </div>
+}
+
+<vt-confirm-dialog
+  [open]="borrandoVarias() !== null"
+  tone="danger"
+  icon="trash"
+  [title]="borrandoVariasTitulo()"
+  [message]="borrandoVariasMensaje()"
+  [detail]="borrandoVariasDetalle()"
+  [confirmLabel]="borrandoVarias()?.aptas?.length ? 'Eliminar' : 'Entendido'"
+  cancelLabel="Conservar"
+  (confirm)="eliminarVarias()"
+  (cancel)="borrandoVarias.set(null)"
+/>
+
+<vt-reassign-dialog
+  [open]="reasignandoVarias() !== null"
+  [answers]="reasignandoVarias() ?? []"
+  (done)="onReassigned($event)"
+  (cancel)="reasignandoVarias.set(null)"
+/>
 
 <vt-to-top />

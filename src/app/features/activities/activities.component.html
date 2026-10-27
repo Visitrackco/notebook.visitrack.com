@@ -51,15 +51,16 @@
       </div>
 
       <div class="acts__header-actions">
+        <!-- Con texto y no solo el chulo: es la puerta a eliminar varias, y
+             como ícono suelto pasaba por adorno. -->
         <button
-          mat-icon-button
           type="button"
-          [class.acts__on]="seleccionando()"
+          class="acts__seleccionar"
+          [class.acts__seleccionar--on]="seleccionando()"
           (click)="alternarSeleccion()"
-          [matTooltip]="seleccionando() ? 'Dejar de seleccionar' : 'Seleccionar varias'"
-          [attr.aria-label]="seleccionando() ? 'Dejar de seleccionar' : 'Seleccionar varias'"
         >
-          <vt-icon name="check" [size]="20" />
+          <vt-icon [name]="seleccionando() ? 'close' : 'check'" [size]="16" />
+          <span>{{ seleccionando() ? 'Cancelar' : 'Seleccionar' }}</span>
         </button>
         <button
           mat-icon-button

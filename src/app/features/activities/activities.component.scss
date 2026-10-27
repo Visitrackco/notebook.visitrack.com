@@ -84,6 +84,29 @@
 }
 
 /* Botón de cabecera activo: toma el color del formulario. */
+.acts__seleccionar {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 0.35rem;
+  align-items: center;
+  align-self: center;
+  padding: 0.4rem 0.8rem;
+  margin-right: 0.25rem;
+  font: inherit;
+  font-size: var(--vt-text-sm);
+  font-weight: 650;
+  color: var(--vt-text);
+  cursor: pointer;
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-border-strong);
+  border-radius: 10px;
+}
+
+.acts__seleccionar--on {
+  color: var(--form-from);
+  border-color: var(--form-from);
+}
+
 .acts__on {
   color: var(--form-from) !important;
   background: color-mix(in srgb, var(--form-from) 12%, transparent) !important;

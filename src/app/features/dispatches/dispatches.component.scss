@@ -468,3 +468,149 @@
     padding: var(--vt-space-3) 8px;
   }
 }
+
+/* ── Selección de varias ──────────────────────────────────────────────────── */
+
+.disp__head {
+  display: flex;
+  gap: var(--vt-space-3);
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+/* Botón con texto, no solo un ícono: es la puerta a eliminar varias. */
+.disp__seleccionar {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 0.35rem;
+  align-items: center;
+  padding: 0.45rem 0.85rem;
+  font: inherit;
+  font-size: var(--vt-text-sm);
+  font-weight: 650;
+  color: var(--vt-text);
+  cursor: pointer;
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-border-strong);
+  border-radius: 10px;
+}
+
+.disp__seleccionar--on {
+  color: var(--vt-brand);
+  border-color: var(--vt-brand);
+}
+
+.disp__check {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin-top: 2px;
+  color: #fff;
+  border: 2px solid var(--vt-border-strong);
+  border-radius: 6px;
+}
+
+.disp__item--marcada {
+  outline: 2px solid var(--vt-brand);
+  outline-offset: -2px;
+
+  .disp__check {
+    background: var(--vt-brand);
+    border-color: var(--vt-brand);
+  }
+}
+
+.disp__lote {
+  position: fixed;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  z-index: 50;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.9rem;
+  align-items: center;
+  justify-content: center;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  padding: 0.55rem 0.6rem 0.55rem 1rem;
+  color: var(--vt-text);
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-border);
+  border-radius: 16px;
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.2),
+    0 2px 6px rgba(0, 0, 0, 0.12);
+  transform: translateX(-50%);
+}
+
+.disp__lote-info {
+  font-size: var(--vt-text-sm);
+  white-space: nowrap;
+
+  strong {
+    font-size: var(--vt-text-md);
+  }
+}
+
+.disp__lote-trabajando {
+  color: var(--vt-text-subtle);
+}
+
+.disp__lote-botones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.disp__lote-btn {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+  padding: 0.45rem 0.8rem;
+  font: inherit;
+  font-size: var(--vt-text-sm);
+  font-weight: 650;
+  color: var(--vt-text);
+  white-space: nowrap;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--vt-border-strong);
+  border-radius: 10px;
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.45;
+  }
+}
+
+.disp__lote-btn--peligro {
+  color: #fff;
+  background: #c62828;
+  border-color: #c62828;
+}
+
+.disp__lote-cerrar {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  color: var(--vt-text-subtle);
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+}
+
+/* En el teléfono, la barra ocupa el ancho y los botones solo llevan su ícono. */
+@media (max-width: 600px) {
+  .disp__lote {
+    width: calc(100vw - 32px);
+  }
+
+  .disp__lote-btn span {
+    display: none;
+  }
+}
