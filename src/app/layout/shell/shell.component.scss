@@ -941,29 +941,67 @@
 }
 
 /* Versión nueva publicada: barra amarilla fija arriba. */
+/* Aviso flotante, fijo arriba y centrado: no empuja el contenido ni se va
+   con el scroll, y se lee como un aviso y no como parte de la página. */
 .shell__version {
-  position: sticky;
-  top: 0;
-  z-index: 61;
+  position: fixed;
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  left: 50%;
+  z-index: 1000;
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.6rem;
+  gap: 0.75rem;
   align-items: center;
-  padding: 0.55rem 1rem;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  padding: 0.6rem 0.7rem 0.6rem 1rem;
   font-size: 0.88rem;
+  line-height: 1.35;
   color: #3d2e00;
   background: #ffd23f;
-  border-bottom: 1px solid #e0b100;
+  border: 1px solid #e0b100;
+  border-radius: 14px;
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.18),
+    0 2px 6px rgba(0, 0, 0, 0.12);
+  transform: translateX(-50%);
+  animation: shell-version-entra 0.22s cubic-bezier(0.32, 0.72, 0, 1);
 
-  span { flex: 1 1 16rem; }
+  vt-icon { flex-shrink: 0; }
+
+  span { min-width: 0; }
 
   button {
-    padding: 0.3rem 0.85rem;
+    flex-shrink: 0;
+    padding: 0.4rem 0.9rem;
     font: inherit;
     font-weight: 700;
+    white-space: nowrap;
     cursor: pointer;
-    border-radius: var(--vt-radius-sm);
+    border-radius: 9px;
   }
+}
+
+@keyframes shell-version-entra {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -12px);
+  }
+}
+
+/* En el teléfono el texto ocupa el ancho y los botones van debajo. */
+@media (max-width: 600px) {
+  .shell__version {
+    flex-wrap: wrap;
+    width: calc(100vw - 32px);
+
+    span { flex: 1 1 calc(100% - 2rem); }
+
+    .shell__version-si { margin-left: auto; }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shell__version { animation: none; }
 }
 
 .shell__version-si {
