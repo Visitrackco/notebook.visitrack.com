@@ -1,7 +1,9 @@
 import { Injectable, inject, signal } from '@angular/core';
 
 import { AnswerField, FormPage, parseAnswerFields } from '../forms/form-schema';
-import { SurveyAnswer } from '../models/entities.model';
+import { resolveCatalogOwnerId } from '../config/company-rules';
+import { DispatchStatus, SurveyAnswer } from '../models/entities.model';
+import { DispatchStatusRepository } from '../repositories/entity.repositories';
 import { SurveyAnswerRepository } from '../repositories/survey-answer.repository';
 import { AuthService } from '../services/auth.service';
 import { Indicator, evaluate } from './brillantex';
@@ -12,6 +14,15 @@ import { STATUS_RULES, statusFor } from './status-rules';
 /** Compañías con reglas propias al guardar. */
 const BRILLANTEX = 2259;
 const DIAMANTE = 2030;
+
+/**
+ * Las que, al validar, pasan **siempre** al estado de completada aunque ya
+ * tuvieran otro. Las demás solo lo reciben si no tenían estado.
+ */
+const COMPLETADA_SIEMPRE = [BRILLANTEX, 3502];
+
+/** `BaseStatusID` de los estados que la app trata como «sin cerrar». */
+const BASE_SIN_CERRAR = 3;
 
 /** El planeador de Brillantex, que no es una inspección sino planificación. */
 const PLANEADOR_SURVEY = '16681';
@@ -59,6 +70,7 @@ const CUBRIMIENTOS_SURVEYS = [
 export class CompanyLogicService {
   private readonly answers = inject(SurveyAnswerRepository);
   private readonly auth = inject(AuthService);
+  private readonly estados = inject(DispatchStatusRepository);
 
   /**
    * Lo último que una regla quiso decirle al usuario.
@@ -79,6 +91,7 @@ export class CompanyLogicService {
     answer: SurveyAnswer,
     fields: readonly AnswerField[],
     pages: readonly FormPage[] = [],
+    incomplete = false,
   ): Promise<string | null> {
     const user = this.auth.currentUser();
 
@@ -104,6 +117,10 @@ export class CompanyLogicService {
         return await this.runCubrimientos(answer, fields);
       }
 
+      // «Guardar de todos modos» en la app solo pasa por Brillantex y
+      // Diamante: las reglas de tabla (Inverpack) esperan al guardado válido.
+      if (incomplete) return null;
+
       return await this.runTable(answer, company, survey, fields);
     } catch (error) {
       // Una regla que falla no puede impedir que la actividad quede guardada:
@@ -111,6 +128,82 @@ export class CompanyLogicService {
       console.error('[Reglas] no se pudo aplicar la regla de la compañía', error);
       return null;
     }
+  }
+
+  // ── Estado de completada ──────────────────────────────────────────────────
+
+  /**
+   * El estado de despacho «completado» al guardar sin obligatorios pendientes.
+   *
+   * Es lo que hace la app en `formInterface.dart` justo antes de los procesos
+   * de cada compañía, para **todas** las compañías que tengan un estado con
+   * `IsCompleted`:
+   *
+   * - Si la actividad no tiene estado (o el suyo no está en el catálogo, o es
+   *   de base «sin cerrar»), recibe el de completada —salvo que ya tuviera
+   *   uno, que se conserva—. En la práctica: sin estado → completada.
+   * - Brillantex y 3502 pasan a completada aunque ya tuvieran otro.
+   * - El Planeador de Brillantex no se toca: su estado lo decide su regla.
+   *
+   * Va antes de [onSaved], igual que en la app: la regla de la compañía
+   * (Inverpack, por ejemplo) decide después y manda sobre esto.
+   *
+   * @returns el estado que quedó, o `null` si no cambió.
+   */
+  async completarEstado(answer: SurveyAnswer): Promise<string | null> {
+    const user = this.auth.currentUser();
+    if (!user || answer.ID == null) return null;
+
+    const company = Number(user.CompanyID);
+
+    try {
+      const catalogo = await this.estados.findByUser(resolveCatalogOwnerId(user));
+      const completada = catalogo.find((s) => Number(s.IsCompleted) === 1);
+      if (!completada) return null;
+
+      const fresh = (await this.answers.findByGuid(answer.GUID)) ?? answer;
+      const actual = String(fresh.Status ?? '').trim();
+      const meta = String(completada.DispatchID);
+
+      // Como `getDispatchStatusAnswer` en la app: el estado se busca entre
+      // los del propio usuario, no en el catálogo compartido.
+      const propios =
+        resolveCatalogOwnerId(user) === Number(user.UserID)
+          ? catalogo
+          : await this.estados.findByUser(Number(user.UserID));
+      const cerrado = this.tieneEstadoCerrado(actual, propios);
+
+      let nuevo: string | null = null;
+
+      if (!cerrado) {
+        if (company === BRILLANTEX && String(fresh.SurveyID) === PLANEADOR_SURVEY && actual !== meta) {
+          return null;
+        }
+        nuevo = actual || meta;
+      } else if (COMPLETADA_SIEMPRE.includes(company)) {
+        nuevo = meta;
+      }
+
+      if (!nuevo || nuevo === actual) return null;
+
+      await this.answers.update(answer.ID, { Status: nuevo, UpdatedOn: new Date().toISOString() });
+      this.log('Estado de completada', nuevo, actual ? `antes ${actual}` : 'no tenía estado');
+      return nuevo;
+    } catch (error) {
+      console.error('[Reglas] no se pudo poner el estado de completada', error);
+      return null;
+    }
+  }
+
+  /** `getDispatchStatusAnswer` de la app: ¿tiene un estado conocido y no «sin cerrar»? */
+  private tieneEstadoCerrado(actual: string, catalogo: readonly DispatchStatus[]): boolean {
+    const id = Number(actual);
+    if (!actual || !Number.isFinite(id) || id < 0) return false;
+
+    const estado = catalogo.find((s) => Number(s.DispatchID) === id);
+    if (!estado) return false;
+
+    return Number(estado.BaseStatusID) !== BASE_SIN_CERRAR;
   }
 
   // ── Reglas declarativas ───────────────────────────────────────────────────

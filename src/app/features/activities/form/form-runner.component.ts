@@ -3071,14 +3071,26 @@ ${enlace.url}`)) abrir();
        * entre en la cola de subida: al revés, podría salir con el estado
        * anterior. Ver `core/rules/company-logic.service.ts`.
        */
+      /*
+       * Primero el estado de completada, si se guardó sin obligatorios
+       * pendientes —lo que la app hace con todas las compañías antes de sus
+       * procesos—, y luego la regla propia, que manda sobre él.
+       */
+      let estadoNuevo = incomplete ? null : await this.companyLogic.completarEstado(answer);
+
       const engineForRules = this.engine();
       if (engineForRules) {
-        await this.companyLogic.onSaved(
-          answer,
-          engineForRules.toAnswerFields(),
-          engineForRules.pages,
-        );
+        estadoNuevo =
+          (await this.companyLogic.onSaved(
+            answer,
+            engineForRules.toAnswerFields(),
+            engineForRules.pages,
+            incomplete,
+          )) ?? estadoNuevo;
       }
+
+      // La cabecera de la actividad enseña el estado: que se entere.
+      if (estadoNuevo) this.statusChanged.emit(estadoNuevo);
 
       /*
        * Lo que el flujo pidió hacer con la actividad.
