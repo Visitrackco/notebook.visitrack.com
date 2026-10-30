@@ -6,10 +6,10 @@ import { AuthService } from '../../../core/services/auth.service';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
 
 /**
- * La puerta de «Entrar como» abierto desde Module: `#/entrar-como?codigo=…`.
+ * La puerta de «Entrar como» abierto desde Module: `#/entrar-como?pase=…`.
  *
  * Module > Configuración > Usuarios abre esta dirección en una pestaña nueva
- * con un código de un solo uso que vence al minuto. Aquí se canjea
+ * con un pase firmado de un solo uso que vence al minuto. Aquí se canjea
  * (`AuthService.canjearEntrarComo`) y, si vale, se sigue a la descarga como
  * tras un inicio de sesión normal.
  *
@@ -17,7 +17,7 @@ import { IconComponent } from '../../../shared/components/icon/icon.component';
  * este navegador, o quien tiene otra: se reemplaza, como en cualquier inicio
  * de sesión. Lo que queda es una sesión normal del usuario, sin franja.
  *
- * El código se quita de la dirección **antes** de canjearlo: no debe quedar en
+ * El pase se quita de la dirección **antes** de canjearlo: no debe quedar en
  * el historial ni en la barra, aunque ya no sirva para nada después.
  */
 @Component({
@@ -103,12 +103,12 @@ export class EntrarComoComponent implements OnInit {
   readonly error = signal('');
 
   async ngOnInit(): Promise<void> {
-    const codigo = this.route.snapshot.queryParamMap.get('codigo') ?? '';
+    const pase = this.route.snapshot.queryParamMap.get('pase') ?? '';
 
     // Fuera de la barra y del historial antes de nada.
     this.location.replaceState('/entrar-como');
 
-    const res = await this.auth.canjearEntrarComo(codigo);
+    const res = await this.auth.canjearEntrarComo(pase);
 
     if (!res.success) {
       this.error.set(res.message ?? 'El enlace no es válido o ya venció.');

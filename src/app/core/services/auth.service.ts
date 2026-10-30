@@ -625,10 +625,10 @@ export class AuthService {
   }
 
   /**
-   * «Entrar como» abierto desde Module: canjea el código de un solo uso.
+   * «Entrar como» abierto desde Module: canjea el pase de un solo uso.
    *
    * Module > Configuración > Usuarios abre en una pestaña nueva
-   * `#/entrar-como?codigo=…`. El código lo creó cloud-gold (60 s, un uso) tras
+   * `#/entrar-como?pase=…`. El pase lo firmó cloud-gold (JWT de 60 s, un uso) tras
    * comprobar que quien lo pidió es superadministrador; cloud-server lo canjea
    * (`POST /impersonate/canje`, pública), vuelve a comprobar las reglas y
    * devuelve la sesión del destino con la misma forma que `enterAs`.
@@ -642,14 +642,14 @@ export class AuthService {
    * No dispara las reglas de geocerca «al iniciar sesión»: quien entra es el
    * administrador, no el usuario.
    */
-  async canjearEntrarComo(codigo: string): Promise<LoginResult> {
-    const limpio = (codigo ?? '').trim();
-    if (!limpio) return { success: false, message: 'El enlace no trae ningún código.' };
+  async canjearEntrarComo(pase: string): Promise<LoginResult> {
+    const limpio = (pase ?? '').trim();
+    if (!limpio) return { success: false, message: 'El enlace no trae el pase para entrar.' };
 
     try {
       const response = await firstValueFrom(
         this.api.post<LoginResponse>('/impersonate/canje', {
-          codigo: limpio,
+          pase: limpio,
           deviceid: this.device.getDeviceId(),
           devicename: this.device.getDeviceInfo().description,
         }),

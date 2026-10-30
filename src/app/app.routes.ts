@@ -40,10 +40,10 @@ export const routes: Routes = [
       import('./features/auth/loading/loading.component').then((m) => m.LoadingComponent),
   },
   /**
-   * «Entrar como» abierto desde Module: `#/entrar-como?codigo=<código>`.
+   * «Entrar como» abierto desde Module: `#/entrar-como?pase=<pase>`.
    *
    * Sin guardia: la abre un navegador sin sesión —o con otra, que se
-   * reemplaza—. El código es de un solo uso y vence al minuto; se canjea en
+   * reemplaza—. El pase es de un solo uso y vence al minuto; se canjea en
    * cloud-server. Ver `EntrarComoComponent` y `AuthService.canjearEntrarComo`.
    */
   {
