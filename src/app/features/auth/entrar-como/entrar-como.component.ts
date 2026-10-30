@@ -14,7 +14,8 @@ import { IconComponent } from '../../../shared/components/icon/icon.component';
  * tras un inicio de sesión normal.
  *
  * Fuera del armazón y **sin guardia**: llega quien todavía no tiene sesión en
- * este navegador, o quien tiene otra (se reemplaza; la franja lo avisa).
+ * este navegador, o quien tiene otra: se reemplaza, como en cualquier inicio
+ * de sesión. Lo que queda es una sesión normal del usuario, sin franja.
  *
  * El código se quita de la dirección **antes** de canjearlo: no debe quedar en
  * el historial ni en la barra, aunque ya no sirva para nada después.

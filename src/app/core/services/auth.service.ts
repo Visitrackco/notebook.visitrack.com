@@ -93,46 +93,19 @@ export class AuthService {
   readonly impersonatingName = signal<string>(this.readImp('name'));
   readonly isImpersonating = computed(() => this.impersonatingAdmin() !== '');
 
-  /**
-   * Si la suplantación llegó por el enlace de Module (`canjearEntrarComo`).
-   *
-   * En ese caso la cuenta del administrador **no está** en este navegador: no
-   * hay a dónde volver, así que «Salir» cierra la sesión. Ver
-   * `exitImpersonation`.
-   */
-  readonly impersonacionPorEnlace = signal<boolean>(this.readImp('enlace') === '1');
-
-  /**
-   * El login de la cuenta que estaba abierta en este navegador cuando llegó el
-   * enlace de Module, si había otra. Solo para avisarlo en la franja: esa
-   * cuenta sigue guardada aquí, pero ya no es la activa.
-   */
-  readonly impersonacionReemplazo = signal<string>(this.readImp('previa'));
-
   private static readonly IMP_ADMIN = 'visitrack.imp.admin';
   private static readonly IMP_NAME = 'visitrack.imp.name';
-  private static readonly IMP_ENLACE = 'visitrack.imp.enlace';
-  private static readonly IMP_PREVIA = 'visitrack.imp.previa';
 
-  private readImp(cual: 'admin' | 'name' | 'enlace' | 'previa'): string {
+  private readImp(cual: 'admin' | 'name'): string {
     try {
-      const k = {
-        admin: AuthService.IMP_ADMIN,
-        name: AuthService.IMP_NAME,
-        enlace: AuthService.IMP_ENLACE,
-        previa: AuthService.IMP_PREVIA,
-      }[cual];
+      const k = cual === 'admin' ? AuthService.IMP_ADMIN : AuthService.IMP_NAME;
       return localStorage.getItem(k) ?? '';
     } catch {
       return '';
     }
   }
 
-  private writeImp(
-    adminLogin: string,
-    name: string,
-    porEnlace: { previa: string } | null = null,
-  ): void {
+  private writeImp(adminLogin: string, name: string): void {
     try {
       if (adminLogin) {
         localStorage.setItem(AuthService.IMP_ADMIN, adminLogin);
@@ -141,20 +114,11 @@ export class AuthService {
         localStorage.removeItem(AuthService.IMP_ADMIN);
         localStorage.removeItem(AuthService.IMP_NAME);
       }
-      if (adminLogin && porEnlace) {
-        localStorage.setItem(AuthService.IMP_ENLACE, '1');
-        localStorage.setItem(AuthService.IMP_PREVIA, porEnlace.previa);
-      } else {
-        localStorage.removeItem(AuthService.IMP_ENLACE);
-        localStorage.removeItem(AuthService.IMP_PREVIA);
-      }
     } catch {
       // Sin almacenamiento la suplantación sigue en memoria durante la sesión.
     }
     this.impersonatingAdmin.set(adminLogin);
     this.impersonatingName.set(name);
-    this.impersonacionPorEnlace.set(!!(adminLogin && porEnlace));
-    this.impersonacionReemplazo.set(adminLogin && porEnlace ? porEnlace.previa : '');
   }
 
   /** Nombre completo del usuario activo. */
@@ -669,21 +633,22 @@ export class AuthService {
    * (`POST /impersonate/canje`, pública), vuelve a comprobar las reglas y
    * devuelve la sesión del destino con la misma forma que `enterAs`.
    *
-   * Se guarda como un inicio de sesión normal del destino, sin contraseña, y
-   * marcada como suplantada **por enlace**: aquí no está la cuenta del
-   * administrador, así que «Salir» cierra la sesión. Si en este navegador
-   * había otra cuenta activa, deja de serlo (sigue guardada) y la franja lo
-   * avisa.
+   * Se guarda como un **inicio de sesión normal** del destino, sin contraseña
+   * y sin franja de suplantación: la sesión que hubiera en este navegador se
+   * reemplaza, igual que al entrar con usuario y contraseña. Lo que queda de
+   * quién la abrió está en el servidor (`ImpersonatedBy` de la sesión y
+   * `md_impersonaciones`).
+   *
+   * No dispara las reglas de geocerca «al iniciar sesión»: quien entra es el
+   * administrador, no el usuario.
    */
   async canjearEntrarComo(codigo: string): Promise<LoginResult> {
     const limpio = (codigo ?? '').trim();
     if (!limpio) return { success: false, message: 'El enlace no trae ningún código.' };
 
-    const previa = this.currentUser();
-
     try {
       const response = await firstValueFrom(
-        this.api.post<LoginResponse & { impersonatedBy?: { login?: string } }>('/impersonate/canje', {
+        this.api.post<LoginResponse>('/impersonate/canje', {
           codigo: limpio,
           deviceid: this.device.getDeviceId(),
           devicename: this.device.getDeviceInfo().description,
@@ -708,9 +673,9 @@ export class AuthService {
         console.warn('[Auth] No se pudieron guardar los permisos del destino', error);
       }
 
-      const admin = response.impersonatedBy?.login || 'administrador';
-      const reemplazada = previa && previa.UserID !== user.UserID ? previa.Login : '';
-      this.writeImp(admin, fullName(user) || login, { previa: reemplazada });
+      // Sesión normal: si quedaba una franja de un «Entrar como» anterior del
+      // perfil, ya no aplica.
+      this.writeImp('', '');
       this.sessionEndedReason.set('');
       void this.loadCompanyLogo(user.CompanyID, user.UserID);
 
@@ -726,19 +691,8 @@ export class AuthService {
    *
    * Su cuenta sigue guardada en este navegador, así que basta con reactivarla.
    * Devuelve el login del administrador, o '' si no había suplantación.
-   *
-   * Si se entró con el enlace de Module (`canjearEntrarComo`), la cuenta del
-   * administrador no está aquí: se cierra la sesión y se devuelve '' (el
-   * armazón lleva entonces al inicio de sesión).
    */
   async exitImpersonation(): Promise<string> {
-    if (this.impersonacionPorEnlace()) {
-      // `logout` limpia la franja al final; antes la necesita puesta para no
-      // disparar las reglas «al cerrar sesión» del usuario.
-      await this.logout();
-      return '';
-    }
-
     const admin = this.impersonatingAdmin();
     this.writeImp('', '');
 
