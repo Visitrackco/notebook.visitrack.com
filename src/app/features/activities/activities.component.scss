@@ -573,68 +573,42 @@
 }
 
 /**
- * Descriptivos como una planilla.
+ * Descriptivos: la etiqueta arriba y el valor debajo.
  *
- * Etiqueta a la izquierda, valor a la derecha y una guía de puntos entre
- * ambos. Es la disposición de un formato en papel, y es la que mejor aguanta
- * una fila ancha: por lejos que quede el valor de su etiqueta, la línea lleva
- * la vista hasta él. Alinear ambos a la izquierda deja al ojo saltando entre
- * columnas irregulares.
+ * Antes iban lado a lado, con una guía de puntos entre ambos, y el valor
+ * tenía como mucho la mitad del ancho: los largos se partían en tres palabras
+ * por línea y la ficha se veía apretada. Uno debajo del otro, el valor usa el
+ * ancho completo de su casilla.
  *
  * Dos pares por fila cuando hay sitio. `auto-fill` y no `auto-fit`: con
  * `auto-fit`, un solo descriptivo se estiraría a lo ancho de toda la ficha.
  */
 .acts__descriptors {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
   gap: 0 var(--vt-space-6);
   padding-top: 4px;
 }
 
 .acts__descriptor {
   display: flex;
-  gap: 8px;
-  align-items: baseline;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
   padding: 6px 0;
 }
 
-/**
- * La etiqueta crece y su pseudo-elemento rellena el hueco con puntos.
- *
- * Es la guía de un índice, y hace el trabajo que en una fila ancha no puede
- * hacer la proximidad: por lejos que quede el valor de su etiqueta, la línea
- * lleva la vista hasta él sin que haya que contar columnas.
- */
 .acts__descriptor-label {
-  display: flex;
-  flex: 1;
-  gap: 8px;
-  align-items: baseline;
-  min-width: 0;
   font-size: 11px;
   font-weight: 600;
   color: var(--vt-text-subtle);
   text-transform: uppercase;
   letter-spacing: 0.03em;
-
-  &::after {
-    content: '';
-    flex: 1;
-    min-width: 14px;
-    border-bottom: 1px dotted var(--vt-rule-strong);
-
-    /* Los puntos se alinean con la línea base del texto, no con su borde
-       inferior: si no, la guía cae por debajo y parece un subrayado suelto. */
-    transform: translateY(-3px);
-  }
 }
 
 .acts__descriptor-value {
-  flex-shrink: 0;
-  max-width: 55%;
   font-size: var(--vt-text-sm);
   font-weight: 550;
-  text-align: right;
   overflow-wrap: anywhere;
 }
 
