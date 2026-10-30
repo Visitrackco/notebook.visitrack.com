@@ -40,6 +40,19 @@ export const routes: Routes = [
       import('./features/auth/loading/loading.component').then((m) => m.LoadingComponent),
   },
   /**
+   * «Entrar como» abierto desde Module: `#/entrar-como?codigo=<código>`.
+   *
+   * Sin guardia: la abre un navegador sin sesión —o con otra, que se
+   * reemplaza—. El código es de un solo uso y vence al minuto; se canjea en
+   * cloud-server. Ver `EntrarComoComponent` y `AuthService.canjearEntrarComo`.
+   */
+  {
+    path: 'entrar-como',
+    title: 'Entrando · Visitrack',
+    loadComponent: () =>
+      import('./features/auth/entrar-como/entrar-como.component').then((m) => m.EntrarComoComponent),
+  },
+  /**
    * La puerta de un enlace público: `#/e/<guid>`.
    *
    * Fuera del armazón y **sin guardia de sesión**, que es toda la gracia: aquí

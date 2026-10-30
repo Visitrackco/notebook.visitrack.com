@@ -402,11 +402,14 @@ export class ShellComponent {
     }
   }
 
-  /** Vuelve a la cuenta del administrador tras «Entrar como». */
+  /**
+   * Vuelve a la cuenta del administrador tras «Entrar como», o cierra la
+   * sesión si se entró con el enlace de Module (no hay cuenta a la que volver).
+   */
   async salirDeImpersonacion(): Promise<void> {
     const admin = await this.auth.exitImpersonation();
     // La cuenta del administrador ya estaba en este navegador: a su inicio,
-    // sin volver a descargar nada.
+    // sin volver a descargar nada. Sin ella (enlace de Module), al login.
     await this.router.navigateByUrl(admin ? '/inicio' : '/login');
   }
 

@@ -93,19 +93,46 @@ export class AuthService {
   readonly impersonatingName = signal<string>(this.readImp('name'));
   readonly isImpersonating = computed(() => this.impersonatingAdmin() !== '');
 
+  /**
+   * Si la suplantación llegó por el enlace de Module (`canjearEntrarComo`).
+   *
+   * En ese caso la cuenta del administrador **no está** en este navegador: no
+   * hay a dónde volver, así que «Salir» cierra la sesión. Ver
+   * `exitImpersonation`.
+   */
+  readonly impersonacionPorEnlace = signal<boolean>(this.readImp('enlace') === '1');
+
+  /**
+   * El login de la cuenta que estaba abierta en este navegador cuando llegó el
+   * enlace de Module, si había otra. Solo para avisarlo en la franja: esa
+   * cuenta sigue guardada aquí, pero ya no es la activa.
+   */
+  readonly impersonacionReemplazo = signal<string>(this.readImp('previa'));
+
   private static readonly IMP_ADMIN = 'visitrack.imp.admin';
   private static readonly IMP_NAME = 'visitrack.imp.name';
+  private static readonly IMP_ENLACE = 'visitrack.imp.enlace';
+  private static readonly IMP_PREVIA = 'visitrack.imp.previa';
 
-  private readImp(cual: 'admin' | 'name'): string {
+  private readImp(cual: 'admin' | 'name' | 'enlace' | 'previa'): string {
     try {
-      const k = cual === 'admin' ? AuthService.IMP_ADMIN : AuthService.IMP_NAME;
+      const k = {
+        admin: AuthService.IMP_ADMIN,
+        name: AuthService.IMP_NAME,
+        enlace: AuthService.IMP_ENLACE,
+        previa: AuthService.IMP_PREVIA,
+      }[cual];
       return localStorage.getItem(k) ?? '';
     } catch {
       return '';
     }
   }
 
-  private writeImp(adminLogin: string, name: string): void {
+  private writeImp(
+    adminLogin: string,
+    name: string,
+    porEnlace: { previa: string } | null = null,
+  ): void {
     try {
       if (adminLogin) {
         localStorage.setItem(AuthService.IMP_ADMIN, adminLogin);
@@ -114,11 +141,20 @@ export class AuthService {
         localStorage.removeItem(AuthService.IMP_ADMIN);
         localStorage.removeItem(AuthService.IMP_NAME);
       }
+      if (adminLogin && porEnlace) {
+        localStorage.setItem(AuthService.IMP_ENLACE, '1');
+        localStorage.setItem(AuthService.IMP_PREVIA, porEnlace.previa);
+      } else {
+        localStorage.removeItem(AuthService.IMP_ENLACE);
+        localStorage.removeItem(AuthService.IMP_PREVIA);
+      }
     } catch {
       // Sin almacenamiento la suplantación sigue en memoria durante la sesión.
     }
     this.impersonatingAdmin.set(adminLogin);
     this.impersonatingName.set(name);
+    this.impersonacionPorEnlace.set(!!(adminLogin && porEnlace));
+    this.impersonacionReemplazo.set(adminLogin && porEnlace ? porEnlace.previa : '');
   }
 
   /** Nombre completo del usuario activo. */
@@ -502,8 +538,14 @@ export class AuthService {
      * sesión revocada cloud-gold ya no acepta el evento. Es lo único que se
      * espera, y con tope —8 s, solo si hay alguna regla de ese momento—:
      * cerrar sesión no puede quedarse colgado esperando al GPS.
+     *
+     * No durante «Entrar como»: quien cierra es el administrador, no el
+     * usuario, y sus reglas no deben dispararse por una visita de soporte (por
+     * lo mismo `enterAs` no avisa «al iniciar sesión»).
      */
-    await this.momentosApp.avisarYEsperar('sesion-cerrar', null, 8000);
+    if (!this.isImpersonating()) {
+      await this.momentosApp.avisarYEsperar('sesion-cerrar', null, 8000);
+    }
 
     /**
      * Se avisa al servidor para que cierre la sesión de verdad.
@@ -525,6 +567,10 @@ export class AuthService {
     await this.users.closeSession();
     this.currentUser.set(null);
     this.logo.clear();
+
+    // Si se estaba viendo una cuenta ajena, la franja se va con la sesión: si
+    // no, la siguiente cuenta que entre aparecería como suplantada.
+    this.writeImp('', '');
 
     // La zona era de quien se va. Dejándola puesta, a la siguiente cuenta que
     // entre se le pintarían las horas con la zona de la anterior hasta que el
@@ -615,12 +661,84 @@ export class AuthService {
   }
 
   /**
+   * «Entrar como» abierto desde Module: canjea el código de un solo uso.
+   *
+   * Module > Configuración > Usuarios abre en una pestaña nueva
+   * `#/entrar-como?codigo=…`. El código lo creó cloud-gold (60 s, un uso) tras
+   * comprobar que quien lo pidió es superadministrador; cloud-server lo canjea
+   * (`POST /impersonate/canje`, pública), vuelve a comprobar las reglas y
+   * devuelve la sesión del destino con la misma forma que `enterAs`.
+   *
+   * Se guarda como un inicio de sesión normal del destino, sin contraseña, y
+   * marcada como suplantada **por enlace**: aquí no está la cuenta del
+   * administrador, así que «Salir» cierra la sesión. Si en este navegador
+   * había otra cuenta activa, deja de serlo (sigue guardada) y la franja lo
+   * avisa.
+   */
+  async canjearEntrarComo(codigo: string): Promise<LoginResult> {
+    const limpio = (codigo ?? '').trim();
+    if (!limpio) return { success: false, message: 'El enlace no trae ningún código.' };
+
+    const previa = this.currentUser();
+
+    try {
+      const response = await firstValueFrom(
+        this.api.post<LoginResponse & { impersonatedBy?: { login?: string } }>('/impersonate/canje', {
+          codigo: limpio,
+          deviceid: this.device.getDeviceId(),
+          devicename: this.device.getDeviceInfo().description,
+        }),
+      );
+
+      const data = response?.response ?? response?.body;
+      if (!response?.status || !data) {
+        return { success: false, message: response?.error ?? response?.message ?? 'No se pudo entrar a la cuenta.' };
+      }
+
+      const login = String((data as { Login?: string }).Login ?? '').trim().toLowerCase();
+      if (!login) return { success: false, message: 'La respuesta del servidor llegó incompleta.' };
+
+      // La cuenta destino, sin contraseña: no la conocemos ni hace falta.
+      const user = await this.persistFromResponse(login, '', data);
+      this.currentUser.set(user);
+
+      try {
+        await this.savePermissions(user.UserID, data);
+      } catch (error) {
+        console.warn('[Auth] No se pudieron guardar los permisos del destino', error);
+      }
+
+      const admin = response.impersonatedBy?.login || 'administrador';
+      const reemplazada = previa && previa.UserID !== user.UserID ? previa.Login : '';
+      this.writeImp(admin, fullName(user) || login, { previa: reemplazada });
+      this.sessionEndedReason.set('');
+      void this.loadCompanyLogo(user.CompanyID, user.UserID);
+
+      return { success: true };
+    } catch (error) {
+      const apiError = error as ApiError;
+      return { success: false, message: apiError?.message ?? 'No se pudo entrar a la cuenta.' };
+    }
+  }
+
+  /**
    * Vuelve a la cuenta del administrador tras «Entrar como».
    *
    * Su cuenta sigue guardada en este navegador, así que basta con reactivarla.
    * Devuelve el login del administrador, o '' si no había suplantación.
+   *
+   * Si se entró con el enlace de Module (`canjearEntrarComo`), la cuenta del
+   * administrador no está aquí: se cierra la sesión y se devuelve '' (el
+   * armazón lleva entonces al inicio de sesión).
    */
   async exitImpersonation(): Promise<string> {
+    if (this.impersonacionPorEnlace()) {
+      // `logout` limpia la franja al final; antes la necesita puesta para no
+      // disparar las reglas «al cerrar sesión» del usuario.
+      await this.logout();
+      return '';
+    }
+
     const admin = this.impersonatingAdmin();
     this.writeImp('', '');
 
