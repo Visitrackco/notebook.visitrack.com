@@ -655,8 +655,14 @@ export class EncargosDelFlujoService {
    *
    * Vienen ya escritos del motor —las variables resueltas y escapadas— así que
    * aquí no hay nada que leer del formulario.
+   *
+   * Devuelve el texto «mientras se envía» de la regla (`mensajeEnviando`) del
+   * primero que de verdad quedó apuntado, para que la pantalla lo enseñe al
+   * guardar. Vacío si no hay ninguno nuevo o la regla no escribió ninguno: uno
+   * que ya estaba pedido no se está enviando ahora.
    */
-  async apuntarLosCorreos(engine: FormEngine, answer: SurveyAnswer, incompleta: boolean): Promise<void> {
+  async apuntarLosCorreos(engine: FormEngine, answer: SurveyAnswer, incompleta: boolean): Promise<string> {
+    let enviando = '';
 
     for (const correo of engine.correosQuePideElFlujo()) {
       /*
@@ -668,7 +674,7 @@ export class EncargosDelFlujoService {
        */
       if (correo['soloCompleta'] === true && incompleta) continue;
 
-      await this.correos.apuntar({
+      const puesto = await this.correos.apuntar({
         AnswerGUID: answer.GUID,
         Llave: String(correo['llave'] ?? ''),
         Para: String(correo['para'] ?? ''),
@@ -691,7 +697,11 @@ export class EncargosDelFlujoService {
         Programado: String(correo['programado'] ?? ''),
         Regla: String(correo['regla'] ?? ''),
       });
+
+      if (puesto && !enviando) enviando = String(correo['mensajeEnviando'] ?? '').trim();
     }
+
+    return enviando;
   }
 
   /**

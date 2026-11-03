@@ -3102,12 +3102,23 @@ ${enlace.url}`)) abrir();
        * una regla de compañía escrita en el código.
        */
       const motor = this.engine();
+
+      /*
+       * Lo que la regla quiere que se lea mientras su correo sale.
+       *
+       * El «Mientras se envía» del lienzo solo se enseñaba al pulsar un botón;
+       * en una regla de «al guardar» se guardaba con el correo y no lo veía
+       * nadie. Se enseña aquí, como aviso que no bloquea: al guardar la
+       * pantalla se cierra y no hay nada que esperar.
+       */
+      let correoEnviando = '';
+
       if (motor) {
         const abiertas = await this.encargos.crearLasQuePidioElFlujo(motor, answer);
         if (abiertas.length) this.abiertasPorElFlujo.set(abiertas);
 
         await this.encargos.apuntarLasConsignas(motor, answer, incomplete, this.elegidos);
-        await this.encargos.apuntarLosCorreos(motor, answer, incomplete);
+        correoEnviando = await this.encargos.apuntarLosCorreos(motor, answer, incomplete);
         await this.encargos.apuntarLosPushes(motor, answer, incomplete);
       }
       await this.aplicarEstadoDelFlujo(this.engine()?.estadoDelFlujo() ?? null);
@@ -3183,6 +3194,9 @@ ${enlace.url}`)) abrir();
           console.warn('[flujo] no se pudo avisar al padre', error),
         );
       }
+
+      // Antes de arrancar la subida: es lo que se está haciendo desde ahora.
+      if (correoEnviando) this.toasts.show({ title: correoEnviando, tone: 'info' });
 
       void this.dispatch(answer.GUID);
 
