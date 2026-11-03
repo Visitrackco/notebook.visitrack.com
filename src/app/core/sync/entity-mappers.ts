@@ -369,6 +369,8 @@ const mapListDetail: Mapper = (r, userId) => ({
   SyncOn: 0,
   VTEntityID: s(r['GUID']),
   SyncedToServer: '1',
+  // El orden propio de la lista; `null` si el ítem no lo tiene (va por nombre).
+  Orden: r['Orden'] === null || r['Orden'] === undefined || r['Orden'] === '' ? null : n(r['Orden']),
 });
 
 const mapItemType: Mapper = (r, userId) => ({

@@ -404,6 +404,12 @@ export interface ListDetail extends SyncableEntity {
   CreateWithMovil: string;
   Save: string;
   SyncedToServer: string;
+  /**
+   * El orden propio del ítem dentro de su lista, configurado en Module
+   * (`md_listas_orden`). `null` si no tiene: va por nombre. Ver
+   * `ordenarItemsDeLista` en `entity.repositories.ts`.
+   */
+  Orden?: number | null;
 }
 
 /** Tipo de ítem de inventario. */

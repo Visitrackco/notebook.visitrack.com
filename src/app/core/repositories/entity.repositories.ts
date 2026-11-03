@@ -613,12 +613,22 @@ export class ListDetailRepository extends BaseRepository<ListDetail> {
   async findByList(userId: number, listId: string, limit?: number): Promise<ListDetail[]> {
     const unico = sinRepetidos<ListDetail>();
 
-    return this.query({
+    /*
+     * El corte va después de ordenar.
+     *
+     * Antes `limit` se le pasaba a la consulta, y la primera página era la de
+     * IndexedDB (por clave), no la de la lista. Con orden propio —o A–Z— eso
+     * enseñaba cincuenta ítems cualesquiera. Se traen todos los de la lista,
+     * se ordenan y se corta; `fromList` ya los traía todos para contarlos.
+     */
+    const items = await this.query({
       index: 'byListID',
       range: listId,
       filter: (d) => sameUser(d.UserID, userId) && !estaEliminado(d.IsDeleted) && unico(d),
-      limit,
     });
+
+    const ordenados = ordenarItemsDeLista(items);
+    return limit === undefined ? ordenados : ordenados.slice(0, limit);
   }
 
   /** Busca dentro de una lista por nombre o valor. */
@@ -657,11 +667,13 @@ export class ListDetailRepository extends BaseRepository<ListDetail> {
   async findByParent(userId: number, parentGuid: string): Promise<ListDetail[]> {
     const unico = sinRepetidos<ListDetail>();
 
-    return this.query({
-      index: 'byParentGUID',
-      range: parentGuid,
-      filter: (d) => sameUser(d.UserID, userId) && !estaEliminado(d.IsDeleted) && unico(d),
-    });
+    return ordenarItemsDeLista(
+      await this.query({
+        index: 'byParentGUID',
+        range: parentGuid,
+        filter: (d) => sameUser(d.UserID, userId) && !estaEliminado(d.IsDeleted) && unico(d),
+      }),
+    );
   }
 
   /** Ítems de una lista que además cuelgan de un ítem concreto. */
@@ -672,15 +684,17 @@ export class ListDetailRepository extends BaseRepository<ListDetail> {
   ): Promise<ListDetail[]> {
     const unico = sinRepetidos<ListDetail>();
 
-    return this.query({
-      index: 'byParentGUID',
-      range: parentGuid,
-      filter: (d) =>
-        sameUser(d.UserID, userId) &&
-        !estaEliminado(d.IsDeleted) &&
-        String(d.ListID) === String(listId) &&
-        unico(d),
-    });
+    return ordenarItemsDeLista(
+      await this.query({
+        index: 'byParentGUID',
+        range: parentGuid,
+        filter: (d) =>
+          sameUser(d.UserID, userId) &&
+          !estaEliminado(d.IsDeleted) &&
+          String(d.ListID) === String(listId) &&
+          unico(d),
+      }),
+    );
   }
 
   /**
@@ -711,30 +725,34 @@ export class ListDetailRepository extends BaseRepository<ListDetail> {
   ): Promise<ListDetail[]> {
     const unico = sinRepetidos<ListDetail>();
 
-    return this.query({
-      index: 'byUserID',
-      range: userId,
-      filter: (d) =>
-        !estaEliminado(d.IsDeleted) &&
-        String(d.LocationID) === String(locationId) &&
-        (!listId || String(d.ListID) === String(listId)) &&
-        unico(d),
-    });
+    return ordenarItemsDeLista(
+      await this.query({
+        index: 'byUserID',
+        range: userId,
+        filter: (d) =>
+          !estaEliminado(d.IsDeleted) &&
+          String(d.LocationID) === String(locationId) &&
+          (!listId || String(d.ListID) === String(listId)) &&
+          unico(d),
+      }),
+    );
   }
 
   /** Ítems de una lista asociados a un activo. */
   async findByAsset(userId: number, assetId: string, listId: string): Promise<ListDetail[]> {
     const unico = sinRepetidos<ListDetail>();
 
-    return this.query({
-      index: 'byListID',
-      range: listId,
-      filter: (d) =>
-        sameUser(d.UserID, userId) &&
-        !estaEliminado(d.IsDeleted) &&
-        String(d.AssetID) === String(assetId) &&
-        unico(d),
-    });
+    return ordenarItemsDeLista(
+      await this.query({
+        index: 'byListID',
+        range: listId,
+        filter: (d) =>
+          sameUser(d.UserID, userId) &&
+          !estaEliminado(d.IsDeleted) &&
+          String(d.AssetID) === String(assetId) &&
+          unico(d),
+      }),
+    );
   }
 
   /**
@@ -746,15 +764,17 @@ export class ListDetailRepository extends BaseRepository<ListDetail> {
   async findByOwner(userId: number, listId: string, ownerId: string): Promise<ListDetail[]> {
     const unico = sinRepetidos<ListDetail>();
 
-    return this.query({
-      index: 'byListID',
-      range: listId,
-      filter: (d) =>
-        sameUser(d.UserID, userId) &&
-        !estaEliminado(d.IsDeleted) &&
-        String(d.ListDetGUID) === String(ownerId) &&
-        unico(d),
-    });
+    return ordenarItemsDeLista(
+      await this.query({
+        index: 'byListID',
+        range: listId,
+        filter: (d) =>
+          sameUser(d.UserID, userId) &&
+          !estaEliminado(d.IsDeleted) &&
+          String(d.ListDetGUID) === String(ownerId) &&
+          unico(d),
+      }),
+    );
   }
 }
 
@@ -910,6 +930,40 @@ export class RolePermissionRepository extends BaseRepository<RolePermission> {
  */
 function sameUser(a: unknown, b: unknown): boolean {
   return String(a ?? '') === String(b ?? '');
+}
+
+/**
+ * Ordena los ítems de una lista como se enseñan.
+ *
+ * Una lista puede tener un orden propio, configurado en Module (permiso
+ * `LIST_ORDER`, tabla `md_listas_orden`), que baja en `Orden` con el sync de
+ * la entidad 8. Primero van los ítems que lo tienen, por `Orden`; luego los
+ * demás —o todos, si la lista no tiene orden propio— por nombre de la A a la
+ * Z sin distinguir mayúsculas. Es la regla del servidor y del móvil.
+ *
+ * Va después de los filtros: ordena lo que ya se filtró. Lo que viene del
+ * servidor (`/searchList`) llega ya en este orden y no se toca.
+ */
+const porNombre = new Intl.Collator('es', { sensitivity: 'accent' });
+
+export function ordenarItemsDeLista<T extends { Orden?: number | null; Name?: string }>(
+  items: T[],
+): T[] {
+  const orden = (item: T): number | null =>
+    item.Orden === null || item.Orden === undefined || !Number.isFinite(Number(item.Orden))
+      ? null
+      : Number(item.Orden);
+
+  return items.sort((a, b) => {
+    const oa = orden(a);
+    const ob = orden(b);
+
+    if (oa !== null && ob !== null && oa !== ob) return oa - ob;
+    if (oa !== null && ob === null) return -1;
+    if (oa === null && ob !== null) return 1;
+
+    return porNombre.compare(a.Name ?? '', b.Name ?? '');
+  });
 }
 
 /** Ordena por nombre en español, sin distinguir tildes ni mayúsculas. */
