@@ -1,8 +1,9 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
 import { BaseRepository } from '../repositories/base.repository';
 import { ApiService } from './api.service';
+import { esModoPublico } from '../config/modo-publico';
 
 /** Un correo que pidió una regla y todavía no está en la cola del servidor. */
 export interface CorreoPendiente {
@@ -73,6 +74,141 @@ export interface CorreoPendiente {
   Error: string;
 
   CreatedOn: string;
+
+  /*
+   * Lo que el servidor dice que pasó después de aceptarlo (IndexedDB v8).
+   *
+   * Hasta aquí la cola local solo sabía «lo puse en la cola». Lo que pasó luego
+   * —si el job lo mandó, si se está reintentando, si se desistió— lo sabe el
+   * servidor, y se pregunta con `POST /correosDeFlujo/estado`. Se guarda aquí
+   * para que la lista de actividades pinte el sobre sin conexión con lo último
+   * que se supo. Opcionales: las filas de antes de la v8 no los tienen.
+   */
+
+  /** Uno de [EstadoDeCorreo]. Vacío mientras no esté en la cola del servidor. */
+  EstadoServidor?: EstadoDeCorreo | '';
+
+  /** El motivo completo que dio el servidor: el fallo, o los avisos del envío. */
+  ErrorServidor?: string;
+
+  /** Intentos de envío del job (no los de encolar, que son `Intentos`). */
+  IntentosServidor?: number;
+
+  /** Cuándo salió, en UTC, si salió. */
+  EnviadoEn?: string;
+
+  /** Cuándo se supo por última vez el estado, en ISO. */
+  EstadoEn?: string;
+}
+
+/**
+ * En qué punto va un correo, tal como lo dice el servidor.
+ *
+ * La traducción de las columnas de la bandeja la hace cloud-server
+ * (`model/Emails/estadoDeCorreo.js`) y no aquí, para que el móvil y la web no
+ * tengan cada uno la suya. `pendiente` es solo de este lado: apuntado y todavía
+ * sin entregar al servidor.
+ */
+export type EstadoDeCorreo =
+  | 'pendiente'
+  | 'en-cola'
+  | 'enviando'
+  | 'enviado'
+  | 'enviado-con-avisos'
+  | 'error'
+  | 'reintentando';
+
+/** Un correo de una actividad, para pintarlo. */
+export interface CorreoConEstado {
+  /** La llave del motor, si es uno que apuntó este navegador. */
+  llave: string | null;
+  regla: string | null;
+  para: string;
+  copia: string;
+  asunto: string;
+  estado: EstadoDeCorreo;
+  intentos: number;
+  ultimoError: string;
+  creado: string | null;
+  enviado: string | null;
+}
+
+/** Los correos de una actividad y el peor estado entre ellos. */
+export interface ResumenDeCorreos {
+  estado: EstadoDeCorreo | null;
+  correos: CorreoConEstado[];
+  /** Si lo dijo el servidor (y no solo la cola local de este navegador). */
+  delServidor: boolean;
+}
+
+/**
+ * Cómo se lee y de qué color va cada estado. Lo comparten el bloque de la
+ * actividad y el sobre de la lista: el mismo estado, el mismo color.
+ */
+export const ESTADO_DE_CORREO: Readonly<
+  Record<EstadoDeCorreo, { texto: string; tono: 'gris' | 'azul' | 'verde' | 'ambar' | 'rojo' }>
+> = {
+  pendiente: { texto: 'Por subir', tono: 'gris' },
+  'en-cola': { texto: 'En cola', tono: 'gris' },
+  enviando: { texto: 'Enviando', tono: 'azul' },
+  reintentando: { texto: 'Reintentando', tono: 'ambar' },
+  enviado: { texto: 'Enviado', tono: 'verde' },
+  'enviado-con-avisos': { texto: 'Enviado con avisos', tono: 'ambar' },
+  error: { texto: 'Error', tono: 'rojo' },
+};
+
+/**
+ * Lo peor de varios estados, para el sobre de la tarjeta. El mismo orden que
+ * `peorEstado` de cloud-server: un error tapa todo, luego los avisos, luego lo
+ * que todavía no salió y al final lo enviado.
+ */
+const GRAVEDAD: Readonly<Record<EstadoDeCorreo, number>> = {
+  error: 6,
+  'enviado-con-avisos': 5,
+  reintentando: 4,
+  pendiente: 3,
+  'en-cola': 2,
+  enviando: 1,
+  enviado: 0,
+};
+
+export function peorEstadoDeCorreo(
+  estados: readonly (EstadoDeCorreo | null | undefined)[],
+): EstadoDeCorreo | null {
+  let peor: EstadoDeCorreo | null = null;
+
+  for (const uno of estados) {
+    if (!uno || !(uno in GRAVEDAD)) continue;
+    if (peor === null || GRAVEDAD[uno] > GRAVEDAD[peor]) peor = uno;
+  }
+
+  return peor;
+}
+
+/** Si ya no va a cambiar: no hace falta volver a preguntar por él. */
+export function esFinal(estado: EstadoDeCorreo | '' | null | undefined): boolean {
+  return estado === 'enviado' || estado === 'enviado-con-avisos' || estado === 'error';
+}
+
+/** Lo que responde `POST /correosDeFlujo/estado`. Ver cloud-server. */
+interface RespuestaDeEstado {
+  ok?: boolean;
+  actividades?: {
+    answerGUID: string;
+    estado: EstadoDeCorreo | null;
+    correos: {
+      llave: string | null;
+      regla: string | null;
+      para: string;
+      copia: string;
+      asunto: string;
+      estado: EstadoDeCorreo;
+      intentos: number;
+      ultimoError: string;
+      creado: string | null;
+      enviado: string | null;
+    }[];
+  }[];
 }
 
 /** La cola local de correos por encolar. */
@@ -92,6 +228,20 @@ export class CorreoRepository extends BaseRepository<CorreoPendiente> {
   /** Todo lo apuntado de una actividad, encolado o no. */
   async todosDe(answerGuid: string): Promise<CorreoPendiente[]> {
     return this.query({ index: 'byAnswerGUID', range: answerGuid });
+  }
+
+  /**
+   * Los que están en la cola del servidor y todavía pueden cambiar de estado.
+   *
+   * Son los únicos por los que vale la pena volver a preguntar: uno enviado o
+   * desistido ya no se mueve.
+   */
+  async porSeguir(): Promise<CorreoPendiente[]> {
+    return this.query({
+      index: 'byEncolado',
+      range: 1,
+      filter: (c) => !esFinal(c.EstadoServidor),
+    });
   }
 }
 
@@ -127,6 +277,30 @@ export class CorreoService {
 
   /** Actividades que se están encolando ahora, para no hacerlo dos veces. */
   private readonly enCurso = new Set<string>();
+
+  /**
+   * Los correos de cada actividad que ya se conocen, por GUID en minúsculas.
+   *
+   * Lo leen el bloque «Correos del flujo» de la actividad y el sobre de la
+   * tarjeta en la lista: los dos se actualizan solos cuando llega un estado
+   * nuevo —al abrir, al volver a la pestaña, al recibir el aviso—.
+   */
+  readonly resumenes = signal<ReadonlyMap<string, ResumenDeCorreos>>(new Map());
+
+  constructor() {
+    /*
+     * Al volver a la pestaña se pregunta por lo que seguía en camino.
+     *
+     * Es el momento en que alguien mira: dejó el navegador mientras el job
+     * trabajaba y vuelve a ver si salió. Preguntar cada minuto con la pestaña
+     * escondida sería gastar peticiones que nadie lee.
+     */
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') void this.refrescarLosQueSiguen();
+      });
+    }
+  }
 
   /**
    * Apunta un correo, sin repetir.
@@ -218,6 +392,21 @@ export class CorreoService {
           Encolado: salida.ok || !salida.reintentar ? 1 : 0,
           Intentos: correo.Intentos + (salida.ok ? 0 : 1),
           Error: salida.ok ? '' : salida.mensaje,
+
+          /*
+           * Aceptado es «en cola»: a partir de aquí manda lo que diga el
+           * servidor. Rechazado para siempre es un error con su motivo — nunca
+           * va a salir, y hay que verlo en rojo, no en gris.
+           */
+          ...(salida.ok
+            ? { EstadoServidor: 'en-cola' as const, ErrorServidor: '', EstadoEn: new Date().toISOString() }
+            : !salida.reintentar
+              ? {
+                  EstadoServidor: 'error' as const,
+                  ErrorServidor: salida.mensaje,
+                  EstadoEn: new Date().toISOString(),
+                }
+              : {}),
         });
 
         /*
@@ -247,7 +436,181 @@ export class CorreoService {
       this.enCurso.delete(answerGuid);
     }
 
+    // Lo que se acaba de encolar ya se ve «en cola»; el servidor dirá el resto.
+    await this.cargarLocales([answerGuid]);
+    if (aceptados > 0) void this.refrescar([answerGuid]);
+
     return { aceptados, mensaje };
+  }
+
+  /**
+   * Pinta lo que ya se sabe de unas actividades, sin red.
+   *
+   * Lee la cola local y deja el resumen en [resumenes]. Las actividades sin
+   * correos apuntados en este navegador no entran: no tienen nada que pintar,
+   * salvo que el servidor diga otra cosa al [refrescar].
+   */
+  async cargarLocales(guids: readonly string[]): Promise<void> {
+    try {
+      const nuevos = new Map(this.resumenes());
+
+      for (const tal of new Set(guids.filter(Boolean))) {
+        const guid = tal.toLowerCase();
+
+        // Si el servidor ya respondió por esta actividad, manda lo suyo: trae
+        // también lo que pidieron otros aparatos.
+        if (nuevos.get(guid)?.delServidor) continue;
+
+        const filas = await this.repo.todosDe(tal);
+        if (!filas.length) continue;
+
+        const correos = filas.map((c) => this.desdeLocal(c));
+        nuevos.set(guid, {
+          estado: peorEstadoDeCorreo(correos.map((c) => c.estado)),
+          correos,
+          delServidor: false,
+        });
+      }
+
+      this.resumenes.set(nuevos);
+    } catch (error) {
+      console.warn('[correo] no se pudo leer la cola local', error);
+    }
+  }
+
+  /**
+   * Pregunta al servidor en qué quedaron los correos de unas actividades.
+   *
+   * `POST /correosDeFlujo/estado` con las llaves que este navegador tiene
+   * apuntadas: el servidor las hashea igual que al encolar y devuelve cada
+   * correo con su `llave`, así se casa con la fila local sin calcular nada.
+   * Actualiza la cola local y [resumenes].
+   *
+   * Nunca lanza. Sin red se queda lo último que se supo.
+   */
+  async refrescar(guids: readonly string[]): Promise<void> {
+    // Por minúsculas para no repetir, pero con el GUID tal como se guardó: el
+    // índice de IndexedDB distingue mayúsculas.
+    const original = new Map<string, string>();
+    for (const g of guids) if (g && !original.has(g.toLowerCase())) original.set(g.toLowerCase(), g);
+
+    const unicos = [...original.keys()].slice(0, 50);
+
+    // Un enlace público no tiene sesión, y el estado se pide con sesión: ahí se
+    // queda lo que dice la cola local.
+    if (!unicos.length || esModoPublico()) return;
+
+    try {
+      const actividades: { answerGUID: string; llaves: string[] }[] = [];
+
+      for (const guid of unicos) {
+        const locales = await this.repo.todosDe(original.get(guid) ?? guid);
+        actividades.push({ answerGUID: guid, llaves: locales.map((c) => c.Llave).filter(Boolean) });
+      }
+
+      const res = await firstValueFrom(
+        this.api.post<RespuestaDeEstado>('/correosDeFlujo/estado', { actividades }),
+      );
+
+      if (!res?.ok || !Array.isArray(res.actividades)) return;
+
+      const nuevos = new Map(this.resumenes());
+
+      for (const actividad of res.actividades) {
+        const guid = String(actividad.answerGUID || '').toLowerCase();
+        const locales = await this.repo.todosDe(original.get(guid) ?? guid);
+        const casados = new Set<number>();
+
+        for (const remoto of actividad.correos) {
+          const local = remoto.llave ? locales.find((c) => c.Llave === remoto.llave) : undefined;
+          if (!local || local.ID === undefined) continue;
+
+          casados.add(local.ID);
+          await this.repo.put({
+            ...local,
+            Encolado: 1,
+            EstadoServidor: remoto.estado,
+            ErrorServidor: remoto.ultimoError || '',
+            IntentosServidor: remoto.intentos || 0,
+            EnviadoEn: remoto.enviado || '',
+            EstadoEn: new Date().toISOString(),
+          });
+        }
+
+        /*
+         * Lo del servidor, más lo que este navegador apuntó y el servidor no
+         * tiene: lo que todavía no subió y lo que rechazó al encolar.
+         *
+         * Sin sumarlo, el bloque diría «todo enviado» con uno esperando.
+         */
+        const correos: CorreoConEstado[] = actividad.correos.map((r) => ({
+          llave: r.llave,
+          regla: r.regla,
+          para: r.para,
+          copia: r.copia,
+          asunto: r.asunto,
+          estado: r.estado,
+          intentos: r.intentos || 0,
+          ultimoError: r.ultimoError || '',
+          creado: r.creado,
+          enviado: r.enviado,
+        }));
+
+        for (const local of locales) {
+          if (local.ID !== undefined && casados.has(local.ID)) continue;
+          if (local.Encolado && local.EstadoServidor !== 'error') continue;
+          correos.push(this.desdeLocal(local));
+        }
+
+        if (correos.length) {
+          nuevos.set(guid, {
+            estado: peorEstadoDeCorreo(correos.map((c) => c.estado)),
+            correos,
+            delServidor: true,
+          });
+        } else {
+          nuevos.delete(guid);
+        }
+      }
+
+      this.resumenes.set(nuevos);
+    } catch (error) {
+      console.warn('[correo] no se pudo leer el estado de los correos', error);
+    }
+  }
+
+  /**
+   * Vuelve a preguntar por todo lo que seguía en camino.
+   *
+   * Lo llaman volver a la pestaña, terminar una subida y un aviso de «correo
+   * enviado». Solo las actividades con algún correo que todavía puede cambiar.
+   */
+  async refrescarLosQueSiguen(): Promise<void> {
+    try {
+      const siguen = await this.repo.porSeguir();
+      await this.refrescar(siguen.map((c) => c.AnswerGUID));
+    } catch (error) {
+      console.warn('[correo] no se pudo refrescar lo pendiente', error);
+    }
+  }
+
+  /** Una fila de la cola local, en la forma que se pinta. */
+  private desdeLocal(c: CorreoPendiente): CorreoConEstado {
+    const estado: EstadoDeCorreo = !c.Encolado ? 'pendiente' : c.EstadoServidor || 'en-cola';
+
+    return {
+      llave: c.Llave,
+      regla: c.Regla || null,
+      para: c.Para,
+      copia: c.Copia,
+      asunto: c.Asunto,
+      estado,
+      intentos: c.IntentosServidor ?? 0,
+      // Sin subir, el motivo es el de encolar; ya en la cola, el del servidor.
+      ultimoError: (c.Encolado ? c.ErrorServidor || c.Error : c.Error) || '',
+      creado: c.CreatedOn || null,
+      enviado: c.EnviadoEn || null,
+    };
   }
 
   private async mandar(

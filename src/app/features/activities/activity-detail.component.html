@@ -207,6 +207,10 @@
          del navegador un margen izquierdo de 40 px que descolgaba el valor
          respecto a su etiqueta. Un par de `<span>` dice lo mismo y se alinea
          donde se le pide. -->
+    <!-- Los correos que pidió el flujo y en qué quedaron. No pinta nada si la
+         actividad no pidió ninguno. -->
+    <vt-correos-del-flujo class="detail__correos" [answerGuid]="act.GUID" />
+
     <section class="detail__facts">
       <div class="detail__fact">
         <span class="detail__fact-icon">

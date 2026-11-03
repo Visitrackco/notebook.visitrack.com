@@ -414,6 +414,21 @@
                     </span>
                   }
 
+                  <!-- Los correos que pidió el flujo: el sobre con el peor
+                       estado. El detalle, con el motivo, está en la actividad. -->
+                  @if (correosDe()(card.answer.GUID); as sobre) {
+                    <span
+                      [class]="'acts__correo acts__correo--' + sobre.tono"
+                      [matTooltip]="sobre.texto"
+                      [attr.aria-label]="sobre.texto"
+                    >
+                      <vt-icon name="mail" [size]="13" />
+                      @if (sobre.cuantos > 1) {
+                        {{ sobre.cuantos }}
+                      }
+                    </span>
+                  }
+
                   @if (card.retires) {
                     <span class="acts__retires" matTooltip="Sigue en Visitrack: solo se libera el espacio de este equipo">
                       <vt-icon name="trash" [size]="13" />

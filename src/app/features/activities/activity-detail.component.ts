@@ -34,6 +34,7 @@ import { seedGradient, seedPalette } from '../../shared/utils/seed-color';
 import { FormRunnerComponent } from './form/form-runner.component';
 import { MasterDetailStackService } from './form/master-detail-row/master-detail-stack.service';
 import { StatusBarComponent } from './form/status-bar/status-bar.component';
+import { CorreosDelFlujoComponent } from '../../shared/components/correos-del-flujo/correos-del-flujo.component';
 import { ZonaHorariaService } from '../../core/services/zona-horaria.service';
 
 /**
@@ -60,6 +61,7 @@ import { ZonaHorariaService } from '../../core/services/zona-horaria.service';
   standalone: true,
   imports: [
     ConfirmDialogComponent,
+    CorreosDelFlujoComponent,
     FormRunnerComponent,
     IconComponent,
     MatButtonModule,

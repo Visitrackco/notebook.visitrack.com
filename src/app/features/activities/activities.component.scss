@@ -847,6 +847,44 @@
   border-radius: var(--vt-radius-full);
 }
 
+/* ── El sobre de los correos del flujo ───────────────────────────────────
+   Mismos colores que el bloque de la actividad: gris en cola, azul enviando,
+   verde enviado, ámbar con avisos o reintentando, rojo error. */
+.acts__correo {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 2px 8px;
+  font-size: var(--vt-text-xs);
+  font-weight: 600;
+  border-radius: var(--vt-radius-full);
+}
+
+.acts__correo--gris {
+  color: var(--vt-text-muted);
+  background: var(--vt-surface-2);
+}
+
+.acts__correo--azul {
+  color: var(--vt-info);
+  background: var(--vt-info-bg);
+}
+
+.acts__correo--verde {
+  color: var(--vt-success);
+  background: var(--vt-success-bg);
+}
+
+.acts__correo--ambar {
+  color: var(--vt-warning);
+  background: var(--vt-warning-bg);
+}
+
+.acts__correo--rojo {
+  color: var(--vt-danger);
+  background: var(--vt-danger-bg);
+}
+
 .acts__retires {
   display: inline-flex;
   gap: 5px;

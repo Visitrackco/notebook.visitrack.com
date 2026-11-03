@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, input, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipListboxChange, MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -37,6 +37,7 @@ import {
 import { Descriptor, descriptorsMatch, parseAnswerTitles } from '../../shared/utils/descriptors';
 import { SeedPalette, seedGradient, seedPalette } from '../../shared/utils/seed-color';
 import { ToastService } from '../../core/services/toast.service';
+import { CorreoService, ESTADO_DE_CORREO, EstadoDeCorreo } from '../../core/services/correo.service';
 import {
   CompartirEnSalaComponent,
   ParaCompartir,
@@ -130,6 +131,30 @@ export class ActivitiesComponent {
   private readonly toasts = inject(ToastService);
   private readonly dispatch = inject(DispatchStatusRepository);
   private readonly auth = inject(AuthService);
+  private readonly correos = inject(CorreoService);
+
+  /**
+   * El sobre de cada tarjeta: el peor estado de los correos que pidió el flujo
+   * en esa actividad. Ver `CorreoService.resumenes`.
+   */
+  readonly correosDe = computed(() => {
+    const resumenes = this.correos.resumenes();
+
+    return (guid: string): { estado: EstadoDeCorreo; texto: string; tono: string; cuantos: number } | null => {
+      const r = resumenes.get(String(guid || '').toLowerCase());
+      if (!r || !r.estado || !r.correos.length) return null;
+
+      const info = ESTADO_DE_CORREO[r.estado];
+      const cuantos = r.correos.length;
+
+      return {
+        estado: r.estado,
+        texto: `${cuantos === 1 ? 'Correo del flujo' : `${cuantos} correos del flujo`}: ${info.texto.toLowerCase()}`,
+        tono: info.tono,
+        cuantos,
+      };
+    };
+  });
 
   readonly drafts = inject(DraftPolicyService);
 
@@ -704,6 +729,22 @@ export class ActivitiesComponent {
       const surveyId = this.surveyId();
       this.activities.revision();
       void this.load(surveyId);
+    });
+
+    /*
+     * El sobre de las tarjetas.
+     *
+     * Lo local primero —sin red ya se ve lo último que se supo— y luego se
+     * pregunta al servidor solo por lo que todavía puede cambiar: una actividad
+     * con todos sus correos enviados no gasta una petición cada vez que se abre
+     * la lista.
+     */
+    effect(() => {
+      const guids = this.all().map((card) => card.answer.GUID);
+
+      untracked(() => {
+        void this.correos.cargarLocales(guids).then(() => this.correos.refrescarLosQueSiguen());
+      });
     });
   }
 

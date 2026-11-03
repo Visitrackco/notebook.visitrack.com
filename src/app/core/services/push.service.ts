@@ -1,4 +1,4 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, Injector, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { Router } from '@angular/router';
 
@@ -6,6 +6,7 @@ import { apiBaseUrlDirecta } from '../config/api-base';
 import { FIREBASE_CONFIG, VAPID_KEY } from '../config/firebase';
 import { esModoPublico } from '../config/modo-publico';
 import { ApiService } from './api.service';
+import { CorreoService } from './correo.service';
 import { AuthService } from './auth.service';
 import { DeviceService } from './device.service';
 import { ToastService } from './toast.service';
@@ -48,6 +49,7 @@ export class PushService {
   private readonly device = inject(DeviceService);
   private readonly toasts = inject(ToastService);
   private readonly router = inject(Router);
+  private readonly injector = inject(Injector);
 
   readonly estado = signal<EstadoPush>(this.leerEstado());
 
@@ -256,6 +258,19 @@ export class PushService {
          * aviso flotante, que es mejor que quedarse callado.
          */
         void this.pintarAviso(aviso, datos);
+
+        /*
+         * «Correo enviado» / «No se pudo enviar el correo»: el estado de esa
+         * actividad acaba de cambiar en el servidor. Se pregunta ya, para que
+         * el bloque de la actividad y el sobre de la lista lo digan sin
+         * esperar a que alguien recargue. `id` es el GUID de la actividad.
+         *
+         * Con `injector.get` y no con un campo: el servicio de correos se carga
+         * solo si llega uno de estos avisos.
+         */
+        if (datos['tipo'] === 'correo-flujo' && datos['id']) {
+          void this.injector.get(CorreoService).refrescar([datos['id']]);
+        }
 
         /*
          * Tambien en primer plano cuenta como entregado.

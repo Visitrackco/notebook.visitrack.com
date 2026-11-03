@@ -61,8 +61,12 @@ export const DB_NAME_PUBLICO = 'VisitrackPublico';
  *  - 6: store `Firmas` — las firmas guardadas de cada persona, para reutilizar.
  *  - 7: stores `FlujosGeocerca` (entidad 101) y `EventosGeocerca` — los flujos de
  *       geocerca y la cola de lo que dispararon, por contar a cloud-gold.
+ *  - 8: `CorreosFlujo` guarda lo que dice el servidor de cada correo
+ *       (`EstadoServidor`, `ErrorServidor`, `IntentosServidor`, `EnviadoEn`,
+ *       `EstadoEn`) e índice `byEstadoServidor`. Las filas viejas no se
+ *       transforman: sin estado se leen como «en cola» si ya se encolaron.
  */
-export const DB_VERSION = 7;
+export const DB_VERSION = 8;
 
 /** Definición de un índice secundario dentro de un store. */
 export interface IndexDefinition {
@@ -343,10 +347,14 @@ export const DB_SCHEMA: readonly StoreDefinition[] = [
       'actividad ya esta en Visitrack con sus archivos, y es el servidor quien lo envia. Las ' +
       'credenciales del buzon no bajan al cliente, asi que aqui viaja el identificador del ' +
       'proveedor o su area, nunca el servidor ni la contrasena. `Cuerpo` trae el HTML con las ' +
-      'variables ya resueltas y escapadas: el servidor no sabe leer un formulario.',
+      'variables ya resueltas y escapadas: el servidor no sabe leer un formulario. Desde la ' +
+      'v8 guarda tambien lo que dice el servidor despues de encolarlo (`EstadoServidor`: ' +
+      'en-cola, enviando, enviado, enviado-con-avisos, error, reintentando; `ErrorServidor` ' +
+      'con el motivo completo), que se pregunta con POST /correosDeFlujo/estado.',
     indexes: [
       { name: 'byAnswerGUID', keyPath: 'AnswerGUID' },
       { name: 'byEncolado', keyPath: 'Encolado' },
+      { name: 'byEstadoServidor', keyPath: 'EstadoServidor' },
     ],
   },
   {

@@ -69,6 +69,10 @@
       <div><dt>Estado</dt><dd>{{ data.StatusName || '—' }}</dd></div>
     </dl>
 
+    <!-- Los correos que pidió el flujo y en qué quedaron: es aquí a donde
+         lleva el aviso de «Correo enviado». -->
+    <vt-correos-del-flujo class="act__correos" [answerGuid]="guid()" />
+
     <!-- Las páginas del formulario, con la misma navegación que al
          diligenciarlo: un formulario largo se recorre por páginas y verlo de
          corrido rompe la referencia de dónde estaba cada cosa. -->

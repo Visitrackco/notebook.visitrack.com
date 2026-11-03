@@ -15,6 +15,7 @@ import { FieldHostComponent } from '../activities/form/fields/field-host.compone
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { ToTopComponent } from '../../shared/components/to-top/to-top.component';
+import { CorreosDelFlujoComponent } from '../../shared/components/correos-del-flujo/correos-del-flujo.component';
 
 /** Un archivo de la actividad, listo para pintar. */
 interface FieldFile {
@@ -78,7 +79,13 @@ const BINARY_TYPES = new Set(['picture', 'signature', 'audio', 'video', 'file'])
 @Component({
   selector: 'vt-activity-view',
   standalone: true,
-  imports: [ConfirmDialogComponent, FieldHostComponent, IconComponent, ToTopComponent],
+  imports: [
+    ConfirmDialogComponent,
+    CorreosDelFlujoComponent,
+    FieldHostComponent,
+    IconComponent,
+    ToTopComponent,
+  ],
   templateUrl: './activity-view.component.html',
   styleUrl: './activity-view.component.scss',
 })
