@@ -1,4 +1,4 @@
-import { DatePipe } from '@angular/common';
+import { ZonaHorariaService } from '../../core/services/zona-horaria.service';
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 
 import { CorreoPendiente, CorreoRepository, CorreoService } from '../../core/services/correo.service';
@@ -24,12 +24,13 @@ import { ToastService } from '../../core/services/toast.service';
 @Component({
   selector: 'vt-flow-emails',
   standalone: true,
-  imports: [DatePipe],
+  imports: [],
   templateUrl: './flow-emails.component.html',
   styleUrl: './flow-emails.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class FlowEmailsComponent implements OnInit {
+  readonly zona = inject(ZonaHorariaService);
   private readonly repo = inject(CorreoRepository);
   private readonly correos = inject(CorreoService);
   private readonly toasts = inject(ToastService);

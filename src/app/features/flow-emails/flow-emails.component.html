@@ -92,7 +92,7 @@
               @if (c.Intentos) {
                 {{ c.Intentos }} intento(s) ·
               }
-              {{ c.CreatedOn | date: 'dd/MM/yy HH:mm' }}
+              {{ zona.fechaCorta(c.CreatedOn) }}
             </p>
             <!--
               «Enviar ahora», solo en los que esperan.

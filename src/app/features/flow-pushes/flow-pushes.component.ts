@@ -1,4 +1,4 @@
-import { DatePipe } from '@angular/common';
+import { ZonaHorariaService } from '../../core/services/zona-horaria.service';
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 
 import {
@@ -37,12 +37,13 @@ import { ToastService } from '../../core/services/toast.service';
 @Component({
   selector: 'vt-flow-pushes',
   standalone: true,
-  imports: [DatePipe],
+  imports: [],
   templateUrl: './flow-pushes.component.html',
   styleUrl: './flow-pushes.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class FlowPushesComponent implements OnInit {
+  readonly zona = inject(ZonaHorariaService);
   private readonly repo = inject(PushFlujoRepository);
   private readonly pushes = inject(PushFlujoService);
   private readonly toasts = inject(ToastService);

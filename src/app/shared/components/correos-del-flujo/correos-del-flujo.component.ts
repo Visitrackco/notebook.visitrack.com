@@ -1,4 +1,4 @@
-import { DatePipe } from '@angular/common';
+import { ZonaHorariaService } from '../../../core/services/zona-horaria.service';
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 
 import {
@@ -32,7 +32,7 @@ import { IconComponent } from '../icon/icon.component';
 @Component({
   selector: 'vt-correos-del-flujo',
   standalone: true,
-  imports: [DatePipe, IconComponent],
+  imports: [IconComponent],
   template: `
     @if (correos().length) {
       <section class="cf" aria-label="Correos del flujo">
@@ -76,9 +76,9 @@ import { IconComponent } from '../icon/icon.component';
 
                 <p class="cf__pie">
                   @if (c.enviado) {
-                    Enviado {{ c.enviado | date: 'dd/MM/yy HH:mm' }}
+                    Enviado {{ zona.fechaCorta(c.enviado) }}
                   } @else if (c.creado) {
-                    Pedido {{ c.creado | date: 'dd/MM/yy HH:mm' }}
+                    Pedido {{ zona.fechaCorta(c.creado) }}
                   }
                   @if (c.intentos > 1) {
                     · {{ c.intentos }} intentos
@@ -245,6 +245,7 @@ import { IconComponent } from '../icon/icon.component';
   `,
 })
 export class CorreosDelFlujoComponent {
+  readonly zona = inject(ZonaHorariaService);
   private readonly servicio = inject(CorreoService);
 
   /** La actividad. */

@@ -255,6 +255,29 @@ export class ZonaHorariaService {
     });
   }
 
+  /**
+   * `dd/MM/yy HH:mm` en la zona de quien mira, para las bandejas de correos y push.
+   *
+   * Una fecha sin marca de zona es UTC, que es como se guarda: `new Date` y el
+   * pipe la tomarían por hora del navegador y quedaría corrida sin que se note.
+   */
+  fechaCorta(cuando: string | null | undefined): string {
+    if (!cuando) return '';
+
+    const texto = String(cuando).trim().replace(' ', 'T');
+    const t = new Date(/(Z|[+-]\d{2}:?\d{2})$/i.test(texto) ? texto : `${texto}Z`);
+    if (Number.isNaN(t.getTime())) return String(cuando);
+
+    const m = this.minutos();
+    const v = m === null ? t : new Date(t.getTime() + m * 60_000);
+    const [dia, mes, anio, hora, minuto] =
+      m === null
+        ? [v.getDate(), v.getMonth() + 1, v.getFullYear(), v.getHours(), v.getMinutes()]
+        : [v.getUTCDate(), v.getUTCMonth() + 1, v.getUTCFullYear(), v.getUTCHours(), v.getUTCMinutes()];
+
+    return `${dos(dia)}/${dos(mes)}/${dos(anio % 100)} ${dos(hora)}:${dos(minuto)}`;
+  }
+
   comoTexto(
     cuando: Date | string | null | undefined,
     opciones: Intl.DateTimeFormatOptions,
