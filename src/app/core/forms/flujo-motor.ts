@@ -1193,7 +1193,7 @@ export function evaluar(flujo: Flujo, contexto: Contexto): Resultado {
     resultado.escrituras = Object.fromEntries(escrituras);
 
     if (huella(resultado, valores) === antes) {
-      cerrar(generales, resultado, valores, contexto.campos, puedeAvisar, String(contexto.ahora ?? ''), origen, String(contexto.urlDeBinarios ?? ''));
+      cerrar(generales, resultado, valores, contexto.campos, puedeAvisar, String(contexto.ahora ?? ''), origen, String(contexto.urlDeBinarios ?? ''), contexto.yaCumplidas ?? []);
       expandirPaginas(resultado.campos, contexto.campos);
       resultado.campos = limpiar(resultado.campos);
       return conLimites(resultado);
@@ -1201,7 +1201,7 @@ export function evaluar(flujo: Flujo, contexto: Contexto): Resultado {
   }
 
   resultado.ciclo = true;
-  cerrar(generales, resultado, valores, contexto.campos, puedeAvisar, String(contexto.ahora ?? ''), origen, String(contexto.urlDeBinarios ?? ''));
+  cerrar(generales, resultado, valores, contexto.campos, puedeAvisar, String(contexto.ahora ?? ''), origen, String(contexto.urlDeBinarios ?? ''), contexto.yaCumplidas ?? []);
   expandirPaginas(resultado.campos, contexto.campos);
   resultado.campos = limpiar(resultado.campos);
   return conLimites(resultado);
@@ -1261,12 +1261,13 @@ function cerrar(
   ahoraDelCierre: string,
   origen: Record<string, unknown> = {},
   urlDeBinarios = '',
+  yaCumplidas: readonly string[] = [],
 ): void {
   for (const regla of generales) {
     // También aquí: una general puede esperar a otra general anterior.
     if (regla.tras && !resultado.disparadas.includes(regla.tras)) continue;
 
-    const cumple = evaluarGrupo(regla.si, valores, campos);
+    const cumple = yaCumplidas.includes(regla.id) || evaluarGrupo(regla.si, valores, campos);
     const acciones = (cumple ? regla.entonces : regla.sino) ?? [];
 
     // Igual que arriba: mirada, cumpla o no.
@@ -1281,6 +1282,20 @@ function cerrar(
        * como corren una sola vez no hay nada que se dispare.
        */
       aplicar(accion, resultado, valores, campos, regla.id, puedeAvisar, valores, ahoraDelCierre, origen, '', urlDeBinarios);
+    }
+
+    /*
+     * Una regla que debía mandar algo y no pudo no ha terminado.
+     *
+     * Un correo sin destinatario no se crea, y sin esto la siguiente regla de la
+     * cola corría igual: marcaba ENVIADO sobre un correo que nunca existió.
+     */
+    if (
+      cumple &&
+      acciones.some((a) => a.accion === 'enviar-correo' || a.accion === 'enviar-push') &&
+      !resultado.encargos.some((e) => e.regla === regla.id)
+    ) {
+      resultado.disparadas = resultado.disparadas.filter((id) => id !== regla.id);
     }
   }
 }

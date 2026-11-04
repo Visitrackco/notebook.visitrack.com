@@ -3177,6 +3177,16 @@ export interface Campo {
 }
 
 export interface Contexto {
+  /**
+   * Las reglas generales que ya se cumplieron en este guardado.
+   *
+   * Guardar evalúa más de una vez, y entre una y otra ya se escribió lo que
+   * decidieron las reglas. Volver a preguntarle a una regla que se apaga con su
+   * propia escritura rompía la cadena: se cumplía, marcaba ENVIADO, y a la
+   * siguiente ya no se cumplía. Las que están aquí siguen cumplidas.
+   */
+  yaCumplidas?: string[];
+
   /** Lo respondido hasta ahora, por `apiId`. */
   valores: Record<ApiId, unknown>;
   /** Los campos del formulario, por `apiId`. */

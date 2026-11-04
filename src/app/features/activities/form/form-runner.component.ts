@@ -3186,6 +3186,7 @@ ${enlace.url}`)) abrir();
        * a «diligenciar» y cada guardado creaba otra hija.
        */
       if (engineAlGuardar) await this.encargos.aplicarEncargosDeHijos(engineAlGuardar, answer, this.survey());
+      engineAlGuardar?.terminarGuardado();
 
       // Y si esta actividad es hija de otra, el padre se entera ya: sus
       // reglas de «cuando cambia un hijo» corren sin que nadie lo abra.

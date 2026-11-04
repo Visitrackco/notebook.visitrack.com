@@ -1581,6 +1581,7 @@ export class FormEngine {
     }
 
     const resultado: Resultado = evaluar(flujo, {
+      yaCumplidas: momento === 'guardar' ? [...this.cumplidasDelGuardado] : [],
       valores,
       campos,
       momento,
@@ -1605,6 +1606,8 @@ export class FormEngine {
       timer: this.timer(),
       otroTimerCorriendo: this.otroTimerCorriendo,
     });
+
+    if (momento === 'guardar') resultado.disparadas.forEach((id) => this.cumplidasDelGuardado.add(id));
 
     if (resultado.timerRechazado) this.timerRechazado.set(resultado.timerRechazado);
 
@@ -2178,6 +2181,19 @@ export class FormEngine {
     return salida;
   }
 
+  /**
+   * Las reglas generales que ya se cumplieron en este guardado.
+   *
+   * Guardar evalúa varias veces: sin esto, una regla que se apaga con su propia
+   * escritura se cumplía en la primera y dejaba de cumplirse en la siguiente.
+   */
+  private readonly cumplidasDelGuardado = new Set<string>();
+
+  /** Ya se guardó, o la persona cambió algo: lo siguiente se vuelve a preguntar. */
+  terminarGuardado(): void {
+    this.cumplidasDelGuardado.clear();
+  }
+
   /** Se evalúa el flujo con el momento «al guardar», y se dice si deja. */
   revisarFlujoAlGuardar(): readonly string[] {
     this.correrFlujo('guardar');
@@ -2581,6 +2597,7 @@ export class FormEngine {
    * Si el campo activa secciones, también recalcula cuáles quedan abiertas.
    */
   setValue(field: FormField, value: FieldValue): void {
+    this.terminarGuardado();
     /*
      * Un cambio se cuenta cuando el valor **cambia**, no en cada tecla igual.
      *
