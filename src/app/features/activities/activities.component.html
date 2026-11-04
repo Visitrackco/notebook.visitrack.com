@@ -423,6 +423,9 @@
                       [attr.aria-label]="sobre.texto"
                     >
                       <vt-icon name="mail" [size]="13" />
+                      @if (sobre.estado === 'enviado-con-avisos') {
+                        <span class="acts__correo-alerta" aria-hidden="true">⚠</span>
+                      }
                       @if (sobre.cuantos > 1) {
                         {{ sobre.cuantos }}
                       }

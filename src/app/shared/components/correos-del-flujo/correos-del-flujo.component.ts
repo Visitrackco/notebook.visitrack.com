@@ -55,6 +55,9 @@ import { IconComponent } from '../icon/icon.component';
           @for (c of correos(); track $index) {
             <li class="cf__fila">
               <span [class]="'cf__pill cf__pill--' + tono(c.estado)">{{ texto(c.estado) }}</span>
+              @if (c.estado === 'enviado-con-avisos') {
+                <span class="cf__alerta" title="Salió, pero tiene un aviso" aria-hidden="true">⚠</span>
+              }
 
               <div class="cf__cuerpo">
                 <p class="cf__asunto" [title]="c.asunto">{{ c.asunto || '(sin asunto)' }}</p>
@@ -192,6 +195,13 @@ import { IconComponent } from '../icon/icon.component';
       background: var(--vt-danger-bg);
     }
 
+    .cf__alerta {
+      color: var(--vt-warning);
+      font-size: 16px;
+      line-height: 1;
+    }
+
+    .cf__motivo--verde,
     .cf__motivo--ambar,
     .cf__motivo--gris,
     .cf__motivo--azul {

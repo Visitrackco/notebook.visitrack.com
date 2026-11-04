@@ -153,7 +153,7 @@ export const ESTADO_DE_CORREO: Readonly<
   enviando: { texto: 'Enviando', tono: 'azul' },
   reintentando: { texto: 'Reintentando', tono: 'ambar' },
   enviado: { texto: 'Enviado', tono: 'verde' },
-  'enviado-con-avisos': { texto: 'Enviado con avisos', tono: 'ambar' },
+  'enviado-con-avisos': { texto: 'Enviado con avisos', tono: 'verde' },
   error: { texto: 'Error', tono: 'rojo' },
 };
 
