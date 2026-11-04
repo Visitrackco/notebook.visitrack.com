@@ -1,8 +1,13 @@
+import { NearEndDirective } from '../../shared/directives/near-end.directive';
 import { ZonaHorariaService } from '../../core/services/zona-horaria.service';
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 
 import { CorreoPendiente, CorreoRepository, CorreoService } from '../../core/services/correo.service';
 import { ToastService } from '../../core/services/toast.service';
+
+/** Las que se pintan de una vez, y las que se guardan en memoria como mucho. */
+const POR_TANDA = 50;
+const TOPE_EN_MEMORIA = 500;
 
 /**
  * Los correos que pidieron las reglas de flujo, y en qué punto va cada uno.
@@ -24,7 +29,7 @@ import { ToastService } from '../../core/services/toast.service';
 @Component({
   selector: 'vt-flow-emails',
   standalone: true,
-  imports: [],
+  imports: [NearEndDirective],
   templateUrl: './flow-emails.component.html',
   styleUrl: './flow-emails.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -36,6 +41,20 @@ export class FlowEmailsComponent implements OnInit {
   private readonly toasts = inject(ToastService);
 
   readonly filas = signal<CorreoPendiente[]>([]);
+
+  /**
+   * Cuántas filas se pintan. De a poco y al acercarse al final: pintarlas todas
+   * de una vez, con el historial de meses, es lo que dejaba colgada la pestaña.
+   */
+  private readonly limite = signal(POR_TANDA);
+
+  readonly visibles = computed(() => this.filas().slice(0, this.limite()));
+
+  readonly hayMas = computed(() => this.limite() < this.filas().length);
+
+  verMas(): void {
+    this.limite.update((n) => n + POR_TANDA);
+  }
   readonly cargando = signal(true);
   readonly reintentando = signal(false);
 
@@ -133,9 +152,9 @@ export class FlowEmailsComponent implements OnInit {
       // Lo que espera primero, que es lo que se viene a mirar; y dentro de cada
       // grupo, lo último arriba.
       this.filas.set(
-        [...todos].sort(
-          (a, b) => (a.Encolado ?? 0) - (b.Encolado ?? 0) || (b.ID ?? 0) - (a.ID ?? 0),
-        ),
+        [...todos]
+          .sort((a, b) => (a.Encolado ?? 0) - (b.Encolado ?? 0) || (b.ID ?? 0) - (a.ID ?? 0))
+          .slice(0, TOPE_EN_MEMORIA),
       );
     } catch (error) {
       console.warn('[correo] no se pudo leer la bandeja local', error);

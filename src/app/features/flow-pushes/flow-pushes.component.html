@@ -76,7 +76,7 @@
     </div>
 
     <ul class="fp__lista">
-      @for (p of filas(); track p.ID) {
+      @for (p of visibles(); track p.ID) {
         <li class="fp__fila" [class.fp__fila--mal]="estadoDe(p) === 'mal'">
           <span class="fp__pill" [class]="'fp__pill fp__pill--' + estadoDe(p)">
             {{ comoSeLee(p) }}
@@ -137,5 +137,9 @@
         </li>
       }
     </ul>
+
+    @if (hayMas()) {
+      <div class="fp__mas" vtNearEnd (reached)="verMas()">Cargando más…</div>
+    }
   }
 </section>
