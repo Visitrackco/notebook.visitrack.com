@@ -930,6 +930,7 @@ export class FormRunnerComponent {
       camposDeFuera: deFuera.campos,
       timer: leerTimer(answer.Timer),
       estado: String(answer.Status ?? ''),
+      estados: await this.estados.getAll(),
     });
 
     this.engine.set(engine);
@@ -3151,6 +3152,19 @@ ${enlace.url}`)) abrir();
        * pasa a un estado de completada.
        */
       const completedOn = incomplete ? '' : answer.CompletedOn || new Date().toISOString();
+
+      /*
+       * Lo que escribieron las reglas de «al guardar», a la base.
+       *
+       * El formulario se volcó al pulsar guardar, antes de evaluarlas, y esas
+       * escrituras no pasan por el autoguardado: se quedaban en memoria y al
+       * salir de la pantalla se perdían. El campo se veía marcado y volvía vacío.
+       */
+      const motorFinal = this.engine();
+
+      if (motorFinal) {
+        await this.answers.update(answer.ID, { Fields: JSON.stringify(motorFinal.toAnswerFields()) });
+      }
 
       await this.answers.markSaved(answer.ID, pendingFiles > 0, completedOn);
       marca(`guardada (${pendingFiles} archivo(s) por confirmar)`);

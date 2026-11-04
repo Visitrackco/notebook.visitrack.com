@@ -151,6 +151,7 @@ export interface FormEngineInput {
    * vacío — justo la que decide si esta actividad se puede editar.
    */
   estado?: string;
+  estados?: readonly { Name?: unknown; DispatchID?: unknown }[];
 }
 
 /** El timer guardado en la actividad, o `null` si no hay o no se lee. */
@@ -271,6 +272,16 @@ export class FormEngine {
    * solo sabe de campos.
    */
   readonly estadoActividad = signal('');
+
+  /**
+   * El identificador de cada estado, por su nombre.
+   *
+   * Lo que baja del servidor trae el **nombre** y lo que pone una regla, el
+   * número. Las condiciones comparan contra el número: sin traducirlo, una
+   * actividad en «PAGO COMPLETO» no cumplía «el estado es PAGO COMPLETO» al
+   * reabrirla.
+   */
+  private readonly estadosPorNombre = new Map<string, string>();
 
   /**
    * Cuántas veces le ha reescrito el flujo el valor a cada campo.
@@ -1277,6 +1288,10 @@ export class FormEngine {
     this.timer.set(input.timer ?? null);
     if (input.estado !== undefined) this.estadoActividad.set(String(input.estado));
 
+    for (const e of input.estados ?? []) {
+      this.estadosPorNombre.set(String(e.Name ?? '').trim().toLowerCase(), String(e.DispatchID));
+    }
+
     if (this.hayFlujo()) {
       this.indexarCampos();
 
@@ -1513,7 +1528,9 @@ export class FormEngine {
      * «si quedó en Aprobado, despacha». Se mete aquí, junto a las respuestas,
      * para que el motor no tenga que saber nada especial sobre él.
      */
-    valores[ESTADO_DE_LA_ACTIVIDAD] = this.estadoActividad();
+    const estado = this.estadoActividad();
+
+    valores[ESTADO_DE_LA_ACTIVIDAD] = this.estadosPorNombre.get(estado.trim().toLowerCase()) ?? estado;
 
     /*
      * Y lo que hayan respondido los servicios externos.
