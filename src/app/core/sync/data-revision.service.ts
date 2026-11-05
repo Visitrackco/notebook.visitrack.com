@@ -42,6 +42,13 @@ export class DataRevisionService {
    */
   readonly entities = signal(0);
 
+  /** Sube cuando la sincronización escribe formularios. */
+  readonly forms = signal(0);
+
+  touchForms(): void {
+    this.forms.update((value) => value + 1);
+  }
+
   touchActivities(): void {
     this.activities.update((value) => value + 1);
   }

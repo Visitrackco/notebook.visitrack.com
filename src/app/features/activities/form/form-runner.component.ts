@@ -2368,6 +2368,39 @@ export class FormRunnerComponent {
     await this.autosave.flush(`form:${this.answer().GUID}`);
   }
 
+  /**
+   * Vuelve a montar el formulario con la versión que trajo la sincronización.
+   *
+   * Lo escrito se vuelca antes y la actividad se relee después: la que llegó por
+   * la entrada es la de cuando se abrió. Se conserva la página en la que iba.
+   *
+   * Se escribe lo que tiene el motor y no solo lo que esperaba el autoguardado:
+   * soltar el campo activo es lo que le entrega lo último que se tecleó.
+   */
+  async remontar(survey: Survey, leerActividad: () => Promise<SurveyAnswer | null>): Promise<void> {
+    (document.activeElement as HTMLElement | null)?.blur();
+    await this.flush();
+
+    const motor = this.engine();
+    const id = this.answer().ID;
+
+    if (motor && id != null) {
+      await this.answers.update(id, { Fields: JSON.stringify(motor.toAnswerFields()) });
+    }
+
+    const answer = await leerActividad();
+    if (!answer) return;
+
+    const pagina = this.engine()?.page() ?? 0;
+
+    await this.mount(survey, answer);
+
+    const engine = this.engine();
+    engine?.page.set(Math.max(0, Math.min(pagina, engine.pages.length - 1)));
+
+    this.toasts.show({ title: 'El formulario se actualizó', tone: 'success' });
+  }
+
   // ───────────────────────────────────────────────────────────────────────────
   // Guardar
   // ───────────────────────────────────────────────────────────────────────────

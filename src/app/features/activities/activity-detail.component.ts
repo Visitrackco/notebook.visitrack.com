@@ -1,4 +1,4 @@
-import { Component, DestroyRef, computed, effect, inject, input, signal, untracked } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, input, signal, untracked, viewChild } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router, RouterLink, RouterOutlet } from '@angular/router';
@@ -78,6 +78,12 @@ export class ActivityDetailComponent {
   private readonly activities = inject(ActivityService);
   private readonly enlaces = inject(EnlacePublicoService);
   private readonly revisions = inject(DataRevisionService);
+
+  private readonly runner = viewChild(FormRunnerComponent);
+
+  /** Cómo estaba el formulario en la base al abrirlo. Ver [refrescarFormulario]. */
+  private firmaDelFormulario = '';
+  private esperaDeFormulario: ReturnType<typeof setTimeout> | undefined;
   private readonly answers = inject(SurveyAnswerRepository);
   private readonly parientes = inject(ParientesService);
   private readonly dispatch = inject(DispatchStatusRepository);
@@ -296,11 +302,47 @@ export class ActivityDetailComponent {
     return `answer:${this.guid()}`;
   }
 
+  /**
+   * Si la sincronización le cambió la estructura a este formulario, lo vuelve a
+   * dibujar sin salir. Las respuestas están en la base y siguen ahí.
+   */
+  private async refrescarFormulario(): Promise<void> {
+    const runner = this.runner();
+    if (!runner || !this.survey()) return;
+
+    if (runner.saving()) {
+      this.esperaDeFormulario = setTimeout(() => void this.refrescarFormulario(), 3000);
+      return;
+    }
+
+    const nuevo = await this.activities.findSurvey(this.surveyId());
+    if (!nuevo) return;
+
+    const firma = JSON.stringify(nuevo.JSONQuestion ?? null);
+    if (firma === this.firmaDelFormulario) return;
+
+    this.firmaDelFormulario = firma;
+
+    await runner.remontar(nuevo, () => this.activities.findByGuid(this.guid()));
+    this.survey.set(nuevo);
+  }
+
   constructor() {
     // El minutero de la cuenta atrás del borrador. Se para al salir: un
     // intervalo suelto sigue despertando la pestaña para siempre.
     const minutero = setInterval(() => this.ahora.set(Date.now()), 60_000);
-    inject(DestroyRef).onDestroy(() => clearInterval(minutero));
+    inject(DestroyRef).onDestroy(() => {
+      clearInterval(minutero);
+      clearTimeout(this.esperaDeFormulario);
+    });
+
+    // Una sincronización escribe por tandas: se mira cuando deja de escribir.
+    effect(() => {
+      if (!this.revisions.forms()) return;
+
+      clearTimeout(this.esperaDeFormulario);
+      this.esperaDeFormulario = setTimeout(() => void this.refrescarFormulario(), 1500);
+    });
 
     effect(() => {
       const surveyId = this.surveyId();
@@ -360,6 +402,7 @@ export class ActivityDetailComponent {
 
       this.survey.set(survey);
       this.answer.set(answer);
+      this.firmaDelFormulario = JSON.stringify(survey?.JSONQuestion ?? null);
 
       if (!answer) return;
 

@@ -479,6 +479,9 @@ export class SyncService {
       await this.deleteRecords(store, records, userId);
     }
 
+    // Quien tenga un formulario abierto mira si le cambió.
+    if (upsertsByStore.has('Surveys')) this.revisions.touchForms();
+
     this.state.update((s) => {
       const byEntity = { ...s.byEntity };
       for (const [entity, count] of Object.entries(counts)) {
