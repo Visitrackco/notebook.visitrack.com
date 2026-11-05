@@ -381,8 +381,16 @@
   }
 }
 
-.login__version {
+.login__legal {
+  display: block;
   margin-top: var(--vt-space-6);
+  font-size: 12px;
+  color: var(--lg-subtle);
+  text-align: center;
+}
+
+.login__version {
+  margin-top: var(--vt-space-2);
   font-size: 11px;
   color: var(--lg-subtle);
   text-align: center;
