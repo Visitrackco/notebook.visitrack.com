@@ -180,6 +180,13 @@ export const NAVIGATION: NavSection[] = [
     title: 'Cuenta',
     items: [
       {
+        key: 'novedades',
+        label: 'Novedades',
+        route: '/novedades',
+        icon: 'info',
+        description: 'Qué trae cada versión',
+      },
+      {
         key: 'profile',
         label: 'Mi perfil',
         route: '/perfil',

@@ -434,6 +434,12 @@ export const routes: Routes = [
           import('./features/pending/pending.component').then((m) => m.PendingComponent),
       },
       {
+        path: 'novedades',
+        title: 'Novedades · Visitrack',
+        loadComponent: () =>
+          import('./features/novedades/novedades.component').then((m) => m.NovedadesComponent),
+      },
+      {
         path: 'correos-flujo',
         title: 'Correos del flujo · Visitrack',
         loadComponent: () =>

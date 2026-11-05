@@ -1,0 +1,52 @@
+<section class="nv">
+  <header>
+    <h1 class="nv__titulo">Novedades</h1>
+    <p class="nv__sub">Qué trae cada versión.</p>
+  </header>
+
+  @if (cargando()) {
+    <p class="nv__sub">Cargando novedades…</p>
+  } @else if (error()) {
+    <p class="nv__sub">No se pudieron cargar las novedades. Revisa tu conexión.</p>
+    <button type="button" class="nv__btn" (click)="cargar()">Reintentar</button>
+  } @else {
+    @for (n of novedades(); track n.id) {
+      <article class="nv__tarjeta">
+        <header>
+          <span class="nv__version">Versión {{ n.version }}</span>
+          @if (n.titulo) {
+            <h2 class="nv__nombre">{{ n.titulo }}</h2>
+          }
+          <time class="nv__fecha">{{ n.creadaEn | date: 'd MMM y' }}</time>
+        </header>
+
+        @if (n.contenido) {
+          <p class="nv__texto">{{ n.contenido }}</p>
+        }
+
+        @if (n.videoUrl; as url) {
+          @let v = video(url);
+          @switch (v.tipo) {
+            @case ('marco') {
+              <iframe
+                class="nv__video"
+                [src]="marco(v.url)"
+                title="Video de la versión {{ n.version }}"
+                allow="fullscreen; picture-in-picture"
+                allowfullscreen
+              ></iframe>
+            }
+            @case ('archivo') {
+              <video class="nv__video" [src]="v.url" controls preload="metadata"></video>
+            }
+            @default {
+              <a [href]="v.url" target="_blank" rel="noopener">Ver el video</a>
+            }
+          }
+        }
+      </article>
+    } @empty {
+      <p class="nv__sub">Todavía no hay novedades.</p>
+    }
+  }
+</section>

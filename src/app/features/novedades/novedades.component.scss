@@ -1,0 +1,89 @@
+/**
+ * Novedades.
+ *
+ * Con los tokens de la plataforma, como el resto: el modo oscuro se resuelve
+ * donde ya se resuelve.
+ */
+
+:host {
+  display: block;
+  width: 100%;
+}
+
+.nv {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vt-space-4);
+  width: 100%;
+  max-width: 860px;
+}
+
+.nv__titulo {
+  margin: 0;
+  font-size: 1.25rem;
+  color: var(--vt-text);
+}
+
+.nv__sub {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--vt-text-subtle);
+}
+
+.nv__btn {
+  align-self: flex-start;
+  padding: var(--vt-space-2) var(--vt-space-4);
+  border: 1px solid var(--vt-control-border);
+  border-radius: var(--vt-radius-md);
+  background: var(--vt-surface);
+  color: var(--vt-text);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.nv__tarjeta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vt-space-3);
+  padding: var(--vt-space-4);
+  border: 1px solid var(--vt-control-border);
+  border-radius: var(--vt-radius-md);
+  background: var(--vt-surface);
+}
+
+.nv__version {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--vt-text);
+}
+
+.nv__nombre {
+  margin: var(--vt-space-1) 0 0;
+  font-size: 1.05rem;
+  color: var(--vt-text);
+}
+
+.nv__fecha {
+  display: block;
+  font-size: 0.8125rem;
+  color: var(--vt-text-subtle);
+}
+
+/* El texto va tal cual se escribió, con sus saltos de línea. */
+.nv__texto {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--vt-text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.nv__video {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 0;
+  border-radius: var(--vt-radius-md);
+  background: #000;
+}
