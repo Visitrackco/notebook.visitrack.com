@@ -2900,7 +2900,8 @@ export class FormEngine {
         const value = values.get(field.id);
         if (isEmptyValue(value ?? null)) continue;
 
-        titles.push({ id: field.id, lab: field.lab, val: textOf(value ?? null) });
+        const val = textOf(value ?? null);
+        if (val) titles.push({ id: field.id, lab: field.lab, val });
       }
     }
 
@@ -3248,8 +3249,10 @@ function textOf(value: FieldValue): string {
       .join(', ');
   }
 
-  const option = asOption(value);
-  if (option) return option.txt;
+  // Por el texto y no por `asOption`, que exige un `id` de texto: una opción con
+  // `id` numérico se quedaba sin descriptivo.
+  const txt = (value as { txt?: unknown }).txt;
+  if (typeof txt === 'string') return txt;
 
   const geo = asGeo(value);
   return geo ? `${geo.lat.toFixed(6)}, ${geo.lng.toFixed(6)}` : '';
