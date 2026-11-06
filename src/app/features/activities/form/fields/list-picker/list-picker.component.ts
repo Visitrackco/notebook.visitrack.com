@@ -114,6 +114,20 @@ export class ListPickerComponent {
   readonly isOnline = computed(() => this.source()?.origin === 'online');
   readonly truncated = computed(() => this.source()?.truncated === true);
   readonly paginable = computed(() => this.source()?.paginable === true);
+
+  /** «20 de 1.250 cargados». Vacío si la lista no pagina. */
+  readonly contador = computed(() => {
+    const source = this.source();
+    if (!source?.paginable || source.total === undefined) return '';
+    const n = (valor: number) => valor.toLocaleString('es-CO');
+    return `${n(source.choices.length)} de ${n(source.total)} cargados`;
+  });
+
+  /** Cuánto va, en porcentaje, para la barra del contador. */
+  readonly avance = computed(() => {
+    const source = this.source();
+    return source?.total ? Math.round((source.choices.length / source.total) * 100) : 0;
+  });
   readonly message = computed(() => this.source()?.message ?? '');
 
   private readonly permissions = inject(PermissionsService);

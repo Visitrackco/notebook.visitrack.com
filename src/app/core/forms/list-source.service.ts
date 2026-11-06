@@ -110,6 +110,8 @@ export interface ListSource {
   truncated: boolean;
   /** Lista o ítems locales: lo recortado se pide de 20 en 20 con el scroll. */
   paginable?: boolean;
+  /** Cuántos hay en total con la búsqueda actual, si se sabe. */
+  total?: number;
 }
 
 /**
@@ -478,7 +480,7 @@ export class ListSourceService {
        * Con búsqueda sí hay que recorrerlos: lo que se busca puede estar en
        * cualquier posición.
        */
-      items = await this.details.findByList(ownerId, listId, search ? undefined : limit);
+      items = await this.details.findByList(ownerId, listId);
     }
 
     /*
@@ -500,13 +502,14 @@ export class ListSourceService {
           ' se ofrece la lista completa',
       );
 
-      items = await this.details.findByList(ownerId, listId, search ? undefined : limit);
+      items = await this.details.findByList(ownerId, listId);
     }
 
-    const matched = this.searchItems(items, search, [
+    const todos = this.searchItems(items, search, [
       ...parseListDescriptors(definition.jsonDescriptors),
       ...(field.des ?? []).filter((entry) => entry.isSelected),
-    ], limit);
+    ], Number.MAX_SAFE_INTEGER);
+    const matched = todos.slice(0, limit);
 
     console.log(
       `[Listas] «${definition.Name}» local · consulta=${describeQuery(filter)} · ` +
@@ -529,8 +532,9 @@ export class ListSourceService {
 
     return {
       origin: 'local',
-      truncated: matched.length >= limit,
+      truncated: matched.length < todos.length,
       paginable: true,
+      total: todos.length,
       message: '',
       choices: this.toChoices(field, matched, definition),
     };
@@ -879,12 +883,14 @@ export class ListSourceService {
     }
 
     const limit = options.limit ?? PAGE;
-    const matched = applySearch(found, options.search, limit);
+    const todos = applySearch(found, options.search, Number.MAX_SAFE_INTEGER);
+    const matched = todos.slice(0, limit);
 
     return {
       origin: 'local',
-      truncated: matched.length >= limit,
+      truncated: matched.length < todos.length,
       paginable: true,
+      total: todos.length,
       message: '',
       choices: matched.map((item) => ({
         id: item.GUID,

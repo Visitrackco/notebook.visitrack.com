@@ -509,3 +509,56 @@
   background: var(--vt-surface-2);
   border-top: 1px solid var(--vt-rule);
 }
+
+// El contador de la lista paginada: fuera del scroll, siempre a la vista.
+.picker__contador {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--vt-space-2) var(--vt-space-4);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--vt-text);
+}
+
+.picker__avance {
+  display: block;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--vt-control-border);
+
+  > span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--vt-brand);
+    transition: width 0.2s ease;
+  }
+}
+
+.picker__avance--busy > span {
+  animation: picker-pulse 1s ease-in-out infinite;
+}
+
+// La fila del final mientras llegan los siguientes.
+.picker__mas {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--vt-space-2);
+  margin: 0;
+  padding: var(--vt-space-4);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--vt-text);
+}
+
+.picker__mas-rueda {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--vt-control-border);
+  border-top-color: var(--vt-brand);
+  border-radius: 50%;
+  animation: picker-spin 0.8s linear infinite;
+}
