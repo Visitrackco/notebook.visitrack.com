@@ -108,6 +108,8 @@ export interface ListSource {
   message: string;
   /** true si el conjunto puede estar recortado por el tope. */
   truncated: boolean;
+  /** Lista o ítems locales: lo recortado se pide de 20 en 20 con el scroll. */
+  paginable?: boolean;
 }
 
 /**
@@ -118,6 +120,9 @@ export interface ListSource {
  * veinte mil filas con el dedo — se busca.
  */
 const PAGE = 50;
+
+/** Cuántos registros más trae cada vuelta del scroll en una lista offline. */
+export const PAGINA_LISTA = 20;
 
 /**
  * Cualquier registro del que se puedan sacar descriptivos.
@@ -199,7 +204,7 @@ export class ListSourceService {
    */
   async resolve(
     field: FormField,
-    options: { answerGuid?: string; parentValue?: string; search?: string } = {},
+    options: { answerGuid?: string; parentValue?: string; search?: string; limit?: number } = {},
   ): Promise<ListSource> {
     const search = (options.search ?? '').trim();
 
@@ -263,7 +268,7 @@ export class ListSourceService {
     field: FieldRef,
     ownerId: number,
     guid: string,
-    options: { answerGuid?: string; parentValue?: string; search: string },
+    options: { answerGuid?: string; parentValue?: string; search: string; limit?: number },
   ): Promise<ListSource> {
     if (!guid) {
       return none('El formulario no indica de qué lista salen las opciones de este campo.');
@@ -336,7 +341,7 @@ export class ListSourceService {
      * según el camino por el que entró la fila.
      */
     if (isLocal) {
-      return this.fromLocalList(field, definition, ownerId, filter, options.search);
+      return this.fromLocalList(field, definition, ownerId, filter, options.search, options.limit);
     }
 
     const remote = await this.fromServer(field, options, definition, filter);
@@ -350,7 +355,7 @@ export class ListSourceService {
      * los ítems siguen en el dispositivo. Preferir un error a los datos que ya
      * están ahí deja al usuario sin poder responder por nada.
      */
-    const local = await this.fromLocalList(field, definition, ownerId, filter, options.search);
+    const local = await this.fromLocalList(field, definition, ownerId, filter, options.search, options.limit);
     return local.choices.length > 0 ? local : remote;
   }
 
@@ -439,6 +444,7 @@ export class ListSourceService {
     ownerId: number,
     filter: ListFilter,
     search: string,
+    limit = PAGE,
   ): Promise<ListSource> {
     const listId = String(definition.ListIDBD ?? '');
     let items: ListDetail[];
@@ -472,7 +478,7 @@ export class ListSourceService {
        * Con búsqueda sí hay que recorrerlos: lo que se busca puede estar en
        * cualquier posición.
        */
-      items = await this.details.findByList(ownerId, listId, search ? undefined : PAGE);
+      items = await this.details.findByList(ownerId, listId, search ? undefined : limit);
     }
 
     /*
@@ -494,13 +500,13 @@ export class ListSourceService {
           ' se ofrece la lista completa',
       );
 
-      items = await this.details.findByList(ownerId, listId, search ? undefined : PAGE);
+      items = await this.details.findByList(ownerId, listId, search ? undefined : limit);
     }
 
     const matched = this.searchItems(items, search, [
       ...parseListDescriptors(definition.jsonDescriptors),
       ...(field.des ?? []).filter((entry) => entry.isSelected),
-    ]);
+    ], limit);
 
     console.log(
       `[Listas] «${definition.Name}» local · consulta=${describeQuery(filter)} · ` +
@@ -523,7 +529,8 @@ export class ListSourceService {
 
     return {
       origin: 'local',
-      truncated: matched.length >= PAGE,
+      truncated: matched.length >= limit,
+      paginable: true,
       message: '',
       choices: this.toChoices(field, matched, definition),
     };
@@ -841,7 +848,7 @@ export class ListSourceService {
     field: FieldRef,
     ownerId: number,
     guid: string,
-    options: { answerGuid?: string; parentValue?: string; search: string },
+    options: { answerGuid?: string; parentValue?: string; search: string; limit?: number },
     /**
      * Cómo acotar la consulta remota.
      *
@@ -871,11 +878,13 @@ export class ListSourceService {
       });
     }
 
-    const matched = applySearch(found, options.search);
+    const limit = options.limit ?? PAGE;
+    const matched = applySearch(found, options.search, limit);
 
     return {
       origin: 'local',
-      truncated: matched.length >= PAGE,
+      truncated: matched.length >= limit,
+      paginable: true,
       message: '',
       choices: matched.map((item) => ({
         id: item.GUID,
@@ -971,6 +980,7 @@ export class ListSourceService {
       search: string;
       filter?: ListFilter;
       users?: boolean;
+      limit?: number;
     },
   ): Promise<ListSource> {
     const owner = this.ownerId();
@@ -994,7 +1004,7 @@ export class ListSourceService {
     field: FieldRef,
     definition: ListDefinition,
     filter: ListFilter,
-    options: { search: string; answerGuid?: string; parentValue?: string },
+    options: { search: string; answerGuid?: string; parentValue?: string; limit?: number },
   ): Promise<ListSource> {
     const owner = this.ownerId();
     if (owner === null) return none('No hay una sesión activa.');
@@ -1002,7 +1012,7 @@ export class ListSourceService {
     if (filter.blocked) return none(filter.blocked);
 
     if (Number(definition.IsForSync) === 1) {
-      return this.fromLocalList(field, definition, owner, filter, options.search);
+      return this.fromLocalList(field, definition, owner, filter, options.search, options.limit);
     }
 
     const remote = await this.fromServer(field, options, definition, filter);
@@ -1011,7 +1021,7 @@ export class ListSourceService {
     // Lo mismo que en [fromList]: una lista que se desmarcó conserva sus ítems
     // descargados, y preferir el error a los datos que están ahí deja al
     // usuario sin poder responder por nada.
-    const local = await this.fromLocalList(field, definition, owner, filter, options.search);
+    const local = await this.fromLocalList(field, definition, owner, filter, options.search, options.limit);
     return local.choices.length > 0 ? local : remote;
   }
 
@@ -1090,9 +1100,10 @@ export class ListSourceService {
     items: readonly T[],
     search: string,
     config: readonly DescriptorConfig[],
+    limit = PAGE,
   ): T[] {
     const needle = search.trim().toLowerCase();
-    if (!needle) return items.slice(0, PAGE);
+    if (!needle) return items.slice(0, limit);
 
     const byName: T[] = [];
     const candidates: T[] = [];
@@ -1112,7 +1123,7 @@ export class ListSourceService {
     }
 
     // El nombre manda: quien escribe espera ver primero lo que se llama así.
-    if (byName.length >= PAGE || config.length === 0) return byName.slice(0, PAGE);
+    if (byName.length >= limit || config.length === 0) return byName.slice(0, limit);
 
     const byDescriptor = candidates.filter((item) =>
       extractDescriptors(config, item).some((descriptor) =>
@@ -1120,7 +1131,7 @@ export class ListSourceService {
       ),
     );
 
-    return [...byName, ...byDescriptor].slice(0, PAGE);
+    return [...byName, ...byDescriptor].slice(0, limit);
   }
 
   /**
@@ -1245,14 +1256,14 @@ function isChildList(definition: ListDefinition): boolean {
 }
 
 /** Filtra por nombre y recorta al tope, igual que la app. */
-function applySearch<T extends { Name?: string }>(items: T[], search: string): T[] {
+function applySearch<T extends { Name?: string }>(items: T[], search: string, limit = PAGE): T[] {
   const needle = search.trim().toLowerCase();
 
   const filtered = needle
     ? items.filter((item) => (item.Name ?? '').toLowerCase().includes(needle))
     : items;
 
-  return filtered.slice(0, PAGE);
+  return filtered.slice(0, limit);
 }
 
 /**

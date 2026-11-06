@@ -6,6 +6,7 @@ import {
   ListChoice,
   ListSource,
   ListSourceService,
+  PAGINA_LISTA,
 } from '../../../../../core/forms/list-source.service';
 import { IconComponent } from '../../../../../shared/components/icon/icon.component';
 import { ListPickerComponent } from '../list-picker/list-picker.component';
@@ -216,7 +217,17 @@ export class ListFieldComponent {
     void this.load(term);
   }
 
+  onLoadMore(): void {
+    this.limite += PAGINA_LISTA;
+    void this.load(this.termino);
+  }
+
+  private limite = PAGINA_LISTA;
+  private termino = '';
+
   private async load(search: string): Promise<void> {
+    if (search !== this.termino) this.limite = PAGINA_LISTA;
+    this.termino = search;
     this.loading.set(true);
 
     try {
@@ -224,6 +235,7 @@ export class ListFieldComponent {
         answerGuid: this.answerGuid() || undefined,
         parentValue: this.parentValue() || undefined,
         search,
+        limit: this.limite,
       });
 
       this.items.set(this.sinLasBloqueadas(resueltos));

@@ -64,6 +64,9 @@ export class ListPickerComponent {
   readonly assetId = input('');
 
   readonly search = output<string>();
+
+  /** Se llegó al final de lo cargado y hay más. */
+  readonly loadMore = output<void>();
   readonly choose = output<ListChoice>();
   readonly cancel = output<void>();
 
@@ -110,6 +113,7 @@ export class ListPickerComponent {
   readonly hasChoices = computed(() => this.choices().length > 0);
   readonly isOnline = computed(() => this.source()?.origin === 'online');
   readonly truncated = computed(() => this.source()?.truncated === true);
+  readonly paginable = computed(() => this.source()?.paginable === true);
   readonly message = computed(() => this.source()?.message ?? '');
 
   private readonly permissions = inject(PermissionsService);
@@ -136,6 +140,14 @@ export class ListPickerComponent {
 
     clearTimeout(this.timer);
     this.timer = setTimeout(() => this.search.emit(value), 300);
+  }
+
+  /** El scroll infinito de las listas locales. */
+  onScroll(event: Event): void {
+    if (!this.paginable() || !this.truncated() || this.loading()) return;
+
+    const panel = event.target as HTMLElement;
+    if (panel.scrollTop + panel.clientHeight >= panel.scrollHeight - 200) this.loadMore.emit();
   }
 
   close(): void {

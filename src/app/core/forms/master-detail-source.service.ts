@@ -84,6 +84,9 @@ export interface DetailConfig {
 export interface DetailContext {
   answerGuid?: string;
 
+  /** Cuántos registros pedir: crece con el scroll del selector. */
+  limit?: number;
+
   /** `LocationID` heredado: de la actividad o de la ubicación elegida en el paso 1. */
   loc?: string;
 
@@ -318,6 +321,7 @@ export class MasterDetailSourceService {
           // desplegable sí. Es la diferencia entre `MasterDetailListPage` y
           // `DropDownListPage` en la app, y confundirlas vacía la tabla.
           users: false,
+          limit: context.limit,
         });
 
       case 'location-l2':
@@ -360,6 +364,7 @@ export class MasterDetailSourceService {
     return this.lists.itemsOfList(ref, target, this.filterFor(config, context), {
       search,
       answerGuid: context.answerGuid,
+      limit: context.limit,
     });
   }
 

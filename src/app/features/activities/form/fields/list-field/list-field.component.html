@@ -86,6 +86,7 @@
     [locationId]="context().loc"
     [assetId]="context().ass"
     (search)="onSearch($event)"
+    (loadMore)="onLoadMore()"
     (choose)="choose($event)"
     (created)="onCreated($event)"
     (cancel)="close()"

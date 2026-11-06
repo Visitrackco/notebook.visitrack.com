@@ -24,7 +24,7 @@ import { BinaryType } from '../../../../../core/models/sync.model';
 import { AuthService } from '../../../../../core/services/auth.service';
 import { BinaryStorageService } from '../../../../../core/services/binary-storage.service';
 import { InheritedSource } from '../../../../../core/forms/inherited-defaults';
-import { ListChoice, ListSource } from '../../../../../core/forms/list-source.service';
+import { ListChoice, ListSource, PAGINA_LISTA } from '../../../../../core/forms/list-source.service';
 import {
   DetailConfig,
   MasterDetailSourceService,
@@ -793,9 +793,20 @@ export class MasterDetailFieldComponent {
     void this.loadItems(term);
   }
 
+  onLoadMore(): void {
+    this.limite += PAGINA_LISTA;
+    void this.loadItems(this.termino);
+  }
+
+  private limite = PAGINA_LISTA;
+  private termino = '';
+
   private async loadItems(search: string): Promise<void> {
     const config = this.config();
     if (!config) return;
+
+    if (search !== this.termino) this.limite = PAGINA_LISTA;
+    this.termino = search;
 
     this.loadingItems.set(true);
 
@@ -807,6 +818,7 @@ export class MasterDetailFieldComponent {
           {
             answerGuid: this.answerGuid() || undefined,
             search,
+            limit: this.limite,
             parentField: this.parentValue() || undefined,
             parent: this.inheritedParent() || undefined,
             ...this.inheritedFilter(),

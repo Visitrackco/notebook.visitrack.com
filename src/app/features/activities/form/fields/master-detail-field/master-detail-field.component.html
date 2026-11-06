@@ -262,6 +262,7 @@
     [locationId]="createContext().loc"
     [assetId]="createContext().ass"
     (search)="onSearch($event)"
+    (loadMore)="onLoadMore()"
     (choose)="onItemChosen($event)"
     (created)="onItemCreated($event)"
     (cancel)="cancelPicker()"

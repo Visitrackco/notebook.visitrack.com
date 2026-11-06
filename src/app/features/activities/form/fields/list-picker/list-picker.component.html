@@ -65,7 +65,7 @@
       </label>
     </header>
 
-    <div class="picker__body" [class.picker__body--busy]="loading()">
+    <div class="picker__body" [class.picker__body--busy]="loading()" (scroll)="onScroll($event)">
       <!-- Los resultados anteriores se quedan mientras se busca, apagados.
            Vaciar la lista en cada pulsación la hacía parpadear justo cuando
            el usuario está comparando lo que aparece con lo que escribe. El
@@ -139,7 +139,7 @@
 
         <!-- La búsqueda trae como mucho cincuenta: decirlo evita que alguien
              concluya que su ítem no existe cuando solo está más abajo. -->
-        @if (truncated()) {
+        @if (truncated() && !paginable()) {
           <p class="picker__note picker__note--hint">
             Se muestran los primeros 50. Afina la búsqueda si no encuentras el que buscas.
           </p>
