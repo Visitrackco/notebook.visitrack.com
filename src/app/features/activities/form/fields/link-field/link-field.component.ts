@@ -1,5 +1,6 @@
 import { Component, computed, inject, input, signal } from '@angular/core';
 
+import { FormEngine } from '../../../../../core/forms/form-engine';
 import { FormField } from '../../../../../core/forms/form-schema';
 import { AuthService } from '../../../../../core/services/auth.service';
 import { IconComponent } from '../../../../../shared/components/icon/icon.component';
@@ -53,6 +54,9 @@ export class LinkFieldComponent {
   /** Actividad abierta, para el marcador de la actividad. */
   readonly answerGuid = input('');
 
+  /** El formulario, de donde salen los valores de `{CAMPO}`. */
+  readonly motor = input<FormEngine | null>(null);
+
   readonly feedback = signal('');
 
   /** La plantilla, tal como la escribió el diseñador del formulario. */
@@ -76,7 +80,8 @@ export class LinkFieldComponent {
 
   /** El destino tiene marcadores que dependen de la sesión. */
   readonly isDynamic = computed(() =>
-    Object.values(PLACEHOLDERS).some((mark) => this.template().includes(mark)),
+    Object.values(PLACEHOLDERS).some((mark) => this.template().includes(mark)) ||
+    this.template().includes('{'),
   );
 
   /**
@@ -91,6 +96,10 @@ export class LinkFieldComponent {
     let url = this.template();
 
     if (!url) return '';
+
+    // Primero los valores: van codificados, así que uno que traiga corchetes no
+    // se confunde con un marcador.
+    url = this.motor()?.enlaceConValores(url) ?? url;
 
     url = url.replaceAll(
       PLACEHOLDERS.TOKEN,

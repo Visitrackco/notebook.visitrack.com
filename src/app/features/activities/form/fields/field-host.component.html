@@ -54,7 +54,7 @@
     }
   }
   @case ('hyperlink') {
-    <vt-link-field [field]="f" [answerGuid]="answerGuid()" />
+    <vt-link-field [field]="f" [answerGuid]="answerGuid()" [motor]="motor()" />
   }
 
   <!-- ── Texto largo ────────────────────────────────────────────────────── -->
@@ -409,7 +409,7 @@
        distinguen por el contenido de la plantilla. -->
   @case ('webform') {
     @if (esUrlWebform()) {
-      <vt-webform-field [field]="f" [answerGuid]="answerGuid()" />
+      <vt-webform-field [field]="f" [answerGuid]="answerGuid()" [motor]="motor()" />
     } @else {
       <ng-container *ngTemplateOutlet="linkedTpl" />
     }

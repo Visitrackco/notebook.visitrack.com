@@ -1,6 +1,7 @@
-import { Component, computed, inject, input } from '@angular/core';
+import { Component, computed, inject, input, signal, untracked } from '@angular/core';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 
+import { FormEngine } from '../../../../../core/forms/form-engine';
 import { FormField } from '../../../../../core/forms/form-schema';
 import { AuthService } from '../../../../../core/services/auth.service';
 import { IconComponent } from '../../../../../shared/components/icon/icon.component';
@@ -33,6 +34,10 @@ const PLACEHOLDERS = {
       <div class="webform">
         <div class="webform__bar">
           <span class="webform__preview" [title]="preview()">{{ preview() }}</span>
+          <button type="button" class="webform__open" (click)="actualizar()">
+            <vt-icon name="refresh" [size]="14" />
+            Actualizar
+          </button>
           <button type="button" class="webform__open" (click)="openTab()">
             <vt-icon name="send" [size]="14" />
             Abrir en pestaña
@@ -107,6 +112,18 @@ export class WebformFieldComponent {
   readonly field = input.required<FormField>();
   readonly answerGuid = input('');
 
+  /** El formulario, de donde salen los valores de `{CAMPO}`. */
+  readonly motor = input<FormEngine | null>(null);
+
+  /**
+   * Cuántas veces se pidió recargar.
+   *
+   * La dirección se arma al abrir y con «Actualizar», no con cada cambio del
+   * formulario: si no, el iframe se recargaría con cada tecla y se perdería lo
+   * que la persona lleva escrito dentro.
+   */
+  private readonly recargas = signal(0);
+
   /** La plantilla, tal como la escribió el diseñador del formulario. */
   readonly template = computed(() => (this.field().val || this.field().url || '').trim());
 
@@ -114,20 +131,30 @@ export class WebformFieldComponent {
 
   /** La dirección sin el token, para enseñarla en la barra. */
   readonly preview = computed(() => {
-    const url = this.resolve(false);
+    this.recargas();
+    const url = untracked(() => this.resolve(false));
     return url.length > 90 ? `${url.slice(0, 87)}…` : url;
   });
 
   /** La dirección resuelta (con token), ya marcada como segura para el iframe. */
-  readonly safeUrl = computed<SafeResourceUrl>(() =>
-    this.sanitizer.bypassSecurityTrustResourceUrl(this.resolve(true)),
-  );
+  readonly safeUrl = computed<SafeResourceUrl>(() => {
+    this.recargas();
+    return this.sanitizer.bypassSecurityTrustResourceUrl(untracked(() => this.resolve(true)));
+  });
+
+  actualizar(): void {
+    this.recargas.update((n) => n + 1);
+  }
 
   /** Sustituye los marcadores por los valores de la sesión. */
   private resolve(withToken: boolean): string {
     const user = this.auth.currentUser();
     let url = this.template();
     if (!url) return '';
+
+    // Primero los valores: van codificados, así que uno que traiga corchetes no
+    // se confunde con un marcador.
+    url = this.motor()?.enlaceConValores(url) ?? url;
 
     url = url.replaceAll(PLACEHOLDERS.TOKEN, withToken ? (user?.Token ?? '') : '•••');
     url = url.replaceAll(PLACEHOLDERS.ANSWERGUID, this.answerGuid());

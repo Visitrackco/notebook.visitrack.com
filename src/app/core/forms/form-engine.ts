@@ -22,6 +22,7 @@ import {
   parseQuestions,
   splitFileValue,
 } from './form-schema';
+import { conValoresDelFormulario } from './enlace-con-valores';
 import { ValueReader, computeDerived, derivedFieldsOf } from './derived-fields';
 import {
   InheritedSource,
@@ -2562,6 +2563,15 @@ export class FormEngine {
   /** Valor actual de un campo. */
   valueOf(id: string): FieldValue {
     return this.values().get(id) ?? null;
+  }
+
+  /** Pone en una dirección los valores de `{CAMPO}`. Ver `conValoresDelFormulario`. */
+  enlaceConValores(url: string): string {
+    return conValoresDelFormulario(
+      url,
+      this.pages.flatMap((pagina) => pagina.fie),
+      (id) => this.valueOf(id),
+    );
   }
 
   /**
