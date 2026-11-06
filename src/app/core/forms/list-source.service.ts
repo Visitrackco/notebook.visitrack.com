@@ -833,9 +833,9 @@ export class ListSourceService {
   /**
    * Ítems de inventario.
    *
-   * Se comportan como una lista: tienen su propia definición con `IsForSync`,
-   * así que pueden estar descargados o consultarse al servidor. La diferencia
-   * es que viajan por `ItemID` en vez de por `ListID`.
+   * Siempre son offline: se leen de aquí, sin mirar `IsForSync`. Si este equipo
+   * todavía no los tiene se consultan al servidor, para no mostrar la lista
+   * vacía. La misma regla del móvil (`hayItemsEnElTelefono`).
    */
   private async fromItems(
     field: FieldRef,
@@ -860,7 +860,9 @@ export class ListSourceService {
       return none('El tipo de ítem no está sincronizado en el dispositivo.');
     }
 
-    if (Number(definition.IsForSync) !== 1) {
+    const found = await this.items.findByType(ownerId, String(definition.ListIDBD ?? ''));
+
+    if (found.length === 0) {
       return this.fromServer(field, options, null, {
         ...(extra.filter ?? {}),
         item: true,
@@ -869,12 +871,7 @@ export class ListSourceService {
       });
     }
 
-    const found = await this.items.findByType(ownerId, String(definition.ListIDBD ?? ''));
     const matched = applySearch(found, options.search);
-
-    if (found.length === 0) {
-      return none('No hay ítems de inventario descargados para este tipo.');
-    }
 
     return {
       origin: 'local',

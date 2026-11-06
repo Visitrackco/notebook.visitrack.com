@@ -558,16 +558,7 @@ export class MasterDetailSourceService {
           const tipo = await this.lists.itemTypeOf(config.typeGuid);
           if (!tipo) return [];
 
-          /*
-           * Un tipo que no se descarga no tiene sus ítems aquí.
-           *
-           * Se eligen contra el servidor, así que buscarlos en el dispositivo
-           * daría vacío siempre. Se devuelve `null` y la fila se crea con lo
-           * que traiga la regla, que es lo mismo que pasa cuando el registro no
-           * está: existe y se puede diligenciar, solo que sin heredar.
-           */
-          if (Number(tipo.IsForSync) !== 1) return [];
-
+          // Los ítems siempre son offline: `IsForSync` no aplica.
           return (await this.items.findByType(
             dueno,
             String(tipo.ListIDBD ?? ''),
