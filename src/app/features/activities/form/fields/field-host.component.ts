@@ -25,6 +25,7 @@ import {
   ScanValue,
   asFile,
   asGeo,
+  isGpsSinLectura,
   asOption,
   asOptions,
   blocksGallery,
@@ -455,6 +456,7 @@ export class FieldHostComponent {
    * `undefined, undefined` en vez de pedir una captura.
    */
   readonly geoValue = computed<GpsReading | null>(() => asGeo(this.value()));
+  readonly gpsSinLectura = computed(() => isGpsSinLectura(this.value()));
 
   /** El valor como referencia a un archivo. */
   readonly fileValue = computed<FileValue | null>(() => asFile(this.value()));

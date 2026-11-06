@@ -51,6 +51,9 @@ export class GpsFieldComponent {
   /** Lectura guardada, o `null` si el campo está vacío. */
   readonly reading = input<GpsReading | null>(null);
 
+  /** En el teléfono se intentó y el GPS no se leyó. */
+  readonly sinLectura = input(false);
+
   readonly readingChange = output<GpsReading | null>();
 
   readonly capturing = signal(false);

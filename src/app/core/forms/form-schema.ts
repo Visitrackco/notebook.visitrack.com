@@ -486,6 +486,20 @@ export function asGeo(value: FieldValue): GeoValue | null {
     : null;
 }
 
+/**
+ * ¿Es la marca del móvil de que se intentó capturar y el GPS no se leyó?
+ *
+ * Trae las coordenadas vacías y el motivo: está respondido, sin ubicación.
+ */
+export function isGpsSinLectura(value: FieldValue): boolean {
+  return (
+    !!value &&
+    typeof value === 'object' &&
+    !Array.isArray(value) &&
+    (value as { pro?: unknown }).pro === 'sin-lectura'
+  );
+}
+
 /** ¿Es este valor la referencia a un archivo? */
 export function asFile(value: FieldValue): FileValue | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
@@ -675,6 +689,8 @@ export function isEmptyValue(value: unknown): boolean {
      * exigía, aunque fuera obligatorio. Lo que vale es si hay coordenadas, no
      * si hay objeto.
      */
+    if (isGpsSinLectura(value as FieldValue)) return false;
+
     if ('lat' in value || 'lng' in value) {
       const punto = value as { lat?: unknown; lng?: unknown };
 
@@ -817,6 +833,7 @@ export function valueToText(value: FieldValue): string {
   // otro y caben en una línea.
   const geo = asGeo(value);
   if (geo) return `${geo.lat.toFixed(6)}, ${geo.lng.toFixed(6)}`;
+  if (isGpsSinLectura(value)) return 'No se pudo capturar';
 
   // Un archivo no tiene texto propio salvo el que lo acompaña —el nombre de
   // quien firmó, el del documento—. Cuando no lo hay, se dice que existe: un

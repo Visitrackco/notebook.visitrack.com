@@ -87,6 +87,9 @@
     </button>
   }
 
+  @if (sinLectura()) {
+    <p class="gps__error">No se pudo capturar: no se leyó el GPS.</p>
+  }
   @if (help()) {
     <p class="gps__hint">{{ help() }}</p>
   }
