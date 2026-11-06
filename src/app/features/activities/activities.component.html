@@ -646,6 +646,7 @@
   <vt-pdf-preview
     [url]="pdfUrl()"
     [titulo]="pdfTitulo()"
+    [nombreArchivo]="pdfNombre()"
     [subtitulo]="card.dispatchName + '  ·  ' + card.updated"
     (cerrado)="pdfCard.set(null)"
   />

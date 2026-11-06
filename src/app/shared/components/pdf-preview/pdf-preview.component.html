@@ -13,6 +13,11 @@
       </div>
 
       <div class="pv-acciones">
+        <button type="button" class="pv-btn" (click)="descargar()" [disabled]="descargando()">
+          <vt-icon name="download" [size]="15" />
+          <span class="pv-btn-txt">{{ descargando() ? 'Descargando…' : 'Descargar' }}</span>
+        </button>
+
         <button type="button" class="pv-btn" (click)="abrirEnPestana()" title="Abrir en una pestaña aparte">
           <vt-icon name="download" [size]="15" />
           <span class="pv-btn-txt">Abrir aparte</span>

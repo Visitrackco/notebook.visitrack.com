@@ -39,6 +39,11 @@ export class PdfPreviewComponent implements OnDestroy {
   readonly titulo = input('Actividad');
   readonly subtitulo = input('');
 
+  /** Con qué nombre se descarga. Ver `nombreDelPdf`. */
+  readonly nombreArchivo = input('Actividad.pdf');
+
+  readonly descargando = signal(false);
+
   readonly cerrado = output<void>();
 
   /** El `iframe` ya terminó de cargar. Hasta entonces se ve el indicador. */
@@ -69,6 +74,33 @@ export class PdfPreviewComponent implements OnDestroy {
   /** Abrir en otra pestaña sigue estando: para verlo a pantalla completa. */
   abrirEnPestana(): void {
     window.open(this.url(), '_blank', 'noopener');
+  }
+
+  /**
+   * Descarga con el nombre de la actividad.
+   *
+   * El visor del navegador nombra el archivo a su manera y no se puede cambiar
+   * desde aquí, así que se pide el documento y se guarda como archivo propio. Si
+   * falla, queda abrirlo aparte.
+   */
+  async descargar(): Promise<void> {
+    this.descargando.set(true);
+
+    try {
+      const respuesta = await fetch(this.url());
+      if (!respuesta.ok) throw new Error(String(respuesta.status));
+
+      const direccion = URL.createObjectURL(await respuesta.blob());
+      const enlace = document.createElement('a');
+      enlace.href = direccion;
+      enlace.download = this.nombreArchivo();
+      enlace.click();
+      URL.revokeObjectURL(direccion);
+    } catch {
+      this.abrirEnPestana();
+    } finally {
+      this.descargando.set(false);
+    }
   }
 
   cerrarSiEsElVelo(e: MouseEvent): void {

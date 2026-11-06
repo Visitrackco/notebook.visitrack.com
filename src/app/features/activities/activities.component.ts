@@ -202,6 +202,16 @@ export class ActivitiesComponent {
     return card ? this.pdfTituloDe(card) : 'Actividad';
   });
 
+  /** El archivo: formulario, ubicación, activo y consecutivo, con lo que tenga. */
+  readonly pdfNombre = computed(() => {
+    const answer = this.pdfCard()?.answer;
+    const partes = [this.survey()?.Title, answer?.LocationName, answer?.AssetName, answer?.Consecutive]
+      .map((parte) => String(parte ?? '').replace(/[\/:*?"<>|]/g, ' ').trim())
+      .filter((parte) => parte !== '' && parte !== '0');
+
+    return `${partes.join(' - ') || 'Actividad'}.pdf`;
+  });
+
   /**
    * Cómo se nombra una actividad fuera del listado.
    *
