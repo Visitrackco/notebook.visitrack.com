@@ -26,6 +26,8 @@ export interface NavItem {
    * sección no aparece.
    */
   permission?: string;
+  /** Solo si la compañía tiene «Vincular dispositivo». Ver `ConfigDeCompaniaService`. */
+  soloConVincular?: boolean;
   /** true si todavía no está implementada: se muestra deshabilitada. */
   comingSoon?: boolean;
 }
@@ -159,6 +161,7 @@ export const NAVIGATION: NavSection[] = [
         route: '/vincular',
         icon: 'phone-link',
         description: 'Trae aquí lo que tienes en el teléfono',
+        soloConVincular: true,
       },
       {
         key: 'entities',

@@ -4,6 +4,7 @@ import { esModoPublico } from './core/config/modo-publico';
 import { authGuard, guestGuard } from './core/guards/auth.guard';
 import { permisoDeModuleGuard } from './core/guards/permiso-de-module.guard';
 import { publicoGuard } from './core/guards/publico.guard';
+import { vincularGuard } from './core/guards/vincular.guard';
 import { surveyGuard } from './core/guards/survey.guard';
 import { PERMISO_SEGUIMIENTO_GEOCERCAS } from './core/services/permisos-de-module.service';
 
@@ -254,6 +255,7 @@ export const routes: Routes = [
       {
         path: 'vincular',
         title: 'Vincular teléfono · Visitrack',
+        canActivate: [vincularGuard],
         loadComponent: () => import('./features/link/link.component').then((m) => m.LinkComponent),
       },
 

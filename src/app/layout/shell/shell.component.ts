@@ -9,6 +9,7 @@ import { CompanyLogoService } from '../../core/services/company-logo.service';
 import { ConnectivityService } from '../../core/services/connectivity.service';
 import { GeocercasService } from '../../core/geocercas/geocercas.service';
 import { PermisosDeModuleService } from '../../core/services/permisos-de-module.service';
+import { ConfigDeCompaniaService } from '../../core/services/config-de-compania.service';
 import { PendingUploadService } from '../../core/sync/pending-upload.service';
 import { PushService } from '../../core/services/push.service';
 import { DispatchCounterService } from '../../core/services/dispatch-counter.service';
@@ -90,6 +91,9 @@ export class ShellComponent {
    */
   readonly geocercas = inject(GeocercasService);
 
+  /** Si la compañía tiene «Vincular dispositivo»: decide si sale en el menú. */
+  private readonly configCompania = inject(ConfigDeCompaniaService);
+
   private readonly permisosDeModule = inject(PermisosDeModuleService);
 
   /**
@@ -102,7 +106,9 @@ export class ShellComponent {
     NAVIGATION.map((section) => ({
       ...section,
       items: section.items.filter(
-        (item) => !item.permission || this.permisosDeModule.tiene(item.permission)(),
+        (item) =>
+          (!item.permission || this.permisosDeModule.tiene(item.permission)()) &&
+          (!item.soloConVincular || this.configCompania.vincularDispositivo()),
       ),
     })).filter((section) => section.items.length > 0),
   );
@@ -355,6 +361,8 @@ export class ShellComponent {
   });
 
   constructor() {
+    void this.configCompania.cargar();
+
     /**
      * El proceso de subida arranca con el armazón.
      *
