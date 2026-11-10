@@ -184,6 +184,24 @@ export class SurveyAnswerRepository extends BaseRepository<SurveyAnswer> {
     });
   }
 
+  /**
+   * Cuántas hijas de un formulario tiene una actividad, guardadas o no.
+   *
+   * Lo usa el flujo antes de crear: corre en cada guardado y, sin contar,
+   * cada guardado creaba otra tanda de hijas.
+   */
+  async countChildren(userId: string, parentGuid: string, surveyId: string): Promise<number> {
+    if (!parentGuid || !surveyId) return 0;
+
+    const hijas = await this.query({
+      index: 'byUserID',
+      range: userId,
+      filter: (a) =>
+        a.ParentGUID === parentGuid && String(a.SurveyID) === String(surveyId) && a.IsDelete !== '1',
+    });
+    return hijas.length;
+  }
+
   /** Borradores hijos de una actividad (formularios vinculados). */
   async findDraftChildren(userId: string, parentGuid: string): Promise<SurveyAnswer[]> {
     if (!parentGuid) return [];

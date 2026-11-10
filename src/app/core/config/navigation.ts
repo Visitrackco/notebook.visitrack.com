@@ -78,6 +78,15 @@ export const NAVIGATION: NavSection[] = [
         description: 'El trabajo que te asignaron',
       },
       {
+        key: 'mi-ruta',
+        label: 'Mi ruta',
+        route: '/mi-ruta',
+        icon: 'map-pin',
+        description: 'Los puntos de tu ruta y cuántos te faltan',
+        // Solo quien hace rutas (permiso «Mi ruta» de Module).
+        permission: 'LOCATOR_MY_ROUTE',
+      },
+      {
         key: 'forms',
         label: 'Formularios',
         route: '/formularios',

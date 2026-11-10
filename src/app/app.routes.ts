@@ -240,6 +240,12 @@ export const routes: Routes = [
           import('./features/chat/chat.component').then((m) => m.ChatComponent),
       },
       {
+        // La ruta del día del control de ingreso (rutas de Module).
+        path: 'mi-ruta',
+        title: 'Mi ruta · Visitrack',
+        loadComponent: () => import('./features/mi-ruta/mi-ruta.component').then((m) => m.MiRutaComponent),
+      },
+      {
         path: 'consignas',
         title: 'Mis consignas · Visitrack',
         loadComponent: () =>

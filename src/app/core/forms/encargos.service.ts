@@ -281,8 +281,31 @@ export class EncargosDelFlujoService {
     const deOrigen = await this.activities.findSurvey(answer.SurveyID);
     const abiertas: string[] = [];
 
+    /*
+     * Cuántas hijas de cada formulario **ya existen**, como en el teléfono.
+     *
+     * Esto corre en cada guardado —incompleta y otra vez al completarla—: sin
+     * contar, cada guardado creaba otra tanda. Se crean **las que falten**
+     * para llegar a lo que pide la regla.
+     */
+    const yaHay = new Map<string, number>();
+    for (const pedida of destinos) {
+      if (!yaHay.has(pedida.formulario)) {
+        yaHay.set(
+          pedida.formulario,
+          await this.answers.countChildren(String(user.UserID), answer.GUID, pedida.formulario),
+        );
+      }
+    }
+
     for (const pedida of destinos) {
       const destino = pedida.formulario;
+
+      const existentes = yaHay.get(destino) ?? 0;
+      if (existentes > 0) {
+        yaHay.set(destino, existentes - 1);
+        continue;
+      }
       const survey = await this.activities.findSurvey(destino);
 
       // Un formulario que no está descargado no se puede abrir. Se dice y no

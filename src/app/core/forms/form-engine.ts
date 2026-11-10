@@ -2378,7 +2378,11 @@ export class FormEngine {
       if (vistas.has(JSON.stringify(config))) continue;
 
       vistas.add(JSON.stringify(config));
-      salida.push(config);
+
+      // Con cantidad, una entrada por cada una: quien las crea cuenta las que ya
+      // existen y crea solo las que falten.
+      const cantidad = Math.max(1, Number((config as { cantidad?: number }).cantidad ?? 1) || 1);
+      for (let i = 0; i < cantidad; i++) salida.push(config);
     }
 
     return salida;

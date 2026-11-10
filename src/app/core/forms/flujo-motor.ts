@@ -2566,6 +2566,38 @@ function quiereExigir(crudo: unknown): boolean {
  * formulario hijo trae de fábrica, y entonces heredar dejaría el campo peor de
  * lo que estaba.
  */
+/** Nunca más de estas de una sola vez, aunque un campo pida más: es un freno contra un dedo de más. */
+export const TOPE_DE_ACTIVIDADES = 50;
+
+/**
+ * Cuántas actividades pide crear una acción `crear-actividad`.
+ *
+ * `cantidadDe` (el `apiId` de un campo) manda sobre `cantidad` (un número
+ * fijo): así quien diligencia decide cuántas —«cuántos equipos revisaste»—.
+ * Sin ninguna de las dos, una, que es como funcionaba siempre. Un campo sin
+ * responder pide cero: no hay a partir de qué crearlas.
+ */
+export function cantidadPedida(
+  config: Record<string, unknown>,
+  valores: Record<ApiId, unknown>,
+  campos: Record<ApiId, Campo>,
+): number {
+  const de = String(config['cantidadDe'] ?? '').trim();
+  if (de) {
+    const n = numeroDelCampo(de, valores, campos, false);
+    return n === null || !Number.isFinite(n) ? 0 : Math.max(0, Math.floor(n));
+  }
+
+  const fija = Number(config['cantidad']);
+  return Number.isFinite(fija) && fija >= 1 ? Math.min(Math.floor(fija), TOPE_DE_ACTIVIDADES) : 1;
+}
+
+/** El tope que puso quien configuró la regla, o `null` si no puso. */
+export function maximoDeActividades(config: Record<string, unknown>): number | null {
+  const n = Number(config['maximo']);
+  return Number.isFinite(n) && n >= 1 ? Math.floor(n) : null;
+}
+
 export function herenciaDeActividad(
   crudo: unknown,
   valores: Record<ApiId, unknown>,
@@ -2652,10 +2684,15 @@ export function herenciaDeActividad(
 
   const campos2 = [...porCampo.values()];
 
-  if (!campos2.length && !tablas.length && !binarios.length) return formulario;
+  // Cuántas: un número fijo, o lo que diga un campo. Cero es «ninguna».
+  const cantidad = Math.min(cantidadPedida(config, valores, campos), maximoDeActividades(config) ?? TOPE_DE_ACTIVIDADES);
+  if (cantidad === 0) return null;
+
+  if (!campos2.length && !tablas.length && !binarios.length && cantidad === 1) return formulario;
 
   return {
     formulario,
+    ...(cantidad > 1 ? { cantidad } : {}),
     ...(campos2.length ? { campos: campos2 } : {}),
     ...(tablas.length ? { tablas } : {}),
     ...(binarios.length ? { binarios } : {}),
@@ -4347,6 +4384,28 @@ function aplicar(
     if (!yaEsta) resultado.encargos.push({ que: accion.accion, valor, regla });
 
     return;
+  }
+
+  /*
+   * Más de las permitidas: no se guarda, y se dice con todas las letras.
+   *
+   * Es para cuando la cantidad la escribe quien diligencia: la regla dice hasta
+   * cuántas puede pedir. Crear solo las permitidas en silencio dejaría a la
+   * persona creyendo que pidió diez y salieron diez.
+   */
+  if (accion.accion === 'crear-actividad' && accion.valor && typeof accion.valor === 'object') {
+    const config = accion.valor as Record<string, unknown>;
+    const maximo = maximoDeActividades(config);
+    const pedida = cantidadPedida(config, valores, campos);
+
+    if (maximo !== null && pedida > maximo) {
+      const nombre = String(config['nombreFormulario'] ?? '').trim();
+      const motivo =
+        `Solo tienes permiso de crear ${maximo} ${maximo === 1 ? 'actividad' : 'actividades'}` +
+        `${nombre ? ` de «${nombre}»` : ''} y pediste ${pedida}.`;
+      if (!resultado.bloqueos.includes(motivo)) resultado.bloqueos.push(motivo);
+      return;
+    }
   }
 
   if (accion.accion === 'crear-actividad' || accion.accion === 'cambiar-estado') {

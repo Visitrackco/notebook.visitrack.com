@@ -2767,6 +2767,22 @@ export interface HerenciaDeActividad {
   /** El formulario del que nace la actividad. */
   formulario: string;
 
+  /**
+   * Cuántas crear: un número fijo. Sin él, una. Todas quedan hijas de la
+   * actividad que las pide, y volver a guardar no las repite: se crean las
+   * que falten.
+   */
+  cantidad?: number;
+  /** O cuántas según un campo de este formulario (su `apiId`). Manda sobre `cantidad`. */
+  cantidadDe?: string;
+  /**
+   * El tope: si se piden más, no se guarda y se dice «Solo tienes permiso de
+   * crear N actividades de …».
+   */
+  maximo?: number;
+  /** El título del formulario, para ese mensaje. Lo escribe el editor. */
+  nombreFormulario?: string;
+
   campos?: CampoHeredado[];
   tablas?: TablaHeredada[];
   binarios?: BinarioHeredado[];
