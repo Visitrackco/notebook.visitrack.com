@@ -1,6 +1,6 @@
 {
   "name": "web-visitrack",
-  "version": "0.24.39",
+  "version": "0.24.41",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",

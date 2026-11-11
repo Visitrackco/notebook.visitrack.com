@@ -1,12 +1,9 @@
 @if (auth.currentUser(); as user) {
   <div class="profile">
-    <!-- ── Identidad ───────────────────────────────────────────────────────────
-         Un banner sobre la tinta corporativa en vez de una fila más entre las
-         demás: es la única sección que responde «quién eres y dónde estás», y
-         tratarla como un panel igual a los otros la escondía entre ellos. -->
-    <header class="profile__banner">
-      <span class="profile__banner-glow" aria-hidden="true"></span>
-
+    <!-- ── Cabecera ────────────────────────────────────────────────────────────
+         Sobria, en la misma superficie que el resto: quién eres a la izquierda,
+         versión y acciones de la sesión a la derecha. -->
+    <header class="profile__head">
       <div class="profile__identity">
         @if (companyLogo(); as logo) {
           <span class="profile__logo-wrap">
@@ -33,53 +30,48 @@
 
         <div class="profile__identity-info">
           <h1>{{ displayName(user) }}</h1>
-          <p>{{ user.Email || 'Sin correo registrado' }}</p>
+          <p>
+            {{ user.Email || 'Sin correo registrado' }} · {{ user.Login }} · Compañía
+            {{ user.CompanyID }}
+          </p>
 
-          <div class="profile__chips">
-            <span class="profile__chip">
-              <vt-icon name="building" [size]="13" />
-              Compañía {{ user.CompanyID }}
-            </span>
-            <span class="profile__chip">
-              <vt-icon name="user" [size]="13" />
-              {{ user.Login }}
-            </span>
+          <div class="profile__tags">
             @if (user.Active === '1' || user.Active === 'True') {
-              <span class="profile__chip profile__chip--ok">
-                <vt-icon name="check" [size]="13" />
-                Activo
-              </span>
+              <span class="profile__tag profile__tag--ok">Activo</span>
             }
             <span
-              class="profile__chip"
-              [class.profile__chip--ok]="connectivity.isOnline()"
-              [class.profile__chip--warn]="connectivity.isOffline()"
+              class="profile__tag"
+              [class.profile__tag--ok]="connectivity.isOnline()"
+              [class.profile__tag--warn]="connectivity.isOffline()"
             >
-              <vt-icon [name]="connectivity.isOnline() ? 'connection' : 'connection-off'" [size]="13" />
               {{ connectivity.isOnline() ? 'En línea' : 'Sin conexión' }}
             </span>
           </div>
         </div>
       </div>
 
-      <div class="profile__acciones">
-        <!-- Refrescar los propios datos: lo que cambian desde Module no llega
-             solo, y cerrar sesión para verlo obliga a sincronizar de nuevo. -->
-        <button
-          type="button"
-          class="profile__logout"
-          (click)="refrescarUsuario()"
-          [disabled]="refrescandoUsuario()"
-          title="Traer del servidor tu nombre, zona, teléfono y demás datos"
-        >
-          <vt-icon name="refresh" [size]="17" />
-          {{ refrescandoUsuario() ? 'Actualizando…' : 'Actualizar mis datos' }}
-        </button>
+      <div class="profile__head-side">
+        <span class="profile__version">Visitrack Web {{ appVersion }}</span>
 
-        <button type="button" class="profile__logout" (click)="logout()">
-          <vt-icon name="logout" [size]="17" />
-          Cerrar sesión
-        </button>
+        <div class="profile__acciones">
+          <!-- Refrescar los propios datos: lo que cambian desde Module no llega
+               solo, y cerrar sesión para verlo obliga a sincronizar de nuevo. -->
+          <button
+            type="button"
+            class="profile__btn"
+            (click)="refrescarUsuario()"
+            [disabled]="refrescandoUsuario()"
+            title="Traer del servidor tu nombre, zona, teléfono y demás datos"
+          >
+            <vt-icon name="refresh" [size]="16" />
+            {{ refrescandoUsuario() ? 'Actualizando…' : 'Actualizar mis datos' }}
+          </button>
+
+          <button type="button" class="profile__btn profile__btn--danger" (click)="logout()">
+            <vt-icon name="logout" [size]="16" />
+            Cerrar sesión
+          </button>
+        </div>
       </div>
     </header>
 
@@ -90,458 +82,462 @@
       </div>
     }
 
-    <!-- Dos columnas asimétricas: a la izquierda lo que se cambia, a la derecha
-         lo que se consulta. Un grid uniforme hacía parecer que ajustar el tema y
-         leer el identificador del equipo tenían el mismo peso. -->
-    <div class="profile__layout">
-      <div class="profile__column">
-        <!-- ── Apariencia ────────────────────────────────────────────────── -->
-        <section class="profile__panel">
-          <header class="profile__panel-head">
-            <span class="profile__panel-icon">
-              <vt-icon name="sun" [size]="18" />
+    <!-- ── Cuenta ──────────────────────────────────────────────────────────── -->
+    <section class="profile__section">
+      <header class="profile__section-head">
+        <h2>Cuenta</h2>
+        <p>Tus datos en Visitrack. Se cambian desde Module.</p>
+      </header>
+
+      <div class="profile__rows">
+        <div class="profile__row">
+          <div class="profile__row-text">
+            <strong>Identificador</strong>
+            <span>Número de tu usuario en Visitrack.</span>
+          </div>
+          <span class="profile__row-value vt-figure">{{ user.UserID }}</span>
+        </div>
+
+        <div class="profile__row">
+          <div class="profile__row-text">
+            <strong>Teléfono</strong>
+            <span>El que tienes registrado.</span>
+          </div>
+          <span class="profile__row-value">{{ user.Phone || '—' }}</span>
+        </div>
+
+        <!--
+          La zona, y **con cuál se está pintando**.
+
+          El código a secas no dice nada útil: se puede tener «MXC» apuntado y
+          estar viendo las horas de Colombia porque el código no llegó a
+          traducirse a un desfase. Eso pasó, y desde fuera es indistinguible de
+          que el arreglo no funcione. Así que se enseñan las tres cosas: el
+          código, el desfase que se está usando y de dónde salió.
+        -->
+        <div class="profile__row">
+          <div class="profile__row-text">
+            <strong>Zona horaria</strong>
+            <span>Con la que se muestran las fechas y horas.</span>
+          </div>
+          <span class="profile__row-value">
+            {{ user.UTCCode || '—' }}
+            <span class="zona-detalle">
+              · {{ zona.comoSeLee() }}
+              @if (zona.nombre()) {
+                ({{ zona.nombre() }})
+              }
+              · según {{ zona.origen() }}
             </span>
-            <div>
-              <h2>Apariencia</h2>
-              <p>Cómo se ve la aplicación en este equipo.</p>
-            </div>
-          </header>
+          </span>
+        </div>
 
-          <div class="profile__field">
-            <span class="profile__field-label">Modo de color</span>
-
-            <!-- Cada modo con una miniatura de lo que hace: elegir un tema por
-                 su nombre obliga a probarlos; con la muestra se ve antes. -->
-            <div class="profile__modes">
-              @for (mode of themeModes; track mode.value) {
-                <button
-                  type="button"
-                  [class]="'profile__mode profile__mode--' + mode.value"
-                  [class.profile__mode--active]="theme.mode() === mode.value"
-                  (click)="setThemeMode(mode.value)"
-                >
-                  <span class="profile__mode-preview" aria-hidden="true">
-                    <span class="profile__mode-bar"></span>
-                    <span class="profile__mode-body"></span>
-                  </span>
-                  <span class="profile__mode-name">
-                    <vt-icon [name]="mode.icon" [size]="15" />
-                    {{ mode.label }}
-                  </span>
-                </button>
-              }
-            </div>
-            <p class="profile__hint">«Automático» sigue la configuración de tu sistema.</p>
+        <div class="profile__row">
+          <div class="profile__row-text">
+            <strong>Idioma</strong>
+            <span>Idioma de tu cuenta.</span>
           </div>
+          <span class="profile__row-value">
+            {{ user.DefaultLanguage === 'es' ? 'Español' : user.DefaultLanguage }}
+          </span>
+        </div>
+      </div>
+    </section>
 
-          <!--
-            El fondo de la página, aparte del color de la aplicación.
+    <!-- ── Apariencia ──────────────────────────────────────────────────────── -->
+    <section class="profile__section">
+      <header class="profile__section-head">
+        <h2>Apariencia</h2>
+        <p>Cómo se ve la aplicación en este equipo.</p>
+      </header>
 
-            Son dos cosas distintas y por eso van en dos campos: uno tiñe los
-            botones y los acentos, el otro es el papel sobre el que se lee. Con
-            un solo selector, elegir un azul de marca oscurecía la pantalla
-            entera y nadie relacionaba una cosa con la otra.
-          -->
-          <div class="profile__field">
-            <span class="profile__field-label">Fondo de la página</span>
-
-            <div class="profile__colors">
-              @for (preset of fondoPresets; track preset.name) {
-                <button
-                  type="button"
-                  class="profile__color"
-                  [class.profile__color--active]="theme.fondoColor() === preset.value"
-                  [style.background]="preset.value || 'var(--vt-bg)'"
-                  [title]="preset.name"
-                  [attr.aria-label]="preset.name"
-                  (click)="setFondoColor(preset.value)"
-                >
-                  @if (theme.fondoColor() === preset.value) {
-                    <vt-icon name="check" [size]="15" />
-                  }
-                </button>
-              }
-
-              <label class="profile__color profile__color--custom" title="Elegir otro fondo">
-                <input
-                  type="color"
-                  [value]="theme.fondoColor() || '#f5f6f8'"
-                  (change)="onCustomFondo($event)"
-                />
-                <span>+</span>
-              </label>
-            </div>
-
-            <p class="profile__hint">
-              El primero deja el fondo que trae la aplicación, que es el que
-              cambia solo entre claro y oscuro.
-            </p>
+      <div class="profile__rows">
+        <div class="profile__row">
+          <div class="profile__row-text">
+            <strong>Seguir el tema del sistema</strong>
+            <span>Cambia sola entre claro y oscuro según la configuración de tu equipo.</span>
           </div>
+          <mat-slide-toggle
+            [checked]="theme.mode() === 'system'"
+            (change)="toggleSistema($event.checked)"
+            aria-label="Seguir el tema del sistema"
+          />
+        </div>
 
-          <div class="profile__field">
-            <span class="profile__field-label">Color de la aplicación</span>
-
-            <div class="profile__colors">
-              @for (preset of brandPresets; track preset.value) {
-                <button
-                  type="button"
-                  class="profile__color"
-                  [class.profile__color--active]="theme.brandColor() === preset.value"
-                  [style.background]="preset.value"
-                  [title]="preset.name"
-                  [attr.aria-label]="preset.name"
-                  (click)="setBrandColor(preset.value)"
-                >
-                  @if (theme.brandColor() === preset.value) {
-                    <vt-icon name="check" [size]="15" />
-                  }
-                </button>
-              }
-
-              <!-- Selector libre, para un color corporativo que no esté en la lista -->
-              <label class="profile__color profile__color--custom" title="Elegir otro color">
-                <input type="color" [value]="theme.brandColor()" (change)="onCustomColor($event)" />
-                <span>+</span>
-              </label>
-            </div>
-
-            <!-- Muestra en vivo: el color no se juzga en un círculo de 32 px,
-                 sino sobre los elementos donde se va a ver de verdad. -->
-            <div class="profile__preview">
-              <span class="profile__preview-btn">Botón principal</span>
-              <span class="profile__preview-chip">Etiqueta</span>
-              <span class="profile__preview-link">Un enlace</span>
-              <button type="button" class="profile__reset" (click)="resetBrandColor()">
-                Restaurar original
-              </button>
-            </div>
-          </div>
-        </section>
-
-        <!-- ── Preferencias ──────────────────────────────────────────────── -->
-        <section class="profile__panel">
-          <header class="profile__panel-head">
-            <span class="profile__panel-icon">
-              <vt-icon name="clipboard" [size]="18" />
-            </span>
-            <div>
-              <h2>Preferencias</h2>
-              <p>Son tuyas: no afectan a otras cuentas de este equipo.</p>
-            </div>
-          </header>
-
-          <!--
-            Las notificaciones van con boton y no con interruptor.
-
-            No es una preferencia que se guarde aqui: es un permiso que concede
-            el navegador, y solo lo concede a raiz de un clic. Un interruptor
-            prometeria poder apagarlas, y apagarlas de verdad solo se puede desde
-            la barra de direcciones.
-          -->
-          @if (push.sePuedeOfrecer()) {
-            <div class="profile__switch">
-              <div>
-                <strong>Notificaciones</strong>
-                <span>{{ push.explicacion() }}</span>
-              </div>
-
-              @if (push.estado() === 'encendido') {
-                <span class="profile__badge">Activadas</span>
-              } @else if (push.estado() === 'bloqueado') {
-                <span class="profile__badge profile__badge--off">Bloqueadas</span>
+        <div class="profile__row" [class.profile__row--off]="theme.mode() === 'system'">
+          <div class="profile__row-text">
+            <strong>Modo oscuro</strong>
+            <span>
+              @if (theme.mode() === 'system') {
+                Apaga «Seguir el tema del sistema» para elegirlo tú.
               } @else {
-                <button
-                  type="button"
-                  class="profile__reset"
-                  [disabled]="push.estado() === 'pidiendo'"
-                  (click)="activarNotificaciones()"
-                >
-                  {{ push.estado() === 'pidiendo' ? 'Esperando…' : 'Activar' }}
-                </button>
+                Fondo oscuro, más cómodo con poca luz.
               }
-            </div>
-          }
+            </span>
+          </div>
+          <mat-slide-toggle
+            [checked]="theme.isDarkActive()"
+            [disabled]="theme.mode() === 'system'"
+            (change)="toggleOscuro($event.checked)"
+            aria-label="Modo oscuro"
+          />
+        </div>
 
-          <div class="profile__switch">
-            <div>
-              <strong>Guardar borradores</strong>
-              <span>
-                Al desactivarlo, las actividades que dejes a medias se eliminan al salir sin
-                guardar.
-              </span>
-            </div>
-            <mat-slide-toggle
-              [checked]="draftsEnabled()"
-              [disabled]="savingPreference()"
-              (change)="toggleDrafts()"
-              aria-label="Guardar borradores"
-            />
+        <div class="profile__row profile__row--stack">
+          <div class="profile__row-text">
+            <strong>Color de la aplicación</strong>
+            <span>Tiñe los botones, los enlaces y los acentos.</span>
           </div>
 
-          @if (draftsEnabled()) {
-            <div class="profile__switch profile__switch--nested">
-              <div>
-                <strong>Tiempo de conservación</strong>
-                <span>Los borradores se eliminan solos pasadas {{ draftHours() }} horas.</span>
-              </div>
-              <div class="profile__number-field">
-                <input
-                  type="number"
-                  min="1"
-                  max="720"
-                  [value]="draftHours()"
-                  (change)="changeDraftHours($event)"
-                  aria-label="Horas de conservación"
-                />
-                <span>h</span>
-              </div>
-            </div>
-          }
-        </section>
+          <div class="profile__swatches">
+            @for (preset of brandPresets; track preset.value) {
+              <button
+                type="button"
+                class="profile__swatch"
+                [class.profile__swatch--active]="theme.brandColor() === preset.value"
+                [attr.aria-pressed]="theme.brandColor() === preset.value"
+                (click)="setBrandColor(preset.value)"
+              >
+                <span class="profile__swatch-dot" [style.background]="preset.value"></span>
+                <span class="profile__swatch-name">{{ preset.name }}</span>
+              </button>
+            }
 
-        <!-- ── Cuentas ───────────────────────────────────────────────────── -->
-        @if (accounts().length > 1) {
-          <section class="profile__panel">
-            <header class="profile__panel-head">
-              <span class="profile__panel-icon">
-                <vt-icon name="user" [size]="18" />
-              </span>
-              <div>
-                <h2>Cuentas en este equipo</h2>
-                <p>Cambia de cuenta sin volver a escribir la contraseña.</p>
-              </div>
-            </header>
+            <!-- Selector libre, para un color corporativo que no esté en la lista -->
+            <label class="profile__swatch profile__swatch--custom" title="Elegir otro color">
+              <span class="profile__swatch-dot" [style.background]="theme.brandColor()"></span>
+              <span class="profile__swatch-name">Otro…</span>
+              <input type="color" [value]="theme.brandColor()" (change)="onCustomColor($event)" />
+            </label>
+          </div>
 
-            <div class="profile__accounts">
-              @for (account of accounts(); track account.Login) {
-                <button
-                  type="button"
-                  class="profile__account"
-                  [class.profile__account--current]="account.Login === user.Login"
-                  (click)="switchAccount(account)"
-                >
-                  <span class="profile__avatar profile__avatar--sm">
-                    {{ avatarInitials(account) }}
-                  </span>
-                  <span class="profile__account-info">
-                    <span class="profile__account-name">{{ displayName(account) }}</span>
-                    <span class="profile__account-login">{{ account.Login }}</span>
-                  </span>
-                  @if (account.Login === user.Login) {
-                    <span class="profile__chip profile__chip--ok">Activa</span>
-                  } @else {
-                    <vt-icon name="chevron" [size]="16" />
-                  }
-                </button>
-              }
+          <button type="button" class="profile__link" (click)="resetBrandColor()">
+            Restaurar original
+          </button>
+        </div>
+
+        <!--
+          El fondo de la página, aparte del color de la aplicación.
+
+          Son dos cosas distintas: uno tiñe los botones y los acentos, el otro es
+          el papel sobre el que se lee. Con un solo selector, elegir un azul de
+          marca oscurecía la pantalla entera.
+        -->
+        <div class="profile__row profile__row--stack">
+          <div class="profile__row-text">
+            <strong>Fondo de la página</strong>
+            <span>
+              «El de la aplicación» es el que cambia solo entre claro y oscuro.
+            </span>
+          </div>
+
+          <div class="profile__swatches">
+            @for (preset of fondoPresets; track preset.name) {
+              <button
+                type="button"
+                class="profile__swatch"
+                [class.profile__swatch--active]="theme.fondoColor() === preset.value"
+                [attr.aria-pressed]="theme.fondoColor() === preset.value"
+                (click)="setFondoColor(preset.value)"
+              >
+                <span
+                  class="profile__swatch-dot"
+                  [style.background]="preset.value || 'var(--vt-bg)'"
+                ></span>
+                <span class="profile__swatch-name">{{ preset.name }}</span>
+              </button>
+            }
+
+            <label class="profile__swatch profile__swatch--custom" title="Elegir otro fondo">
+              <span
+                class="profile__swatch-dot"
+                [style.background]="theme.fondoColor() || 'var(--vt-bg)'"
+              ></span>
+              <span class="profile__swatch-name">Otro…</span>
+              <input
+                type="color"
+                [value]="theme.fondoColor() || '#f5f6f8'"
+                (change)="onCustomFondo($event)"
+              />
+            </label>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Preferencias ────────────────────────────────────────────────────── -->
+    <section class="profile__section">
+      <header class="profile__section-head">
+        <h2>Preferencias</h2>
+        <p>Son tuyas: no afectan a otras cuentas de este equipo.</p>
+      </header>
+
+      <div class="profile__rows">
+        <!--
+          Las notificaciones van con botón y no con interruptor.
+
+          No es una preferencia que se guarde aquí: es un permiso que concede el
+          navegador, y solo lo concede a raíz de un clic. Un interruptor
+          prometería poder apagarlas, y apagarlas de verdad solo se puede desde
+          la barra de direcciones.
+        -->
+        @if (push.sePuedeOfrecer()) {
+          <div class="profile__row">
+            <div class="profile__row-text">
+              <strong>Notificaciones</strong>
+              <span>{{ push.explicacion() }}</span>
             </div>
-          </section>
+
+            @if (push.estado() === 'encendido') {
+              <span class="profile__badge">Activadas</span>
+            } @else if (push.estado() === 'bloqueado') {
+              <span class="profile__badge profile__badge--off">Bloqueadas</span>
+            } @else {
+              <button
+                type="button"
+                class="profile__btn"
+                [disabled]="push.estado() === 'pidiendo'"
+                (click)="activarNotificaciones()"
+              >
+                {{ push.estado() === 'pidiendo' ? 'Esperando…' : 'Activar' }}
+              </button>
+            }
+          </div>
+        }
+
+        <div class="profile__row">
+          <div class="profile__row-text">
+            <strong>Guardar borradores</strong>
+            <span>
+              Al desactivarlo, las actividades que dejes a medias se eliminan al salir sin guardar.
+            </span>
+          </div>
+          <mat-slide-toggle
+            [checked]="draftsEnabled()"
+            [disabled]="savingPreference()"
+            (change)="toggleDrafts()"
+            aria-label="Guardar borradores"
+          />
+        </div>
+
+        @if (draftsEnabled()) {
+          <div class="profile__row profile__row--nested">
+            <div class="profile__row-text">
+              <strong>Tiempo de conservación</strong>
+              <span>Los borradores se eliminan solos pasadas {{ draftHours() }} horas.</span>
+            </div>
+            <div class="profile__number-field">
+              <input
+                type="number"
+                min="1"
+                max="720"
+                [value]="draftHours()"
+                (change)="changeDraftHours($event)"
+                aria-label="Horas de conservación"
+              />
+              <span>h</span>
+            </div>
+          </div>
         }
       </div>
+    </section>
 
-      <div class="profile__column">
-        <!-- ── Almacenamiento ────────────────────────────────────────────── -->
-        <section class="profile__panel">
-          <header class="profile__panel-head">
-            <span class="profile__panel-icon">
-              <vt-icon name="database" [size]="18" />
-            </span>
-            <div>
-              <h2>Almacenamiento</h2>
-              <p>Lo que ocupa la aplicación en este navegador.</p>
+    <!-- ── Cuentas ─────────────────────────────────────────────────────────── -->
+    @if (accounts().length > 1) {
+      <section class="profile__section">
+        <header class="profile__section-head">
+          <h2>Cuentas en este equipo</h2>
+          <p>Cambia de cuenta sin volver a escribir la contraseña.</p>
+        </header>
+
+        <div class="profile__rows">
+          @for (account of accounts(); track account.Login) {
+            <button
+              type="button"
+              class="profile__row profile__account"
+              [class.profile__account--current]="account.Login === user.Login"
+              (click)="switchAccount(account)"
+            >
+              <span class="profile__avatar profile__avatar--sm">
+                {{ avatarInitials(account) }}
+              </span>
+              <span class="profile__row-text">
+                <strong>{{ displayName(account) }}</strong>
+                <span>{{ account.Login }}</span>
+              </span>
+              @if (account.Login === user.Login) {
+                <span class="profile__tag profile__tag--ok">Activa</span>
+              } @else {
+                <vt-icon name="chevron" [size]="16" />
+              }
+            </button>
+          }
+        </div>
+      </section>
+    }
+
+    <!-- ── Mis firmas ──────────────────────────────────────────────────────── -->
+    <section class="profile__section">
+      <header class="profile__section-head">
+        <h2>Mis firmas</h2>
+        <p>Firma una vez y elígela en cada actividad, como en la aplicación.</p>
+      </header>
+
+      <div class="profile__body">
+        <vt-mis-firmas />
+      </div>
+    </section>
+
+    <!-- ── Sesiones ────────────────────────────────────────────────────────── -->
+    <section class="profile__section">
+      <header class="profile__section-head">
+        <h2>Sesiones abiertas</h2>
+        <p>Los equipos donde tu cuenta tiene la sesión iniciada.</p>
+      </header>
+
+      <div class="profile__body">
+        <vt-sessions />
+      </div>
+    </section>
+
+    <!-- ── Soporte (solo superadministradores) ─────────────────────────────── -->
+    @if (permisos.isSuperAdmin()) {
+      <section class="profile__section">
+        <header class="profile__section-head">
+          <h2>Soporte</h2>
+          <p>Herramientas para dar soporte a los usuarios de tu empresa.</p>
+        </header>
+
+        <div class="profile__rows">
+          <div class="profile__row">
+            <div class="profile__row-text">
+              <strong>Entrar como otro usuario</strong>
+              <span>
+                Abre la cuenta de un usuario de tu empresa para darle soporte. Queda registrado
+                que fuiste tú; se confirma con tu contraseña.
+              </span>
             </div>
-          </header>
+            <button type="button" class="profile__btn" (click)="abrirEntrarComo()">
+              <vt-icon name="user" [size]="16" />
+              Entrar como…
+            </button>
+          </div>
+        </div>
+      </section>
+    }
 
-          @if (storage(); as st) {
-            <div class="profile__storage">
-              <div class="profile__storage-figures">
-                <span class="profile__storage-used vt-figure">{{ st.used }}</span>
-                <span class="profile__storage-quota">de {{ st.quota }}</span>
-              </div>
+    <!-- ── Almacenamiento ──────────────────────────────────────────────────── -->
+    <section class="profile__section">
+      <header class="profile__section-head">
+        <h2>Almacenamiento</h2>
+        <p>Lo que ocupa la aplicación en este navegador.</p>
+      </header>
+
+      <div class="profile__rows">
+        <div class="profile__row">
+          <div class="profile__row-text">
+            <strong>Espacio usado</strong>
+            @if (storage(); as st) {
               <div class="profile__storage-bar">
                 <div class="profile__storage-fill" [style.width.%]="st.percent"></div>
               </div>
-            </div>
-          } @else {
-            <p class="profile__hint">Este navegador no informa el espacio disponible.</p>
+            } @else {
+              <span>Este navegador no informa el espacio disponible.</span>
+            }
+          </div>
+          @if (storage(); as st) {
+            <span class="profile__row-value">
+              <span class="vt-figure">{{ st.used }}</span> de {{ st.quota }}
+            </span>
           }
+        </div>
 
-          @if (persistentGranted()) {
-            <div class="profile__notice profile__notice--ok">
-              <vt-icon name="shield" [size]="17" />
+        <div class="profile__row">
+          <div class="profile__row-text">
+            <strong>Protección de los datos</strong>
+            @if (persistentGranted()) {
               <span>Datos protegidos: el navegador no los borrará por falta de espacio.</span>
-            </div>
-          } @else {
-            <div class="profile__notice profile__notice--warn">
-              <vt-icon name="alert" [size]="17" />
+            } @else {
               <span>
                 Sin protección, el navegador puede borrar lo guardado si el disco se llena —
                 incluidas actividades sin sincronizar.
               </span>
-            </div>
-            <button type="button" class="profile__action" (click)="requestPersistence()">
+            }
+          </div>
+          @if (persistentGranted()) {
+            <span class="profile__badge">Protegidos</span>
+          } @else {
+            <button type="button" class="profile__btn profile__btn--warn" (click)="requestPersistence()">
               <vt-icon name="shield" [size]="16" />
               Proteger mis datos
             </button>
           }
-        </section>
+        </div>
+      </div>
+    </section>
 
-        <!-- ── Datos de la cuenta ────────────────────────────────────────── -->
-        <section class="profile__panel">
-          <header class="profile__panel-head">
-            <span class="profile__panel-icon">
-              <vt-icon name="mail" [size]="18" />
+    <!-- ── Este equipo ─────────────────────────────────────────────────────── -->
+    <section class="profile__section">
+      <header class="profile__section-head">
+        <h2>Este equipo</h2>
+        <p>El navegador desde el que usas Visitrack.</p>
+      </header>
+
+      <div class="profile__rows">
+        <div class="profile__row">
+          <div class="profile__row-text"><strong>Navegador</strong></div>
+          <span class="profile__row-value">{{ deviceInfo.browser }}</span>
+        </div>
+        <div class="profile__row">
+          <div class="profile__row-text"><strong>Sistema</strong></div>
+          <span class="profile__row-value">{{ deviceInfo.os }}</span>
+        </div>
+        <div class="profile__row">
+          <div class="profile__row-text"><strong>Versión</strong></div>
+          <span class="profile__row-value">{{ appVersion }}</span>
+        </div>
+        <div class="profile__row">
+          <div class="profile__row-text">
+            <strong>Identificador</strong>
+            <span>Identifica este navegador en tus sesiones.</span>
+          </div>
+          <span class="profile__row-value profile__mono">{{ deviceId }}</span>
+        </div>
+        <div class="profile__row">
+          <div class="profile__row-text">
+            <strong>Logo de la compañía</strong>
+            <span>
+              Se guarda aquí para verlo sin conexión y se actualiza solo al entrar; si acaban de
+              cambiarlo, tráelo ahora.
+              @if (connectivity.isOffline()) {
+                Necesitas conexión para traerlo.
+              }
             </span>
-            <div>
-              <h2>Datos de la cuenta</h2>
-            </div>
-          </header>
-
-          <dl class="profile__facts">
-            <div>
-              <dt>Identificador</dt>
-              <dd class="vt-figure">{{ user.UserID }}</dd>
-            </div>
-            <div>
-              <dt>Teléfono</dt>
-              <dd>{{ user.Phone || '—' }}</dd>
-            </div>
-            <!--
-              La zona, y **con cuál se está pintando**.
-
-              El código a secas no dice nada útil: se puede tener «MXC»
-              apuntado y estar viendo las horas de Colombia porque el código no
-              llegó a traducirse a un desfase. Eso pasó, y desde fuera es
-              indistinguible de que el arreglo no funcione. Así que se enseñan
-              las tres cosas: el código, el desfase que se está usando y de
-              dónde salió.
-            -->
-            <div>
-              <dt>Zona horaria</dt>
-              <dd>
-                {{ user.UTCCode || '—' }}
-                <span class="zona-detalle">
-                  · {{ zona.comoSeLee() }}
-                  @if (zona.nombre()) {
-                    ({{ zona.nombre() }})
-                  }
-                  · según {{ zona.origen() }}
-                </span>
-              </dd>
-            </div>
-            <div>
-              <dt>Idioma</dt>
-              <dd>{{ user.DefaultLanguage === 'es' ? 'Español' : user.DefaultLanguage }}</dd>
-            </div>
-          </dl>
-        </section>
-
-        <!-- ── Sesiones ──────────────────────────────────────────────────── -->
-        <!-- ── Mis firmas ────────────────────────────────────────────────── -->
-        <section class="profile__panel">
-          <header class="profile__panel-head">
-            <span class="profile__panel-icon">
-              <vt-icon name="pen" [size]="18" />
-            </span>
-            <div>
-              <h2>Mis firmas</h2>
-              <p>Firma una vez y elígela en cada actividad, como en la aplicación.</p>
-            </div>
-          </header>
-
-          <vt-mis-firmas />
-        </section>
-
-        @if (permisos.isSuperAdmin()) {
-          <section class="profile__panel">
-            <header class="profile__panel-head">
-              <span class="profile__panel-icon">
-                <vt-icon name="shield" [size]="18" />
-              </span>
-              <div>
-                <h2>Soporte</h2>
-              </div>
-            </header>
-
-            <p class="profile__hint">
-              Abre la cuenta de un usuario de tu empresa para darle soporte. Queda registrado
-              que fuiste tú; se confirma con tu contraseña.
-            </p>
-            <button type="button" class="profile__action" (click)="abrirEntrarComo()">
-              <vt-icon name="user" [size]="16" />
-              Entrar como otro usuario
-            </button>
-          </section>
-        }
-
-        <section class="profile__panel">
-          <header class="profile__panel-head">
-            <span class="profile__panel-icon">
-              <vt-icon name="shield" [size]="18" />
-            </span>
-            <div>
-              <h2>Sesiones abiertas</h2>
-            </div>
-          </header>
-
-          <vt-sessions />
-        </section>
-
-        <!-- ── Equipo ────────────────────────────────────────────────────── -->
-        <section class="profile__panel">
-          <header class="profile__panel-head">
-            <span class="profile__panel-icon">
-              <vt-icon name="shield" [size]="18" />
-            </span>
-            <div>
-              <h2>Este equipo</h2>
-            </div>
-          </header>
-
-          <dl class="profile__facts">
-            <div>
-              <dt>Navegador</dt>
-              <dd>{{ deviceInfo.browser }}</dd>
-            </div>
-            <div>
-              <dt>Sistema</dt>
-              <dd>{{ deviceInfo.os }}</dd>
-            </div>
-            <div>
-              <dt>Versión</dt>
-              <dd>{{ appVersion }}</dd>
-            </div>
-            <div>
-              <dt>Legal</dt>
-              <dd>
-                <a href="https://module.visitrack.com/terminos.html" target="_blank" rel="noopener">Términos del servicio</a>
-              </dd>
-            </div>
-            <div>
-              <dt>Identificador</dt>
-              <dd class="profile__mono">{{ deviceId }}</dd>
-            </div>
-          </dl>
-
-          <p class="profile__hint">
-            El logo de tu compañía se guarda aquí para verlo sin conexión. Se actualiza solo al
-            entrar; si acaban de cambiarlo, tráelo ahora.
-          </p>
+          </div>
           <button
             type="button"
-            class="profile__action"
+            class="profile__btn"
             [disabled]="syncingLogo() || connectivity.isOffline()"
             (click)="syncCompanyLogo()"
           >
             <vt-icon name="refresh" [size]="16" />
             {{ syncingLogo() ? 'Actualizando…' : 'Actualizar logo' }}
           </button>
-          @if (connectivity.isOffline()) {
-            <span class="profile__hint">Necesitas conexión para traerlo.</span>
-          }
-        </section>
+        </div>
+        <div class="profile__row">
+          <div class="profile__row-text"><strong>Legal</strong></div>
+          <a
+            class="profile__link"
+            href="https://module.visitrack.com/terminos.html"
+            target="_blank"
+            rel="noopener"
+            >Términos del servicio</a
+          >
+        </div>
       </div>
-    </div>
+    </section>
+
+    <footer class="profile__footer">© {{ anio }} Visitrack · Web {{ appVersion }}</footer>
   </div>
 }
 

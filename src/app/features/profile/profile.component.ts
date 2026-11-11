@@ -100,14 +100,9 @@ export class ProfileComponent {
   readonly brandPresets = BRAND_PRESETS;
   readonly fondoPresets = FONDO_PRESETS;
 
-  /** Opciones del modo de color. */
-  readonly themeModes: { value: ThemeMode; label: string; icon: string }[] = [
-    { value: 'light', label: 'Claro', icon: 'sun' },
-    { value: 'dark', label: 'Oscuro', icon: 'moon' },
-    { value: 'system', label: 'Automático', icon: 'refresh' },
-  ];
-
   readonly appVersion = environment.appVersion;
+  /** Año del pie de página. */
+  readonly anio = new Date().getFullYear();
   readonly deviceInfo = this.device.getDeviceInfo();
   readonly deviceId = this.device.getDeviceId();
 
@@ -224,10 +219,29 @@ export class ProfileComponent {
     }
   }
 
-  /** Cambia entre claro, oscuro y automático. */
+  /** Cambia entre claro, oscuro y el del sistema. */
   setThemeMode(mode: ThemeMode): void {
     this.theme.setMode(mode);
     this.showFeedback('Apariencia actualizada.');
+  }
+
+  /**
+   * Interruptor «Seguir el tema del sistema».
+   *
+   * Al apagarlo se queda en lo que se ve en ese momento (claro u oscuro): saltar
+   * a otro modo justo al soltar el interruptor parecería un error.
+   */
+  toggleSistema(encendido: boolean): void {
+    if (encendido) {
+      this.setThemeMode('system');
+    } else {
+      this.setThemeMode(this.theme.isDarkActive() ? 'dark' : 'light');
+    }
+  }
+
+  /** Interruptor «Modo oscuro». Solo tiene efecto con el del sistema apagado. */
+  toggleOscuro(encendido: boolean): void {
+    this.setThemeMode(encendido ? 'dark' : 'light');
   }
 
   /** Cambia el color de marca de toda la aplicación. */

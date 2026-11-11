@@ -1,18 +1,11 @@
 /**
- * Mi perfil.
+ * Mi perfil, como una página de ajustes.
  *
- * Tres niveles de jerarquía, en vez de una rejilla de paneles idénticos:
- *
- * 1. El banner de identidad, sobre la tinta corporativa. Responde «quién eres y
- *    dónde estás», que es distinto de todo lo demás.
- * 2. La columna ancha, con lo que se **cambia**: apariencia, preferencias,
- *    cuentas.
- * 3. La columna estrecha, con lo que se **consulta**: almacenamiento, datos de
- *    la cuenta, datos del equipo.
- *
- * Con paneles todos iguales, ajustar el tema y leer el identificador del equipo
- * parecían tener el mismo peso, y encontrar cualquiera de las dos cosas exigía
- * leerlo todo.
+ * Una sola columna centrada: cabecera sobria con la identidad y las acciones
+ * de la sesión, y debajo secciones apiladas. Cada sección tiene un encabezado
+ * (título y una línea de descripción) y filas con el ajuste a la izquierda y el
+ * control a la derecha, separadas por bordes finos. Así todo se lee igual y
+ * cada cosa se encuentra por su nombre, sin tarjetas de colores compitiendo.
  */
 
 .profile {
@@ -20,39 +13,25 @@
   flex-direction: column;
   gap: var(--vt-space-5);
   width: 100%;
+  max-width: 980px;
+  margin: 0 auto;
 }
 
-/* ── Banner de identidad ───────────────────────────────────────────────────── */
+/* ── Cabecera ──────────────────────────────────────────────────────────────── */
 
-.profile__banner {
-  position: relative;
+.profile__head {
   display: flex;
   flex-wrap: wrap;
   gap: var(--vt-space-4);
   align-items: center;
   justify-content: space-between;
-  padding: var(--vt-space-6);
-  overflow: hidden;
-  color: rgb(255 255 255 / 92%);
-  background: linear-gradient(115deg, var(--vt-ink) 0%, var(--vt-ink-soft) 100%);
-  border-radius: var(--vt-radius-xl);
-}
-
-/* Resplandor del color de marca en la esquina: teñir todo el banner competiría
-   con el logo del cliente, que es lo que debe destacar. */
-.profile__banner-glow {
-  position: absolute;
-  top: -40%;
-  right: -6%;
-  width: 340px;
-  height: 340px;
-  background: radial-gradient(circle, var(--vt-brand) 0%, transparent 68%);
-  opacity: 0.4;
-  pointer-events: none;
+  padding: var(--vt-space-5);
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-border);
+  border-radius: var(--vt-radius-lg);
 }
 
 .profile__identity {
-  position: relative;
   display: flex;
   gap: var(--vt-space-4);
   align-items: center;
@@ -63,32 +42,36 @@
   display: grid;
   flex-shrink: 0;
   place-items: center;
-  width: 68px;
-  height: 68px;
+  width: 60px;
+  height: 60px;
   font-family: var(--vt-font-display);
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 700;
-  color: #14161a;
-  background: #fff;
+  color: var(--vt-text);
+  background: var(--vt-surface-3);
   border-radius: var(--vt-radius-full);
 }
 
-/* Marco claro tras el logo: los logos suelen venir en tinta oscura y sobre el
-   banner negro desaparecerían. */
-/**
- * El logo de la compañía, sin recuadro.
- *
- * Llevaba un fondo blanco para asegurar el contraste de cualquier logo, pero
- * sobre la banda de color se leía como una pegatina encima del encabezado en
- * vez de como parte de él — y los logos con fondo transparente, que son la
- * mayoría, ya se ven bien sobre él.
- */
+.profile__avatar--sm {
+  width: 36px;
+  height: 36px;
+  font-size: var(--vt-text-sm);
+}
+
+.profile__logo-wrap {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: 6px;
+  align-items: center;
+}
+
 .profile__logo-frame {
   display: grid;
   flex-shrink: 0;
   place-items: center;
-  width: 78px;
-  height: 78px;
+  width: 72px;
+  height: 72px;
 
   img {
     max-width: 100%;
@@ -97,95 +80,145 @@
   }
 }
 
-/*
- * La placa: el logo sobre blanco, como en un membrete.
- *
- * Un PNG con trazo oscuro y fondo transparente se pierde sobre el panel
- * oscuro. El relleno interior es tan importante como el fondo: pegado a los
- * bordes parece un recorte, y con aire parece una marca.
- */
+/* El logo sobre blanco, como en un membrete: un PNG oscuro y transparente se
+   pierde en modo oscuro. */
 .profile__logo-frame--placa {
   padding: 8px;
-  border-radius: 14px;
   background: #fff;
-  box-shadow:
-    0 1px 2px rgb(0 0 0 / 0.18),
-    0 8px 20px -10px rgb(0 0 0 / 0.35);
+  border: 1px solid var(--vt-border);
+  border-radius: var(--vt-radius);
+}
+
+/* Discreto: se usa una vez y después estorba. */
+.profile__logo-fondo {
+  max-width: 120px;
+  padding: 2px 4px;
+  font-family: inherit;
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-muted);
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--vt-border);
+  border-radius: var(--vt-radius-sm);
 }
 
 .profile__identity-info {
   min-width: 0;
 
   h1 {
-    font-size: var(--vt-text-2xl);
-    line-height: 1.15;
-    letter-spacing: -0.02em;
+    font-size: var(--vt-text-xl);
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    overflow-wrap: anywhere;
   }
 
   p {
     margin-top: 2px;
     font-size: var(--vt-text-sm);
-    color: rgb(255 255 255 / 62%);
+    color: var(--vt-text-muted);
+    overflow-wrap: anywhere;
   }
 }
 
-.profile__chips {
+.profile__tags {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-top: var(--vt-space-3);
+  margin-top: var(--vt-space-2);
 }
 
-/* Sobre el banner oscuro, los distintivos usan un velo translúcido: los fondos
-   pastel del sistema están calculados para superficies claras. */
-.profile__chip {
+.profile__tag {
   display: inline-flex;
-  gap: 5px;
   align-items: center;
-  padding: 4px 11px;
-  font-size: 11px;
+  padding: 2px 10px;
+  font-size: var(--vt-text-xs);
   font-weight: 600;
-  color: rgb(255 255 255 / 82%);
-  background: rgb(255 255 255 / 12%);
+  color: var(--vt-text-muted);
+  white-space: nowrap;
+  background: var(--vt-surface-3);
   border-radius: var(--vt-radius-full);
 }
 
-.profile__chip--ok {
-  color: #86efac;
-  background: rgb(134 239 172 / 15%);
+.profile__tag--ok {
+  color: var(--vt-success);
+  background: var(--vt-success-bg);
 }
 
-.profile__chip--warn {
-  color: #fcd34d;
-  background: rgb(252 211 77 / 15%);
+.profile__tag--warn {
+  color: var(--vt-warning);
+  background: var(--vt-warning-bg);
+}
+
+.profile__head-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vt-space-2);
+  align-items: flex-end;
+}
+
+.profile__version {
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-subtle);
 }
 
 .profile__acciones {
   display: flex;
-  gap: 8px;
   flex-wrap: wrap;
+  gap: 8px;
 }
 
-.profile__logout {
-  position: relative;
+/* ── Botones y enlaces ─────────────────────────────────────────────────────── */
+
+.profile__btn {
   display: inline-flex;
-  gap: 8px;
+  flex-shrink: 0;
+  gap: 6px;
   align-items: center;
-  padding: 10px 18px;
+  padding: 7px 14px;
   font-size: var(--vt-text-sm);
   font-weight: 600;
-  color: rgb(255 255 255 / 88%);
-  background: rgb(255 255 255 / 10%);
-  border: 1px solid rgb(255 255 255 / 18%);
-  border-radius: var(--vt-radius-full);
+  color: var(--vt-text);
+  white-space: nowrap;
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-control-border, var(--vt-border));
+  border-radius: var(--vt-radius-sm);
   transition:
     background var(--vt-transition),
-    border-color var(--vt-transition);
+    border-color var(--vt-transition),
+    color var(--vt-transition);
+
+  &:hover:not(:disabled) {
+    background: var(--vt-surface-2);
+    border-color: var(--vt-brand);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+}
+
+.profile__btn--danger:hover:not(:disabled) {
+  color: var(--vt-danger);
+  border-color: var(--vt-danger);
+}
+
+.profile__btn--warn {
+  color: var(--vt-warning);
+}
+
+.profile__link {
+  padding: 0;
+  font-size: var(--vt-text-sm);
+  font-weight: 500;
+  color: var(--vt-brand);
+  text-decoration: none;
+  background: none;
+  border: 0;
+  cursor: pointer;
 
   &:hover {
-    color: var(--vt-on-brand);
-    background: var(--vt-brand-fill);
-    border-color: var(--vt-brand);
+    text-decoration: underline;
   }
 }
 
@@ -193,319 +226,73 @@
   display: flex;
   gap: 10px;
   align-items: center;
-  padding: 12px var(--vt-space-4);
+  padding: 10px var(--vt-space-4);
   font-size: var(--vt-text-sm);
   color: var(--vt-success);
   background: var(--vt-success-bg);
   border-radius: var(--vt-radius);
 }
 
-/* ── Disposición ───────────────────────────────────────────────────────────── */
+/* ── Secciones ─────────────────────────────────────────────────────────────── */
 
-.profile__layout {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--vt-space-4);
-}
-
-/* Asimétrica en pantalla amplia: lo que se cambia pide más sitio que lo que
-   solo se lee. */
-@media (min-width: 1080px) {
-  .profile__layout {
-    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
-    align-items: start;
-  }
-}
-
-.profile__column {
-  display: flex;
-  flex-direction: column;
-  gap: var(--vt-space-4);
-  min-width: 0;
-}
-
-/* ── Paneles ───────────────────────────────────────────────────────────────── */
-
-.profile__panel {
-  display: flex;
-  flex-direction: column;
-  gap: var(--vt-space-4);
-  padding: var(--vt-space-5);
+.profile__section {
+  overflow: hidden;
   background: var(--vt-surface);
-  border: 1px solid var(--vt-rule);
+  border: 1px solid var(--vt-border);
   border-radius: var(--vt-radius-lg);
-  box-shadow: var(--vt-shadow-sm);
 }
 
-.profile__panel-head {
-  display: flex;
-  gap: var(--vt-space-3);
-  align-items: center;
+.profile__section-head {
+  padding: var(--vt-space-4) var(--vt-space-5);
+  background: var(--vt-surface-2);
+  border-bottom: 1px solid var(--vt-border);
 
   h2 {
     font-size: var(--vt-text-md);
-    line-height: 1.3;
+    font-weight: 600;
   }
 
   p {
-    margin-top: 1px;
+    margin-top: 2px;
     font-size: var(--vt-text-xs);
     color: var(--vt-text-muted);
   }
 }
 
-.profile__panel-icon {
-  display: grid;
-  flex-shrink: 0;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  color: var(--vt-icon-brand-fg);
-  background: var(--vt-icon-brand-bg);
-  border-radius: 12px;
+/* Contenido libre (firmas, sesiones): los componentes traen su propio orden. */
+.profile__body {
+  padding: var(--vt-space-4) var(--vt-space-5);
 }
 
-.profile__field {
+.profile__rows {
   display: flex;
   flex-direction: column;
-  gap: var(--vt-space-3);
 }
 
-.profile__field-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--vt-text-subtle);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.profile__hint {
-  font-size: var(--vt-text-xs);
-  line-height: 1.5;
-  color: var(--vt-text-subtle);
-}
-
-/* ── Modo de color ─────────────────────────────────────────────────────────── */
-
-.profile__modes {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--vt-space-2);
-}
-
-.profile__mode {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 10px;
-  background: var(--vt-surface-2);
-  border: 1.5px solid var(--vt-control-border);
-  border-radius: var(--vt-radius);
-  transition:
-    border-color var(--vt-transition),
-    background var(--vt-transition);
-
-  &:hover {
-    border-color: var(--vt-rule-strong);
-  }
-}
-
-.profile__mode--active {
-  background: color-mix(in srgb, var(--vt-brand) 8%, transparent);
-  border-color: var(--vt-brand);
-}
-
-/**
- * Miniatura del tema: una barra superior y un cuerpo, en los colores que
- * tendría la aplicación con ese modo.
- *
- * Los valores van fijos y no por tokens **a propósito**: la muestra del modo
- * claro debe verse clara aunque se esté en oscuro, que es justo el sentido de
- * previsualizar.
- */
-.profile__mode-preview {
-  display: flex;
-  flex-direction: column;
-  height: 44px;
-  overflow: hidden;
-  border: 1px solid rgb(0 0 0 / 10%);
-  border-radius: var(--vt-radius-sm);
-}
-
-.profile__mode-bar {
-  height: 12px;
-}
-
-.profile__mode-body {
-  flex: 1;
-}
-
-.profile__mode--light {
-  .profile__mode-bar {
-    background: #1c1f26;
-  }
-
-  .profile__mode-body {
-    background: #f5f6f8;
-  }
-}
-
-.profile__mode--dark {
-  .profile__mode-bar {
-    background: #05070a;
-  }
-
-  .profile__mode-body {
-    background: #14161b;
-  }
-}
-
-/* El automático se parte en dos mitades: es exactamente lo que hace. */
-.profile__mode--system {
-  .profile__mode-bar {
-    background: linear-gradient(90deg, #1c1f26 50%, #05070a 50%);
-  }
-
-  .profile__mode-body {
-    background: linear-gradient(90deg, #f5f6f8 50%, #14161b 50%);
-  }
-}
-
-.profile__mode-name {
-  display: inline-flex;
-  gap: 6px;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--vt-text-xs);
-  font-weight: 600;
-}
-
-/* ── Color de marca ────────────────────────────────────────────────────────── */
-
-.profile__colors {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.profile__color {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  color: #fff;
-  border: 2px solid transparent;
-  border-radius: var(--vt-radius-full);
-  box-shadow: 0 2px 6px -2px rgb(20 22 26 / 35%);
-  transition:
-    transform var(--vt-transition),
-    box-shadow var(--vt-transition);
-
-  &:hover {
-    transform: scale(1.1);
-  }
-}
-
-/* El anillo va separado de la muestra, para que se distinga sobre cualquier
-   color —incluido uno casi blanco, donde un borde interior desaparecería. */
-.profile__color--active {
-  outline: 2px solid var(--vt-text);
-  outline-offset: 2px;
-}
-
-.profile__color--custom {
-  position: relative;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--vt-text-muted);
-  cursor: pointer;
-  background: var(--vt-surface-2);
-  border: 1.5px dashed var(--vt-rule-strong);
-  box-shadow: none;
-
-  input {
-    position: absolute;
-    inset: 0;
-    opacity: 0;
-    cursor: pointer;
-  }
-}
-
-/**
- * Muestra en vivo.
- *
- * Un color no se juzga en un círculo de 34 px: se juzga sobre los elementos
- * donde va a vivir. Aquí se ve si el texto sigue legible encima —que es lo que
- * `--vt-on-brand` recalcula por luminancia— antes de dejarlo puesto.
- */
-.profile__preview {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--vt-space-3);
-  align-items: center;
-  padding: var(--vt-space-3);
-  background: var(--vt-surface-2);
-  border: 1px dashed var(--vt-rule);
-  border-radius: var(--vt-radius);
-}
-
-.profile__preview-btn {
-  padding: 8px 16px;
-  font-size: var(--vt-text-xs);
-  font-weight: 600;
-  color: var(--vt-on-brand);
-  background: var(--vt-brand-fill);
-  border-radius: var(--vt-radius-full);
-}
-
-.profile__preview-chip {
-  padding: 5px 12px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--vt-icon-brand-fg);
-  background: var(--vt-icon-brand-bg);
-  border-radius: var(--vt-radius-full);
-}
-
-.profile__preview-link {
-  font-size: var(--vt-text-xs);
-  font-weight: 600;
-  color: var(--vt-brand);
-  text-decoration: underline;
-}
-
-.profile__reset {
-  margin-left: auto;
-  font-size: var(--vt-text-xs);
-  font-weight: 600;
-  color: var(--vt-text-subtle);
-  text-decoration: underline;
-  background: none;
-  border: 0;
-
-  &:hover {
-    color: var(--vt-text);
-  }
-}
-
-/* ── Preferencias ──────────────────────────────────────────────────────────── */
-
-.profile__switch {
+.profile__row {
   display: flex;
   gap: var(--vt-space-4);
   align-items: center;
   justify-content: space-between;
-  padding: var(--vt-space-3);
-  background: var(--vt-surface-2);
-  border-radius: var(--vt-radius);
+  padding: 14px var(--vt-space-5);
+  border-top: 1px solid var(--vt-border);
 
-  > div {
-    min-width: 0;
+  &:first-child {
+    border-top: 0;
   }
+}
+
+.profile__row-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 
   strong {
-    display: block;
     font-size: var(--vt-text-sm);
+    font-weight: 600;
+    color: var(--vt-text);
   }
 
   span {
@@ -515,22 +302,114 @@
   }
 }
 
-/* Sangrada y con guía a la izquierda: depende del interruptor de arriba y debe
-   leerse como subordinada, no como otra preferencia al mismo nivel. */
-.profile__switch--nested {
-  margin-left: var(--vt-space-5);
-  border-left: 2px solid var(--vt-icon-brand-bg);
-  border-radius: 0 var(--vt-radius) var(--vt-radius) 0;
+.profile__row-value {
+  min-width: 0;
+  font-size: var(--vt-text-sm);
+  color: var(--vt-text);
+  text-align: right;
+  overflow-wrap: anywhere;
 }
+
+/* Deshabilitada por otra fila (el modo oscuro con el del sistema encendido). */
+.profile__row--off .profile__row-text strong {
+  color: var(--vt-text-muted);
+}
+
+/* Fila con un control ancho debajo del texto (las rejillas de color). */
+.profile__row--stack {
+  flex-direction: column;
+  align-items: stretch;
+
+  .profile__link {
+    align-self: flex-start;
+  }
+}
+
+/* Depende del interruptor de arriba: sangrada para leerse subordinada. */
+.profile__row--nested {
+  padding-left: calc(var(--vt-space-5) + var(--vt-space-5));
+  border-top-style: dashed;
+}
+
+.profile__mono {
+  font-family: var(--vt-font-mono);
+  font-size: var(--vt-text-xs);
+}
+
+.zona-detalle {
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-muted);
+}
+
+/* ── Colores ───────────────────────────────────────────────────────────────── */
+
+.profile__swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  gap: 8px;
+}
+
+.profile__swatch {
+  position: relative;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  padding: 7px 10px;
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text);
+  text-align: left;
+  cursor: pointer;
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-border);
+  border-radius: var(--vt-radius-sm);
+  transition:
+    border-color var(--vt-transition),
+    background var(--vt-transition);
+
+  &:hover {
+    background: var(--vt-surface-2);
+  }
+
+  input[type='color'] {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+    opacity: 0;
+  }
+}
+
+.profile__swatch--active {
+  border-color: var(--vt-brand);
+  box-shadow: inset 0 0 0 1px var(--vt-brand);
+}
+
+.profile__swatch-dot {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border: 1px solid rgb(0 0 0 / 15%);
+  border-radius: var(--vt-radius-full);
+}
+
+.profile__swatch-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Controles ─────────────────────────────────────────────────────────────── */
 
 .profile__number-field {
   display: flex;
   flex-shrink: 0;
   gap: 4px;
   align-items: center;
-  padding: 6px 12px;
+  padding: 5px 10px;
   background: var(--vt-surface);
-  border: 1.5px solid var(--vt-rule);
+  border: 1px solid var(--vt-control-border, var(--vt-border));
   border-radius: var(--vt-radius-sm);
 
   &:focus-within {
@@ -541,6 +420,7 @@
     width: 52px;
     font-size: var(--vt-text-sm);
     font-weight: 600;
+    color: var(--vt-text);
     text-align: right;
     background: transparent;
     border: 0;
@@ -556,286 +436,19 @@
   }
 }
 
-/* ── Almacenamiento ────────────────────────────────────────────────────────── */
-
-.profile__storage {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.profile__storage-figures {
-  display: flex;
-  gap: 7px;
-  align-items: baseline;
-}
-
-.profile__storage-used {
-  font-size: var(--vt-text-2xl);
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: -0.02em;
-}
-
-.profile__storage-quota {
-  font-size: var(--vt-text-sm);
-  color: var(--vt-text-muted);
-}
-
-.profile__storage-bar {
-  height: 8px;
-  overflow: hidden;
-  background: var(--vt-surface-3);
-  border-radius: var(--vt-radius-full);
-}
-
-.profile__storage-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--vt-brand) 0%, var(--vt-brand-light) 100%);
-  border-radius: inherit;
-  transition: width var(--vt-transition-slow);
-}
-
-.profile__notice {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-  padding: 11px 13px;
-  font-size: var(--vt-text-xs);
-  line-height: 1.5;
-  border-radius: var(--vt-radius);
-
-  vt-icon {
-    flex-shrink: 0;
-    margin-top: 1px;
-  }
-}
-
-.profile__notice--ok {
-  color: var(--vt-success);
-  background: var(--vt-success-bg);
-}
-
-.profile__notice--warn {
-  color: var(--vt-warning);
-  background: var(--vt-warning-bg);
-}
-
-/* ── Datos ─────────────────────────────────────────────────────────────────── */
-
-/* Etiqueta a la izquierda y valor a la derecha, separados por una línea: es un
-   listado que se consulta puntualmente, y así se recorre en vertical buscando
-   una fila concreta. */
-.profile__facts {
-  display: flex;
-  flex-direction: column;
-
-  > div {
-    display: flex;
-    gap: var(--vt-space-4);
-    align-items: baseline;
-    justify-content: space-between;
-    padding: 9px 0;
-    border-bottom: 1px solid var(--vt-rule);
-
-    &:last-child {
-      border-bottom: 0;
-    }
-  }
-
-  dt {
-    flex-shrink: 0;
-    font-size: var(--vt-text-xs);
-    color: var(--vt-text-muted);
-  }
-
-  dd {
-    font-size: var(--vt-text-sm);
-    font-weight: 600;
-    text-align: right;
-    overflow-wrap: anywhere;
-  }
-}
-
-.profile__mono {
-  font-family: var(--vt-font-mono);
-  font-size: 11px !important;
-  font-weight: 500 !important;
-  color: var(--vt-text-muted);
-}
-
-.profile__action {
-  display: inline-flex;
-  gap: 7px;
-  align-items: center;
-  align-self: flex-start;
-  padding: 9px 16px;
-  font-size: var(--vt-text-xs);
-  font-weight: 600;
-  color: var(--vt-text);
-  background: var(--vt-surface-2);
-  border: 1px solid var(--vt-control-border);
-  border-radius: var(--vt-radius-full);
-  transition:
-    background var(--vt-transition),
-    border-color var(--vt-transition);
-
-  &:hover:not(:disabled) {
-    background: var(--vt-surface-3);
-    border-color: var(--vt-text-subtle);
-  }
-
-  &:disabled {
-    cursor: not-allowed;
-    opacity: 0.5;
-  }
-}
-
-/* ── Cuentas ───────────────────────────────────────────────────────────────── */
-
-.profile__accounts {
-  display: flex;
-  flex-direction: column;
-  gap: var(--vt-space-2);
-}
-
-.profile__account {
-  display: flex;
-  gap: var(--vt-space-3);
-  align-items: center;
-  padding: 10px var(--vt-space-3);
-  text-align: left;
-  background: var(--vt-surface-2);
-  border: 1px solid transparent;
-  border-radius: var(--vt-radius);
-  transition:
-    background var(--vt-transition),
-    border-color var(--vt-transition);
-
-  &:hover {
-    background: var(--vt-surface-3);
-  }
-}
-
-.profile__account--current {
-  cursor: default;
-  background: var(--vt-icon-brand-bg);
-  border-color: color-mix(in srgb, var(--vt-brand) 30%, transparent);
-
-  /* Dentro de la tarjeta clara, el distintivo vuelve a los colores del sistema:
-     los del banner están calculados para fondo oscuro. */
-  .profile__chip--ok {
-    color: var(--vt-success);
-    background: var(--vt-success-bg);
-  }
-}
-
-.profile__avatar--sm {
-  width: 38px;
-  height: 38px;
-  font-size: var(--vt-text-sm);
-  color: #fff;
-  background: var(--vt-ink);
-}
-
-.profile__account-info {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.profile__account-name {
-  font-size: var(--vt-text-sm);
-  font-weight: 600;
-  overflow-wrap: anywhere;
-}
-
-.profile__account-login {
-  font-size: var(--vt-text-xs);
-  color: var(--vt-text-subtle);
-}
-
-/* ── Responsive ────────────────────────────────────────────────────────────── */
-
-@media (max-width: 640px) {
-  .profile__banner {
-    padding: var(--vt-space-4);
-  }
-
-  .profile__acciones {
-    width: 100%;
-  }
-
-  .profile__logout {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .profile__switch {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .profile__switch--nested {
-    margin-left: var(--vt-space-3);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .profile__color,
-  .profile__storage-fill {
-    transition: none;
-  }
-
-  .profile__color:hover {
-    transform: none;
-  }
-}
-
-/* El logo y su opción, en columna: el control queda a mano sin robarle sitio
-   al nombre de la compañía. */
-.profile__logo-wrap {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-}
-
-/* Discreto: se usa una vez y después estorba. */
-.profile__logo-fondo {
-  max-width: 96px;
-  padding: 2px 4px;
-  border: 1px solid rgb(255 255 255 / 0.28);
-  border-radius: 6px;
-  background: rgb(0 0 0 / 0.25);
-  color: inherit;
-  font-family: inherit;
-  font-size: 10px;
-  opacity: 0.75;
-  cursor: pointer;
-
-  &:hover, &:focus-visible { opacity: 1; }
-
-  option { color: initial; }
-}
-
-/* ── El estado de las notificaciones ───────────────────────────────────────
- *
- * Una pastilla y no un botón cuando ya están activadas o bloqueadas: en esos
- * dos casos no hay nada que pulsar aquí. Apagarlas de verdad solo se puede
- * desde la barra del navegador, y un botón lo prometería.
+/*
+ * El estado de las notificaciones (y de la protección): una pastilla y no un
+ * botón cuando no hay nada que pulsar aquí.
  */
 .profile__badge {
-  padding: 5px 12px;
-  border: 1px solid currentcolor;
-  border-radius: var(--vt-radius-full);
+  flex-shrink: 0;
+  padding: 3px 12px;
   font-size: var(--vt-text-xs);
   font-weight: 600;
+  color: var(--vt-success);
   white-space: nowrap;
-  color: var(--vt-ok, #0f7b3f);
-  background: color-mix(in srgb, var(--vt-ok, #0f7b3f) 12%, transparent);
+  background: var(--vt-success-bg);
+  border-radius: var(--vt-radius-full);
 }
 
 .profile__badge--off {
@@ -843,14 +456,104 @@
   background: var(--vt-surface-3);
 }
 
-/* El desfase que se está usando, al lado del código. Apagado: es la
-   explicación del dato de al lado, no un dato más. */
-.zona-detalle {
-  color: var(--vt-text-muted);
-  font-size: 0.85em;
+/* ── Almacenamiento ────────────────────────────────────────────────────────── */
+
+.profile__storage-bar {
+  height: 6px;
+  max-width: 320px;
+  margin-top: 6px;
+  overflow: hidden;
+  background: var(--vt-surface-3);
+  border-radius: var(--vt-radius-full);
 }
 
-/* «Entrar como»: ventana para la cuenta destino y la contraseña. */
+.profile__storage-fill {
+  height: 100%;
+  background: var(--vt-brand);
+  border-radius: inherit;
+  transition: width var(--vt-transition-slow);
+}
+
+/* ── Cuentas ───────────────────────────────────────────────────────────────── */
+
+.profile__account {
+  width: 100%;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  border-right: 0;
+  border-bottom: 0;
+  border-left: 0;
+  transition: background var(--vt-transition);
+
+  &:hover {
+    background: var(--vt-surface-2);
+  }
+}
+
+.profile__account--current {
+  cursor: default;
+}
+
+/* ── Pie ───────────────────────────────────────────────────────────────────── */
+
+.profile__footer {
+  padding: var(--vt-space-2) 0 var(--vt-space-4);
+  font-size: var(--vt-text-xs);
+  color: var(--vt-text-subtle);
+  text-align: center;
+}
+
+/* ── Pantallas angostas ────────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .profile__head {
+    padding: var(--vt-space-4);
+  }
+
+  .profile__head-side {
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .profile__acciones .profile__btn {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .profile__section-head,
+  .profile__body,
+  .profile__row {
+    padding-right: var(--vt-space-4);
+    padding-left: var(--vt-space-4);
+  }
+
+  .profile__row--nested {
+    padding-left: calc(var(--vt-space-4) + var(--vt-space-4));
+  }
+
+  /* El texto arriba y el control debajo: lado a lado no caben. */
+  .profile__row:not(.profile__account) {
+    flex-wrap: wrap;
+  }
+
+  .profile__row-value {
+    text-align: left;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .profile__btn,
+  .profile__swatch,
+  .profile__account,
+  .profile__storage-fill {
+    transition: none;
+  }
+}
+
+/* ── «Entrar como»: ventana para la cuenta destino y la contraseña ──────────── */
+
 .imp-velo {
   position: fixed;
   inset: 0;
@@ -874,8 +577,8 @@
 }
 
 .imp-titulo { margin: 0; font-size: 1.1rem; }
-.imp-texto { margin: 0 0 0.4rem; color: var(--vt-text-muted); font-size: 0.85rem; }
-.imp-label { font-size: 0.78rem; color: var(--vt-text-muted); }
+.imp-texto { margin: 0 0 0.4rem; color: var(--vt-text-muted); font-size: var(--vt-text-sm); }
+.imp-label { font-size: var(--vt-text-xs); color: var(--vt-text-muted); }
 
 .imp-input {
   padding: 0.55rem 0.7rem;
@@ -886,7 +589,7 @@
   border-radius: var(--vt-radius-sm);
 }
 
-.imp-error { margin: 0; color: var(--vt-danger); font-size: 0.82rem; }
+.imp-error { margin: 0; color: var(--vt-danger); font-size: var(--vt-text-sm); }
 
 .imp-botones {
   display: flex;
