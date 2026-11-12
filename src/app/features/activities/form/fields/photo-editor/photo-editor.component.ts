@@ -11,6 +11,8 @@ import {
 
 import { ConfirmDialogComponent } from '../../../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { IconComponent } from '../../../../../shared/components/icon/icon.component';
+import { traducir } from '../../../../../core/i18n/idioma.service';
+import { TPipe } from '../../../../../core/i18n/t.pipe';
 
 /** Un trazo dibujado sobre la foto. */
 interface Stroke {
@@ -88,7 +90,7 @@ const MAX_SIDE = 1600;
 @Component({
   selector: 'vt-photo-editor',
   standalone: true,
-  imports: [ConfirmDialogComponent, IconComponent],
+  imports: [ConfirmDialogComponent, IconComponent, TPipe],
   templateUrl: './photo-editor.component.html',
   styleUrl: './photo-editor.component.scss',
 })
@@ -454,7 +456,7 @@ function loadImage(url: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new Image();
     image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error('No se pudo leer la imagen.'));
+    image.onerror = () => reject(new Error(traducir('campo.imagenNoLeida')));
     image.src = url;
   });
 }

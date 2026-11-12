@@ -5,6 +5,8 @@ import { ConfirmDialogComponent } from '../../../../shared/components/confirm-di
 import { IconComponent } from '../../../../shared/components/icon/icon.component';
 import { ToTopComponent } from '../../../../shared/components/to-top/to-top.component';
 import { MasterDetailPanelsService } from './master-detail-panels.service';
+import { traducir } from '../../../../core/i18n/idioma.service';
+import { TPipe } from '../../../../core/i18n/t.pipe';
 
 /**
  * El listado completo de una tabla de detalle.
@@ -26,7 +28,7 @@ import { MasterDetailPanelsService } from './master-detail-panels.service';
 @Component({
   selector: 'vt-master-detail-list',
   standalone: true,
-  imports: [ConfirmDialogComponent, IconComponent, ToTopComponent],
+  imports: [ConfirmDialogComponent, IconComponent, ToTopComponent, TPipe],
   templateUrl: './master-detail-list.component.html',
   styleUrl: './master-detail-list.component.scss',
 })
@@ -67,9 +69,9 @@ export class MasterDetailListComponent implements OnDestroy {
   readonly counter = computed(() => {
     const total = this.all().length;
     const shown = this.rows().length;
-    const noun = total === 1 ? 'registro' : 'registros';
+    if (shown === total) return traducir(total === 1 ? 'md.unRegistro' : 'md.nRegistros', { n: total });
 
-    return shown === total ? `${total} ${noun}` : `${shown} de ${total} ${noun}`;
+    return traducir(total === 1 ? 'md.xDeUnRegistro' : 'md.xDeNRegistros', { x: shown, n: total });
   });
 
   readonly removalName = computed(() => this.pendingRemoval()?.Name ?? '');

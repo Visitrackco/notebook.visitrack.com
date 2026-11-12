@@ -1,4 +1,5 @@
 import { computed, signal } from '@angular/core';
+import { traducir } from '../i18n/idioma.service';
 
 import { environment } from '../../../environments/environment';
 
@@ -2521,7 +2522,7 @@ export class FormEngine {
       return '';
     }
 
-    return estado.patronMensaje || 'No tiene el formato que se espera';
+    return estado.patronMensaje || traducir('campo.formatoInvalido');
   }
 
   /** ¿Está todo lo obligatorio respondido? */

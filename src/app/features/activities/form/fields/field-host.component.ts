@@ -45,7 +45,8 @@ import { MasterDetailFieldComponent } from './master-detail-field/master-detail-
 import { RichTextFieldComponent } from './rich-text-field/rich-text-field.component';
 import { LinkedFormFieldComponent } from './linked-form-field/linked-form-field.component';
 import { WebformFieldComponent } from './webform-field/webform-field.component';
-import { localeActual } from '../../../../core/i18n/idioma.service';
+import { localeActual, traducir } from '../../../../core/i18n/idioma.service';
+import { TPipe } from '../../../../core/i18n/t.pipe';
 
 /**
  * Formatos de fecha y hora.
@@ -121,6 +122,7 @@ const VT_DATE_FORMATS: MatDateFormats = {
     MasterDetailFieldComponent,
     RichTextFieldComponent,
     WebformFieldComponent,
+    TPipe,
     NgTemplateOutlet,
     FormsModule,
     MatCheckboxModule,
@@ -309,22 +311,22 @@ export class FieldHostComponent {
     if (!reglas || !texto) return '';
 
     if (reglas.maxCaracteres !== undefined && texto.length > reglas.maxCaracteres) {
-      return `Caben ${reglas.maxCaracteres} caracteres y van ${texto.length}`;
+      return traducir('campo.maxCaracteres', { max: reglas.maxCaracteres, n: texto.length });
     }
 
     if (reglas.minCaracteres !== undefined && texto.length < reglas.minCaracteres) {
-      return `Escribe al menos ${reglas.minCaracteres} caracteres`;
+      return traducir('campo.minCaracteres', { n: reglas.minCaracteres });
     }
 
     const numero = Number(texto.replace(',', '.'));
 
     if (Number.isFinite(numero)) {
       if (reglas.minimo !== undefined && numero < reglas.minimo) {
-        return `El mínimo es ${reglas.minimo}`;
+        return traducir('campo.minimo', { n: reglas.minimo });
       }
 
       if (reglas.maximo !== undefined && numero > reglas.maximo) {
-        return `El máximo es ${reglas.maximo}`;
+        return traducir('campo.maximo', { n: reglas.maximo });
       }
     }
 
@@ -337,7 +339,7 @@ export class FieldHostComponent {
     if (reglas.patron) {
       try {
         if (!new RegExp(reglas.patron).test(texto)) {
-          return reglas.patronMensaje || 'No tiene el formato que se espera';
+          return reglas.patronMensaje || traducir('campo.formatoInvalido');
         }
       } catch {
         // Un patrón que no compila no puede rechazar nada: el motor no lo
@@ -583,7 +585,7 @@ export class FieldHostComponent {
   );
 
   /** Cuál de las dos mitades falta, para decírselo al usuario. */
-  readonly missingHalf = computed(() => (this.draftDate() ? 'la hora' : 'la fecha'));
+  readonly missingHalf = computed(() => traducir(this.draftDate() ? 'campo.laHora' : 'campo.laFecha'));
 
   /**
    * Cachés de conversión.

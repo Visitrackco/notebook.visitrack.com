@@ -1,19 +1,19 @@
 @if (current(); as panel) {
   <section class="list">
     <header class="list__bar">
-      <button type="button" class="list__back" (click)="close()" aria-label="Volver al formulario">
+      <button type="button" class="list__back" (click)="close()" [attr.aria-label]="'md.volverFormulario' | t">
         <vt-icon name="chevron" [size]="20" />
       </button>
 
       <div class="list__heading">
-        <p>Registros de</p>
+        <p>{{ 'md.registrosDe' | t }}</p>
         <h1>{{ panel.title }}</h1>
       </div>
 
       @if (panel.canAdd()) {
         <button type="button" class="list__add" (click)="add()">
           <vt-icon name="plus" [size]="16" />
-          Agregar
+          {{ 'md.agregar' | t }}
         </button>
       }
     </header>
@@ -25,7 +25,7 @@
           type="search"
           [value]="search()"
           (input)="onSearch($event)"
-          placeholder="Buscar por nombre o por sus datos"
+          [placeholder]="'md.buscar' | t"
           autocomplete="off"
         />
       </label>
@@ -42,11 +42,11 @@
           <thead>
             <tr>
               <th class="list__num">#</th>
-              <th>Registro</th>
+              <th>{{ 'md.registro' | t }}</th>
               @for (column of columns(); track column) {
                 <th>{{ column }}</th>
               }
-              <th class="list__actions-head"><span class="vt-sr-only">Acciones</span></th>
+              <th class="list__actions-head"><span class="vt-sr-only">{{ 'md.acciones' | t }}</span></th>
             </tr>
           </thead>
 
@@ -55,7 +55,7 @@
               <tr [class.list__row--pending]="isIncomplete(row)">
                 <td class="list__num vt-figure">{{ i + 1 }}</td>
 
-                <td class="list__name" data-label="Registro">
+                <td class="list__name" [attr.data-label]="'md.registro' | t">
                   @if (panel.canOpen()) {
                     <button
                       type="button"
@@ -78,7 +78,7 @@
                     <button
                       type="button"
                       (click)="open(row)"
-                      [attr.aria-label]="'Abrir ' + row.Name"
+                      [attr.aria-label]="'md.abrirX' | t: { nombre: row.Name }"
                     >
                       <vt-icon name="pen" [size]="16" />
                     </button>
@@ -89,7 +89,7 @@
                       type="button"
                       class="list__act--danger"
                       (click)="askRemove(row)"
-                      [attr.aria-label]="'Eliminar ' + row.Name"
+                      [attr.aria-label]="'md.eliminarX' | t: { nombre: row.Name }"
                     >
                       <vt-icon name="trash" [size]="16" />
                     </button>
@@ -105,9 +105,9 @@
         <span class="list__empty-icon"><vt-icon name="clipboard" [size]="24" /></span>
         <p>
           @if (search()) {
-            Ningún registro coincide con «{{ search() }}».
+            {{ 'md.ningunoCoincide' | t: { term: search() } }}
           } @else {
-            Este campo todavía no tiene registros.
+            {{ 'md.sinRegistros' | t }}
           }
         </p>
       </div>
@@ -121,10 +121,10 @@
   [open]="asking()"
   tone="danger"
   icon="trash"
-  title="¿Eliminar el registro?"
+  [title]="'md.eliminarTitulo' | t"
   [message]="removalName()"
-  detail="Se perderá lo respondido en él."
-  confirmLabel="Eliminar"
+  [detail]="'md.eliminarDetalle' | t"
+  [confirmLabel]="'comun.eliminar' | t"
   (confirm)="confirmRemove()"
   (cancel)="cancelRemove()"
 />

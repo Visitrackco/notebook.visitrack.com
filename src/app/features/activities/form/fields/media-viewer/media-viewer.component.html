@@ -1,6 +1,6 @@
 <div class="viewer" tabindex="-1" (keydown)="onKeydown($event)">
   <header class="viewer__bar">
-    <button type="button" class="viewer__icon" (click)="close.emit()" aria-label="Cerrar">
+    <button type="button" class="viewer__icon" (click)="close.emit()" [attr.aria-label]="'comun.cerrar' | t">
       <vt-icon name="close" [size]="20" />
     </button>
 
@@ -13,7 +13,7 @@
       }
     </div>
 
-    <button type="button" class="viewer__icon" (click)="download.emit()" title="Descargar">
+    <button type="button" class="viewer__icon" (click)="download.emit()" [title]="'campo.descargar' | t">
       <vt-icon name="download" [size]="19" />
     </button>
   </header>
@@ -62,15 +62,15 @@
 
   @if (isImage()) {
     <footer class="viewer__foot">
-      <button type="button" class="viewer__zoom" (click)="step(1 / 1.4)" aria-label="Reducir">
+      <button type="button" class="viewer__zoom" (click)="step(1 / 1.4)" [attr.aria-label]="'campo.reducir' | t">
         <span aria-hidden="true">−</span>
       </button>
 
-      <button type="button" class="viewer__level" (click)="reset()" title="Tamaño original">
+      <button type="button" class="viewer__level" (click)="reset()" [title]="'campo.tamanoOriginal' | t">
         {{ percent() }}
       </button>
 
-      <button type="button" class="viewer__zoom" (click)="step(1.4)" aria-label="Ampliar">
+      <button type="button" class="viewer__zoom" (click)="step(1.4)" [attr.aria-label]="'campo.ampliar' | t">
         <span aria-hidden="true">+</span>
       </button>
 
@@ -79,13 +79,13 @@
       @if (moved()) {
         <button type="button" class="viewer__center" (click)="reset()">
           <vt-icon name="refresh" [size]="15" />
-          Centrar
+          {{ 'campo.centrar' | t }}
         </button>
       }
     </footer>
 
     @if (!moved()) {
-      <p class="viewer__hint">Arrastra para desplazar · doble clic o pellizco para ampliar</p>
+      <p class="viewer__hint">{{ 'campo.viewerHint' | t }}</p>
     }
   }
 </div>

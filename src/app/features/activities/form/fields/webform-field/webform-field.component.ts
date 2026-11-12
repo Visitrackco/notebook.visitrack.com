@@ -5,6 +5,7 @@ import { FormEngine } from '../../../../../core/forms/form-engine';
 import { FormField } from '../../../../../core/forms/form-schema';
 import { AuthService } from '../../../../../core/services/auth.service';
 import { IconComponent } from '../../../../../shared/components/icon/icon.component';
+import { TPipe } from '../../../../../core/i18n/t.pipe';
 
 /**
  * Marcadores que el formulario puede dejar en la dirección. Los mismos del
@@ -28,7 +29,7 @@ const PLACEHOLDERS = {
 @Component({
   selector: 'vt-webform-field',
   standalone: true,
-  imports: [IconComponent],
+  imports: [IconComponent, TPipe],
   template: `
     @if (hasLink()) {
       <div class="webform">
@@ -36,11 +37,11 @@ const PLACEHOLDERS = {
           <span class="webform__preview" [title]="preview()">{{ preview() }}</span>
           <button type="button" class="webform__open" (click)="actualizar()">
             <vt-icon name="refresh" [size]="14" />
-            Actualizar
+            {{ 'campo.actualizar' | t }}
           </button>
           <button type="button" class="webform__open" (click)="openTab()">
             <vt-icon name="send" [size]="14" />
-            Abrir en pestaña
+            {{ 'campo.abrirEnPestana' | t }}
           </button>
         </div>
         <iframe
@@ -52,7 +53,7 @@ const PLACEHOLDERS = {
         ></iframe>
       </div>
     } @else {
-      <p class="webform__vacio">Este campo no tiene una dirección configurada.</p>
+      <p class="webform__vacio">{{ 'campo.campoSinDireccion' | t }}</p>
     }
   `,
   styles: [

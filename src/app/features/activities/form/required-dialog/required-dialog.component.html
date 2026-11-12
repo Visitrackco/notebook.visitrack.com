@@ -7,18 +7,17 @@
 
       <h2>
         @if (missing().length === 1) {
-          Falta un campo obligatorio
+          {{ 'form.faltaUnObligatorio' | t }}
         } @else {
-          Faltan {{ missing().length }} campos obligatorios
+          {{ 'form.faltanNObligatorios' | t: { n: missing().length } }}
         }
       </h2>
 
       <p>
         @if (canSaveAnyway()) {
-          Puedes completarlos ahora o guardar la actividad como está — quedará
-          registrada y marcada como incompleta.
+          {{ 'form.reqPuedesGuardar' | t }}
         } @else {
-          Complétalos para poder guardar.
+          {{ 'form.reqCompletalos' | t }}
         }
       </p>
     </header>
@@ -34,8 +33,7 @@
             <span class="req__group-number vt-figure">{{ group.page + 1 }}</span>
             <span class="req__group-label">{{ group.label }}</span>
             <span class="req__group-count">
-              {{ group.entries.length }}
-              {{ group.entries.length === 1 ? 'campo' : 'campos' }}
+              {{ (group.entries.length === 1 ? 'form.unCampo' : 'form.nCampos') | t: { n: group.entries.length } }}
             </span>
           </header>
           }
@@ -63,13 +61,13 @@
     <footer class="req__foot">
       @if (canSaveAnyway()) {
         <button type="button" class="req__ghost" (click)="saveAnyway.emit()">
-          Guardar de todos modos
+          {{ 'form.guardarDeTodosModos' | t }}
         </button>
       }
 
       <button type="button" class="req__primary" (click)="review.emit()">
         <vt-icon name="check" [size]="17" />
-        Revisar campos
+        {{ 'form.revisarCampos' | t }}
       </button>
     </footer>
   </div>

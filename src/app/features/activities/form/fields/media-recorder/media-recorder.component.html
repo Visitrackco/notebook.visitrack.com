@@ -1,6 +1,6 @@
 <div class="rec" [class.rec--video]="isVideo()">
   <header class="rec__bar">
-    <button type="button" class="rec__close" (click)="close()" aria-label="Cerrar">
+    <button type="button" class="rec__close" (click)="close()" [attr.aria-label]="'comun.cerrar' | t">
       <vt-icon name="close" [size]="20" />
     </button>
 
@@ -62,7 +62,7 @@
           <div class="rec__pulse" [class.rec__pulse--on]="recording()" aria-hidden="true">
             <vt-icon name="mic" [size]="40" />
           </div>
-          <span class="rec__len">{{ recording() ? elapsed() : 'Listo para grabar' }}</span>
+          <span class="rec__len">{{ recording() ? elapsed() : ('campo.recListo' | t) }}</span>
         </div>
       }
     }
@@ -73,15 +73,15 @@
       @if (result()) {
         <button type="button" class="rec__ghost" (click)="discard()">
           <vt-icon name="refresh" [size]="17" />
-          Repetir
+          {{ 'campo.recRepetir' | t }}
         </button>
 
         <button type="button" class="rec__accept" (click)="accept()">
           <vt-icon name="check" [size]="17" />
-          Guardar
+          {{ 'comun.guardar' | t }}
         </button>
       } @else if (recording()) {
-        <button type="button" class="rec__stop" (click)="stop()" aria-label="Detener">
+        <button type="button" class="rec__stop" (click)="stop()" [attr.aria-label]="'campo.recDetener' | t">
           <vt-icon name="stop" [size]="26" />
         </button>
       } @else {
@@ -90,7 +90,7 @@
           class="rec__start"
           [disabled]="!ready()"
           (click)="start()"
-          aria-label="Grabar"
+          [attr.aria-label]="'campo.recGrabar' | t"
         >
           <span class="rec__start-core"></span>
         </button>
@@ -98,7 +98,7 @@
     </footer>
   } @else {
     <footer class="rec__foot">
-      <button type="button" class="rec__ghost" (click)="close()">Cerrar</button>
+      <button type="button" class="rec__ghost" (click)="close()">{{ 'comun.cerrar' | t }}</button>
     </footer>
   }
 </div>

@@ -15,6 +15,7 @@
  * a este archivo y al de Dart.
  */
 
+import { traducir } from '../i18n/idioma.service';
 import {
   Accion,
   ApiId,
@@ -3300,7 +3301,7 @@ export function problemasDelCorreo(
       // Por su `apiId`: aqui no se conoce el rotulo que ve quien diligencia
       // —eso vive en el formulario, no en el motor— y es el mismo nombre con
       // el que la regla lo escribio, asi que quien configura lo reconoce.
-      problemas.push(`Falta responder «${nombre}».`);
+      problemas.push(traducir('flujo.faltaResponderX', { nombre }));
     }
   }
 
@@ -3315,16 +3316,16 @@ export function problemasDelCorreo(
       if (!limpia) continue;
 
       if (esCorreoValido(limpia)) hayAlguno = true;
-      else problemas.push(`«${limpia}» no es un correo válido.`);
+      else problemas.push(traducir('flujo.correoInvalido', { correo: limpia }));
     }
   }
 
-  if (!hayAlguno) problemas.push('Falta a quién mandarlo.');
+  if (!hayAlguno) problemas.push(traducir('flujo.faltaDestinatario'));
 
   const asunto = conLasVariables(String(config['asunto'] ?? ''), valores, campos, false);
   const cuerpo = conLasVariables(String(config['cuerpo'] ?? ''), valores, campos, true);
 
-  if (!asunto.trim() && !cuerpo.trim()) problemas.push('El correo no dice nada.');
+  if (!asunto.trim() && !cuerpo.trim()) problemas.push(traducir('flujo.correoVacio'));
 
   return problemas;
 }
@@ -3692,7 +3693,7 @@ export function problemasDelPush(
       // Por su `apiId`, igual que en `problemasDelCorreo`: aqui no se conoce el
       // rotulo que ve quien diligencia —eso vive en el formulario, no en el
       // motor— y es el mismo nombre con el que la regla lo escribio.
-      const motivo = `Falta responder «${nombre}».`;
+      const motivo = traducir('flujo.faltaResponderX', { nombre });
 
       if (!problemas.includes(motivo)) problemas.push(motivo);
     }
@@ -3702,7 +3703,7 @@ export function problemasDelPush(
     conLasVariables(String(config['para'] ?? ''), valores, campos, false),
   );
 
-  if (!quienes) problemas.push('El aviso no tiene a quién ir.');
+  if (!quienes) problemas.push(traducir('flujo.avisoSinDestino'));
 
   const titulo = enUnaLinea(
     conLasVariables(String(config['titulo'] ?? ''), valores, campos, false),
@@ -3711,7 +3712,7 @@ export function problemasDelPush(
     conLasVariables(String(config['texto'] ?? ''), valores, campos, false),
   );
 
-  if (!titulo && !texto) problemas.push('El aviso no dice nada.');
+  if (!titulo && !texto) problemas.push(traducir('flujo.avisoVacio'));
 
   return problemas;
 }

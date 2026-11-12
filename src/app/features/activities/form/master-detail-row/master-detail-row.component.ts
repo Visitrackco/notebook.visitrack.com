@@ -12,6 +12,8 @@ import { FlujoGraficaComponent } from '../flujo-grafica/flujo-grafica.component'
 import { MissingEntry } from '../required-dialog/required-dialog.component';
 import { MasterDetailPanelsService } from './master-detail-panels.service';
 import { MasterDetailStackService, RowLevel } from './master-detail-stack.service';
+import { traducir } from '../../../../core/i18n/idioma.service';
+import { TPipe } from '../../../../core/i18n/t.pipe';
 
 /**
  * La pantalla de una fila de tabla de detalle.
@@ -41,6 +43,7 @@ import { MasterDetailStackService, RowLevel } from './master-detail-stack.servic
     HintComponent,
     IconComponent,
     ToTopComponent,
+    TPipe,
   ],
   templateUrl: './master-detail-row.component.html',
   styleUrl: './master-detail-row.component.scss',
@@ -126,7 +129,7 @@ export class MasterDetailRowComponent implements OnDestroy {
   pagesOf(level: RowLevel): { index: number; label: string }[] {
     return level.engine.pages.map((page, index) => ({
       index,
-      label: page.lab?.trim() || `Página ${index + 1}`,
+      label: page.lab?.trim() || traducir('form.paginaMayN', { n: index + 1 }),
     }));
   }
 
@@ -203,8 +206,8 @@ export class MasterDetailRowComponent implements OnDestroy {
         ...entry,
         note:
           rows.length === 1
-            ? '1 registro sin completar'
-            : `${rows.length} registros sin completar`,
+            ? traducir('md.unRegistroSinCompletar')
+            : traducir('md.nRegistrosSinCompletar', { n: rows.length }),
         go: () => panel.open(rows[0]),
       });
     }

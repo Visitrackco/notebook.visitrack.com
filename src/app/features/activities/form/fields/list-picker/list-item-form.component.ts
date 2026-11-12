@@ -17,6 +17,8 @@ import { AlertSoundService } from '../../../../../core/services/alert-sound.serv
 import { ListItemEditorService } from '../../../../../core/services/list-item-editor.service';
 import { IconComponent } from '../../../../../shared/components/icon/icon.component';
 import { FieldHostComponent } from '../field-host.component';
+import { traducir } from '../../../../../core/i18n/idioma.service';
+import { TPipe } from '../../../../../core/i18n/t.pipe';
 import {
   MissingEntry,
   RequiredDialogComponent,
@@ -51,7 +53,7 @@ import {
 @Component({
   selector: 'vt-list-item-form',
   standalone: true,
-  imports: [forwardRef(() => FieldHostComponent), IconComponent, RequiredDialogComponent],
+  imports: [forwardRef(() => FieldHostComponent), IconComponent, RequiredDialogComponent, TPipe],
   templateUrl: './list-item-form.component.html',
   styleUrl: './list-item-form.component.scss',
 })
@@ -98,7 +100,7 @@ export class ListItemFormComponent {
 
     if (!this.name().trim()) {
       entries.push({
-        field: { id: '__name', fty: 'TextLine', lab: 'Nombre', req: true },
+        field: { id: '__name', fty: 'TextLine', lab: traducir('campo.nombre'), req: true },
         page: 0,
         go: () => focusName(),
       });
@@ -208,7 +210,7 @@ export class ListItemFormComponent {
       this.created.emit(item);
     } catch (error) {
       console.error('[Listas] no se pudo crear el ítem', error);
-      this.error.set('No se pudo crear el ítem. Inténtalo de nuevo.');
+      this.error.set(traducir('campo.itemNoCreado'));
     } finally {
       this.saving.set(false);
     }

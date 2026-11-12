@@ -2,6 +2,8 @@ import { Component, ElementRef, computed, effect, input, output, viewChild } fro
 
 import { FormField } from '../../../../core/forms/form-schema';
 import { IconComponent } from '../../../../shared/components/icon/icon.component';
+import { traducir } from '../../../../core/i18n/idioma.service';
+import { TPipe } from '../../../../core/i18n/t.pipe';
 
 /** Un obligatorio sin responder, con la página donde vive. */
 export interface MissingEntry {
@@ -54,7 +56,7 @@ export interface MissingGroup {
 @Component({
   selector: 'vt-required-dialog',
   standalone: true,
-  imports: [IconComponent],
+  imports: [IconComponent, TPipe],
   templateUrl: './required-dialog.component.html',
   styleUrl: './required-dialog.component.scss',
 })
@@ -107,7 +109,7 @@ export class RequiredDialogComponent {
       .sort(([left], [right]) => left - right)
       .map(([page, entries]) => ({
         page,
-        label: labels[page] || `Página ${page + 1}`,
+        label: labels[page] || traducir('form.paginaMayN', { n: page + 1 }),
         entries,
       }));
   });

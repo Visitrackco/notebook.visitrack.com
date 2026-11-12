@@ -23,24 +23,24 @@
         </span>
 
         <div class="picker__titles">
-          <strong>{{ title() }}</strong>
+          <strong>{{ title() || ('campo.seleccionar' | t) }}</strong>
           <small>
             @if (subtitle()) {
               {{ subtitle() }}
             } @else if (hasChoices()) {
-              {{ choices().length }} {{ choices().length === 1 ? 'resultado' : 'resultados' }}
+              {{ (choices().length === 1 ? 'campo.unResultado' : 'campo.nResultados') | t: { n: choices().length } }}
             } @else {
-              Elige una opción
+              {{ 'campo.eligeUnaOpcion' | t }}
             }
             <!-- Una lista en línea se comporta distinto: hay que escribir
                  para encontrar y sin conexión no habrá nada. -->
             @if (isOnline()) {
-              · en línea
+              · {{ 'campo.enLineaMin' | t }}
             }
           </small>
         </div>
 
-        <button type="button" class="picker__close" (click)="close()" aria-label="Cerrar">
+        <button type="button" class="picker__close" (click)="close()" [attr.aria-label]="'comun.cerrar' | t">
           <vt-icon name="close" [size]="19" />
         </button>
       </div>
@@ -51,16 +51,12 @@
           type="search"
           [value]="term()"
           (input)="onSearch($event)"
-          [placeholder]="
-            isOnline()
-              ? 'Escribe para buscar en el servidor'
-              : 'Buscar por nombre o por sus datos'
-          "
+          [placeholder]="(isOnline() ? 'campo.buscarServidor' : 'md.buscar') | t"
           autocomplete="off"
         />
 
         @if (loading()) {
-          <span class="picker__spinner" aria-label="Buscando"></span>
+          <span class="picker__spinner" [attr.aria-label]="'flujo.dstBuscando' | t"></span>
         }
       </label>
     </header>
@@ -83,7 +79,7 @@
         <!-- Fantasmas en vez de un texto: dicen que va a aparecer una lista y
              cuántas filas caben, así el panel no da un salto de alto cuando
              llegan los datos. -->
-        <ul class="picker__ghosts" aria-label="Cargando opciones">
+        <ul class="picker__ghosts" [attr.aria-label]="'campo.cargandoOpciones' | t">
           @for (row of ghosts; track row) {
             <li>
               <span class="picker__ghost-mark"></span>
@@ -119,7 +115,7 @@
                          ser legítimo —dos revisiones del mismo equipo— pero
                          hacerlo sin darse cuenta casi nunca lo es. -->
                     @if (isUsed(choice)) {
-                      <em class="picker__used">ya agregado</em>
+                      <em class="picker__used">{{ 'campo.yaAgregado' | t }}</em>
                     }
                   </span>
 
@@ -151,19 +147,19 @@
         @if (loading() && paginable() && truncated()) {
           <p class="picker__mas">
             <span class="picker__mas-rueda" aria-hidden="true"></span>
-            Cargando 20 más…
+            {{ 'campo.cargando20' | t }}
           </p>
         }
 
         @if (truncated() && !paginable()) {
           <p class="picker__note picker__note--hint">
-            Se muestran los primeros 50. Afina la búsqueda si no encuentras el que buscas.
+            {{ 'campo.primeros50' | t }}
           </p>
         }
       } @else {
         <div class="picker__empty">
           <span class="picker__empty-icon"><vt-icon name="alert" [size]="24" /></span>
-          <p>{{ message() || 'Esta lista no tiene ítems para mostrar.' }}</p>
+          <p>{{ message() || ('campo.listaVacia' | t) }}</p>
         </div>
       }
     </div>
@@ -174,7 +170,7 @@
     @if (canCreate()) {
       <button type="button" class="picker__new" (click)="startCreate()">
         <vt-icon name="plus" [size]="16" />
-        Crear un ítem nuevo
+        {{ 'campo.crearItem' | t }}
       </button>
     } @else if (createBlocked()) {
       <p class="picker__denied">

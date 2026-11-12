@@ -2,6 +2,7 @@ import { Component, ElementRef, computed, effect, input, output, signal, viewChi
 
 import { DispatchStatus } from '../../../../core/models/entities.model';
 import { IconComponent } from '../../../../shared/components/icon/icon.component';
+import { TPipe } from '../../../../core/i18n/t.pipe';
 
 /**
  * Barra de estado de despacho.
@@ -20,7 +21,7 @@ import { IconComponent } from '../../../../shared/components/icon/icon.component
 @Component({
   selector: 'vt-status-bar',
   standalone: true,
-  imports: [IconComponent],
+  imports: [IconComponent, TPipe],
   templateUrl: './status-bar.component.html',
   styleUrl: './status-bar.component.scss',
 })

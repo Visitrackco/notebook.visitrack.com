@@ -37,7 +37,7 @@
       -->
       @if (pendienteDe(boton); as pendiente) {
         <p class="botones__pendiente">
-          <span class="botones__marca">Pendiente</span>
+          <span class="botones__marca">{{ 'flujo.pendiente' | t }}</span>
           {{ pendiente }}
         </p>
       }
@@ -46,7 +46,7 @@
            antes que dejar que alguien lo pulse tres veces esperando algo. -->
       @if (hacePendienteSolo(boton)) {
         <p class="botones__pendiente botones__pendiente--nada">
-          Pulsarlo todavía no hace nada.
+          {{ 'flujo.pulsarNoHaceNada' | t }}
         </p>
       }
     </div>

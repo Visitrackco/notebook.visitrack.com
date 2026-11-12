@@ -2,7 +2,8 @@ import { Component, computed, input } from '@angular/core';
 
 import { FormField } from '../../../../../core/forms/form-schema';
 import { IconComponent } from '../../../../../shared/components/icon/icon.component';
-import { localeActual } from '../../../../../core/i18n/idioma.service';
+import { localeActual, traducir } from '../../../../../core/i18n/idioma.service';
+import { TPipe } from '../../../../../core/i18n/t.pipe';
 
 /**
  * Campos que no se responden: se calculan.
@@ -27,7 +28,7 @@ import { localeActual } from '../../../../../core/i18n/idioma.service';
 @Component({
   selector: 'vt-derived-field',
   standalone: true,
-  imports: [IconComponent],
+  imports: [IconComponent, TPipe],
   templateUrl: './derived-field.component.html',
   styleUrl: './derived-field.component.scss',
 })
@@ -54,20 +55,20 @@ export class DerivedFieldComponent {
   readonly unit = computed(() => {
     if (this.field().fty !== 'datediff' || this.empty()) return '';
 
-    return Math.abs(Number(this.value())) === 1 ? 'día' : 'días';
+    return traducir(Math.abs(Number(this.value())) === 1 ? 'campo.dia' : 'campo.dias');
   });
 
   /** De dónde sale el número, en una línea. */
   readonly origin = computed(() => {
     switch (this.field().fty) {
       case 'datediff':
-        return 'Días entre las dos fechas del formulario.';
+        return traducir('campo.origenDias');
 
       case 'sumdetail':
-        return 'Suma de una columna de la tabla de registros.';
+        return traducir('campo.origenSuma');
 
       default:
-        return 'Resultado de una fórmula sobre otros campos.';
+        return traducir('campo.origenFormula');
     }
   });
 
@@ -77,13 +78,13 @@ export class DerivedFieldComponent {
 
     switch (this.field().fty) {
       case 'datediff':
-        return 'Se calcula cuando las dos fechas estén respondidas.';
+        return traducir('campo.vacioDias');
 
       case 'sumdetail':
-        return 'Se calcula cuando la tabla tenga registros con ese dato.';
+        return traducir('campo.vacioSuma');
 
       default:
-        return 'Se calcula cuando los campos de la fórmula tengan valor.';
+        return traducir('campo.vacioFormula');
     }
   });
 

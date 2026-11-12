@@ -16,13 +16,13 @@
     <div class="lnk__tools">
       <button type="button" class="lnk__tool" (click)="copy()">
         <vt-icon name="copy" [size]="15" />
-        Copiar
+        {{ 'campo.copiar' | t }}
       </button>
 
       @if (canShare) {
         <button type="button" class="lnk__tool" (click)="share()">
           <vt-icon name="send" [size]="15" />
-          Compartir
+          {{ 'campo.compartir' | t }}
         </button>
       }
 
@@ -31,7 +31,7 @@
       @if (isDynamic()) {
         <span class="lnk__note">
           <vt-icon name="shield" [size]="13" />
-          Incluye tus datos de sesión
+          {{ 'campo.incluyeSesion' | t }}
         </span>
       }
     </div>
@@ -43,6 +43,6 @@
 } @else {
   <p class="lnk__empty">
     <vt-icon name="alert" [size]="15" />
-    Este enlace no tiene una dirección configurada.
+    {{ 'campo.enlaceSinDireccion' | t }}
   </p>
 }

@@ -44,6 +44,8 @@ import { MasterDetailPanelsService } from '../../master-detail-row/master-detail
 import { MasterDetailStackService } from '../../master-detail-row/master-detail-stack.service';
 import { ListPickerComponent } from '../list-picker/list-picker.component';
 import { scrollToCenter, scrollerOf } from '../../../../../shared/utils/scroll';
+import { traducir } from '../../../../../core/i18n/idioma.service';
+import { TPipe } from '../../../../../core/i18n/t.pipe';
 
 /**
  * Qué está abierto encima del campo.
@@ -102,7 +104,7 @@ interface RowState {
 @Component({
   selector: 'vt-master-detail-field',
   standalone: true,
-  imports: [ConfirmDialogComponent, HintComponent, IconComponent, ListPickerComponent],
+  imports: [ConfirmDialogComponent, HintComponent, IconComponent, ListPickerComponent, TPipe],
   templateUrl: './master-detail-field.component.html',
   styleUrl: './master-detail-field.component.scss',
 })
@@ -283,16 +285,16 @@ export class MasterDetailFieldComponent {
     // botón apagado sin motivo visible y nadie sabe a quién preguntarle. Va
     // antes que el permiso del formulario porque la regla es la que manda.
     if (this.agregarDelFlujo() === false) {
-      return 'Una regla del formulario no permite agregar registros ahora.';
+      return traducir('md.reglaNoPermite');
     }
 
     if (this.agregarDelFlujo() !== true && !(this.field().mobAdd ?? false)) {
-      return 'No tienes permiso para agregar registros aquí.';
+      return traducir('md.sinPermisoAgregar');
     }
 
-    if (this.atLimit()) return `Alcanzaste el máximo de ${this.limit()} registros.`;
+    if (this.atLimit()) return traducir('md.alcanzasteMaximo', { n: this.limit() });
     if (this.needsParent()) {
-      return 'Depende del campo anterior. Respóndelo para poder agregar registros.';
+      return traducir('md.dependeAnterior');
     }
 
     return '';
@@ -302,9 +304,9 @@ export class MasterDetailFieldComponent {
   readonly counter = computed(() => {
     const count = this.rows().length;
     const limit = this.limit();
-    const noun = count === 1 ? 'registro' : 'registros';
+    if (limit > 0) return traducir(limit === 1 ? 'md.xDeUnRegistro' : 'md.xDeNRegistros', { x: count, n: limit });
 
-    return limit > 0 ? `${count} de ${limit} ${noun}` : `${count} ${noun}`;
+    return traducir(count === 1 ? 'md.unRegistro' : 'md.nRegistros', { n: count });
   });
 
   /** El sub-formulario no tiene campos: la fila es solo el ítem elegido. */
@@ -579,7 +581,7 @@ export class MasterDetailFieldComponent {
     const room = limit > 0 ? Math.max(0, limit - this.rows().length) : files.length;
 
     if (room === 0) {
-      this.feedback.set(`Este campo admite como máximo ${limit} registros.`);
+      this.feedback.set(traducir('md.admiteMaximo', { n: limit }));
       return;
     }
 
@@ -587,8 +589,7 @@ export class MasterDetailFieldComponent {
 
     this.feedback.set(
       accepted.length < files.length
-        ? `Solo caben ${room} ${room === 1 ? 'registro más' : 'registros más'}: se agregaron ` +
-            `las primeras ${room} de ${files.length} fotos.`
+        ? traducir('md.soloCaben', { n: room, total: files.length })
         : '',
     );
 
@@ -719,14 +720,14 @@ export class MasterDetailFieldComponent {
 
   // ── Selector ───────────────────────────────────────────────────────────────
 
-  readonly pickerTitle = computed(() => `Agregar a ${this.field().lab}`);
+  readonly pickerTitle = computed(() => traducir('md.agregarA', { nombre: this.field().lab }));
 
   readonly pickerSubtitle = computed(() => {
     if (this.config()?.origin !== 'location-l2') return '';
 
     return this.step() === 1
-      ? 'Paso 1 de 2 · Elige la ubicación'
-      : `Paso 2 de 2 · ${this.pickedLocation()?.txt ?? 'Registros de la ubicación'}`;
+      ? traducir('md.paso1')
+      : traducir('md.paso2', { que: this.pickedLocation()?.txt ?? traducir('md.registrosUbicacion') });
   });
 
   /**
@@ -836,7 +837,7 @@ export class MasterDetailFieldComponent {
         origin: 'none',
         choices: [],
         truncated: false,
-        message: 'No se pudo cargar la lista.',
+        message: traducir('campo.listaNoCargo'),
       });
     } finally {
       this.loadingItems.set(false);
@@ -885,7 +886,7 @@ export class MasterDetailFieldComponent {
     // El tope se vuelve a comprobar aquí y no solo en el botón: entre abrir el
     // selector y elegir puede haberse llenado desde otra parte.
     if (this.atLimit()) {
-      this.feedback.set(`Este campo admite como máximo ${this.limit()} registros.`);
+      this.feedback.set(traducir('md.admiteMaximo', { n: this.limit() }));
       return;
     }
 
@@ -936,7 +937,7 @@ export class MasterDetailFieldComponent {
     if (this.emptySchema() || this.unavailable()) return;
 
     if (!this.canEdit()) {
-      this.feedback.set(`No tienes permiso para editar los registros de ${this.field().lab}.`);
+      this.feedback.set(traducir('md.sinPermisoEditar', { nombre: this.field().lab }));
       return;
     }
 
@@ -1316,7 +1317,7 @@ export class MasterDetailFieldComponent {
 
   askRemove(row: MasterDetailRow): void {
     if (!this.canDelete()) {
-      this.feedback.set(`No tienes permiso para eliminar registros de ${this.field().lab}.`);
+      this.feedback.set(traducir('md.sinPermisoEliminar', { nombre: this.field().lab }));
       return;
     }
 

@@ -15,7 +15,7 @@
     <vt-icon name="clipboard" [size]="18" />
 
     <span class="lst__value">
-      {{ selected() ? selected()!.txt : 'Seleccionar…' }}
+      {{ selected() ? selected()!.txt : ('campo.seleccionarPuntos' | t) }}
     </span>
 
     @if (!readOnly()) {
@@ -29,7 +29,7 @@
   @if (needsParent()) {
     <p class="lst__chain">
       <vt-icon name="alert" [size]="14" />
-      Depende del campo anterior. Respóndelo para poder elegir aquí.
+      {{ 'campo.dependeAnterior' | t }}
     </p>
   }
 
@@ -41,7 +41,7 @@
     @if (selected() && !readOnly()) {
       <button type="button" class="lst__clear" (click)="clear()">
         <vt-icon name="close" [size]="13" />
-        Quitar
+        {{ 'campo.quitar' | t }}
       </button>
     }
   </div>
@@ -52,7 +52,7 @@
     <div class="lst__details">
       <span class="lst__details-title">
         <vt-icon name="info" [size]="13" />
-        Detalles del ítem
+        {{ 'campo.detallesItem' | t }}
       </span>
 
       <!-- Etiqueta encima del valor, no al lado: en dos columnas, un valor
@@ -70,7 +70,7 @@
   }
 
   @if (invalid()) {
-    <small class="lst__error">Este campo es obligatorio.</small>
+    <small class="lst__error">{{ 'campo.obligatorio' | t }}</small>
   }
 </div>
 

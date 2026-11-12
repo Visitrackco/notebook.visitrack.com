@@ -2,6 +2,8 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
 
 import { LlamadaPintada } from '../../../../core/forms/flujo-modelo';
 import { ArchivoDeIntegracion } from '../../../../core/forms/integraciones.api';
+import { traducir } from '../../../../core/i18n/idioma.service';
+import { TPipe } from '../../../../core/i18n/t.pipe';
 
 /**
  * Las llamadas a servicios externos que una regla del flujo pidió.
@@ -26,6 +28,7 @@ import { ArchivoDeIntegracion } from '../../../../core/forms/integraciones.api';
 @Component({
   selector: 'vt-flujo-llamadas',
   standalone: true,
+  imports: [TPipe],
   templateUrl: './flujo-llamadas.component.html',
   styleUrl: './flujo-llamadas.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -119,8 +122,8 @@ export class FlujoLlamadasComponent {
 
   /** Lo que se lee dentro del botón, según en qué vaya la llamada. */
   rotulo(una: LlamadaPintada): string {
-    if (una.estado === 'error') return una.reintentable ? 'Reintentar' : una.titulo;
-    if (una.estado === 'ok') return 'Volver a consultar';
+    if (una.estado === 'error') return una.reintentable ? traducir('comun.reintentar') : una.titulo;
+    if (una.estado === 'ok') return traducir('flujo.volverAConsultar');
 
     return una.titulo;
   }

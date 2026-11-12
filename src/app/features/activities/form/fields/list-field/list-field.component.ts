@@ -10,6 +10,8 @@ import {
 } from '../../../../../core/forms/list-source.service';
 import { IconComponent } from '../../../../../shared/components/icon/icon.component';
 import { ListPickerComponent } from '../list-picker/list-picker.component';
+import { traducir } from '../../../../../core/i18n/idioma.service';
+import { TPipe } from '../../../../../core/i18n/t.pipe';
 
 /** Lo que este campo entrega al motor. */
 export interface ListSelection {
@@ -41,7 +43,7 @@ export interface ListSelection {
 @Component({
   selector: 'vt-list-field',
   standalone: true,
-  imports: [IconComponent, ListPickerComponent],
+  imports: [IconComponent, ListPickerComponent, TPipe],
   templateUrl: './list-field.component.html',
   styleUrl: './list-field.component.scss',
 })
@@ -245,7 +247,7 @@ export class ListFieldComponent {
         origin: 'none',
         choices: [],
         truncated: false,
-        message: 'No se pudo cargar la lista.',
+        message: traducir('campo.listaNoCargo'),
       });
     } finally {
       this.loading.set(false);

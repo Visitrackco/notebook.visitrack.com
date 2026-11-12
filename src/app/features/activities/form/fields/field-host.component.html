@@ -29,7 +29,7 @@
   <label class="fld__label" [attr.for]="'input-' + f.id">
     {{ f.lab }}
     @if (esObligatorio()) {
-      <em class="fld__req" title="Campo obligatorio">*</em>
+      <em class="fld__req" [title]="'campo.campoObligatorio' | t">*</em>
     }
   </label>
 }
@@ -84,7 +84,7 @@
       @if (avisoDeEntrada()) {
         <small class="fld__rich-error">{{ avisoDeEntrada() }}</small>
       } @else if (invalid()) {
-        <small class="fld__rich-error">Este campo es obligatorio.</small>
+        <small class="fld__rich-error">{{ 'campo.obligatorio' | t }}</small>
       }
     </div>
   }
@@ -129,7 +129,7 @@
           <p class="fld__hint">{{ ayuda() }}</p>
         }
         @if (invalid()) {
-          <p class="fld__error">Elige una calificación.</p>
+          <p class="fld__error">{{ 'campo.eligeCalificacion' | t }}</p>
         }
       </fieldset>
     } @else {
@@ -151,7 +151,7 @@
         <p class="fld__hint">{{ ayuda() }}</p>
       }
       @if (invalid()) {
-        <p class="fld__error">Elige una opción.</p>
+        <p class="fld__error">{{ 'campo.eligeOpcion' | t }}</p>
       }
     </fieldset>
     }
@@ -176,14 +176,14 @@
 
       @if (topeDeOpciones()) {
         <p class="fld__hint">
-          Se pueden marcar {{ topeDeOpciones() }} como mucho ({{ checkedIds().length }} de {{ topeDeOpciones() }})
+          {{ 'campo.topeOpciones' | t: { n: topeDeOpciones(), hechos: checkedIds().length } }}
         </p>
       }
       @if (ayuda()) {
         <p class="fld__hint">{{ ayuda() }}</p>
       }
       @if (invalid()) {
-        <p class="fld__error">Marca al menos una opción.</p>
+        <p class="fld__error">{{ 'campo.marcaUna' | t }}</p>
       }
     </fieldset>
   }
@@ -199,7 +199,7 @@
         [matDatepickerFilter]="filtroDeDias()"
         [ngModel]="dateValue()"
         [readonly]="true"
-        [placeholder]="f.pho || 'dd/mm/aaaa'"
+        [placeholder]="f.pho || ('campo.formatoFecha' | t)"
         (click)="readOnly() || datePicker.open()"
         (dateChange)="onDate($event.value)"
       />
@@ -209,7 +209,7 @@
         <mat-hint>{{ ayuda() }}</mat-hint>
       }
       @if (invalid()) {
-        <mat-error>Este campo es obligatorio.</mat-error>
+        <mat-error>{{ 'campo.obligatorio' | t }}</mat-error>
       }
     </mat-form-field>
   }
@@ -232,7 +232,7 @@
         <mat-hint>{{ ayuda() }}</mat-hint>
       }
       @if (invalid()) {
-        <mat-error>Este campo es obligatorio.</mat-error>
+        <mat-error>{{ 'campo.obligatorio' | t }}</mat-error>
       }
     </mat-form-field>
   }
@@ -245,7 +245,7 @@
            los dos calendarios abrir. -->
       <div class="fld__datetime">
         <mat-form-field appearance="outline">
-          <mat-label>Fecha</mat-label>
+          <mat-label>{{ 'campo.fecha' | t }}</mat-label>
           <input
             matInput
             [matDatepicker]="dtDate"
@@ -262,7 +262,7 @@
         </mat-form-field>
 
         <mat-form-field appearance="outline">
-          <mat-label>Hora</mat-label>
+          <mat-label>{{ 'campo.hora' | t }}</mat-label>
           <input
             matInput
             [matTimepicker]="dtTime"
@@ -286,10 +286,10 @@
       @if (incompleteDateTime()) {
         <p class="fld__warn">
           <vt-icon name="alert" [size]="14" />
-          Falta {{ missingHalf() }}. El campo no se guarda hasta tener las dos.
+          {{ 'campo.faltaMitad' | t: { que: missingHalf() } }}
         </p>
       } @else if (invalid()) {
-        <p class="fld__error">Indica la fecha y la hora.</p>
+        <p class="fld__error">{{ 'campo.indicaFechaHora' | t }}</p>
       }
     </fieldset>
   }
@@ -446,7 +446,7 @@
        No hay forma fiable de leer etiquetas NFC desde el navegador. -->
   @case ('scanrfidtag') {
     <p class="fld__nodisponible">
-      Este campo no es posible usarse en la versión web.
+      {{ 'campo.noDisponibleWeb' | t }}
     </p>
   }
 
@@ -456,7 +456,7 @@
   @case ('document') {
     <div class="fld__pareja">
       <mat-form-field appearance="outline" class="fld__control">
-        <mat-label>Nombre</mat-label>
+        <mat-label>{{ 'campo.nombre' | t }}</mat-label>
         <input
           matInput
           [value]="documentValue().docName"
@@ -465,7 +465,7 @@
         />
       </mat-form-field>
       <mat-form-field appearance="outline" class="fld__control">
-        <mat-label>Número de documento</mat-label>
+        <mat-label>{{ 'campo.numeroDocumento' | t }}</mat-label>
         <input
           matInput
           inputmode="numeric"
@@ -479,7 +479,7 @@
       <p class="fld__hint">{{ ayuda() }}</p>
     }
     @if (invalid()) {
-      <p class="fld__error">Este campo es obligatorio.</p>
+      <p class="fld__error">{{ 'campo.obligatorio' | t }}</p>
     }
   }
 
@@ -488,27 +488,27 @@
   @case ('address') {
     <div class="fld__direccion">
       <mat-form-field appearance="outline" class="fld__control fld__control--ancho">
-        <mat-label>Dirección</mat-label>
+        <mat-label>{{ 'campo.direccion' | t }}</mat-label>
         <input matInput [value]="addressValue().st1" [readonly]="readOnly()"
           (input)="onAddress('st1', $event)" />
       </mat-form-field>
       <mat-form-field appearance="outline" class="fld__control fld__control--ancho">
-        <mat-label>Complemento</mat-label>
+        <mat-label>{{ 'campo.complemento' | t }}</mat-label>
         <input matInput [value]="addressValue().st2" [readonly]="readOnly()"
           (input)="onAddress('st2', $event)" />
       </mat-form-field>
       <mat-form-field appearance="outline" class="fld__control">
-        <mat-label>Ciudad</mat-label>
+        <mat-label>{{ 'campo.ciudad' | t }}</mat-label>
         <input matInput [value]="addressValue().cit" [readonly]="readOnly()"
           (input)="onAddress('cit', $event)" />
       </mat-form-field>
       <mat-form-field appearance="outline" class="fld__control">
-        <mat-label>Departamento / Estado</mat-label>
+        <mat-label>{{ 'campo.departamento' | t }}</mat-label>
         <input matInput [value]="addressValue().sta" [readonly]="readOnly()"
           (input)="onAddress('sta', $event)" />
       </mat-form-field>
       <mat-form-field appearance="outline" class="fld__control">
-        <mat-label>Código postal</mat-label>
+        <mat-label>{{ 'campo.codigoPostal' | t }}</mat-label>
         <input matInput [value]="addressValue().pos" [readonly]="readOnly()"
           (input)="onAddress('pos', $event)" />
       </mat-form-field>
@@ -517,7 +517,7 @@
       <p class="fld__hint">{{ ayuda() }}</p>
     }
     @if (invalid()) {
-      <p class="fld__error">Este campo es obligatorio.</p>
+      <p class="fld__error">{{ 'campo.obligatorio' | t }}</p>
     }
   }
 
@@ -546,7 +546,7 @@
         <mat-hint>{{ ayuda() }}</mat-hint>
       }
       @if (invalid() && !avisoDeEntrada()) {
-        <mat-error>Este campo es obligatorio.</mat-error>
+        <mat-error>{{ 'campo.obligatorio' | t }}</mat-error>
       }
     </mat-form-field>
 
@@ -584,7 +584,7 @@
     }
 
     @if (invalid()) {
-      <small class="fld__binary-error">Este campo es obligatorio.</small>
+      <small class="fld__binary-error">{{ 'campo.obligatorio' | t }}</small>
     }
   </div>
 </ng-template>
@@ -608,7 +608,7 @@
       #scanInput
       matInput
       [value]="scanText()"
-      [placeholder]="f.pho || 'Escanea, escribe o pega el código'"
+      [placeholder]="f.pho || ('campo.scanPlaceholder' | t)"
       [readonly]="readOnly()"
       (input)="onScan($event)"
     />
@@ -620,17 +620,17 @@
         type="button"
         class="fld__scan"
         (click)="abrirEscaner()"
-        [attr.aria-label]="f.fty === 'scanqrcode' ? 'Escanear el código QR con la cámara' : 'Escanear el código de barras con la cámara'"
-        title="Escanear con la cámara"
+        [attr.aria-label]="(f.fty === 'scanqrcode' ? 'campo.escanearQr' : 'campo.escanearBarras') | t"
+        [title]="'campo.escanearCamara' | t"
       >
         <vt-icon name="scan" [size]="20" />
       </button>
     }
     <mat-hint>
-      {{ readOnly() ? 'Campo de solo lectura.' : 'Toca el ícono para escanear con la cámara, o escribe el código.' }}
+      {{ (readOnly() ? 'campo.soloLectura' : 'campo.scanHint') | t }}
     </mat-hint>
     @if (invalid()) {
-      <mat-error>Este campo es obligatorio.</mat-error>
+      <mat-error>{{ 'campo.obligatorio' | t }}</mat-error>
     }
   </mat-form-field>
 

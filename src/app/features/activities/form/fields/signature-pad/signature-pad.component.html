@@ -1,21 +1,21 @@
 <div class="sign">
   <header class="sign__bar">
-    <button type="button" class="sign__close" (click)="cancel.emit()" aria-label="Cerrar">
+    <button type="button" class="sign__close" (click)="cancel.emit()" [attr.aria-label]="'comun.cerrar' | t">
       <vt-icon name="close" [size]="20" />
     </button>
 
-    <span class="sign__title">{{ modo() === 'mias' ? 'Nueva firma' : 'Firma' }}</span>
+    <span class="sign__title">{{ (modo() === 'mias' ? 'campo.firmaNueva' : 'campo.firma') | t }}</span>
 
     <button type="button" class="sign__accept" [disabled]="!canSave()" (click)="accept()">
       <vt-icon name="check" [size]="17" />
-      {{ saving() ? 'Guardando…' : 'Guardar' }}
+      {{ (saving() ? 'form.guardando' : 'comun.guardar') | t }}
     </button>
   </header>
 
   <!-- El nombre va antes del lienzo: pedirlo después de firmar es pedirlo
        cuando la persona ya devolvió el dispositivo. -->
   <label class="sign__name" [class.sign__name--invalid]="nameMissing()">
-    <span>Nombre de quien firma <em>*</em></span>
+    <span>{{ 'campo.firmaNombre' | t }} <em>*</em></span>
 
     <span class="sign__name-box">
       <vt-icon name="user" [size]="18" />
@@ -25,7 +25,7 @@
         [value]="name()"
         (input)="onName($event)"
         (blur)="nameTouched.set(true)"
-        placeholder="Nombre completo"
+        [placeholder]="'campo.nombreCompleto' | t"
         autocomplete="name"
         enterkeyhint="done"
       />
@@ -34,21 +34,21 @@
     @if (nameMissing()) {
       <small class="sign__name-error">
         <vt-icon name="alert" [size]="14" />
-        Escribe el nombre de quien firma para poder guardar.
+        {{ 'campo.firmaEscribeNombre' | t }}
       </small>
     }
   </label>
 
   <!-- Las guardadas, para no firmar de nuevo cada vez. -->
   @if (modo() === 'campo' && guardadas().length) {
-    <section class="sign__mias" aria-label="Mis firmas">
-      <span class="sign__mias-titulo">Mis firmas</span>
+    <section class="sign__mias" [attr.aria-label]="'campo.misFirmas' | t">
+      <span class="sign__mias-titulo">{{ 'campo.misFirmas' | t }}</span>
       <div class="sign__mias-lista">
         @for (f of guardadas(); track f.ID) {
-          <button type="button" class="sign__mia" (click)="usarGuardada(f)" [title]="'Usar la firma de ' + f.Name">
-            <img [src]="f.url" [alt]="'Firma de ' + f.Name" />
+          <button type="button" class="sign__mia" (click)="usarGuardada(f)" [title]="'campo.usarFirmaDe' | t: { nombre: f.Name }">
+            <img [src]="f.url" [alt]="'campo.firmaDe' | t: { nombre: f.Name }" />
             <span class="sign__mia-nombre">{{ f.Name }}</span>
-            <span class="sign__mia-borrar" role="button" tabindex="0" (click)="borrarGuardada(f, $event)" (keydown.enter)="borrarGuardada(f, $event)" aria-label="Quitar de mis firmas">
+            <span class="sign__mia-borrar" role="button" tabindex="0" (click)="borrarGuardada(f, $event)" (keydown.enter)="borrarGuardada(f, $event)" [attr.aria-label]="'campo.quitarDeMisFirmas' | t">
               <vt-icon name="close" [size]="12" />
             </span>
           </button>
@@ -68,7 +68,7 @@
     ></canvas>
 
     @if (!hasSignature()) {
-      <span class="sign__placeholder">Firma aquí con el dedo o el ratón</span>
+      <span class="sign__placeholder">{{ 'campo.firmaAqui' | t }}</span>
     }
 
     <!-- La línea guía es la del papel: sitúa la firma sin obligar a apuntar. -->
@@ -79,13 +79,13 @@
     <div class="sign__state">
       <span class="sign__hint" [class.sign__hint--warn]="hasSignature() && !validSignature()">
         @if (!hasSignature()) {
-          Firma en el recuadro para continuar.
+          {{ 'campo.firmaEnRecuadro' | t }}
         } @else if (!validSignature()) {
-          El trazo es muy corto para ser una firma. Firma completo, no un punto.
+          {{ 'campo.firmaCorta' | t }}
         } @else if (!hasName()) {
-          Falta el nombre de quien firma.
+          {{ 'campo.firmaFaltaNombre' | t }}
         } @else {
-          Listo para guardar.
+          {{ 'campo.listoGuardar' | t }}
         }
       </span>
 
@@ -102,13 +102,13 @@
     @if (modo() === 'campo') {
       <label class="sign__recordar">
         <input type="checkbox" [checked]="recordar()" (change)="recordar.set($any($event.target).checked)" />
-        Guardar en mis firmas
+        {{ 'campo.guardarEnMisFirmas' | t }}
       </label>
     }
 
     <button type="button" class="sign__clear" [disabled]="!hasSignature()" (click)="clear()">
       <vt-icon name="trash" [size]="16" />
-      Borrar
+      {{ 'campo.borrar' | t }}
     </button>
   </footer>
 </div>

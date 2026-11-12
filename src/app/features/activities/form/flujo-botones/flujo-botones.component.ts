@@ -7,6 +7,8 @@ import {
   LlamadaPintada,
   PushPedido,
 } from '../../../../core/forms/flujo-modelo';
+import { traducir } from '../../../../core/i18n/idioma.service';
+import { TPipe } from '../../../../core/i18n/t.pipe';
 
 /**
  * Los botones que una regla del flujo puso debajo de los campos.
@@ -30,6 +32,7 @@ import {
 @Component({
   selector: 'vt-flujo-botones',
   standalone: true,
+  imports: [TPipe],
   templateUrl: './flujo-botones.component.html',
   styleUrl: './flujo-botones.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -124,8 +127,8 @@ export class FlujoBotonesComponent {
     if (!enVuelo.length) return '';
 
     return enVuelo.length === 1
-      ? `Consultando «${enVuelo[0].titulo}»…`
-      : `Consultando ${enVuelo.length} servicios…`;
+      ? traducir('flujo.consultandoX', { titulo: enVuelo[0].titulo })
+      : traducir('flujo.consultandoN', { n: enVuelo.length });
   }
 
   /**
@@ -137,12 +140,14 @@ export class FlujoBotonesComponent {
    */
   pendienteDe(boton: BotonPintado): string {
     const que = (boton.pendientes ?? []).map((p) =>
-      p === 'correo' ? 'el correo' : 'la notificación',
+      p === 'correo' ? traducir('flujo.elCorreo') : traducir('flujo.laNotificacion'),
     );
 
     if (!que.length) return '';
 
-    return `${que.join(' y ')} ${que.length === 1 ? 'todavía no se envía' : 'todavía no se envían'}`;
+    return traducir(que.length === 1 ? 'flujo.todaviaNoSeEnvia' : 'flujo.todaviaNoSeEnvian', {
+      que: que.join(traducir('flujo.y')),
+    });
   }
 
   /** ¿Este botón hace algo de verdad ahora mismo? */

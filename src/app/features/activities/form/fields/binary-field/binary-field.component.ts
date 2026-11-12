@@ -24,6 +24,9 @@ import { MediaRecorderComponent } from '../media-recorder/media-recorder.compone
 import { MediaViewerComponent } from '../media-viewer/media-viewer.component';
 import { PhotoEditorComponent } from '../photo-editor/photo-editor.component';
 import { SignaturePadComponent } from '../signature-pad/signature-pad.component';
+import { traducir } from '../../../../../core/i18n/idioma.service';
+import { TPipe } from '../../../../../core/i18n/t.pipe';
+import type { ClaveTexto } from '../../../../../core/i18n/textos';
 
 /** Qué está abierto encima del campo. */
 type Overlay =
@@ -42,8 +45,8 @@ interface TypeConfig {
   ext: string;
   icon: string;
   /** Texto del botón cuando no hay archivo. */
-  action: string;
-  hint: string;
+  action: ClaveTexto;
+  hint: ClaveTexto;
   /** Formatos que acepta el selector de archivos. Vacío = cualquiera. */
   accept: string;
   /**
@@ -71,8 +74,8 @@ const TYPES: Record<string, TypeConfig> = {
     binary: BinaryType.Image,
     ext: 'jpg',
     icon: 'camera',
-    action: 'Agregar fotografía',
-    hint: 'Con la cámara, desde los archivos o arrastrando una imagen aquí',
+    action: 'campo.binFotoAccion',
+    hint: 'campo.binFotoHint',
     accept: 'image/*',
     drop: 'image/',
   },
@@ -80,8 +83,8 @@ const TYPES: Record<string, TypeConfig> = {
     binary: BinaryType.Signature,
     ext: 'png',
     icon: 'user',
-    action: 'Firmar',
-    hint: 'Firma con el dedo o el ratón',
+    action: 'campo.binFirmaAccion',
+    hint: 'campo.binFirmaHint',
     accept: '',
     drop: '',
   },
@@ -89,8 +92,8 @@ const TYPES: Record<string, TypeConfig> = {
     binary: BinaryType.Audio,
     ext: 'webm',
     icon: 'mic',
-    action: 'Grabar audio',
-    hint: 'Con el micrófono o arrastrando una grabación aquí',
+    action: 'campo.binAudioAccion',
+    hint: 'campo.binAudioHint',
     accept: 'audio/*',
     drop: 'audio/',
   },
@@ -98,8 +101,8 @@ const TYPES: Record<string, TypeConfig> = {
     binary: BinaryType.Video,
     ext: 'webm',
     icon: 'video',
-    action: 'Grabar video',
-    hint: 'Con la cámara o arrastrando un video aquí (hasta 100 MB)',
+    action: 'campo.binVideoAccion',
+    hint: 'campo.binVideoHint',
     accept: 'video/*',
     drop: 'video/',
   },
@@ -107,8 +110,8 @@ const TYPES: Record<string, TypeConfig> = {
     binary: BinaryType.File,
     ext: '',
     icon: 'file',
-    action: 'Adjuntar archivo',
-    hint: 'Imágenes, PDF y documentos de Office · hasta 100 MB',
+    action: 'campo.binArchivoAccion',
+    hint: 'campo.binArchivoHint',
     accept: FILE_ACCEPT,
     drop: '*',
   },
@@ -142,6 +145,7 @@ const TYPES: Record<string, TypeConfig> = {
     MediaViewerComponent,
     PhotoEditorComponent,
     SignaturePadComponent,
+    TPipe,
   ],
   templateUrl: './binary-field.component.html',
   styleUrl: './binary-field.component.scss',
@@ -158,7 +162,7 @@ export class BinaryFieldComponent implements OnDestroy {
   private readonly storage = inject(BinaryStorageService);
 
   readonly fty = input.required<string>();
-  readonly label = input('Archivo');
+  readonly label = input('');
   readonly help = input('');
   readonly required = input(false);
   readonly readOnly = input(false);
@@ -252,14 +256,14 @@ export class BinaryFieldComponent implements OnDestroy {
 
     switch (state) {
       case BinaryState.Online:
-        return { label: 'En línea', tone: 'success' as const };
+        return { label: traducir('campo.binEnLinea'), tone: 'success' as const };
       case BinaryState.InRepository:
-        return { label: 'En servidor', tone: 'info' as const };
+        return { label: traducir('campo.binEnServidor'), tone: 'info' as const };
       case BinaryState.Discarded:
       case BinaryState.Unrecoverable:
-        return { label: 'No disponible', tone: 'danger' as const };
+        return { label: traducir('campo.binNoDisponible'), tone: 'danger' as const };
       default:
-        return { label: 'Pendiente de subir', tone: 'warning' as const };
+        return { label: traducir('campo.binPendiente'), tone: 'warning' as const };
     }
   });
 
@@ -441,14 +445,13 @@ export class BinaryFieldComponent implements OnDestroy {
     const expected = this.config().drop;
 
     if (expected !== '*' && expected !== '' && !file.type.startsWith(expected)) {
-      this.error.set(`Este campo solo admite ${describeFamily(expected)}.`);
+      this.error.set(traducir('campo.binSoloAdmite', { que: describeFamily(expected) }));
       return;
     }
 
     if (this.isVideo() && file.size > MAX_VIDEO_BYTES) {
       this.error.set(
-        `El video pesa ${this.storage.formatSize(file.size)} y el máximo son 100 MB. ` +
-          'Graba uno más corto o comprímelo antes de adjuntarlo.',
+        traducir('campo.binVideoPesa', { peso: this.storage.formatSize(file.size) }),
       );
       return;
     }
@@ -464,7 +467,7 @@ export class BinaryFieldComponent implements OnDestroy {
       const check = checkFile(file);
 
       if (!check.ok) {
-        this.error.set(check.error ?? 'Este archivo no se admite.');
+        this.error.set(check.error ?? traducir('campo.binNoSeAdmite'));
         return;
       }
 
@@ -525,8 +528,7 @@ export class BinaryFieldComponent implements OnDestroy {
 
     if (this.isVideo() && blob.size > MAX_VIDEO_BYTES) {
       this.error.set(
-        `La grabación pesa ${this.storage.formatSize(blob.size)} y el máximo son 100 MB. ` +
-          'Graba un video más corto.',
+        traducir('campo.binGrabacionPesa', { peso: this.storage.formatSize(blob.size) }),
       );
       return;
     }
@@ -560,7 +562,7 @@ export class BinaryFieldComponent implements OnDestroy {
       this.valueChange.emit(value);
     } catch (error) {
       console.error('[Binary] no se pudo guardar el archivo', error);
-      this.error.set('No se pudo guardar el archivo. Inténtalo de nuevo.');
+      this.error.set(traducir('campo.binNoSeGuardo'));
     } finally {
       this.busy.set(false);
     }
@@ -631,12 +633,12 @@ export class BinaryFieldComponent implements OnDestroy {
 function describeFamily(prefix: string): string {
   switch (prefix) {
     case 'image/':
-      return 'imágenes';
+      return traducir('campo.binImagenes');
     case 'audio/':
-      return 'archivos de audio';
+      return traducir('campo.binAudios');
     case 'video/':
-      return 'archivos de video';
+      return traducir('campo.binVideos');
     default:
-      return 'archivos de ese tipo';
+      return traducir('campo.binDeEseTipo');
   }
 }

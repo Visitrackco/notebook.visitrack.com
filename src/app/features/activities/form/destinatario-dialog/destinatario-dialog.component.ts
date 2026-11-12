@@ -3,6 +3,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { ApiService } from '../../../../core/services/api.service';
 import { AuthService } from '../../../../core/services/auth.service';
+import { TPipe } from '../../../../core/i18n/t.pipe';
 
 /** Un usuario al que se le puede despachar. */
 export interface Destinatario {
@@ -35,40 +36,41 @@ export interface Destinatario {
 @Component({
   selector: 'vt-destinatario-dialog',
   standalone: true,
+  imports: [TPipe],
   template: `
     @if (open()) {
       <div class="dst" role="dialog" aria-modal="true" aria-labelledby="dst-tit">
         <div class="dst__caja">
           <header class="dst__cab">
-            <h2 id="dst-tit">¿A quién se le envía?</h2>
-            <p>Se va a despachar {{ queFormulario() }}.</p>
+            <h2 id="dst-tit">{{ 'flujo.dstTitulo' | t }}</h2>
+            <p>{{ 'flujo.dstSeDespacha' | t: { que: queFormulario() || ('flujo.unaConsigna' | t) } }}</p>
           </header>
 
           <input
             class="dst__busca"
             type="search"
             autofocus
-            placeholder="Buscar por nombre o usuario"
+            [placeholder]="'flujo.dstBuscar' | t"
             [value]="busca()"
             (input)="alBuscar($any($event.target).value)"
           />
 
           <div class="dst__lista" (scroll)="alDesplazar($any($event.target))">
             @if (!usuarios().length && cargando()) {
-              <p class="dst__nada">Buscando…</p>
+              <p class="dst__nada">{{ 'flujo.dstBuscando' | t }}</p>
             } @else if (!usuarios().length && fallo()) {
               <div class="dst__nada">
                 <p>
-                  No se pudo traer la lista.<br />
-                  Hace falta conexión para elegir a quién enviarle.
+                  {{ 'flujo.dstNoLista' | t }}<br />
+                  {{ 'flujo.dstHaceFaltaConexion' | t }}
                 </p>
                 <button type="button" class="dst__reintentar" (click)="traer(true)">
-                  Cargar de nuevo
+                  {{ 'flujo.dstCargarDeNuevo' | t }}
                 </button>
               </div>
             } @else if (!usuarios().length) {
               <p class="dst__nada">
-                {{ busca().trim() ? 'Nadie se llama así' : 'No hay usuarios disponibles' }}
+                {{ (busca().trim() ? 'flujo.dstNadie' : 'flujo.dstSinUsuarios') | t }}
               </p>
             } @else {
               @for (u of usuarios(); track u.ID) {
@@ -82,16 +84,16 @@ export interface Destinatario {
               }
 
               @if (cargando()) {
-                <p class="dst__nada">Cargando más…</p>
+                <p class="dst__nada">{{ 'flujo.dstCargandoMas' | t }}</p>
               } @else if (fallo()) {
-                <button type="button" class="dst__reintentar" (click)="traer()">Cargar más</button>
+                <button type="button" class="dst__reintentar" (click)="traer()">{{ 'flujo.dstCargarMas' | t }}</button>
               }
             }
           </div>
 
           <footer class="dst__pie">
             <button type="button" class="dst__cancelar" (click)="cancelar.emit()">
-              Cancelar y no guardar
+              {{ 'flujo.dstCancelar' | t }}
             </button>
           </footer>
         </div>
@@ -107,7 +109,7 @@ export class DestinatarioDialogComponent {
   readonly open = input(false);
 
   /** Qué se está despachando, para que quien elige sepa a qué dice que sí. */
-  readonly queFormulario = input('una consigna');
+  readonly queFormulario = input('');
 
   readonly elegir = output<Destinatario>();
   readonly cancelar = output<void>();

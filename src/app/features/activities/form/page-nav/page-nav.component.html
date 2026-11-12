@@ -1,4 +1,4 @@
-<nav class="pagenav" aria-label="Navegación del formulario">
+<nav class="pagenav" [attr.aria-label]="'form.navegacion' | t">
   <div class="pagenav__row">
     <!-- Con una sola página, «Anterior» no lleva a ninguna parte: su sitio pasa
          a la única salida que existe. -->
@@ -7,10 +7,10 @@
         type="button"
         class="pagenav__arrow"
         (click)="leave.emit()"
-        aria-label="Volver a las actividades"
+        [attr.aria-label]="'form.volverActividades' | t"
       >
         <vt-icon name="chevron" [size]="18" />
-        <span>Volver</span>
+        <span>{{ 'comun.volver' | t }}</span>
       </button>
     } @else {
       <button
@@ -18,10 +18,10 @@
         class="pagenav__arrow"
         [disabled]="isFirst()"
         (click)="previous()"
-        aria-label="Página anterior"
+        [attr.aria-label]="'form.paginaAnterior' | t"
       >
         <vt-icon name="chevron" [size]="18" />
-        <span>Anterior</span>
+        <span>{{ 'form.anterior' | t }}</span>
       </button>
     }
 
@@ -73,16 +73,16 @@
         (click)="save.emit()"
       >
         <vt-icon name="check" [size]="18" />
-        <span>{{ saving() ? 'Guardando…' : 'Guardar actividad' }}</span>
+        <span>{{ (saving() ? 'form.guardando' : 'form.guardarActividad') | t }}</span>
       </button>
     } @else {
       <button
         type="button"
         class="pagenav__arrow pagenav__arrow--next"
         (click)="next()"
-        aria-label="Página siguiente"
+        [attr.aria-label]="'form.paginaSiguiente' | t"
       >
-        <span>Siguiente</span>
+        <span>{{ 'form.siguiente' | t }}</span>
         <vt-icon name="chevron" [size]="18" />
       </button>
     }
@@ -94,18 +94,16 @@
   <div class="pagepick__panel">
     <header class="pagepick__header">
       <div>
-        <h2>Páginas del formulario</h2>
+        <h2>{{ 'form.paginasDelFormulario' | t }}</h2>
         @if (incompleteCount() > 0) {
           <p>
-            {{ incompleteCount() }}
-            {{ incompleteCount() === 1 ? 'página tiene' : 'páginas tienen' }}
-            campos obligatorios sin responder.
+            {{ (incompleteCount() === 1 ? 'form.unaPaginaIncompleta' : 'form.nPaginasIncompletas') | t: { n: incompleteCount() } }}
           </p>
         } @else {
-          <p>Todo lo obligatorio está respondido.</p>
+          <p>{{ 'form.todoRespondido' | t }}</p>
         }
       </div>
-      <button type="button" class="pagepick__close" (click)="closePicker()" aria-label="Cerrar">
+      <button type="button" class="pagepick__close" (click)="closePicker()" [attr.aria-label]="'comun.cerrar' | t">
         <vt-icon name="close" [size]="18" />
       </button>
     </header>
@@ -124,7 +122,7 @@
             <span class="pagepick__label">{{ page.label }}</span>
 
             @if (page.incomplete) {
-              <span class="pagepick__flag">Falta responder</span>
+              <span class="pagepick__flag">{{ 'form.faltaResponder' | t }}</span>
             }
             @if (page.current) {
               <vt-icon name="check" [size]="17" />

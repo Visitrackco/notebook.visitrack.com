@@ -4,6 +4,7 @@ import { FirmaGuardada } from '../../../../../core/models/entities.model';
 import { FirmaRepository } from '../../../../../core/repositories/entity.repositories';
 import { UserRepository } from '../../../../../core/repositories/user.repository';
 import { IconComponent } from '../../../../../shared/components/icon/icon.component';
+import { TPipe } from '../../../../../core/i18n/t.pipe';
 
 /** Un trazo de la firma, en coordenadas del lienzo. */
 type Stroke = { x: number; y: number }[];
@@ -50,7 +51,7 @@ const MIN_HEIGHT = 14;
 @Component({
   selector: 'vt-signature-pad',
   standalone: true,
-  imports: [IconComponent],
+  imports: [IconComponent, TPipe],
   templateUrl: './signature-pad.component.html',
   styleUrl: './signature-pad.component.scss',
 })

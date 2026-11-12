@@ -8,14 +8,14 @@
         type="button"
         class="row__back"
         (click)="leave()"
-        aria-label="Volver al formulario"
+        [attr.aria-label]="'md.volverFormulario' | t"
       >
         <vt-icon name="chevron" [size]="20" />
       </button>
 
       <div class="row__heading">
         <p>{{ level.title }}</p>
-        <h1>{{ level.name || 'Registro' }}</h1>
+        <h1>{{ level.name || ('md.registro' | t) }}</h1>
       </div>
 
       <!-- Cuánto lleva y qué falta, en la cabecera: en un formulario de varias
@@ -35,33 +35,27 @@
         <span class="row__ring-value vt-figure">{{ level.engine.progress().percent }}</span>
       </span>
 
-      <vt-hint label="Cómo se calcula este porcentaje" align="right">
+      <vt-hint [label]="'md.comoSeCalcula' | t" align="right">
         <p>
-          Cuenta las preguntas de este registro que <em>están a la vista</em> y
-          ya tienen respuesta: {{ level.engine.progress().filled }} de
-          {{ level.engine.progress().total }}.
+          {{ 'md.hint1' | t: { hechos: level.engine.progress().filled, total: level.engine.progress().total } }}
         </p>
         <p>
-          Las preguntas ocultas por una condición no cuentan, así que al
-          responder algo que abre nuevas preguntas el total sube y el porcentaje
-          puede bajar. Los títulos y los textos informativos tampoco cuentan.
+          {{ 'md.hint2' | t }}
         </p>
         <p>
-          Para guardar no hace falta llegar al 100 %, solo responder las
-          <em>obligatorias</em>.
+          {{ 'md.hint3' | t }}
         </p>
       </vt-hint>
 
       @if (level.engine.missing().length > 0) {
         <span class="row__pending">
           <vt-icon name="alert" [size]="15" />
-          {{ level.engine.missing().length }}
-          {{ level.engine.missing().length === 1 ? 'pendiente' : 'pendientes' }}
+          {{ (level.engine.missing().length === 1 ? 'md.unPendiente' : 'md.nPendientes') | t: { n: level.engine.missing().length } }}
         </span>
       } @else {
         <span class="row__done">
           <vt-icon name="check" [size]="15" />
-          Completo
+          {{ 'md.completo' | t }}
         </span>
       }
     </header>
@@ -149,7 +143,7 @@
           }
         }
       } @empty {
-        <p class="row__empty">Este registro no tiene preguntas.</p>
+        <p class="row__empty">{{ 'md.sinPreguntas' | t }}</p>
       }
 
       <!-- Los botones que puso el flujo de la fila, debajo de sus campos. Una
@@ -164,12 +158,12 @@
 
     <footer class="row__foot">
       <button type="button" class="row__leave" (click)="leave()">
-        {{ discardsOnExit() ? 'Descartar' : 'Salir' }}
+        {{ (discardsOnExit() ? 'md.descartar' : 'md.salir') | t }}
       </button>
 
       <button type="button" class="row__save" (click)="save()">
         <vt-icon name="check" [size]="17" />
-        Guardar registro
+        {{ 'md.guardarRegistro' | t }}
       </button>
     </footer>
   </section>
@@ -188,18 +182,13 @@
         <span class="warn__icon"><vt-icon name="alert" [size]="22" /></span>
         <div>
           <strong>
-            Falta
-            {{
-              missing().length === 1
-                ? 'un campo obligatorio'
-                : missing().length + ' campos obligatorios'
-            }}
+            {{ missing().length === 1 ? ('form.faltaUnObligatorio' | t) : ('form.faltanNObligatorios' | t: { n: missing().length }) }}
           </strong>
           <small>
             @if (discardsOnExit()) {
-              Si sales ahora, el registro se descarta.
+              {{ 'md.siSalesDescarta' | t }}
             } @else {
-              Si sales ahora, el registro queda como estaba.
+              {{ 'md.siSalesQueda' | t }}
             }
           </small>
         </div>
@@ -214,7 +203,7 @@
               <span class="warn__dot"></span>
               <span class="warn__label">
                 {{ entry.field.lab }}
-                <em>{{ entry.note || 'página ' + (entry.page + 1) }}</em>
+                <em>{{ entry.note || ('form.paginaN' | t: { n: entry.page + 1 }) }}</em>
               </span>
               <vt-icon name="chevron" [size]="15" />
             </button>
@@ -224,12 +213,12 @@
 
       <footer class="warn__foot">
         <button type="button" class="warn__leave" (click)="discard()">
-          {{ discardsOnExit() ? 'Descartar registro' : 'Salir sin guardar' }}
+          {{ (discardsOnExit() ? 'md.descartarRegistro' : 'md.salirSinGuardar') | t }}
         </button>
 
         <button type="button" class="warn__stay" (click)="keepEditing()">
           <vt-icon name="pen" [size]="15" />
-          Seguir llenando
+          {{ 'md.seguirLlenando' | t }}
         </button>
       </footer>
     </div>

@@ -25,7 +25,7 @@
 
           <!-- El nombre de lo que se está esperando, no «cargando»: con dos
                consultas en marcha hay que poder saber cuál va lenta. -->
-          <span class="llamadas__esperando">Consultando «{{ una.titulo }}»…</span>
+          <span class="llamadas__esperando">{{ 'flujo.consultandoX' | t: { titulo: una.titulo } }}</span>
         }
       </div>
 
@@ -46,7 +46,7 @@
             <!-- Y si no tiene arreglo desde aqui, se dice: sin esto se pulsa
                  «reintentar» una y otra vez esperando que cambie algo. -->
             @if (!una.reintentable) {
-              <p class="llamadas__error-nota">Volver a intentarlo no va a cambiar el resultado.</p>
+              <p class="llamadas__error-nota">{{ 'flujo.reintentarNoCambia' | t }}</p>
             }
           </div>
         </div>
@@ -72,9 +72,9 @@
           <img class="llamadas__miniatura" [src]="fuente" [alt]="archivo.nombre" />
         }
 
-        <p class="llamadas__nota">Llegó «{{ archivo.nombre }}» · {{ comoSeLee(archivo) }}</p>
+        <p class="llamadas__nota">{{ 'flujo.llegoArchivo' | t: { nombre: archivo.nombre } }} · {{ comoSeLee(archivo) }}</p>
         <p class="llamadas__nota">
-          Todavía no se guarda en la actividad: no viajará con ella al sincronizar.
+          {{ 'flujo.archivoNoSeGuarda' | t }}
         </p>
       }
     </div>

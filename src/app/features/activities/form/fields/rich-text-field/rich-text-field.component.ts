@@ -12,24 +12,26 @@ import {
 
 import { sanitizeHtml, serializeForStorage, toPlainText } from '../../../../../core/forms/rich-text';
 import { IconComponent } from '../../../../../shared/components/icon/icon.component';
-import { localeActual } from '../../../../../core/i18n/idioma.service';
+import { localeActual, traducir } from '../../../../../core/i18n/idioma.service';
+import type { ClaveTexto } from '../../../../../core/i18n/textos';
+import { TPipe } from '../../../../../core/i18n/t.pipe';
 
 /** Colores de letra y de resaltado. Los mismos del editor de fotos. */
-const COLORS = [
-  { name: 'Negro', value: '#111827' },
-  { name: 'Rojo', value: '#dc2626' },
-  { name: 'Naranja', value: '#ea580c' },
-  { name: 'Verde', value: '#16a34a' },
-  { name: 'Azul', value: '#2563eb' },
-  { name: 'Morado', value: '#7c3aed' },
+const COLORS: { name: ClaveTexto; value: string }[] = [
+  { name: 'campo.colorNegro', value: '#111827' },
+  { name: 'campo.colorRojo', value: '#dc2626' },
+  { name: 'campo.colorNaranja', value: '#ea580c' },
+  { name: 'campo.colorVerde', value: '#16a34a' },
+  { name: 'campo.colorAzul', value: '#2563eb' },
+  { name: 'campo.colorMorado', value: '#7c3aed' },
 ];
 
-const HIGHLIGHTS = [
-  { name: 'Amarillo', value: '#fef08a' },
-  { name: 'Verde', value: '#bbf7d0' },
-  { name: 'Azul', value: '#bfdbfe' },
-  { name: 'Rosa', value: '#fbcfe8' },
-  { name: 'Gris', value: '#e5e7eb' },
+const HIGHLIGHTS: { name: ClaveTexto; value: string }[] = [
+  { name: 'campo.colorAmarillo', value: '#fef08a' },
+  { name: 'campo.colorVerde', value: '#bbf7d0' },
+  { name: 'campo.colorAzul', value: '#bfdbfe' },
+  { name: 'campo.colorRosa', value: '#fbcfe8' },
+  { name: 'campo.colorGris', value: '#e5e7eb' },
 ];
 
 /** Qué paleta está abierta. */
@@ -60,7 +62,7 @@ type Palette = 'none' | 'text' | 'highlight';
 @Component({
   selector: 'vt-rich-text-field',
   standalone: true,
-  imports: [IconComponent],
+  imports: [IconComponent, TPipe],
   templateUrl: './rich-text-field.component.html',
   styleUrl: './rich-text-field.component.scss',
 })
@@ -96,7 +98,7 @@ export class RichTextFieldComponent {
 
   readonly counter = computed(() => {
     const count = this.length();
-    return `${count} ${count === 1 ? 'caracter' : 'caracteres'}`;
+    return traducir(count === 1 ? 'campo.unCaracter' : 'campo.nCaracteres', { n: count });
   });
 
   /**

@@ -37,19 +37,15 @@
         <span class="md__ring-value vt-figure">{{ done.percent }}</span>
       </span>
 
-      <vt-hint label="Cómo se calcula este porcentaje">
+      <vt-hint [label]="'md.comoSeCalcula' | t">
         <p>
-          Suma las respuestas de <em>todos los registros</em>, no cuántos
-          registros están completos.
+          {{ 'md.campoHint1' | t }}
         </p>
         <p>
-          Ahora mismo: <em>{{ done.filled }} de {{ done.total }}</em> preguntas
-          respondidas entre los {{ rows().length }} registros.
+          {{ 'md.campoHint2' | t: { hechos: done.filled, total: done.total, n: rows().length } }}
         </p>
         <p>
-          Es normal que no llegue al 100 % si no vas a diligenciar todas las
-          preguntas de cada registro. Lo que sí hay que completar antes de
-          guardar son las <em>obligatorias</em>: esas se avisan aparte.
+          {{ 'md.campoHint3' | t }}
         </p>
       </vt-hint>
     }
@@ -62,8 +58,8 @@
         class="md__add"
         [class.md__add--off]="!canAdd()"
         [attr.aria-disabled]="!canAdd()"
-        [attr.aria-label]="'Agregar a ' + listName()"
-        [attr.title]="'Agregar a ' + listName()"
+        [attr.aria-label]="'md.agregarA' | t: { nombre: listName() }"
+        [attr.title]="'md.agregarA' | t: { nombre: listName() }"
         (click)="add()"
       >
         <vt-icon name="plus" [size]="18" />
@@ -93,10 +89,10 @@
       <vt-icon name="image" [size]="20" />
 
       <p>
-        Arrastra aquí las fotos y se crea un registro por cada una.
+        {{ 'md.arrastraFotos' | t }}
         <label>
           <input type="file" accept="image/*" multiple (change)="onPhotosPicked($event)" />
-          <span>Elegir del equipo</span>
+          <span>{{ 'md.elegirDelEquipo' | t }}</span>
         </label>
       </p>
     </div>
@@ -107,14 +103,14 @@
   @if (importing() > 0) {
     <p class="md__note">
       <span class="md__spinner" aria-hidden="true"></span>
-      Guardando {{ importing() }} {{ importing() === 1 ? 'foto' : 'fotos' }}…
+      {{ (importing() === 1 ? 'md.guardandoFoto' : 'md.guardandoFotos') | t: { n: importing() } }}
     </p>
   }
 
   @if (unavailable()) {
     <p class="md__note md__note--warn">
       <vt-icon name="alert" [size]="14" />
-      {{ config()?.message || 'No se pueden cargar los registros de este campo.' }}
+      {{ config()?.message || ('md.noSeCargan' | t) }}
     </p>
   }
 
@@ -133,11 +129,11 @@
         <thead>
           <tr>
             <th class="md__num">#</th>
-            <th>Registro</th>
+            <th>{{ 'md.registro' | t }}</th>
             @for (column of columns(); track column) {
               <th>{{ column }}</th>
             }
-            <th class="md__actions-head"><span class="vt-sr-only">Acciones</span></th>
+            <th class="md__actions-head"><span class="vt-sr-only">{{ 'md.acciones' | t }}</span></th>
           </tr>
         </thead>
 
@@ -146,7 +142,7 @@
             <tr [class.md__row--pending]="isIncomplete(row)">
               <td class="md__num vt-figure" [attr.data-label]="'#'">{{ i + 1 }}</td>
 
-              <td class="md__name" data-label="Registro">
+              <td class="md__name" [attr.data-label]="'md.registro' | t">
                 <button
                   type="button"
                   [disabled]="emptySchema() || unavailable()"
@@ -166,7 +162,7 @@
                   <button
                     type="button"
                     (click)="edit(row)"
-                    [attr.aria-label]="'Abrir ' + row.Name"
+                    [attr.aria-label]="'md.abrirX' | t: { nombre: row.Name }"
                   >
                     <vt-icon name="pen" [size]="16" />
                   </button>
@@ -177,7 +173,7 @@
                     type="button"
                     class="md__act--danger"
                     (click)="askRemove(row)"
-                    [attr.aria-label]="'Eliminar ' + row.Name"
+                    [attr.aria-label]="'md.eliminarX' | t: { nombre: row.Name }"
                   >
                     <vt-icon name="trash" [size]="16" />
                   </button>
@@ -193,12 +189,11 @@
       @if (hiddenCount() > 0) {
         <div class="md__more">
           <span>
-            Hay {{ hiddenCount() }}
-            {{ hiddenCount() === 1 ? 'registro más' : 'registros más' }}
+            {{ (hiddenCount() === 1 ? 'md.hayUnoMas' : 'md.hayNMas') | t: { n: hiddenCount() } }}
           </span>
 
           <button type="button" class="md__see" (click)="showAll()">
-            {{ isNested() ? 'Ver los ' + rows().length : 'Ver todos' }}
+            {{ isNested() ? ('md.verLosN' | t: { n: rows().length }) : ('md.verTodos' | t) }}
             <vt-icon name="chevron" [size]="15" />
           </button>
         </div>
@@ -208,7 +203,7 @@
     <!-- Desplegada dentro de otra fila, la forma de volver a recogerla. -->
     @if (canCollapse()) {
       <button type="button" class="md__see md__see--quiet" (click)="collapse()">
-        Ver solo los primeros
+        {{ 'md.verSoloPrimeros' | t }}
       </button>
     }
 
@@ -216,7 +211,7 @@
          forma de buscarlos y de verlos con espacio. -->
     @if (!isNested() && hiddenCount() === 0 && rows().length > 1) {
       <button type="button" class="md__see md__see--quiet" (click)="showAll()">
-        Ver todos en su pantalla
+        {{ 'md.verTodosPantalla' | t }}
         <vt-icon name="chevron" [size]="14" />
       </button>
     }
@@ -227,11 +222,11 @@
       <span class="md__empty-icon"><vt-icon name="clipboard" [size]="22" /></span>
       <p>
         @if (!ready()) {
-          Cargando la configuración de {{ field().lab }}…
+          {{ 'md.cargandoConfig' | t: { nombre: field().lab } }}
         } @else if (readOnly()) {
-          No se registró ningún dato.
+          {{ 'md.ningunDato' | t }}
         } @else {
-          Aún no hay registros. Agrega el primero para empezar.
+          {{ 'md.aunNoHay' | t }}
         }
       </p>
     </div>
@@ -242,7 +237,7 @@
   }
 
   @if (invalid()) {
-    <small class="md__error">Debes agregar al menos un registro.</small>
+    <small class="md__error">{{ 'md.alMenosUno' | t }}</small>
   }
 </div>
 
@@ -273,10 +268,10 @@
   [open]="overlay() === 'remove'"
   tone="danger"
   icon="trash"
-  title="¿Eliminar el registro?"
+  [title]="'md.eliminarTitulo' | t"
   [message]="removalName()"
-  detail="Se perderá lo respondido en él."
-  confirmLabel="Eliminar"
+  [detail]="'md.eliminarDetalle' | t"
+  [confirmLabel]="'comun.eliminar' | t"
   (confirm)="confirmRemove()"
   (cancel)="closeOverlay()"
 />

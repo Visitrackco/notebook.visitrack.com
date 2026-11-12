@@ -1,6 +1,7 @@
 import { Component, ElementRef, computed, effect, input, output, signal, viewChild } from '@angular/core';
 
 import { IconComponent } from '../../../../shared/components/icon/icon.component';
+import { TPipe } from '../../../../core/i18n/t.pipe';
 
 /** Una página, tal como la ve la navegación. */
 export interface PageMark {
@@ -32,7 +33,7 @@ export interface PageMark {
 @Component({
   selector: 'vt-page-nav',
   standalone: true,
-  imports: [IconComponent],
+  imports: [IconComponent, TPipe],
   templateUrl: './page-nav.component.html',
   styleUrl: './page-nav.component.scss',
 })

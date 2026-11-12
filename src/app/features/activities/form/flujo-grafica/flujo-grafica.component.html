@@ -12,7 +12,7 @@
     }
 
     @if (vacia()) {
-      <p class="grafica__vacia">Todavía no hay nada que mostrar aquí.</p>
+      <p class="grafica__vacia">{{ 'flujo.graficaVacia' | t }}</p>
     } @else {
       @switch (tipo()) {
         <!-- ── Circular ──────────────────────────────────────────────────────── -->

@@ -8,6 +8,8 @@ import { SurveyAnswerRepository } from '../../../../../core/repositories/survey-
 import { DispatchStatusRepository } from '../../../../../core/repositories/entity.repositories';
 import { ANSWER_STATE } from '../../../../../core/models/activity.model';
 import { IconComponent } from '../../../../../shared/components/icon/icon.component';
+import { traducir } from '../../../../../core/i18n/idioma.service';
+import { TPipe } from '../../../../../core/i18n/t.pipe';
 
 /**
  * Un formulario vinculado: otra actividad que cuelga de esta.
@@ -28,7 +30,7 @@ import { IconComponent } from '../../../../../shared/components/icon/icon.compon
 @Component({
   selector: 'vt-linked-form-field',
   standalone: true,
-  imports: [IconComponent],
+  imports: [IconComponent, TPipe],
   templateUrl: './linked-form-field.component.html',
   styleUrl: './linked-form-field.component.scss',
 })
@@ -66,17 +68,17 @@ export class LinkedFormFieldComponent {
     const answer = this.child();
 
     if (!answer) return '';
-    if (answer.eraser === 1) return 'Sin responder';
+    if (answer.eraser === 1) return traducir('campo.hijaSinResponder');
 
     switch (answer.isSaved) {
       case ANSWER_STATE.SYNCED:
-        return 'Enviada';
+        return traducir('campo.hijaEnviada');
       case ANSWER_STATE.WAITING_BINARIES:
-        return 'Esperando archivos';
+        return traducir('campo.hijaEsperandoArchivos');
       case ANSWER_STATE.PENDING:
-        return 'Guardada, por enviar';
+        return traducir('campo.hijaPorEnviar');
       default:
-        return 'Sin guardar';
+        return traducir('campo.hijaSinGuardar');
     }
   });
 

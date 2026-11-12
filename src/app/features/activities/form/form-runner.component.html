@@ -52,32 +52,32 @@
 
         <p class="runner__ring-caption">
           <strong class="vt-figure">{{ eng.progress().filled }}</strong>
-          de {{ eng.progress().total }} campos
+          {{ 'form.deNCampos' | t: { n: eng.progress().total } }}
         </p>
 
         <dl class="runner__stats">
           <div>
-            <dt>Página</dt>
+            <dt>{{ 'form.pagina' | t }}</dt>
             <dd>
               <span class="vt-figure">{{ eng.page() + 1 }}</span>
-              <small>de {{ eng.totalPages() }}</small>
+              <small>{{ 'form.deN' | t: { n: eng.totalPages() } }}</small>
             </dd>
           </div>
 
           @if (missing().length > 0) {
             <div class="runner__stat--alert">
-              <dt>Obligatorios</dt>
+              <dt>{{ 'form.obligatorios' | t }}</dt>
               <dd>
                 <span class="vt-figure">{{ missing().length }}</span>
-                <small>sin responder</small>
+                <small>{{ 'form.sinResponder' | t }}</small>
               </dd>
             </div>
           } @else {
             <div class="runner__stat--ok">
-              <dt>Obligatorios</dt>
+              <dt>{{ 'form.obligatorios' | t }}</dt>
               <dd>
                 <vt-icon name="check" [size]="15" />
-                <small>completos</small>
+                <small>{{ 'form.completos' | t }}</small>
               </dd>
             </div>
           }
@@ -102,7 +102,7 @@
         <div class="runner__velo-caja">
           <span class="runner__velo-rueda" aria-hidden="true"></span>
           <p class="runner__velo-titulo">{{ rotuloDeLaEspera(eng) }}</p>
-          <p class="runner__velo-nota">Un momento, se está llenando el formulario.</p>
+          <p class="runner__velo-nota">{{ 'form.veloNota' | t }}</p>
 
           <!--
             Y una salida.
@@ -118,7 +118,7 @@
           -->
           @if (sePuedeCancelar()) {
             <button type="button" class="runner__velo-cancelar" (click)="cancelarLaEspera()">
-              Cancelar la consulta
+              {{ 'form.cancelarConsulta' | t }}
             </button>
           }
         </div>
@@ -135,7 +135,7 @@
           <vt-icon name="alert" [size]="19" />
         </span>
         <div>
-          <strong>Esta actividad no se puede editar</strong>
+          <strong>{{ 'form.noSePuedeEditar' | t }}</strong>
           <ul>
             @for (motivo of edicionBloqueada(); track motivo) {
               <li>{{ motivo }}</li>
@@ -155,12 +155,12 @@
         </span>
         <div class="runner__timer-cuerpo">
           <strong>
-            Timer «{{ t.nombre }}»
+            {{ 'flujo.timer' | t: { nombre: t.nombre } }}
             <span class="runner__timer-reloj">{{ t.reloj }}</span>
             @if (t.terminado) {
-              · terminado
+              · {{ 'flujo.timerTerminado' | t }}
             } @else if (t.duracion) {
-              · de {{ t.duracion }} min
+              · {{ 'flujo.timerDeMin' | t: { n: t.duracion } }}
             }
           </strong>
           @if (t.duracion) {
@@ -168,12 +168,12 @@
           }
           <small>
             @if (t.terminado) {
-              Llegó al final: sus hitos ya corrieron.
+              {{ 'flujo.timerAlFinal' | t }}
             } @else if (t.siguiente !== null) {
-              Siguiente hito {{ t.siguiente <= 0 ? 'ahora' : 'en ' + t.siguiente + ' min' }}
-              @if (t.hechos) { · {{ t.hechos }} {{ t.hechos === 1 ? 'hito cumplido' : 'hitos cumplidos' }} }
+              {{ t.siguiente <= 0 ? ('flujo.siguienteHitoAhora' | t) : ('flujo.siguienteHitoEn' | t: { n: t.siguiente }) }}
+              @if (t.hechos) { · {{ (t.hechos === 1 ? 'flujo.hitoCumplido' : 'flujo.hitosCumplidos') | t: { n: t.hechos } }} }
             } @else {
-              Sin hitos por llegar.
+              {{ 'flujo.sinHitos' | t }}
             }
           </small>
         </div>
@@ -190,8 +190,7 @@
         </span>
         <div>
           <strong>
-            Falta
-            {{ blocking().length === 1 ? 'un campo obligatorio' : blocking().length + ' campos obligatorios' }}
+            {{ blocking().length === 1 ? ('form.faltaUnObligatorio' | t) : ('form.faltanNObligatorios' | t: { n: blocking().length }) }}
           </strong>
           <ul>
             @for (entry of blocking(); track entry.field.id) {
@@ -202,7 +201,7 @@
                     @if (entry.note) {
                       {{ entry.note }}
                     } @else {
-                      página {{ entry.page + 1 }}
+                      {{ 'form.paginaN' | t: { n: entry.page + 1 } }}
                     }
                   </small>
                 </button>
@@ -305,9 +304,9 @@
           @if (flujo?.maxCambios != null) {
             <p class="runner__field-cambios" [class.runner__field-cambios--agotado]="eng.cambiosDe(field.id) >= (flujo?.maxCambios ?? 0)">
               @if (eng.cambiosDe(field.id) >= (flujo?.maxCambios ?? 0)) {
-                Sin más cambios: se usaron los {{ flujo?.maxCambios }} permitidos.
+                {{ 'flujo.sinMasCambios' | t: { n: flujo?.maxCambios } }}
               } @else {
-                Cambios: {{ eng.cambiosDe(field.id) }} de {{ flujo?.maxCambios }}.
+                {{ 'flujo.cambiosDe' | t: { hechos: eng.cambiosDe(field.id), n: flujo?.maxCambios } }}
               }
             </p>
           }
@@ -337,7 +336,7 @@
           }
         }
       } @empty {
-        <p class="runner__empty">Esta página no tiene campos visibles.</p>
+        <p class="runner__empty">{{ 'form.paginaSinCampos' | t }}</p>
       }
 
       <!--
@@ -419,8 +418,8 @@
         type="button"
         class="runner__shortcuts"
         (click)="openShortcuts()"
-        matTooltip="Atajos de teclado"
-        aria-label="Ver los atajos de teclado"
+        [matTooltip]="'form.atajos' | t"
+        [attr.aria-label]="'form.verAtajos' | t"
       >
         <vt-icon name="keyboard" [size]="19" />
       </button>

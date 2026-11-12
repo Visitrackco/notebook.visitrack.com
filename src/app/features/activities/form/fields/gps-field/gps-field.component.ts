@@ -8,7 +8,9 @@ import {
 } from '../../../../../core/services/geolocation.service';
 import { ConfirmDialogComponent } from '../../../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { IconComponent } from '../../../../../shared/components/icon/icon.component';
-import { localeActual } from '../../../../../core/i18n/idioma.service';
+import { localeActual, traducir } from '../../../../../core/i18n/idioma.service';
+import type { ClaveTexto } from '../../../../../core/i18n/textos';
+import { TPipe } from '../../../../../core/i18n/t.pipe';
 
 /** Qué diálogo está abierto. */
 type GpsDialog = 'none' | 'explain' | 'error' | 'remove';
@@ -36,7 +38,7 @@ type GpsDialog = 'none' | 'explain' | 'error' | 'remove';
 @Component({
   selector: 'vt-gps-field',
   standalone: true,
-  imports: [ConfirmDialogComponent, IconComponent],
+  imports: [ConfirmDialogComponent, IconComponent, TPipe],
   templateUrl: './gps-field.component.html',
   styleUrl: './gps-field.component.scss',
 })
@@ -94,20 +96,20 @@ export class GpsFieldComponent {
   readonly errorTitle = computed(() => {
     switch (this.error()?.kind) {
       case 'denied':
-        return 'Sin permiso de ubicación';
+        return traducir('campo.gpsErrDenied');
       case 'timeout':
-        return 'No se encontró señal';
+        return traducir('campo.gpsErrTimeout');
       case 'insecure':
-        return 'Conexión no segura';
+        return traducir('campo.gpsErrInsecure');
       case 'unsupported':
-        return 'Navegador sin ubicación';
+        return traducir('campo.gpsErrUnsupported');
       default:
-        return 'No se pudo capturar';
+        return traducir('campo.gpsErrDefault');
     }
   });
 
   /** Qué puede hacer el usuario al respecto. Es la parte útil del aviso. */
-  readonly errorAdvice = computed<string>(() => ADVICE[this.error()?.kind ?? 'unavailable']);
+  readonly errorAdvice = computed<string>(() => traducir(ADVICE[this.error()?.kind ?? 'unavailable']));
 
   // ───────────────────────────────────────────────────────────────────────────
   // Captura
@@ -131,7 +133,7 @@ export class GpsFieldComponent {
     }
 
     if (permission === 'denied') {
-      this.error.set(new GpsError('denied', 'El permiso está bloqueado.'));
+      this.error.set(new GpsError('denied', traducir('campo.gpsPermisoBloqueado')));
       this.dialog.set('error');
       return;
     }
@@ -157,7 +159,7 @@ export class GpsFieldComponent {
       this.error.set(
         error instanceof GpsError
           ? error
-          : new GpsError('unavailable', 'No se pudo leer la ubicación.'),
+          : new GpsError('unavailable', traducir('campo.gpsNoSeLeyo')),
       );
       this.dialog.set('error');
     } finally {
@@ -190,15 +192,10 @@ export class GpsFieldComponent {
  * Un mensaje que solo dice qué salió mal deja al usuario en el mismo sitio; lo
  * que resuelve la situación es el paso siguiente, y depende del motivo.
  */
-const ADVICE: Record<GpsErrorKind, string> = {
-  denied:
-    'Toca el icono de candado o de ubicación en la barra de direcciones del navegador y permite el acceso para este sitio. Después vuelve a intentarlo.',
-  timeout:
-    'Sal al exterior o acércate a una ventana y espera unos segundos. Bajo techo el GPS puede tardar en fijar la posición.',
-  unavailable:
-    'Comprueba que la ubicación del dispositivo esté activada y vuelve a intentarlo.',
-  insecure:
-    'Esta página se abrió sin HTTPS y el navegador bloquea la ubicación. Avisa al administrador para que se acceda por una dirección segura.',
-  unsupported:
-    'Este navegador no permite obtener la ubicación. Prueba con otro, o diligencia este campo desde la app móvil.',
+const ADVICE: Record<GpsErrorKind, ClaveTexto> = {
+  denied: 'campo.gpsConsejoDenied',
+  timeout: 'campo.gpsConsejoTimeout',
+  unavailable: 'campo.gpsConsejoUnavailable',
+  insecure: 'campo.gpsConsejoInsecure',
+  unsupported: 'campo.gpsConsejoUnsupported',
 };

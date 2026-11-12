@@ -1,6 +1,7 @@
 import { Component, ElementRef, computed, effect, input, output, signal, viewChild } from '@angular/core';
 
 import { IconComponent } from '../../../../../shared/components/icon/icon.component';
+import { TPipe } from '../../../../../core/i18n/t.pipe';
 
 /** Qué se está mirando. */
 export type ViewerKind = 'image' | 'video';
@@ -39,7 +40,7 @@ const DOUBLE_TAP_SCALE = 2.5;
 @Component({
   selector: 'vt-media-viewer',
   standalone: true,
-  imports: [IconComponent],
+  imports: [IconComponent, TPipe],
   templateUrl: './media-viewer.component.html',
   styleUrl: './media-viewer.component.scss',
 })

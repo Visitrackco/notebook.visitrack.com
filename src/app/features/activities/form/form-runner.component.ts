@@ -91,6 +91,8 @@ import { PageNavComponent } from './page-nav/page-nav.component';
 import { MasterDetailPanelsService } from './master-detail-row/master-detail-panels.service';
 import { MissingEntry, RequiredDialogComponent } from './required-dialog/required-dialog.component';
 import { CompanyLogicService } from '../../../core/rules/company-logic.service';
+import { traducir } from '../../../core/i18n/idioma.service';
+import { TPipe } from '../../../core/i18n/t.pipe';
 
 /**
  * Cómo se reconoce un descriptivo puesto por el flujo.
@@ -131,6 +133,7 @@ const PREFIJO_DESCRIPTIVO_DE_FLUJO = 'flujo:';
     RequiredDialogComponent,
     DestinatarioDialogComponent,
     ToTopComponent,
+    TPipe,
   ],
   templateUrl: './form-runner.component.html',
   styleUrl: './form-runner.component.scss',
@@ -203,7 +206,7 @@ export class FormRunnerComponent {
    */
   correoNoSePuede(problemas: string[]): void {
     this.toasts.show({
-      title: 'No se puede enviar todavía',
+      title: traducir('flujo.noSePuedeEnviar'),
       detail: problemas.join(' · '),
       tone: 'warning',
     });
@@ -240,8 +243,8 @@ export class FormRunnerComponent {
 
     if (!engine.escribirValorDeUnBoton(nota.campo, nota.valor)) {
       this.toasts.show({
-        title: 'No se pudo escribir la calificación',
-        detail: `El campo «${nota.campo}» no existe o no admite ese valor.`,
+        title: traducir('flujo.noSeEscribioCalificacion'),
+        detail: traducir('flujo.campoNoAdmite', { campo: nota.campo }),
         tone: 'warning',
       });
     }
@@ -254,8 +257,8 @@ export class FormRunnerComponent {
     // que no hace nada sin ninguna explicación.
     if (!guid) {
       this.toasts.show({
-        title: 'Guarda la actividad primero',
-        detail: 'La notificación tiene que colgar de ella.',
+        title: traducir('flujo.guardaPrimero'),
+        detail: traducir('flujo.notificacionCuelga'),
         tone: 'warning',
       });
 
@@ -287,8 +290,8 @@ export class FormRunnerComponent {
       // Ya estaban pedidos. Se dice, porque pulsar y que no pase nada visible
       // se lee como que el botón no funciona.
       this.toasts.show({
-        title: 'Ya estaba pedida',
-        detail: 'Esta notificación se pidió antes y sale una sola vez.',
+        title: traducir('flujo.yaPedida'),
+        detail: traducir('flujo.yaPedidaDetalle'),
         tone: 'info',
       });
 
@@ -301,7 +304,7 @@ export class FormRunnerComponent {
     // siempre, decir que va en camino sería mentir justo cuando hay que avisar.
     if (salida.motivo) {
       this.toasts.show({
-        title: 'La notificación no se pudo pedir',
+        title: traducir('flujo.notificacionNoPedida'),
         detail: salida.motivo,
         tone: 'warning',
       });
@@ -310,8 +313,8 @@ export class FormRunnerComponent {
     }
 
     this.toasts.show({
-      title: puestos === 1 ? 'Notificación en camino' : `${puestos} notificaciones en camino`,
-      detail: 'Sale en cuanto la actividad esté en Visitrack.',
+      title: puestos === 1 ? traducir('flujo.notificacionEnCamino') : traducir('flujo.notificacionesEnCamino', { n: puestos }),
+      detail: traducir('flujo.saleAlEstarEnVisitrack'),
       tone: 'success',
     });
   }
@@ -328,8 +331,8 @@ export class FormRunnerComponent {
      */
     if (!guid) {
       this.toasts.show({
-        title: 'Guarda la actividad primero',
-        detail: 'El correo tiene que colgar de ella.',
+        title: traducir('flujo.guardaPrimero'),
+        detail: traducir('flujo.correoCuelga'),
         tone: 'warning',
       });
 
@@ -374,8 +377,8 @@ export class FormRunnerComponent {
      */
     if (puestos === 0) {
       this.toasts.show({
-        title: 'Este correo ya se pidió',
-        detail: 'La regla manda enviarlo una sola vez.',
+        title: traducir('flujo.correoYaPedido'),
+        detail: traducir('flujo.correoUnaVez'),
         tone: 'info',
       });
 
@@ -393,7 +396,7 @@ export class FormRunnerComponent {
      */
     const enviando = correos.map((c) => String(c.mensajeEnviando ?? '')).find((t) => !!t);
     const texto =
-      enviando || (correos.length === 1 ? 'Enviando el correo…' : 'Enviando los correos…');
+      enviando || (correos.length === 1 ? traducir('flujo.enviandoCorreo') : traducir('flujo.enviandoCorreos'));
 
     /*
      * Síncrono o suelto, según lo diga la regla.
@@ -455,8 +458,8 @@ export class FormRunnerComponent {
 
     if (aceptados === -1) {
       this.toasts.show({
-        title: 'Sigue subiendo en segundo plano',
-        detail: 'El correo sale en cuanto termine.',
+        title: traducir('flujo.subiendoSegundoPlano'),
+        detail: traducir('flujo.correoSaleAlTerminar'),
         tone: 'info',
       });
 
@@ -467,8 +470,8 @@ export class FormRunnerComponent {
     // caso, que si no se lee como un botón que no hizo nada.
     if (aceptados === 0) {
       this.toasts.show({
-        title: correos.length === 1 ? 'Correo apuntado' : `${correos.length} correos apuntados`,
-        detail: 'Sale en cuanto la actividad termine de subir.',
+        title: correos.length === 1 ? traducir('flujo.correoApuntado') : traducir('flujo.correosApuntados', { n: correos.length }),
+        detail: traducir('flujo.saleAlSubir'),
         tone: 'info',
       });
     }
@@ -708,8 +711,8 @@ export class FormRunnerComponent {
         engine.timerRechazado.set('');
         const nombre = this.flujoDelFormulario()?.timers?.find((t) => t.id === rechazado)?.nombre || rechazado;
         this.toasts.show({
-          title: `No arrancó el timer «${nombre}»`,
-          detail: 'Ya corre el timer de otra actividad: solo puede correr uno a la vez.',
+          title: traducir('flujo.timerNoArranco', { nombre }),
+          detail: traducir('flujo.timerOtraActividad'),
           tone: 'warning',
         });
       });
@@ -1025,43 +1028,43 @@ export class FormRunnerComponent {
       {
         id: 'form-save',
         keys: 'ctrl+s',
-        label: 'Guardar la actividad',
-        group: 'Formulario',
+        label: traducir('form.atajoGuardar'),
+        group: traducir('form.atajosGrupo'),
         run: () => void this.save(),
       },
       {
         id: 'form-next',
         keys: 'alt+arrowright',
-        label: 'Página siguiente',
-        group: 'Formulario',
+        label: traducir('form.paginaSiguiente'),
+        group: traducir('form.atajosGrupo'),
         run: () => void this.goNext(),
       },
       {
         id: 'form-prev',
         keys: 'alt+arrowleft',
-        label: 'Página anterior',
-        group: 'Formulario',
+        label: traducir('form.paginaAnterior'),
+        group: traducir('form.atajosGrupo'),
         run: () => void this.goPrevious(),
       },
       {
         id: 'form-field-next',
         keys: 'alt+arrowdown',
-        label: 'Ir al siguiente campo',
-        group: 'Formulario',
+        label: traducir('form.atajoCampoSiguiente'),
+        group: traducir('form.atajosGrupo'),
         run: () => this.moveFocus(1),
       },
       {
         id: 'form-field-prev',
         keys: 'alt+arrowup',
-        label: 'Ir al campo anterior',
-        group: 'Formulario',
+        label: traducir('form.atajoCampoAnterior'),
+        group: traducir('form.atajosGrupo'),
         run: () => this.moveFocus(-1),
       },
       {
         id: 'form-missing',
         keys: 'alt+f',
-        label: 'Ir al primer campo obligatorio que falta',
-        group: 'Formulario',
+        label: traducir('form.atajoObligatorio'),
+        group: traducir('form.atajosGrupo'),
         run: () => {
           const first = this.missing()[0];
           if (first) void this.goToMissing(first);
@@ -1107,7 +1110,7 @@ export class FormRunnerComponent {
     if (!engine) return '';
 
     const page = engine.currentPage();
-    return page?.lab || `Página ${engine.page() + 1}`;
+    return page?.lab || traducir('form.paginaMayN', { n: engine.page() + 1 });
   });
 
   /**
@@ -1131,7 +1134,7 @@ export class FormRunnerComponent {
     const engine = this.engine();
     if (!engine) return [];
 
-    return engine.pages.map((page, index) => page.lab || `Página ${index + 1}`);
+    return engine.pages.map((page, index) => page.lab || traducir('form.paginaMayN', { n: index + 1 }));
   });
 
   /**
@@ -1153,7 +1156,7 @@ export class FormRunnerComponent {
 
     return engine.paginasVisibles().map((real) => ({
       index: real,
-      label: engine.pages[real]?.lab || `Página ${real + 1}`,
+      label: engine.pages[real]?.lab || traducir('form.paginaMayN', { n: real + 1 }),
       current: real === engine.page(),
       incomplete: missing.some((entry) => entry.page === real),
     }));
@@ -1429,7 +1432,7 @@ export class FormRunnerComponent {
      */
     if (!engine.sePuedeLlamar(llamada)) {
       this.toasts.show({
-        title: `«${llamada.titulo}» se llamó demasiadas veces seguidas y se detuvo.`,
+        title: traducir('flujo.llamadaDetenida', { titulo: llamada.titulo }),
         tone: 'warning',
       });
 
@@ -1492,14 +1495,12 @@ export class FormRunnerComponent {
 
       engine.fallo(llamada.llave, {
         codigo: 'foto-no-esta-en-linea',
-        mensaje:
-          'La fotografía todavía no está en el servidor, así que el servicio no puede verla. '
-          + 'Comprueba la conexión y vuelve a intentarlo.',
+        mensaje: traducir('flujo.fotoNoEnServidor'),
         reintentable: true,
       });
 
       this.toasts.show({
-        title: 'La fotografía todavía no se ha subido. Vuelve a intentarlo con señal.',
+        title: traducir('flujo.fotoNoSubida'),
         tone: 'warning',
       });
 
@@ -1559,7 +1560,7 @@ export class FormRunnerComponent {
        * está diligenciando ve que el campo no se llena y no tiene forma de saber
        * por qué.
        */
-      this.toasts.show({ title: r.mensaje ?? 'El servicio no pudo responder.', tone: 'error' });
+      this.toasts.show({ title: r.mensaje ?? traducir('flujo.servicioNoRespondio'), tone: 'error' });
     }
 
     /*
@@ -1826,7 +1827,7 @@ export class FormRunnerComponent {
       .integracionesDelFlujo()
       .find((una) => una.estado === 'vuelo');
 
-    return enVuelo?.titulo ? `Consultando «${enVuelo.titulo}»…` : 'Consultando…';
+    return enVuelo?.titulo ? traducir('flujo.consultandoX', { titulo: enVuelo.titulo }) : traducir('flujo.consultando');
   }
 
   /**
@@ -2398,7 +2399,7 @@ export class FormRunnerComponent {
     const engine = this.engine();
     engine?.page.set(Math.max(0, Math.min(pagina, engine.pages.length - 1)));
 
-    this.toasts.show({ title: 'El formulario se actualizó', tone: 'success' });
+    this.toasts.show({ title: traducir('form.seActualizo'), tone: 'success' });
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -2476,8 +2477,8 @@ export class FormRunnerComponent {
         ...entry,
         note:
           rows.length === 1
-            ? '1 registro sin completar'
-            : `${rows.length} registros sin completar`,
+            ? traducir('md.unRegistroSinCompletar')
+            : traducir('md.nRegistrosSinCompletar', { n: rows.length }),
         go: () => panel.open(rows[0]),
       });
     }
@@ -2661,7 +2662,7 @@ export class FormRunnerComponent {
       this.activities.notifyChanged();
     }
 
-    this.toasts.show({ title: 'Esta actividad está bloqueada', detail: leyenda, tone: 'warning' });
+    this.toasts.show({ title: traducir('form.actividadBloqueada'), detail: leyenda, tone: 'warning' });
     this.leave.emit();
     return true;
   }
@@ -2781,7 +2782,7 @@ export class FormRunnerComponent {
       if (despacho['exigido'] !== true) continue;
 
       this.pidiendoDestinatario.set(
-        despacho['que'] === 'misma' ? 'esta misma actividad' : 'una actividad nueva',
+        despacho['que'] === 'misma' ? traducir('flujo.estaMismaActividad') : traducir('flujo.unaActividadNueva'),
       );
 
       const elegido = await new Promise<Destinatario | null>((resolve) => {
@@ -2793,7 +2794,7 @@ export class FormRunnerComponent {
 
       if (!elegido) {
         this.feedback.set(
-          'No se guardó: este formulario exige decir a quién se le despacha la consigna antes de cerrar.',
+          traducir('flujo.exigeDestinatario'),
         );
 
         void this.sound.warn();
@@ -2821,7 +2822,7 @@ export class FormRunnerComponent {
       if (despacho['exigido'] === true) continue;
 
       this.pidiendoDestinatario.set(
-        despacho['que'] === 'misma' ? 'esta misma actividad' : 'una actividad nueva',
+        despacho['que'] === 'misma' ? traducir('flujo.estaMismaActividad') : traducir('flujo.unaActividadNueva'),
       );
 
       const elegido = await new Promise<Destinatario | null>((resolve) => {
@@ -2864,8 +2865,8 @@ export class FormRunnerComponent {
     if (sinResolver > 0) {
       this.feedback.set(
         sinResolver === 1
-          ? 'La actividad se guardó, pero la consigna no se despachó: nadie la va a recibir.'
-          : `La actividad se guardó, pero ${sinResolver} consignas no se despacharon: nadie las va a recibir.`,
+          ? traducir('flujo.consignaNoDespachada')
+          : traducir('flujo.consignasNoDespachadas', { n: sinResolver }),
       );
 
       void this.sound.warn();
@@ -2927,11 +2928,11 @@ export class FormRunnerComponent {
     const motivos = bloqueos.map((m) => m.trim()).filter(Boolean);
     const detalle = motivos.join(' · ');
 
-    this.feedback.set(detalle || 'El flujo no deja guardar todavía.');
+    this.feedback.set(detalle || traducir('flujo.noDejaGuardar'));
 
     this.toasts.show({
-      title: 'No se puede guardar',
-      detail: detalle || 'Falta algo por resolver.',
+      title: traducir('form.noSePuedeGuardar'),
+      detail: detalle || traducir('form.faltaAlgo'),
       tone: 'error',
       sonido: 'alerta',
     });
@@ -2957,7 +2958,7 @@ export class FormRunnerComponent {
         continue;
       }
 
-      const que = enlace.titulo || 'Abrir enlace';
+      const que = enlace.titulo || traducir('flujo.abrirEnlace');
       if (confirm(`${que}
 
 ${enlace.url}`)) abrir();
@@ -3255,7 +3256,7 @@ ${enlace.url}`)) abrir();
       this.saved.emit();
     } catch (error) {
       console.error('[FormRunner] no se pudo guardar', error);
-      this.feedback.set('No se pudo guardar la actividad.');
+      this.feedback.set(traducir('form.noSeGuardo'));
     } finally {
       this.saving.set(false);
     }
@@ -3317,7 +3318,7 @@ ${enlace.url}`)) abrir();
 
     if (avisos.motivo) {
       this.toasts.show({
-        title: 'La notificación no se pudo pedir',
+        title: traducir('flujo.notificacionNoPedida'),
         detail: avisos.motivo,
         tone: 'warning',
       });
@@ -3325,9 +3326,9 @@ ${enlace.url}`)) abrir();
       this.toasts.show({
         title:
           avisos.aceptados === 1
-            ? 'Notificación en camino'
-            : `${avisos.aceptados} notificaciones en camino`,
-        detail: 'Sale en cuanto el servidor la reparta.',
+            ? traducir('flujo.notificacionEnCamino')
+            : traducir('flujo.notificacionesEnCamino', { n: avisos.aceptados }),
+        detail: traducir('flujo.saleAlRepartir'),
         tone: 'success',
       });
     }
@@ -3356,8 +3357,8 @@ ${enlace.url}`)) abrir();
         title:
           encolados.mensaje ||
           (encolados.aceptados === 1
-            ? 'Correo en camino'
-            : `${encolados.aceptados} correos en camino`),
+            ? traducir('flujo.correoEnCamino')
+            : traducir('flujo.correosEnCamino', { n: encolados.aceptados })),
         tone: 'success',
       });
     }
@@ -3374,15 +3375,17 @@ ${enlace.url}`)) abrir();
    */
   private describeSave(incomplete: boolean, pendingFiles: number): string {
     const head = incomplete
-      ? 'Actividad guardada con campos obligatorios sin responder.'
-      : 'Actividad guardada.';
+      ? traducir('form.guardadaIncompleta')
+      : traducir('form.guardada');
 
     const cola =
       pendingFiles === 0
-        ? `${head} Se subirá en la próxima sincronización.`
-        : `${head} Se enviará cuando ${
-            pendingFiles === 1 ? 'su archivo esté' : `sus ${pendingFiles} archivos estén`
-          } en el servidor.`;
+        ? `${head} ${traducir('form.seSubiraProxima')}`
+        : `${head} ${
+            pendingFiles === 1
+              ? traducir('form.seEnviaraUnArchivo')
+              : traducir('form.seEnviaraNArchivos', { n: pendingFiles })
+          }`;
 
     // Lo que el flujo abrió se cuenta aquí y no en un aviso aparte: al guardar
     // la pantalla se va al listado, y un segundo mensaje no llegaría a leerse.
@@ -3390,8 +3393,8 @@ ${enlace.url}`)) abrir();
     if (!abiertas.length) return cola;
 
     return abiertas.length === 1
-      ? `${cola} El flujo abrió una actividad de «${abiertas[0]}».`
-      : `${cola} El flujo abrió ${abiertas.length} actividades nuevas.`;
+      ? `${cola} ${traducir('flujo.abrioUna', { nombre: abiertas[0] })}`
+      : `${cola} ${traducir('flujo.abrioN', { n: abiertas.length })}`;
   }
 
   /** Salta al campo que falta y lo deja enfocado. */

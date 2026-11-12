@@ -1,6 +1,7 @@
 import { Component, ElementRef, computed, effect, input, signal, viewChild } from '@angular/core';
 
 import { IconComponent } from '../../../../../shared/components/icon/icon.component';
+import { TPipe } from '../../../../../core/i18n/t.pipe';
 
 /**
  * Reproductor de una grabación.
@@ -22,7 +23,7 @@ import { IconComponent } from '../../../../../shared/components/icon/icon.compon
 @Component({
   selector: 'vt-audio-player',
   standalone: true,
-  imports: [IconComponent],
+  imports: [IconComponent, TPipe],
   templateUrl: './audio-player.component.html',
   styleUrl: './audio-player.component.scss',
 })

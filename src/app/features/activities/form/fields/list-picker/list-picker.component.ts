@@ -5,7 +5,8 @@ import { ListDefinition, ListDetail } from '../../../../../core/models/entities.
 import { PermissionsService } from '../../../../../core/services/permissions.service';
 import { IconComponent } from '../../../../../shared/components/icon/icon.component';
 import { ListItemFormComponent } from './list-item-form.component';
-import { localeActual } from '../../../../../core/i18n/idioma.service';
+import { localeActual, traducir } from '../../../../../core/i18n/idioma.service';
+import { TPipe } from '../../../../../core/i18n/t.pipe';
 
 /**
  * Ventana para elegir un ítem de una lista.
@@ -21,13 +22,13 @@ import { localeActual } from '../../../../../core/i18n/idioma.service';
 @Component({
   selector: 'vt-list-picker',
   standalone: true,
-  imports: [IconComponent, ListItemFormComponent],
+  imports: [IconComponent, ListItemFormComponent, TPipe],
   templateUrl: './list-picker.component.html',
   styleUrl: './list-picker.component.scss',
 })
 export class ListPickerComponent {
   /** Título de la ventana. */
-  readonly title = input('Seleccionar');
+  readonly title = input('');
 
   /** Aclaración bajo el título: el paso, o de qué se está eligiendo. */
   readonly subtitle = input('');
@@ -121,7 +122,7 @@ export class ListPickerComponent {
     const source = this.source();
     if (!source?.paginable || source.total === undefined) return '';
     const n = (valor: number) => valor.toLocaleString(localeActual());
-    return `${n(source.choices.length)} de ${n(source.total)} cargados`;
+    return traducir('campo.cargadosDe', { x: n(source.choices.length), n: n(source.total) });
   });
 
   /** Cuánto va, en porcentaje, para la barra del contador. */

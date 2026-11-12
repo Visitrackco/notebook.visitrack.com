@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
 import { GraficaPintada, Orientacion } from '../../../../core/forms/flujo-modelo';
+import { TPipe } from '../../../../core/i18n/t.pipe';
 
 /**
  * La gráfica que una regla del flujo pintó debajo de un campo.
@@ -29,6 +30,7 @@ import { GraficaPintada, Orientacion } from '../../../../core/forms/flujo-modelo
 @Component({
   selector: 'vt-flujo-grafica',
   standalone: true,
+  imports: [TPipe],
   templateUrl: './flujo-grafica.component.html',
   styleUrl: './flujo-grafica.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

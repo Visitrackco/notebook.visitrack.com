@@ -4,6 +4,8 @@ import { FormEngine } from '../../../../../core/forms/form-engine';
 import { FormField } from '../../../../../core/forms/form-schema';
 import { AuthService } from '../../../../../core/services/auth.service';
 import { IconComponent } from '../../../../../shared/components/icon/icon.component';
+import { traducir } from '../../../../../core/i18n/idioma.service';
+import { TPipe } from '../../../../../core/i18n/t.pipe';
 
 /**
  * Marcadores que el formulario puede dejar en la dirección.
@@ -42,7 +44,7 @@ const PLACEHOLDERS = {
 @Component({
   selector: 'vt-link-field',
   standalone: true,
-  imports: [IconComponent],
+  imports: [IconComponent, TPipe],
   templateUrl: './link-field.component.html',
   styleUrl: './link-field.component.scss',
 })
@@ -62,7 +64,7 @@ export class LinkFieldComponent {
   /** La plantilla, tal como la escribió el diseñador del formulario. */
   readonly template = computed(() => (this.field().val || this.field().url || '').trim());
 
-  readonly label = computed(() => this.field().lab || this.field().txt || 'Abrir enlace');
+  readonly label = computed(() => this.field().lab || this.field().txt || traducir('flujo.abrirEnlace'));
 
   readonly hasLink = computed(() => this.template().length > 0);
 
@@ -128,7 +130,7 @@ export class LinkFieldComponent {
     // usuario pulse cinco veces creyendo que no funcionó.
     if (!opened) {
       this.feedback.set(
-        'El navegador bloqueó la ventana. Permite las ventanas emergentes de este sitio.',
+        traducir('campo.ventanaBloqueada'),
       );
     }
   }
@@ -140,9 +142,9 @@ export class LinkFieldComponent {
 
     try {
       await navigator.clipboard.writeText(url);
-      this.feedback.set('Enlace copiado.');
+      this.feedback.set(traducir('campo.enlaceCopiado'));
     } catch {
-      this.feedback.set('No se pudo copiar. Ábrelo y copia la dirección desde la barra.');
+      this.feedback.set(traducir('campo.noSeCopio'));
     }
   }
 

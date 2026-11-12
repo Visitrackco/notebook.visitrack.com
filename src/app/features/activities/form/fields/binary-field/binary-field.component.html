@@ -20,8 +20,8 @@
     </span>
 
     <span class="bin__empty-text">
-      <strong>{{ busy() ? 'Guardando…' : config().action }}</strong>
-      <small>{{ config().hint }}</small>
+      <strong>{{ (busy() ? 'form.guardando' : config().action) | t }}</strong>
+      <small>{{ config().hint | t }}</small>
     </span>
 
     @if (!readOnly()) {
@@ -41,13 +41,13 @@
           [class.bin__open--portrait]="portrait()"
           [class.bin__open--sign]="isSignature()"
           (click)="openViewer()"
-          title="Ver en grande"
+          [title]="'campo.verEnGrande' | t"
         >
           <img class="bin__thumb" [src]="previewUrl()" (load)="onThumbLoad($event)" alt="" />
 
           <span class="bin__zoom">
             <vt-icon name="image" [size]="16" />
-            {{ portrait() ? 'Ver completa' : 'Ampliar' }}
+            {{ (portrait() ? 'campo.verCompleta' : 'campo.ampliar') | t }}
           </span>
         </button>
       } @else if (isVideo() && previewUrl()) {
@@ -55,7 +55,7 @@
           <video class="bin__thumb" [src]="previewUrl()" controls playsinline></video>
           <button type="button" class="bin__expand" (click)="openViewer()">
             <vt-icon name="play" [size]="15" />
-            Ver en grande
+            {{ 'campo.verEnGrande' | t }}
           </button>
         </div>
       } @else if (isAudio() && previewUrl()) {
@@ -63,7 +63,7 @@
       } @else {
         <div class="bin__doc">
           <span class="bin__doc-icon"><vt-icon name="file" [size]="26" /></span>
-          <span class="bin__doc-name">{{ caption() || 'Documento adjunto' }}</span>
+          <span class="bin__doc-name">{{ caption() || ('campo.documentoAdjunto' | t) }}</span>
         </div>
       }
     </div>
@@ -99,7 +99,7 @@
             class="bin__act"
             [disabled]="busy()"
             (click)="usesPicker() ? picker.click() : start()"
-            title="Reemplazar"
+            [title]="'campo.reemplazar' | t"
           >
             <vt-icon name="refresh" [size]="17" />
           </button>
@@ -109,7 +109,7 @@
             class="bin__act bin__act--danger"
             [disabled]="busy()"
             (click)="askRemove()"
-            title="Eliminar"
+            [title]="'comun.eliminar' | t"
           >
             <vt-icon name="trash" [size]="17" />
           </button>
@@ -124,9 +124,9 @@
 @if (dragging()) {
   <div class="bin__dropzone">
     <vt-icon name="cloud-upload" [size]="26" />
-    <strong>Suelta el archivo para adjuntarlo</strong>
+    <strong>{{ 'campo.sueltaArchivo' | t }}</strong>
     @if (isVideo()) {
-      <small>Hasta 100 MB</small>
+      <small>{{ 'campo.hasta100' | t }}</small>
     }
   </div>
 }
@@ -160,8 +160,8 @@
   <div class="bin__sheet" (click)="closeOverlay()">
     <div class="bin__sheet-card" (click)="$event.stopPropagation()">
       <div class="bin__sheet-head">
-        <strong>{{ label() }}</strong>
-        <button type="button" class="bin__sheet-close" (click)="closeOverlay()" aria-label="Cerrar">
+        <strong>{{ label() || ('campo.archivo' | t) }}</strong>
+        <button type="button" class="bin__sheet-close" (click)="closeOverlay()" [attr.aria-label]="'comun.cerrar' | t">
           <vt-icon name="close" [size]="19" />
         </button>
       </div>
@@ -169,16 +169,16 @@
       <div class="bin__sources">
         <button type="button" class="bin__source" (click)="useCamera()">
           <span class="bin__source-disc"><vt-icon name="camera" [size]="30" /></span>
-          <strong>Tomar foto</strong>
-          <small>Con la cámara del dispositivo</small>
+          <strong>{{ 'campo.tomarFoto' | t }}</strong>
+          <small>{{ 'campo.conCamara' | t }}</small>
         </button>
 
         <button type="button" class="bin__source" (click)="picker.click()">
           <span class="bin__source-disc bin__source-disc--alt">
             <vt-icon name="image" [size]="30" />
           </span>
-          <strong>Galería</strong>
-          <small>Buscar en los archivos del equipo</small>
+          <strong>{{ 'campo.galeria' | t }}</strong>
+          <small>{{ 'campo.buscarArchivos' | t }}</small>
         </button>
       </div>
     </div>
@@ -211,10 +211,10 @@
   [open]="overlay() === 'remove'"
   tone="danger"
   icon="trash"
-  title="¿Eliminar el archivo?"
-  [message]="'Se quitará de «' + label() + '» y no se podrá recuperar.'"
-  detail="Si la actividad ya se envió, el archivo del servidor no se ve afectado."
-  confirmLabel="Eliminar"
+  [title]="'campo.eliminarArchivo' | t"
+  [message]="'campo.seQuitaraDe' | t: { nombre: label() || ('campo.archivo' | t) }"
+  [detail]="'campo.eliminarArchivoDetalle' | t"
+  [confirmLabel]="'comun.eliminar' | t"
   (confirm)="confirmRemove()"
   (cancel)="closeOverlay()"
 />

@@ -12,6 +12,8 @@ import {
 } from '@angular/core';
 
 import { IconComponent } from '../../../../../shared/components/icon/icon.component';
+import { traducir } from '../../../../../core/i18n/idioma.service';
+import { TPipe } from '../../../../../core/i18n/t.pipe';
 
 /** Qué se está grabando. */
 export type RecorderKind = 'audio' | 'video';
@@ -43,7 +45,7 @@ const VIDEO_TYPES = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/we
 @Component({
   selector: 'vt-media-recorder',
   standalone: true,
-  imports: [IconComponent],
+  imports: [IconComponent, TPipe],
   templateUrl: './media-recorder.component.html',
   styleUrl: './media-recorder.component.scss',
 })
@@ -90,7 +92,7 @@ export class MediaRecorderComponent implements OnDestroy {
 
   readonly isVideo = computed(() => this.kind() === 'video');
 
-  readonly title = computed(() => (this.isVideo() ? 'Grabar video' : 'Grabar audio'));
+  readonly title = computed(() => traducir(this.isVideo() ? 'campo.binVideoAccion' : 'campo.binAudioAccion'));
 
   /** Duración en `m:ss`, que es como se lee un tiempo corto. */
   readonly elapsed = computed(() => {
@@ -145,7 +147,7 @@ export class MediaRecorderComponent implements OnDestroy {
     this.error.set('');
 
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
-      this.error.set('Este navegador no permite grabar.');
+      this.error.set(traducir('campo.recNoPermite'));
       return;
     }
 
@@ -201,7 +203,7 @@ export class MediaRecorderComponent implements OnDestroy {
     try {
       this.recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
     } catch {
-      this.error.set('Este navegador no admite ningún formato de grabación compatible.');
+      this.error.set(traducir('campo.recSinFormato'));
       return;
     }
 
@@ -307,16 +309,16 @@ function pickType(candidates: string[]): string {
 /** Traduce el error de permisos a algo accionable. */
 function describeError(error: unknown, kind: RecorderKind): string {
   const name = error instanceof DOMException ? error.name : '';
-  const device = kind === 'video' ? 'la cámara' : 'el micrófono';
+  const device = traducir(kind === 'video' ? 'campo.recLaCamara' : 'campo.recElMicrofono');
 
   switch (name) {
     case 'NotAllowedError':
-      return `No se concedió el permiso para usar ${device}. Habilítalo desde el icono de la barra de direcciones y vuelve a intentarlo.`;
+      return traducir('campo.recSinPermiso', { device });
     case 'NotFoundError':
-      return `No se encontró ${device} en este dispositivo.`;
+      return traducir('campo.recNoEncontrado', { device });
     case 'NotReadableError':
-      return `Otra aplicación está usando ${device}. Ciérrala e inténtalo de nuevo.`;
+      return traducir('campo.recEnUso', { device });
     default:
-      return `No se pudo acceder a ${device}. Comprueba que la página esté en HTTPS.`;
+      return traducir('campo.recNoAcceso', { device });
   }
 }

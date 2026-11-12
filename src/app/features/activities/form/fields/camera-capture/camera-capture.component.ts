@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 
 import { IconComponent } from '../../../../../shared/components/icon/icon.component';
+import { TPipe } from '../../../../../core/i18n/t.pipe';
 import { describeCameraError, motivoSinCamara } from '../../../../../shared/utils/camara';
 
 /**
@@ -26,7 +27,7 @@ import { describeCameraError, motivoSinCamara } from '../../../../../shared/util
 @Component({
   selector: 'vt-camera-capture',
   standalone: true,
-  imports: [IconComponent],
+  imports: [IconComponent, TPipe],
   templateUrl: './camera-capture.component.html',
   styleUrl: './camera-capture.component.scss',
 })
