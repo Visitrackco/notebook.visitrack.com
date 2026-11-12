@@ -17,6 +17,8 @@
  * servidor**, y esta no la sustituye.
  */
 
+import { traducir } from '../i18n/idioma.service';
+
 /** Extensiones admitidas, agrupadas por familia. */
 const ALLOWED: Record<string, readonly string[]> = {
   /** Lo que sale de una cámara o de una captura de pantalla. */
@@ -96,9 +98,7 @@ export function checkFile(file: File): FileCheck {
     return {
       ok: false,
       ext,
-      error:
-        `Los archivos «.${ext}» no se admiten. ` +
-        'Solo se pueden adjuntar imágenes, PDF y documentos de Office.',
+      error: traducir('archivo.noAdmitido', { ext }),
     };
   }
 
@@ -106,7 +106,7 @@ export function checkFile(file: File): FileCheck {
     return {
       ok: false,
       ext,
-      error: `El archivo pesa ${formatSize(file.size)} y el máximo son 100 MB.`,
+      error: traducir('archivo.muyGrande', { peso: formatSize(file.size) }),
     };
   }
 

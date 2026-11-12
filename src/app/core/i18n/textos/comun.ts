@@ -36,6 +36,30 @@ export const textosComun = {
   'ret.manana': ['se retira mañana', 'removed tomorrow'],
   'ret.enDias': ['se retira en {n} días', 'removed in {n} days'],
 
+  // ── Ubicación (GeolocationService) ────────────────────────────────────────
+  'gps.buena': ['Precisión buena', 'Good accuracy'],
+  'gps.aceptable': ['Precisión aceptable', 'Fair accuracy'],
+  'gps.baja': ['Precisión baja', 'Low accuracy'],
+  'gps.noSoporta': ['Este navegador no permite obtener la ubicación.', "This browser can't get your location."],
+  'gps.https': [
+    'La ubicación solo funciona sobre una conexión segura (HTTPS).',
+    'Location only works over a secure connection (HTTPS).',
+  ],
+  'gps.sinPermiso': ['No se concedió el permiso de ubicación.', 'Location permission was not granted.'],
+  'gps.noDetermina': ['No se pudo determinar la ubicación.', 'Could not determine the location.'],
+  'gps.tiempo': ['Se agotó el tiempo esperando la señal.', 'Timed out waiting for a signal.'],
+  'gps.error': ['Error al leer la ubicación.', 'Error reading the location.'],
+
+  // ── Archivos adjuntos (file-policy) ───────────────────────────────────────
+  'archivo.noAdmitido': [
+    'Los archivos «.{ext}» no se admiten. Solo se pueden adjuntar imágenes, PDF y documentos de Office.',
+    '“.{ext}” files are not allowed. Only images, PDFs and Office documents can be attached.',
+  ],
+  'archivo.muyGrande': [
+    'El archivo pesa {peso} y el máximo son 100 MB.',
+    'The file is {peso} and the maximum is 100 MB.',
+  ],
+
   // ── Cámara (compartido por fotos y escáner) ───────────────────────────────
   'cam.https': [
     'La cámara solo funciona en una conexión segura (HTTPS). Abre Visitrack desde su dirección https:// y vuelve a intentarlo.',

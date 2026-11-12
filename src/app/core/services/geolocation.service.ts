@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { traducir } from '../i18n/idioma.service';
 
 /**
  * Una posición capturada, en el formato que guarda la app móvil.
@@ -115,13 +116,13 @@ export class GeolocationService {
    */
   async capture(): Promise<GpsReading> {
     if (!this.isSupported) {
-      throw new GpsError('unsupported', 'Este navegador no permite obtener la ubicación.');
+      throw new GpsError('unsupported', traducir('gps.noSoporta'));
     }
 
     if (!this.isSecureContext) {
       throw new GpsError(
         'insecure',
-        'La ubicación solo funciona sobre una conexión segura (HTTPS).',
+        traducir('gps.https'),
       );
     }
 
@@ -156,9 +157,9 @@ export class GeolocationService {
    * la pena repetirla.
    */
   describeAccuracy(meters: number): { label: string; level: 'good' | 'fair' | 'poor' } {
-    if (meters <= 15) return { label: 'Precisión buena', level: 'good' };
-    if (meters <= 50) return { label: 'Precisión aceptable', level: 'fair' };
-    return { label: 'Precisión baja', level: 'poor' };
+    if (meters <= 15) return { label: traducir('gps.buena'), level: 'good' };
+    if (meters <= 50) return { label: traducir('gps.aceptable'), level: 'fair' };
+    return { label: traducir('gps.baja'), level: 'poor' };
   }
 }
 
@@ -166,12 +167,12 @@ export class GeolocationService {
 function toGpsError(error: GeolocationPositionError): GpsError {
   switch (error.code) {
     case error.PERMISSION_DENIED:
-      return new GpsError('denied', 'No se concedió el permiso de ubicación.');
+      return new GpsError('denied', traducir('gps.sinPermiso'));
     case error.POSITION_UNAVAILABLE:
-      return new GpsError('unavailable', 'No se pudo determinar la ubicación.');
+      return new GpsError('unavailable', traducir('gps.noDetermina'));
     case error.TIMEOUT:
-      return new GpsError('timeout', 'Se agotó el tiempo esperando la señal.');
+      return new GpsError('timeout', traducir('gps.tiempo'));
     default:
-      return new GpsError('unavailable', error.message || 'Error al leer la ubicación.');
+      return new GpsError('unavailable', error.message || traducir('gps.error'));
   }
 }
