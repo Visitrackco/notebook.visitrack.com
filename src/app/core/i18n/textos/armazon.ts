@@ -121,6 +121,24 @@ export const textosArmazon = {
   ],
   'inicio.enDesarrollo': ['En desarrollo', 'In development'],
 
+  // ── Correos del flujo (componente compartido) ─────────────────────────────
+  'correo.preguntar': ['Volver a preguntar al servidor', 'Ask the server again'],
+  'correo.actualizar': ['Actualizar el estado de los correos', 'Refresh email status'],
+  'correo.conAviso': ['Salió, pero tiene un aviso', 'Sent, but with a warning'],
+  'correo.sinAsunto': ['(sin asunto)', '(no subject)'],
+  'correo.para': ['Para:', 'To:'],
+  'correo.copia': ['Copia:', 'Cc:'],
+  'correo.enviadoEl': ['Enviado {f}', 'Sent {f}'],
+  'correo.pedidoEl': ['Pedido {f}', 'Requested {f}'],
+  'correo.intentos': ['{n} intentos', '{n} attempts'],
+  'correo.estado.pendiente': ['Por subir', 'To upload'],
+  'correo.estado.en-cola': ['En cola', 'Queued'],
+  'correo.estado.enviando': ['Enviando', 'Sending'],
+  'correo.estado.reintentando': ['Reintentando', 'Retrying'],
+  'correo.estado.enviado': ['Enviado', 'Sent'],
+  'correo.estado.enviado-con-avisos': ['Enviado con avisos', 'Sent with warnings'],
+  'correo.estado.error': ['Error', 'Error'],
+
   // ── Paleta de comandos ────────────────────────────────────────────────────
   'pal.placeholder': [
     'Busca un formulario, una ubicación o una actividad…',

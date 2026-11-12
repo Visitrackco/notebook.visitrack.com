@@ -8,6 +8,8 @@ import {
   EstadoDeCorreo,
 } from '../../../core/services/correo.service';
 import { IconComponent } from '../icon/icon.component';
+import { traducirSiExiste } from '../../../core/i18n/idioma.service';
+import { TPipe } from '../../../core/i18n/t.pipe';
 
 /**
  * «Correos del flujo» de una actividad: qué correo pidió cada regla y en qué
@@ -32,20 +34,20 @@ import { IconComponent } from '../icon/icon.component';
 @Component({
   selector: 'vt-correos-del-flujo',
   standalone: true,
-  imports: [IconComponent],
+  imports: [IconComponent, TPipe],
   template: `
     @if (correos().length) {
-      <section class="cf" aria-label="Correos del flujo">
+      <section class="cf" [attr.aria-label]="'nav.flow-emails' | t">
         <header class="cf__cab">
           <vt-icon name="mail" [size]="16" />
-          <h2 class="cf__titulo">Correos del flujo</h2>
+          <h2 class="cf__titulo">{{ 'nav.flow-emails' | t }}</h2>
           <button
             type="button"
             class="cf__recargar"
             (click)="recargar()"
             [disabled]="cargando()"
-            title="Volver a preguntar al servidor"
-            aria-label="Actualizar el estado de los correos"
+            [title]="'correo.preguntar' | t"
+            [attr.aria-label]="'correo.actualizar' | t"
           >
             <vt-icon name="refresh" [size]="14" />
           </button>
@@ -56,15 +58,15 @@ import { IconComponent } from '../icon/icon.component';
             <li class="cf__fila">
               <span [class]="'cf__pill cf__pill--' + tono(c.estado)">{{ texto(c.estado) }}</span>
               @if (c.estado === 'enviado-con-avisos') {
-                <span class="cf__alerta" title="Salió, pero tiene un aviso" aria-hidden="true">⚠</span>
+                <span class="cf__alerta" [title]="'correo.conAviso' | t" aria-hidden="true">⚠</span>
               }
 
               <div class="cf__cuerpo">
-                <p class="cf__asunto" [title]="c.asunto">{{ c.asunto || '(sin asunto)' }}</p>
+                <p class="cf__asunto" [title]="c.asunto">{{ c.asunto || ('correo.sinAsunto' | t) }}</p>
                 <p class="cf__para">
-                  Para: {{ c.para || '—' }}
+                  {{ 'correo.para' | t }} {{ c.para || '—' }}
                   @if (c.copia) {
-                    <span class="cf__copia">· Copia: {{ c.copia }}</span>
+                    <span class="cf__copia">· {{ 'correo.copia' | t }} {{ c.copia }}</span>
                   }
                 </p>
 
@@ -76,12 +78,12 @@ import { IconComponent } from '../icon/icon.component';
 
                 <p class="cf__pie">
                   @if (c.enviado) {
-                    Enviado {{ zona.fechaCorta(c.enviado) }}
+                    {{ 'correo.enviadoEl' | t: { f: zona.fechaCorta(c.enviado) } }}
                   } @else if (c.creado) {
-                    Pedido {{ zona.fechaCorta(c.creado) }}
+                    {{ 'correo.pedidoEl' | t: { f: zona.fechaCorta(c.creado) } }}
                   }
                   @if (c.intentos > 1) {
-                    · {{ c.intentos }} intentos
+                    · {{ 'correo.intentos' | t: { n: c.intentos } }}
                   }
                 </p>
               </div>
@@ -270,7 +272,7 @@ export class CorreosDelFlujoComponent {
   }
 
   texto(estado: EstadoDeCorreo): string {
-    return ESTADO_DE_CORREO[estado]?.texto ?? estado;
+    return traducirSiExiste(`correo.estado.${estado}`, ESTADO_DE_CORREO[estado]?.texto ?? estado);
   }
 
   tono(estado: EstadoDeCorreo): string {
