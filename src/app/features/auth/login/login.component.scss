@@ -694,3 +694,15 @@
   font-size: var(--vt-text-sm);
   color: var(--vt-text);
 }
+
+/* «¿Olvidaste tu contraseña?»: lleva a /recuperar. */
+.login__olvido {
+  align-self: center;
+  color: var(--vt-primary);
+  font-size: 14px;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}

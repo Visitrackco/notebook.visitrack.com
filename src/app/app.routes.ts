@@ -27,6 +27,14 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./features/auth/login/login.component').then((m) => m.LoginComponent),
   },
+  /** «¿Olvidaste tu contraseña?»: código al correo y contraseña nueva, sin sesión. */
+  {
+    path: 'recuperar',
+    canActivate: [guestGuard],
+    title: 'Recuperar contraseña · Visitrack',
+    loadComponent: () =>
+      import('./features/auth/recuperar/recuperar.component').then((m) => m.RecuperarComponent),
+  },
   /**
    * La descarga que va entre entrar y trabajar.
    *

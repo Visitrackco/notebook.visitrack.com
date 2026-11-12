@@ -1,0 +1,146 @@
+<div class="login">
+  <header class="login__topbar">
+    <div class="login__logo">
+      <img src="icon.png" width="34" height="34" alt="" />
+      <span>Visitrack</span>
+    </div>
+
+    <span class="login__topbar-state" [class.login__topbar-state--off]="connectivity.isOffline()">
+      {{ connectivity.isOnline() ? 'En línea' : 'Sin conexión' }}
+    </span>
+  </header>
+
+  <main class="login__form-side">
+    <div class="login__form-wrap">
+      <h1 class="login__title">Recuperar contraseña</h1>
+
+      @switch (paso()) {
+        @case ('usuario') {
+          <p class="login__subtitle">Escribe tu usuario y te enviaremos un código a tu correo.</p>
+        }
+        @case ('codigo') {
+          <p class="login__subtitle">
+            Escribe el código de 6 cifras que enviamos a <strong>{{ correo() || 'tu correo' }}</strong>.
+          </p>
+        }
+        @case ('clave') {
+          <p class="login__subtitle">Escribe tu contraseña nueva.</p>
+        }
+        @case ('listo') {
+          <p class="login__subtitle">Listo: tu contraseña cambió.</p>
+        }
+      }
+
+      @if (connectivity.isOffline()) {
+        <p class="login__offline">Sin conexión. Para recuperar la contraseña necesitas internet.</p>
+      }
+
+      <!-- Los pasos, de uno en uno -->
+      <ol class="rc-pasos" aria-label="Pasos">
+        <li [class.rc-on]="paso() === 'usuario'" [class.rc-hecho]="paso() !== 'usuario'">Usuario</li>
+        <li [class.rc-on]="paso() === 'codigo'" [class.rc-hecho]="paso() === 'clave' || paso() === 'listo'">Código</li>
+        <li [class.rc-on]="paso() === 'clave'" [class.rc-hecho]="paso() === 'listo'">Contraseña</li>
+      </ol>
+
+      @if (paso() !== 'listo') {
+        <form class="login__form" (submit)="seguir($event)" novalidate>
+          @switch (paso()) {
+            @case ('usuario') {
+              <div class="login__field">
+                <input
+                  id="rc-usuario"
+                  name="usuario"
+                  type="text"
+                  autocomplete="username"
+                  placeholder="Usuario"
+                  spellcheck="false"
+                  [value]="usuario()"
+                  (input)="usuario.set($any($event.target).value)"
+                  [disabled]="enviando()"
+                />
+              </div>
+            }
+            @case ('codigo') {
+              <div class="login__field">
+                <input
+                  id="rc-codigo"
+                  name="codigo"
+                  type="text"
+                  inputmode="numeric"
+                  autocomplete="one-time-code"
+                  maxlength="6"
+                  placeholder="Código de 6 cifras"
+                  class="rc-codigo"
+                  [value]="codigo()"
+                  (input)="codigo.set($any($event.target).value.replace(/\D/g, ''))"
+                  [disabled]="enviando()"
+                />
+              </div>
+              <div class="rc-acciones">
+                <button type="button" class="rc-enlace" (click)="reenviar()" [disabled]="enviando()">Reenviar código</button>
+                <button type="button" class="rc-enlace" (click)="cambiarUsuario()" [disabled]="enviando()">Cambiar usuario</button>
+              </div>
+            }
+            @case ('clave') {
+              <div class="login__field">
+                <input
+                  id="rc-clave"
+                  name="clave"
+                  [type]="verClave() ? 'text' : 'password'"
+                  autocomplete="new-password"
+                  placeholder="Contraseña nueva"
+                  [value]="clave()"
+                  (input)="clave.set($any($event.target).value)"
+                  [disabled]="enviando()"
+                />
+                <button type="button" class="login__reveal" (click)="verClave.set(!verClave())"
+                  [attr.aria-label]="verClave() ? 'Ocultar contraseña' : 'Mostrar contraseña'">
+                  {{ verClave() ? 'Ocultar' : 'Ver' }}
+                </button>
+              </div>
+              <div class="login__field">
+                <input
+                  id="rc-clave2"
+                  name="clave2"
+                  [type]="verClave() ? 'text' : 'password'"
+                  autocomplete="new-password"
+                  placeholder="Repite la contraseña"
+                  [value]="clave2()"
+                  (input)="clave2.set($any($event.target).value)"
+                  [disabled]="enviando()"
+                />
+              </div>
+              <p class="rc-ayuda" [class.rc-ayuda-mal]="faltaEnClave()">
+                {{ faltaEnClave() || 'Al menos ' + largoMinimo + ' caracteres.' }}
+              </p>
+            }
+          }
+
+          @if (aviso()) {
+            <p class="login__info" role="status">{{ aviso() }}</p>
+          }
+          @if (error()) {
+            <p class="login__error" role="alert">{{ error() }}</p>
+          }
+
+          <button type="submit" class="login__submit" [disabled]="!puedeSeguir()">
+            @if (enviando()) {
+              <span class="login__spinner" aria-hidden="true"></span>
+            }
+            <span>
+              @switch (paso()) {
+                @case ('usuario') { Enviar código }
+                @case ('codigo') { Validar código }
+                @default { Cambiar contraseña }
+              }
+            </span>
+          </button>
+        </form>
+      } @else {
+        <button type="button" class="login__submit" (click)="irAlLogin()">Ir a iniciar sesión</button>
+      }
+
+      <p class="rc-volver"><a routerLink="/login">Volver a iniciar sesión</a></p>
+    </div>
+  </main>
+</div>

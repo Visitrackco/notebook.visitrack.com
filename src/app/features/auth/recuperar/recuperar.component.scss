@@ -1,0 +1,85 @@
+// Lo propio de recuperar contraseña; lo demás viene de login.component.scss.
+
+.rc-pasos {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 var(--vt-space-3);
+  padding: 0;
+  list-style: none;
+  counter-reset: paso;
+
+  li {
+    flex: 1;
+    padding-top: 8px;
+    border-top: 3px solid var(--vt-border, #d9dde3);
+    color: var(--vt-text-muted, #6b7280);
+    font-size: 13px;
+    counter-increment: paso;
+
+    &::before {
+      content: counter(paso) '. ';
+    }
+  }
+
+  .rc-hecho {
+    border-top-color: var(--vt-primary, #2563eb);
+    opacity: 0.6;
+  }
+
+  .rc-on {
+    border-top-color: var(--vt-primary, #2563eb);
+    color: var(--vt-text, #111827);
+    font-weight: 600;
+  }
+}
+
+.rc-codigo {
+  letter-spacing: 6px;
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.rc-acciones {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.rc-enlace {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--vt-primary, #2563eb);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  &:hover:not(:disabled) {
+    text-decoration: underline;
+  }
+}
+
+.rc-ayuda {
+  margin: 0;
+  color: var(--vt-text-muted, #6b7280);
+  font-size: 13px;
+}
+
+.rc-ayuda-mal {
+  color: var(--vt-danger, #dc2626);
+}
+
+.rc-volver {
+  margin: var(--vt-space-4, 20px) 0 0;
+  text-align: center;
+  font-size: 14px;
+
+  a {
+    color: var(--vt-primary, #2563eb);
+  }
+}

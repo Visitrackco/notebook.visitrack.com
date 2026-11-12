@@ -9,7 +9,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import QRCode from 'qrcode';
 
 import { DeviceLinkService } from '../../../core/services/device-link.service';
@@ -36,7 +36,7 @@ import { DatabaseService } from '../../../core/database/database.service';
 @Component({
   selector: 'vt-login',
   standalone: true,
-  imports: [FormsModule, IconComponent],
+  imports: [FormsModule, IconComponent, RouterLink],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss',
 })
