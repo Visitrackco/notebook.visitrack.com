@@ -44,6 +44,9 @@ import {
 } from '../chat/compartir-en-sala/compartir-en-sala.component';
 import { ReasignacionHecha, ReassignDialogComponent } from './reassign-dialog/reassign-dialog.component';
 import { ZonaHorariaService } from '../../core/services/zona-horaria.service';
+import { traducir } from '../../core/i18n/idioma.service';
+import { TPipe } from '../../core/i18n/t.pipe';
+import type { ClaveTexto } from '../../core/i18n/textos';
 import { etiquetaDeConsigna } from '../../shared/utils/fecha-consigna';
 import {
   ActionItem,
@@ -109,6 +112,7 @@ type SortField = 'UpdatedOn' | 'CreatedOn' | 'DueDate';
   selector: 'vt-activities',
   standalone: true,
   imports: [
+    TPipe,
     ActivityActionsComponent,
     CompartirEnSalaComponent,
     ConfirmDialogComponent,
@@ -149,7 +153,7 @@ export class ActivitiesComponent {
 
       return {
         estado: r.estado,
-        texto: `${cuantos === 1 ? 'Correo del flujo' : `${cuantos} correos del flujo`}: ${info.texto.toLowerCase()}`,
+        texto: `${cuantos === 1 ? traducir('act.correoFlujo') : traducir('act.correosFlujo', { n: cuantos })}: ${info.texto.toLowerCase()}`,
         tono: info.tono,
         cuantos,
       };
@@ -199,7 +203,7 @@ export class ActivitiesComponent {
    */
   readonly pdfTitulo = computed(() => {
     const card = this.pdfCard();
-    return card ? this.pdfTituloDe(card) : 'Actividad';
+    return card ? this.pdfTituloDe(card) : traducir('act.actividad');
   });
 
   /** El archivo: formulario, ubicación, activo y consecutivo, con lo que tenga. */
@@ -227,7 +231,7 @@ export class ActivitiesComponent {
       .filter((v) => !!v)
       .join('  ·  ');
 
-    return desc || `Actividad ${card.shortGuid}`;
+    return desc || `${traducir('act.actividad')} ${card.shortGuid}`;
   }
 
   readonly loading = signal(true);
@@ -269,6 +273,16 @@ export class ActivitiesComponent {
 
   /** Estados disponibles en el filtro. */
   readonly states = ANSWER_STATES;
+
+  /** Nombre del estado en el idioma de la interfaz. */
+  estadoLabel(state: { key: string; label: string }): string {
+    return traducir(`act.estado.${state.key}` as ClaveTexto) || state.label;
+  }
+
+  /** Qué significa el estado, en el idioma de la interfaz. */
+  estadoDesc(state: { key: string; description: string }): string {
+    return traducir(`act.estadoDesc.${state.key}` as ClaveTexto) || state.description;
+  }
   readonly draftFilter = DRAFT_FILTER;
 
   // ── Derivados ──────────────────────────────────────────────────────────────
@@ -340,14 +354,14 @@ export class ActivitiesComponent {
   /** Con qué nombre se identifica la actividad en la confirmación de borrado. */
   readonly removingLabel = computed(() => {
     const card = this.selected();
-    if (!card) return 'esta actividad';
-    return card.descriptors[0]?.val || card.answer.LocationName || 'esta actividad';
+    if (!card) return traducir('act.estaActividad');
+    return card.descriptors[0]?.val || card.answer.LocationName || traducir('act.estaActividad');
   });
 
   /** Aviso extra al borrar algo que ya está en Visitrack. */
   readonly removingDetail = computed(() =>
     this.selected()?.answer.IsUpload === '1'
-      ? 'Esta actividad ya subió a Visitrack: se marcará para eliminarse allí en la próxima sincronización.'
+      ? traducir('act.yaSubioDetalle')
       : '',
   );
 
@@ -378,8 +392,8 @@ export class ActivitiesComponent {
     const items: ActionItem[] = [
       {
         id: 'open',
-        label: 'Abrir',
-        hint: 'Continuar diligenciando',
+        label: traducir('act.accAbrir'),
+        hint: traducir('act.accAbrirHint'),
         icon: 'clipboard',
         tone: 'brand',
       },
@@ -389,12 +403,12 @@ export class ActivitiesComponent {
     if (String(survey.IsDownloadPDF) === '1') {
       items.push({
         id: 'pdf',
-        label: 'Descargar PDF',
-        hint: 'Abre el informe en otra pestaña',
+        label: traducir('act.accPdf'),
+        hint: traducir('act.accPdfHint'),
         icon: 'file',
         tone: 'neutral',
         disabledReason:
-          answer.IsUpload === '1' ? undefined : 'Disponible cuando la actividad haya subido',
+          answer.IsUpload === '1' ? undefined : traducir('act.disponibleAlSubir'),
       });
 
       /*
@@ -411,29 +425,29 @@ export class ActivitiesComponent {
        */
       items.push({
         id: 'share',
-        label: 'Enviar al chat',
-        hint: 'Compartirla en una sala',
+        label: traducir('act.accChat'),
+        hint: traducir('act.accChatHint'),
         icon: 'message-circle',
         tone: 'neutral',
         disabledReason:
-          answer.IsUpload === '1' ? undefined : 'Disponible cuando la actividad haya subido',
+          answer.IsUpload === '1' ? undefined : traducir('act.disponibleAlSubir'),
       });
     }
 
     items.push({
       id: 'reprocess',
-      label: 'Reprocesar archivos',
+      label: traducir('act.reprocesar'),
       hint:
-        files === 1 ? 'Vuelve a subir su archivo' : `Vuelve a subir sus ${files} archivos`,
+        files === 1 ? traducir('act.reprocesarUno') : traducir('act.reprocesarN', { n: files }),
       icon: 'cloud-upload',
       tone: 'warning',
-      disabledReason: files === 0 ? 'Esta actividad no tiene archivos' : undefined,
+      disabledReason: files === 0 ? traducir('act.sinArchivos') : undefined,
     });
 
     items.push({
       id: 'reassign',
-      label: 'Reasignar',
-      hint: 'Pasarla a otro usuario',
+      label: traducir('act.reasignar'),
+      hint: traducir('act.reasignarTip'),
       icon: 'send',
       tone: 'neutral',
       disabledReason: this.reassignBlocker(card),
@@ -441,16 +455,16 @@ export class ActivitiesComponent {
 
     items.push({
       id: 'copy',
-      label: 'Copiar identificador',
-      hint: 'Para rastrearla en Visitrack',
+      label: traducir('act.accCopiar'),
+      hint: traducir('act.accCopiarHint'),
       icon: 'copy',
       tone: 'neutral',
     });
 
     items.push({
       id: 'delete',
-      label: 'Eliminar',
-      hint: isDraft ? 'Descarta el borrador' : 'También la borra de Visitrack',
+      label: traducir('comun.eliminar'),
+      hint: isDraft ? traducir('act.accDescartaBorrador') : traducir('act.accBorraVisitrack'),
       icon: 'trash',
       tone: 'danger',
       // Borrar con archivos a medio subir deja huérfano lo que ya llegó al
@@ -460,8 +474,8 @@ export class ActivitiesComponent {
         ? String(answer.NoEliminar).trim()
         : !isDraft && blocking > 0
           ? blocking === 1
-            ? 'Hay 1 archivo sin terminar de subir'
-            : `Hay ${blocking} archivos sin terminar de subir`
+            ? traducir('act.unArchivoSinSubir')
+            : traducir('act.nArchivosSinSubir', { n: blocking })
           : undefined,
     });
 
@@ -481,7 +495,7 @@ export class ActivitiesComponent {
 
     return (
       [card.answer.LocationName, card.answer.AssetName].filter(Boolean).join(' · ') ||
-      'Actividad'
+      traducir('act.actividad')
     );
   });
 
@@ -497,18 +511,18 @@ export class ActivitiesComponent {
     this.reasignandoVarias.set(null);
 
     if (!eranVarias) {
-      this.toasts.success('Actividad reasignada', `Ahora es de ${r.person.name}.`);
+      this.toasts.success(traducir('act.reasignada'), traducir('act.ahoraEsDe', { nombre: r.person.name }));
     } else {
       const sinHacer = [...r.omitidas, ...r.fallidas];
       if (r.hechas) {
         this.toasts.success(
-          r.hechas === 1 ? '1 actividad reasignada' : `${r.hechas} actividades reasignadas`,
-          `Ahora son de ${r.person.name}.`,
+          r.hechas === 1 ? traducir('act.unaReasignada') : traducir('act.nReasignadas', { n: r.hechas }),
+          traducir('act.ahoraSonDe', { nombre: r.person.name }),
         );
       }
       if (sinHacer.length) {
         this.toasts.warning(
-          sinHacer.length === 1 ? '1 no se reasignó' : `${sinHacer.length} no se reasignaron`,
+          sinHacer.length === 1 ? traducir('act.unaNoReasignada') : traducir('act.nNoReasignadas', { n: sinHacer.length }),
           sinHacer.slice(0, 3).join(' · ') + (sinHacer.length > 3 ? ' …' : ''),
         );
       }
@@ -596,14 +610,14 @@ export class ActivitiesComponent {
   }
 
   private nombreDe(card: ActivityCard): string {
-    return card.answer.LocationName || card.descriptors[0]?.val || card.answer.Consecutive || 'Actividad';
+    return card.answer.LocationName || card.descriptors[0]?.val || card.answer.Consecutive || traducir('act.actividad');
   }
 
   async reprocesarVarias(): Promise<void> {
     const lote = this.marcadasCards();
     if (!lote.length || this.trabajando()) return;
 
-    this.trabajando.set('Marcando archivos…');
+    this.trabajando.set(traducir('act.marcandoArchivos'));
     let archivos = 0;
     try {
       for (const card of lote) archivos += await this.activities.reprocessBinaries(card.answer.GUID);
@@ -613,11 +627,11 @@ export class ActivitiesComponent {
 
     this.toasts.success(
       archivos === 0
-        ? 'Ninguna tenía archivos'
+        ? traducir('act.ningunaArchivos')
         : archivos === 1
-          ? 'Se marcó 1 archivo para volver a subirse'
-          : `Se marcaron ${archivos} archivos para volver a subirse`,
-      lote.length === 1 ? 'De 1 actividad.' : `De ${lote.length} actividades.`,
+          ? traducir('act.marcadoUno')
+          : traducir('act.marcadosN', { n: archivos }),
+      lote.length === 1 ? traducir('act.deUna') : traducir('act.deN', { n: lote.length }),
     );
     this.salirDeSeleccion();
   }
@@ -636,7 +650,7 @@ export class ActivitiesComponent {
     const lote = this.marcadasCards();
     if (!lote.length || this.trabajando()) return;
 
-    this.trabajando.set('Revisando…');
+    this.trabajando.set(traducir('act.revisando'));
     const aptas: ActivityCard[] = [];
     const omitidas: string[] = [];
     try {
@@ -647,7 +661,7 @@ export class ActivitiesComponent {
           continue;
         }
         if (card.answer.eraser !== 1 && (await this.activities.countBlockingBinaries(card.answer.GUID)) > 0) {
-          omitidas.push(`${this.nombreDe(card)}: tiene archivos sin terminar de subir`);
+          omitidas.push(`${this.nombreDe(card)}: ${traducir('act.tieneArchivosSinSubir')}`);
           continue;
         }
         aptas.push(card);
@@ -662,21 +676,21 @@ export class ActivitiesComponent {
   readonly borrandoVariasTitulo = computed(() => {
     const b = this.borrandoVarias();
     if (!b) return '';
-    if (!b.aptas.length) return 'Ninguna se puede eliminar';
-    return b.aptas.length === 1 ? '¿Eliminar 1 actividad?' : `¿Eliminar ${b.aptas.length} actividades?`;
+    if (!b.aptas.length) return traducir('act.ningunaEliminable');
+    return b.aptas.length === 1 ? traducir('act.eliminarUna') : traducir('act.eliminarN', { n: b.aptas.length });
   });
 
   readonly borrandoVariasMensaje = computed(() =>
     this.borrandoVarias()?.aptas.length
-      ? 'Se borrarán con los archivos que tengan asociados. Las que ya están en Visitrack también se borran allí. No se puede deshacer.'
-      : 'Ninguna de las seleccionadas cumple las condiciones para eliminarse.',
+      ? traducir('act.eliminarVariasMensaje')
+      : traducir('act.ningunaCumple'),
   );
 
   readonly borrandoVariasDetalle = computed(() => {
     const b = this.borrandoVarias();
     if (!b?.omitidas.length) return '';
     const cuantas =
-      b.omitidas.length === 1 ? 'Esta no se puede eliminar' : `Estas ${b.omitidas.length} no se pueden eliminar`;
+      b.omitidas.length === 1 ? traducir('act.estaNoEliminable') : traducir('act.estasNoEliminables', { n: b.omitidas.length });
     return `${cuantas}: ${b.omitidas.slice(0, 5).join(' · ')}${b.omitidas.length > 5 ? ' …' : ''}`;
   });
 
@@ -685,7 +699,7 @@ export class ActivitiesComponent {
     this.borrandoVarias.set(null);
     if (!b?.aptas.length) return;
 
-    this.trabajando.set(`Eliminando ${b.aptas.length}…`);
+    this.trabajando.set(traducir('act.eliminandoN', { n: b.aptas.length }));
     let hechas = 0;
     let enVisitrack = 0;
     const fallidas: string[] = [];
@@ -697,7 +711,7 @@ export class ActivitiesComponent {
           if (r === 'flagged') enVisitrack++;
         } catch (error) {
           console.error('[Activities] no se pudo eliminar', error);
-          fallidas.push(`${this.nombreDe(card)}: no se pudo`);
+          fallidas.push(`${this.nombreDe(card)}: ${traducir('act.noSePudo')}`);
         }
       }
     } finally {
@@ -706,14 +720,14 @@ export class ActivitiesComponent {
 
     if (hechas) {
       this.toasts.success(
-        hechas === 1 ? '1 actividad eliminada' : `${hechas} actividades eliminadas`,
-        enVisitrack ? 'Las que ya estaban en Visitrack se borran allí en la próxima sincronización.' : undefined,
+        hechas === 1 ? traducir('act.unaEliminada') : traducir('act.nEliminadas', { n: hechas }),
+        enVisitrack ? traducir('act.seBorranAlla') : undefined,
       );
     }
     const sinHacer = [...b.omitidas, ...fallidas];
     if (sinHacer.length) {
       this.toasts.warning(
-        sinHacer.length === 1 ? '1 no se eliminó' : `${sinHacer.length} no se eliminaron`,
+        sinHacer.length === 1 ? traducir('act.unaNoEliminada') : traducir('act.nNoEliminadas', { n: sinHacer.length }),
         sinHacer.slice(0, 3).join(' · ') + (sinHacer.length > 3 ? ' …' : ''),
       );
     }
@@ -725,9 +739,9 @@ export class ActivitiesComponent {
 
     // Reasignar transfiere la propiedad en el servidor. Si los cambios locales
     // no han llegado allí, se perderían al pasar a otra persona.
-    if (answer.eraser === 1) return 'Termínala y sincronízala antes';
-    if (answer.isSaved === ANSWER_STATE.WAITING_BINARIES) return 'Espera a que suban sus archivos';
-    if (answer.isSaved !== ANSWER_STATE.SYNCED) return 'Debe estar sincronizada';
+    if (answer.eraser === 1) return traducir('act.terminalaAntes');
+    if (answer.isSaved === ANSWER_STATE.WAITING_BINARIES) return traducir('act.esperaArchivos');
+    if (answer.isSaved !== ANSWER_STATE.SYNCED) return traducir('act.debeSincronizada');
 
     return undefined;
   }
@@ -785,7 +799,7 @@ export class ActivitiesComponent {
       this.all.set(answers.map((answer) => this.toCard(answer, statuses)));
     } catch (error) {
       console.error('[Activities] no se pudieron cargar las actividades', error);
-      this.feedback.set('No se pudieron cargar las actividades.');
+      this.feedback.set(traducir('act.errorCargar'));
     } finally {
       this.loading.set(false);
     }
@@ -876,9 +890,9 @@ export class ActivitiesComponent {
   async copyGuid(card: ActivityCard): Promise<void> {
     try {
       await navigator.clipboard.writeText(card.answer.GUID);
-      this.feedback.set('Identificador copiado al portapapeles.');
+      this.feedback.set(traducir('act.idCopiado'));
     } catch {
-      this.feedback.set('El navegador no permitió copiar. Selecciónalo a mano.');
+      this.feedback.set(traducir('act.noCopiar'));
     }
   }
 
@@ -974,10 +988,10 @@ export class ActivitiesComponent {
 
     this.feedback.set(
       count === 0
-        ? 'Esta actividad no tiene archivos.'
+        ? `${traducir('act.sinArchivos')}.`
         : count === 1
-          ? 'Se marcó 1 archivo para volver a subirse.'
-          : `Se marcaron ${count} archivos para volver a subirse.`,
+          ? `${traducir('act.marcadoUno')}.`
+          : `${traducir('act.marcadosN', { n: count })}.`,
     );
   }
 
@@ -1013,7 +1027,7 @@ export class ActivitiesComponent {
       await this.goToNextStep(answer);
     } catch (error) {
       console.error('[Activities] no se pudo crear la actividad', error);
-      this.feedback.set('No se pudo crear la actividad.');
+      this.feedback.set(traducir('act.errorCrear'));
     } finally {
       this.creating.set(false);
     }
@@ -1024,7 +1038,7 @@ export class ActivitiesComponent {
     // Bloqueada por el flujo: se ve, con su leyenda, pero no se entra.
     const leyenda = String(card.answer.NoEntrar ?? '').trim();
     if (leyenda) {
-      this.toasts.show({ title: 'Esta actividad está bloqueada', detail: leyenda, tone: 'warning' });
+      this.toasts.show({ title: traducir('act.bloqueada'), detail: leyenda, tone: 'warning' });
       return;
     }
 
@@ -1071,12 +1085,12 @@ export class ActivitiesComponent {
       const result = await this.activities.remove(card.answer);
       this.feedback.set(
         result === 'flagged'
-          ? 'La actividad ya estaba en Visitrack: se marcó para eliminarse en la próxima sincronización.'
-          : 'Actividad eliminada.',
+          ? traducir('act.yaEstabaMarcada')
+          : traducir('act.eliminada'),
       );
     } catch (error) {
       console.error('[Activities] no se pudo eliminar', error);
-      this.feedback.set('No se pudo eliminar la actividad.');
+      this.feedback.set(traducir('act.errorEliminar'));
     }
   }
 
@@ -1108,7 +1122,7 @@ export class ActivitiesComponent {
     // Sin conexión no hay nada que comprobar, y decirlo evita que el botón
     // parezca averiado: el resto de la aplicación sí funciona sin red.
     if (this.connectivity.isOffline()) {
-      this.feedback.set('Sin conexión: no se puede comprobar con el servidor todavía.');
+      this.feedback.set(traducir('act.sinConexionComprobar'));
       return;
     }
 
@@ -1123,24 +1137,24 @@ export class ActivitiesComponent {
       if (summary.confirmedFiles > 0) {
         partes.push(
           summary.confirmedFiles === 1
-            ? '1 archivo confirmado'
-            : `${summary.confirmedFiles} archivos confirmados`,
+            ? traducir('act.unArchivoConfirmado')
+            : traducir('act.nArchivosConfirmados', { n: summary.confirmedFiles }),
         );
       }
 
       if (summary.sentActivities > 0) {
         partes.push(
           summary.sentActivities === 1
-            ? '1 actividad enviada'
-            : `${summary.sentActivities} actividades enviadas`,
+            ? traducir('act.unaEnviada')
+            : traducir('act.nEnviadas', { n: summary.sentActivities }),
         );
       }
 
       if (removed > 0) {
         partes.push(
           removed === 1
-            ? '1 borrador caducado eliminado'
-            : `${removed} borradores caducados eliminados`,
+            ? traducir('act.unBorradorCaducado')
+            : traducir('act.nBorradoresCaducados', { n: removed }),
         );
       }
 
@@ -1150,13 +1164,13 @@ export class ActivitiesComponent {
         // Que no haya cambiado nada es un resultado, no un fallo: los archivos
         // grandes tardan en confirmarse. Decirlo evita volver a pulsar en bucle.
         this.feedback.set(
-          'El servidor todavía no confirma los archivos. Vuelve a comprobar en un momento.',
+          traducir('act.servidorNoConfirma'),
         );
       } else {
-        this.feedback.set(summary.message || 'Todo está al día.');
+        this.feedback.set(summary.message || traducir('act.todoAlDia'));
       }
     } catch {
-      this.feedback.set('No se pudo comprobar con el servidor. Inténtalo de nuevo.');
+      this.feedback.set(traducir('act.errorComprobar'));
     } finally {
       this.checking.set(false);
       this.activities.notifyChanged();

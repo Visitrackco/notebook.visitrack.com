@@ -1,6 +1,7 @@
 import { Component, ElementRef, effect, input, output, viewChild } from '@angular/core';
 
 import { IconComponent } from '../../../shared/components/icon/icon.component';
+import { TPipe } from '../../../core/i18n/t.pipe';
 
 /** Identificador de cada acción. Lo consume quien abre el panel. */
 export type ActivityAction =
@@ -46,7 +47,7 @@ export interface ActionItem {
 @Component({
   selector: 'vt-activity-actions',
   standalone: true,
-  imports: [IconComponent],
+  imports: [IconComponent, TPipe],
   templateUrl: './activity-actions.component.html',
   styleUrl: './activity-actions.component.scss',
 })

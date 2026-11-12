@@ -16,6 +16,8 @@ import { PermissionsService } from '../../core/services/permissions.service';
 import { DraftPolicyService } from '../../core/services/draft-policy.service';
 import { esModoPublico } from '../../core/config/modo-publico';
 import { normalizar } from '../../shared/utils/resaltado';
+import { traducir } from '../../core/i18n/idioma.service';
+import { TPipe } from '../../core/i18n/t.pipe';
 import { EntityPickerComponent, PickerItem } from './entity-picker/entity-picker.component';
 
 /** Cuántos activos se traen por página. */
@@ -37,7 +39,7 @@ const SEARCH_DELAY_MS = 300;
 @Component({
   selector: 'vt-asset-picker',
   standalone: true,
-  imports: [EntityPickerComponent],
+  imports: [EntityPickerComponent, TPipe],
   template: `
     <vt-entity-picker
       icon="box"
@@ -52,7 +54,7 @@ const SEARCH_DELAY_MS = 300;
       [emptyMessage]="emptyMessage()"
       (search)="onSearch($event)"
       (loadMore)="loadMore()"
-      [createLabel]="canCreate() ? 'Nuevo activo' : ''"
+      [createLabel]="canCreate() ? ('act.nuevoActivo' | t) : ''"
       [createBlocked]="permissions.entitiesReason()"
       (choose)="choose($event)"
       (create)="createNew()"
@@ -91,23 +93,23 @@ export class AssetPickerComponent {
 
   private searchTimer?: ReturnType<typeof setTimeout>;
 
-  readonly title = computed(() => this.typeName() || 'Activos');
+  readonly title = computed(() => this.typeName() || traducir('act.activos'));
 
   readonly subtitle = computed(() => {
     const answer = this.answer();
     // La ubicación va en el subtítulo a propósito: es el contexto que explica
     // por qué la lista es esta y no otra.
-    if (answer?.LocationName) return `En ${answer.LocationName}`;
+    if (answer?.LocationName) return traducir('act.enLugar', { lugar: answer.LocationName });
 
     const survey = this.survey();
-    return survey ? `Elige el activo para «${survey.Title}»` : '';
+    return survey ? traducir('act.eligeActivoPara', { form: survey.Title }) : '';
   });
 
   readonly emptyMessage = computed(() => {
     const answer = this.answer();
     return answer?.LocationName
-      ? `No hay activos de este tipo registrados en ${answer.LocationName}.`
-      : 'No hay activos de este tipo en este equipo. Sincroniza tus datos e inténtalo de nuevo.';
+      ? traducir('act.sinActivosEn', { lugar: answer.LocationName })
+      : traducir('act.sinActivos');
   });
 
   readonly items = computed<PickerItem[]>(() => {
@@ -396,7 +398,7 @@ export class AssetPickerComponent {
 
     return {
       id: asset.GUID,
-      name: asset.Name || 'Sin nombre',
+      name: asset.Name || traducir('act.sinNombre'),
       hint,
       descriptors: this.descriptorsOf(asset),
     };

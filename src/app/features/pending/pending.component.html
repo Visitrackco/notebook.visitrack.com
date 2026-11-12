@@ -1,14 +1,14 @@
 <div class="pend">
   <header class="pend__head">
     <div class="pend__title">
-      <h1>Pendientes por subir</h1>
-      <p>Actividades guardadas en este dispositivo que todavía no llegaron a Visitrack.</p>
+      <h1>{{ 'pend.titulo' | t }}</h1>
+      <p>{{ 'pend.subtitulo' | t }}</p>
     </div>
 
     <div class="pend__actions">
       <button type="button" class="pend__btn" [disabled]="running()" (click)="reload()">
         <vt-icon name="refresh" [size]="17" />
-        Actualizar
+        {{ 'pend.actualizar' | t }}
       </button>
 
       <button
@@ -18,7 +18,7 @@
         (click)="runNow()"
       >
         <vt-icon name="send" [size]="17" />
-        {{ running() ? 'Subiendo…' : 'Subir ahora' }}
+        {{ (running() ? 'pend.subiendo' : 'pend.subirAhora') | t }}
       </button>
     </div>
   </header>
@@ -27,14 +27,14 @@
        usuario crea que nada avanza si no pulsa el botón. -->
   <p class="pend__auto">
     <vt-icon name="clipboard" [size]="15" />
-    La aplicación revisa esta cola cada minuto mientras la pestaña esté abierta.
+    {{ 'pend.auto' | t }}
     {{ lastRunLabel() }}
   </p>
 
   @if (!connectivity.isOnline()) {
     <p class="pend__offline">
       <vt-icon name="connection-off" [size]="16" />
-      Sin conexión. Nada se pierde: todo está guardado aquí y saldrá cuando vuelva la red.
+      {{ 'pend.offline' | t }}
     </p>
   }
 
@@ -43,12 +43,12 @@
   }
 
   @if (loading()) {
-    <p class="pend__muted">Revisando la cola…</p>
+    <p class="pend__muted">{{ 'pend.revisandoCola' | t }}</p>
   } @else if (pending().length === 0) {
     <div class="pend__empty">
       <span class="pend__empty-icon"><vt-icon name="check" [size]="30" /></span>
-      <strong>Todo está enviado</strong>
-      <small>No queda ninguna actividad por subir a Visitrack.</small>
+      <strong>{{ 'pend.todoEnviado' | t }}</strong>
+      <small>{{ 'pend.todoEnviadoHint' | t }}</small>
     </div>
   } @else {
     <!-- ── Necesitan una decisión ────────────────────────────────────────── -->
@@ -56,13 +56,12 @@
       <section class="pend__group">
         <h2 class="pend__group-title">
           <span class="pend__dot pend__dot--blocked" aria-hidden="true"></span>
-          Necesitan corrección
+          {{ 'pend.necesitanCorreccion' | t }}
           <span class="pend__count">{{ blocked().length }}</span>
         </h2>
 
         <p class="pend__note pend__note--blocked">
-          Estas actividades no se envían solas: sus datos no cuadran entre sí y hace falta que
-          alguien elija. Ábrelas para resolverlo.
+          {{ 'pend.correccionNota' | t }}
         </p>
 
         <ul class="pend__list">
@@ -87,7 +86,7 @@
 
               <button type="button" class="act__send" (click)="open(entry)">
                 <vt-icon name="chevron" [size]="16" />
-                Abrir y corregir
+                {{ 'pend.abrirCorregir' | t }}
               </button>
             </li>
           }
@@ -100,7 +99,7 @@
       <section class="pend__group">
         <h2 class="pend__group-title">
           <span class="pend__dot pend__dot--ready" aria-hidden="true"></span>
-          Listas para enviarse
+          {{ 'pend.listas' | t }}
           <span class="pend__count">{{ ready().length }}</span>
         </h2>
 
@@ -116,7 +115,7 @@
                     <span>{{ when(entry.answer) }}</span>
                   }
                   @if (entry.totalFiles > 0) {
-                    <span>{{ entry.totalFiles }} archivo(s)</span>
+                    <span>{{ 'pend.nArchivos' | t: { n: entry.totalFiles } }}</span>
                   }
                   @if (entry.answer.LocationName) {
                     <span>{{ entry.answer.LocationName }}</span>
@@ -131,7 +130,7 @@
                 (click)="retry(entry)"
               >
                 <vt-icon name="send" [size]="16" />
-                {{ retrying() === entry.answer.GUID ? 'Enviando…' : 'Enviar' }}
+                {{ (retrying() === entry.answer.GUID ? 'pend.enviando' : 'pend.enviar') | t }}
               </button>
             </li>
           }
@@ -144,16 +143,14 @@
       <section class="pend__group">
         <h2 class="pend__group-title">
           <span class="pend__dot pend__dot--waiting" aria-hidden="true"></span>
-          Esperando archivos
+          {{ 'act.estado.waiting' | t }}
           <span class="pend__count">{{ waiting().length }}</span>
         </h2>
 
         <!-- Esta es la explicación que faltaba: por qué una actividad guardada
              puede quedarse quieta sin que nadie haya hecho nada mal. -->
         <p class="pend__note">
-          Una actividad no se envía hasta que sus fotografías y grabaciones estén publicadas en el
-          servidor de archivos. El servidor las procesa por lotes, así que puede tardar unos
-          minutos.
+          {{ 'pend.esperandoNota' | t }}
         </p>
 
         <ul class="pend__list">
@@ -167,7 +164,7 @@
                   @if (when(entry.answer)) {
                     <span>{{ when(entry.answer) }}</span>
                   }
-                  <span>{{ entry.blockingFiles }} de {{ entry.totalFiles }} sin publicar</span>
+                  <span>{{ 'pend.sinPublicar' | t: { n: entry.blockingFiles, total: entry.totalFiles } }}</span>
                   @if (entry.answer.Msg) {
                     <span class="act__msg">{{ entry.answer.Msg }}</span>
                   }
@@ -181,7 +178,7 @@
                 (click)="retry(entry)"
               >
                 <vt-icon name="refresh" [size]="16" />
-                {{ retrying() === entry.answer.GUID ? 'Revisando…' : 'Reintentar' }}
+                {{ (retrying() === entry.answer.GUID ? 'act.revisando' : 'comun.reintentar') | t }}
               </button>
             </li>
           }

@@ -36,6 +36,9 @@ import { MasterDetailStackService } from './form/master-detail-row/master-detail
 import { StatusBarComponent } from './form/status-bar/status-bar.component';
 import { CorreosDelFlujoComponent } from '../../shared/components/correos-del-flujo/correos-del-flujo.component';
 import { ZonaHorariaService } from '../../core/services/zona-horaria.service';
+import { traducir } from '../../core/i18n/idioma.service';
+import { TPipe } from '../../core/i18n/t.pipe';
+import type { ClaveTexto } from '../../core/i18n/textos';
 
 /**
  * Una actividad abierta.
@@ -60,6 +63,7 @@ import { ZonaHorariaService } from '../../core/services/zona-horaria.service';
   selector: 'vt-activity-detail',
   standalone: true,
   imports: [
+    TPipe,
     ConfirmDialogComponent,
     CorreosDelFlujoComponent,
     FormRunnerComponent,
@@ -183,6 +187,16 @@ export class ActivityDetailComponent {
     return seedPalette(survey?.GUID || survey?.SurveyID || 'vt').from;
   });
 
+  /** Nombre del estado en el idioma de la interfaz. */
+  estadoLabel(state: AnswerStateInfo): string {
+    return traducir(`act.estado.${state.key}` as ClaveTexto);
+  }
+
+  /** Qué significa el estado, en el idioma de la interfaz. */
+  estadoDesc(state: AnswerStateInfo): string {
+    return traducir(`act.estadoDesc.${state.key}` as ClaveTexto);
+  }
+
   readonly state = computed<AnswerStateInfo | null>(() => {
     const answer = this.answer();
     return answer ? describeAnswer(answer) : null;
@@ -252,11 +266,11 @@ export class ActivityDetailComponent {
   readonly autosaveLabel = computed(() => {
     switch (this.autosave.state()) {
       case 'saving':
-        return 'Guardando…';
+        return traducir('act.guardando');
       case 'error':
-        return 'No se pudo guardar';
+        return traducir('act.noSePudoGuardar');
       default:
-        return this.hasPendingChanges() ? 'Cambios pendientes' : 'Todo guardado';
+        return this.hasPendingChanges() ? traducir('act.cambiosPendientes') : traducir('act.todoGuardado');
     }
   });
 
@@ -445,7 +459,7 @@ export class ActivityDetailComponent {
       }
     } catch (error) {
       console.error('[ActivityDetail] no se pudo cargar la actividad', error);
-      this.feedback.set('No se pudo cargar la actividad.');
+      this.feedback.set(traducir('act.errorCargarUna'));
     } finally {
       this.loading.set(false);
     }
@@ -745,9 +759,9 @@ export class ActivityDetailComponent {
 
     try {
       await navigator.clipboard.writeText(guid);
-      this.feedback.set('Identificador copiado al portapapeles.');
+      this.feedback.set(traducir('act.idCopiado'));
     } catch {
-      this.feedback.set('El navegador no permitió copiar. Selecciónalo a mano.');
+      this.feedback.set(traducir('act.noCopiar'));
     }
   }
 

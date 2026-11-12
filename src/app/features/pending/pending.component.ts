@@ -8,7 +8,8 @@ import { NotifyService } from '../../core/services/notify.service';
 import { DataRevisionService } from '../../core/sync/data-revision.service';
 import { PendingActivity, PendingUploadService } from '../../core/sync/pending-upload.service';
 import { IconComponent } from '../../shared/components/icon/icon.component';
-import { localeActual } from '../../core/i18n/idioma.service';
+import { localeActual, traducir } from '../../core/i18n/idioma.service';
+import { TPipe } from '../../core/i18n/t.pipe';
 
 /**
  * Lo que falta por llegar a Visitrack.
@@ -27,7 +28,7 @@ import { localeActual } from '../../core/i18n/idioma.service';
 @Component({
   selector: 'vt-pending',
   standalone: true,
-  imports: [IconComponent],
+  imports: [IconComponent, TPipe],
   templateUrl: './pending.component.html',
   styleUrl: './pending.component.scss',
 })
@@ -78,12 +79,14 @@ export class PendingComponent {
 
   readonly lastRunLabel = computed(() => {
     const date = this.uploads.lastRun();
-    if (!date) return 'Todavía no se ha ejecutado en esta sesión.';
+    if (!date) return traducir('pend.noEjecutado');
 
-    return `Última revisión: ${date.toLocaleTimeString(localeActual(), {
-      hour: '2-digit',
-      minute: '2-digit',
-    })}`;
+    return traducir('pend.ultimaRevision', {
+      hora: date.toLocaleTimeString(localeActual(), {
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+    });
   });
 
   constructor() {
@@ -159,7 +162,7 @@ export class PendingComponent {
    * actividad concreta traiga los descriptivos mal formados.
    */
   title(answer: SurveyAnswer): string {
-    if (!answer.Titles?.trim()) return 'Actividad sin descriptivos';
+    if (!answer.Titles?.trim()) return traducir('pend.sinDescriptivos');
 
     try {
       const parsed = JSON.parse(answer.Titles);
@@ -167,9 +170,9 @@ export class PendingComponent {
         ? parsed.map((item) => String(item?.val ?? '')).filter(Boolean)
         : [];
 
-      return values.length > 0 ? values.slice(0, 3).join(' · ') : 'Actividad sin descriptivos';
+      return values.length > 0 ? values.slice(0, 3).join(' · ') : traducir('pend.sinDescriptivos');
     } catch {
-      return 'Actividad sin descriptivos';
+      return traducir('pend.sinDescriptivos');
     }
   }
 
@@ -183,13 +186,13 @@ export class PendingComponent {
 
     if (entry.blockingFiles === 0) {
       return this.connectivity.isOnline()
-        ? 'Lista para enviarse. Saldrá en la próxima revisión.'
-        : 'Lista para enviarse en cuanto vuelva la conexión.';
+        ? traducir('pend.listaProxima')
+        : traducir('pend.listaConexion');
     }
 
     return entry.blockingFiles === 1
-      ? 'Falta 1 archivo por publicarse en el servidor.'
-      : `Faltan ${entry.blockingFiles} archivos por publicarse en el servidor.`;
+      ? traducir('pend.faltaUno')
+      : traducir('pend.faltanN', { n: entry.blockingFiles });
   }
 
   /** Cuándo se guardó. */

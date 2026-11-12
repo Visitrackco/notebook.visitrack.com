@@ -16,7 +16,8 @@ import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/c
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { ToTopComponent } from '../../shared/components/to-top/to-top.component';
 import { CorreosDelFlujoComponent } from '../../shared/components/correos-del-flujo/correos-del-flujo.component';
-import { localeActual } from '../../core/i18n/idioma.service';
+import { localeActual, traducir } from '../../core/i18n/idioma.service';
+import { TPipe } from '../../core/i18n/t.pipe';
 
 /** Un archivo de la actividad, listo para pintar. */
 interface FieldFile {
@@ -81,6 +82,7 @@ const BINARY_TYPES = new Set(['picture', 'signature', 'audio', 'video', 'file'])
   selector: 'vt-activity-view',
   standalone: true,
   imports: [
+    TPipe,
     ConfirmDialogComponent,
     CorreosDelFlujoComponent,
     FieldHostComponent,
@@ -134,7 +136,7 @@ export class ActivityViewComponent {
 
   /** Páginas visibles, ya sin las ocultas. */
   readonly pageLabels = computed(() =>
-    (this.engine()?.pages ?? []).map((page, index) => page.lab || `Página ${index + 1}`),
+    (this.engine()?.pages ?? []).map((page, index) => page.lab || traducir('hist.paginaN', { n: index + 1 })),
   );
 
   /** Página que se está mirando. La lleva el propio motor. */
@@ -181,7 +183,7 @@ export class ActivityViewComponent {
     return grouped;
   });
 
-  readonly title = computed(() => this.activity()?.SurveyName || 'Actividad');
+  readonly title = computed(() => this.activity()?.SurveyName || traducir('act.actividad'));
 
   readonly subtitle = computed(() => {
     const activity = this.activity();
@@ -215,7 +217,7 @@ export class ActivityViewComponent {
     this.loading.set(false);
 
     if (!reply.ok || !reply.activity) {
-      this.error.set(reply.error ?? 'No se pudo abrir la actividad.');
+      this.error.set(reply.error ?? traducir('hist.errorAbrir'));
       return;
     }
 
@@ -298,7 +300,7 @@ export class ActivityViewComponent {
     this.downloading.set(false);
 
     if (!result.ok) {
-      this.toast.error('No se pudo descargar', result.message);
+      this.toast.error(traducir('hist.errorDescargar'), result.message);
       return;
     }
 
@@ -306,7 +308,7 @@ export class ActivityViewComponent {
 
     // Con sonido: la descarga trae archivos y puede tardar, y el usuario suele
     // haber apartado la vista para cuando termina.
-    void this.notify.success('Actividad descargada', result.message);
+    void this.notify.success(traducir('hist.descargada'), result.message);
   }
 
   /** Saca al computador los archivos de esta actividad, ya descargados. */
@@ -321,7 +323,7 @@ export class ActivityViewComponent {
 
     if (files.length === 0) {
       this.exporting.set(false);
-      this.toast.info('Sin archivos', 'Descarga primero la actividad para tener sus archivos aquí.');
+      this.toast.info(traducir('hist.sinArchivos'), traducir('hist.sinArchivosHint'));
       return;
     }
 
@@ -332,8 +334,8 @@ export class ActivityViewComponent {
     this.exporting.set(false);
 
     if (result.message) {
-      if (result.ok) void this.notify.success('Archivos exportados', result.message);
-      else this.toast.error('No se pudo exportar', result.message);
+      if (result.ok) void this.notify.success(traducir('hist.exportados'), result.message);
+      else this.toast.error(traducir('hist.errorExportar'), result.message);
     }
   }
 

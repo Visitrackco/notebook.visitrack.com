@@ -20,7 +20,8 @@ import {
 import { AuthService } from '../../core/services/auth.service';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { ToTopComponent } from '../../shared/components/to-top/to-top.component';
-import { localeActual } from '../../core/i18n/idioma.service';
+import { localeActual, traducir } from '../../core/i18n/idioma.service';
+import { TPipe } from '../../core/i18n/t.pipe';
 
 /** Cuánto abarca el filtro de fechas por omisión. */
 const DEFAULT_MONTHS = 12;
@@ -70,7 +71,7 @@ interface Target {
 @Component({
   selector: 'vt-activity-history',
   standalone: true,
-  imports: [FormsModule, IconComponent, RouterLink, ToTopComponent],
+  imports: [FormsModule, IconComponent, RouterLink, ToTopComponent, TPipe],
   templateUrl: './activity-history.component.html',
   styleUrl: './activity-history.component.scss',
 })
@@ -179,13 +180,13 @@ export class ActivityHistoryComponent {
   readonly counter = computed(() => {
     const total = this.total();
 
-    if (total === 0) return 'Sin actividades en el rango';
+    if (total === 0) return traducir('hist.sinEnRango');
 
     const size = this.result()?.size ?? 0;
     const first = (this.page() - 1) * size + 1;
     const last = Math.min(first + this.items().length - 1, total);
 
-    return `${first}–${last} de ${total}`;
+    return traducir('hist.rango', { desde: first, hasta: last, total });
   });
 
   constructor() {
@@ -504,7 +505,7 @@ export class ActivityHistoryComponent {
     this.loading.set(false);
 
     if (!reply.ok) {
-      this.error.set(reply.error ?? 'No se pudo consultar.');
+      this.error.set(reply.error ?? traducir('hist.errorConsultar'));
       this.result.set(null);
       this.loadedKey = '';
       return;
@@ -530,7 +531,7 @@ export class ActivityHistoryComponent {
   dateOf(item: HistoryItem): string {
     const raw = item[this.dateField()] ?? item.CreatedOn;
 
-    if (!raw) return 'Sin fecha';
+    if (!raw) return traducir('hist.sinFecha');
 
     const date = new Date(raw);
 
@@ -609,5 +610,5 @@ function nombreDelTipo(
     if (tipo?.Name) return tipo.Name;
   }
 
-  return 'Sin tipo';
+  return traducir('hist.sinTipo');
 }

@@ -12,8 +12,8 @@
         type="button"
         class="acts__back"
         routerLink="/formularios"
-        matTooltip="Volver a formularios"
-        aria-label="Volver a formularios"
+        [matTooltip]="'act.volverFormularios' | t"
+        [attr.aria-label]="'act.volverFormularios' | t"
       >
         <vt-icon name="chevron" [size]="20" />
       </button>
@@ -24,26 +24,26 @@
         <h1>{{ form.Title }}</h1>
         <p>
           @if (loading()) {
-            Cargando actividades…
+            {{ 'act.cargando' | t }}
           } @else {
-            {{ total() }} {{ total() === 1 ? 'actividad' : 'actividades' }}
+            {{ (total() === 1 ? 'act.nActividad' : 'act.nActividades') | t: { n: total() } }}
             @if (isFiltered()) {
-              · {{ visible() }} tras el filtro
+              · {{ 'act.trasFiltro' | t: { n: visible() } }}
             }
             @if (requirements(); as req) {
               @if (req.requiresLocation && req.requiresAsset) {
-                · requiere ubicación y activo
+                · {{ 'act.requiereUbicacionActivo' | t }}
               } @else if (req.requiresLocation) {
-                · requiere ubicación
+                · {{ 'act.requiereUbicacion' | t }}
               } @else if (req.requiresAsset) {
-                · requiere activo
+                · {{ 'act.requiereActivo' | t }}
               }
             }
             <!-- Cuándo cambió el formato, en la zona de quien mira: arriba,
                  para saber qué versión se tiene sin abrir la información. -->
             @if (formularioActualizado(); as cuando) {
-              <span class="acts__updated" matTooltip="Última actualización del formulario">
-                · <vt-icon name="refresh" [size]="12" /> Actualizado {{ cuando }}
+              <span class="acts__updated" [matTooltip]="'act.ultimaActForm' | t">
+                · <vt-icon name="refresh" [size]="12" /> {{ 'act.actualizado' | t: { cuando: cuando } }}
               </span>
             }
           }
@@ -60,14 +60,14 @@
           (click)="alternarSeleccion()"
         >
           <vt-icon [name]="seleccionando() ? 'close' : 'check'" [size]="16" />
-          <span>{{ seleccionando() ? 'Cancelar' : 'Seleccionar' }}</span>
+          <span>{{ (seleccionando() ? 'comun.cancelar' : 'act.seleccionar') | t }}</span>
         </button>
         <button
           mat-icon-button
           type="button"
           (click)="refresh()"
-          matTooltip="Refrescar y limpiar borradores caducados"
-          aria-label="Refrescar"
+          [matTooltip]="'act.refrescarTip' | t"
+          [attr.aria-label]="'act.refrescar' | t"
         >
           <vt-icon name="refresh" [size]="20" />
         </button>
@@ -76,8 +76,8 @@
           type="button"
           [class.acts__on]="showInfo()"
           (click)="toggleInfo()"
-          matTooltip="Información y regla de borrado"
-          aria-label="Información del formulario"
+          [matTooltip]="'act.infoTip' | t"
+          [attr.aria-label]="'act.infoForm' | t"
         >
           <vt-icon name="info" [size]="20" />
         </button>
@@ -86,8 +86,8 @@
           type="button"
           [class.acts__on]="showFilters() || stateFilter() !== null"
           (click)="toggleFilters()"
-          matTooltip="Filtrar y ordenar"
-          aria-label="Filtrar y ordenar"
+          [matTooltip]="'act.filtrarOrdenar' | t"
+          [attr.aria-label]="'act.filtrarOrdenar' | t"
         >
           <vt-icon name="database" [size]="19" />
           @if (stateFilter() !== null) {
@@ -101,45 +101,45 @@
     @if (showInfo()) {
       <section class="acts__info">
         <header>
-          <h2>Información del formulario</h2>
-          <button mat-icon-button type="button" (click)="toggleInfo()" aria-label="Cerrar">
+          <h2>{{ 'act.infoForm' | t }}</h2>
+          <button mat-icon-button type="button" (click)="toggleInfo()" [attr.aria-label]="'comun.cerrar' | t">
             <vt-icon name="close" [size]="18" />
           </button>
         </header>
 
         <dl class="acts__info-grid">
           <div>
-            <dt>Identificador</dt>
+            <dt>{{ 'act.identificador' | t }}</dt>
             <dd class="vt-figure">{{ form.SurveyID }}</dd>
           </div>
           @if (formularioActualizado(); as cuando) {
             <div>
-              <dt>Última actualización</dt>
+              <dt>{{ 'act.ultimaAct' | t }}</dt>
               <dd>{{ cuando }}</dd>
             </div>
           }
           <div>
-            <dt>Regla de borrado</dt>
+            <dt>{{ 'act.reglaBorrado' | t }}</dt>
             <dd>
               @if (deleteRule().enabled) {
                 <span class="vt-figure">{{ deleteRule().value }}</span> {{ deleteRule().unit }}
               } @else {
-                Sin borrado automático
+                {{ 'act.sinBorradoAuto' | t }}
               }
             </dd>
           </div>
           @if (requirements(); as req) {
             <div>
-              <dt>Requiere</dt>
+              <dt>{{ 'act.requiere' | t }}</dt>
               <dd>
                 @if (req.requiresLocation && req.requiresAsset) {
-                  Ubicación y activo
+                  {{ 'act.ubicacionYActivo' | t }}
                 } @else if (req.requiresLocation) {
-                  Ubicación
+                  {{ 'act.ubicacion' | t }}
                 } @else if (req.requiresAsset) {
-                  Activo
+                  {{ 'act.activo' | t }}
                 } @else {
-                  Nada previo
+                  {{ 'act.nadaPrevio' | t }}
                 }
               </dd>
             </div>
@@ -148,7 +148,7 @@
 
         <p class="acts__info-note">{{ deleteRule().summary }}</p>
 
-        <h3>Qué significa cada estado</h3>
+        <h3>{{ 'act.queSignifica' | t }}</h3>
         <ul class="acts__legend">
           @for (state of states; track state.key) {
             <li [class]="'acts__legend-item acts__legend-item--' + state.tone">
@@ -156,8 +156,8 @@
                 <vt-icon [name]="state.icon" [size]="15" />
               </span>
               <div>
-                <strong>{{ state.label }}</strong>
-                <span>{{ state.description }}</span>
+                <strong>{{ estadoLabel(state) }}</strong>
+                <span>{{ estadoDesc(state) }}</span>
               </div>
             </li>
           }
@@ -173,15 +173,13 @@
         </span>
         <div>
           <strong>
-            {{ waitingCount() }}
-            {{ waitingCount() === 1 ? 'actividad espera' : 'actividades esperan' }}
-            que sus archivos lleguen al servidor
+            {{ (waitingCount() === 1 ? 'act.esperaUna' : 'act.esperanVarias') | t: { n: waitingCount() } }}
           </strong>
-          <span>Se enviarán solas en cuanto estén confirmados. No hay que hacer nada.</span>
+          <span>{{ 'act.esperaHint' | t }}</span>
         </div>
         <button mat-stroked-button type="button" (click)="refresh()" [disabled]="checking()">
           <vt-icon name="refresh" [size]="16" />
-          {{ checking() ? 'Comprobando…' : 'Comprobar' }}
+          {{ (checking() ? 'act.comprobando' : 'act.comprobar') | t }}
         </button>
       </aside>
     }
@@ -200,13 +198,13 @@
       </span>
       <input
         type="search"
-        placeholder="Buscar por descriptivo, ubicación, activo o consecutivo…"
-        aria-label="Buscar actividad"
+        [placeholder]="'act.buscarPlaceholder' | t"
+        [attr.aria-label]="'act.buscarActividad' | t"
         [value]="search()"
         (input)="onSearch($event)"
       />
       @if (search()) {
-        <button mat-icon-button type="button" (click)="clearSearch()" aria-label="Limpiar búsqueda">
+        <button mat-icon-button type="button" (click)="clearSearch()" [attr.aria-label]="'act.limpiarBusqueda' | t">
           <vt-icon name="close" [size]="16" />
         </button>
       }
@@ -219,35 +217,35 @@
              escucha el cambio. Enlazar `[selected]` y `(click)` a la vez haría
              que el chip y el signal se alternaran por separado. -->
         <div class="acts__filter-group">
-          <span class="acts__filter-label">Estado</span>
+          <span class="acts__filter-label">{{ 'act.estado' | t }}</span>
           <mat-chip-listbox
-            aria-label="Filtrar por estado"
+            [attr.aria-label]="'act.filtrarEstado' | t"
             hideSingleSelectionIndicator
             [value]="stateFilter()"
             (change)="onStateChange($event)"
           >
-            <mat-chip-option [value]="null">Todos</mat-chip-option>
-            <mat-chip-option [value]="draftFilter">Borrador</mat-chip-option>
-            <mat-chip-option [value]="0">Sin guardar</mat-chip-option>
-            <mat-chip-option [value]="1">Pendiente</mat-chip-option>
-            <mat-chip-option [value]="2">Sincronizada</mat-chip-option>
-            <mat-chip-option [value]="3">Esperando archivos</mat-chip-option>
+            <mat-chip-option [value]="null">{{ 'act.todos' | t }}</mat-chip-option>
+            <mat-chip-option [value]="draftFilter">{{ 'act.estado.draft' | t }}</mat-chip-option>
+            <mat-chip-option [value]="0">{{ 'act.estado.unsaved' | t }}</mat-chip-option>
+            <mat-chip-option [value]="1">{{ 'act.estado.pending' | t }}</mat-chip-option>
+            <mat-chip-option [value]="2">{{ 'act.estado.synced' | t }}</mat-chip-option>
+            <mat-chip-option [value]="3">{{ 'act.estado.waiting' | t }}</mat-chip-option>
           </mat-chip-listbox>
         </div>
 
         <!-- Botones y no chips: volver a pulsar el activo invierte la
              dirección, y un listbox de selección única no sabe expresar eso. -->
         <div class="acts__filter-group">
-          <span class="acts__filter-label">Ordenar por</span>
+          <span class="acts__filter-label">{{ 'act.ordenarPor' | t }}</span>
           <div class="acts__sort">
             <button
               mat-stroked-button
               type="button"
               [class.acts__sort--on]="sortField() === 'UpdatedOn'"
               (click)="setSort('UpdatedOn')"
-              matTooltip="Pulsa de nuevo para invertir el orden"
+              [matTooltip]="'act.invertirOrden' | t"
             >
-              Modificación
+              {{ 'act.modificacion' | t }}
               @if (sortField() === 'UpdatedOn') {
                 <span class="acts__arrow">{{ sortDescending() ? '↓' : '↑' }}</span>
               }
@@ -257,9 +255,9 @@
               type="button"
               [class.acts__sort--on]="sortField() === 'CreatedOn'"
               (click)="setSort('CreatedOn')"
-              matTooltip="Pulsa de nuevo para invertir el orden"
+              [matTooltip]="'act.invertirOrden' | t"
             >
-              Creación
+              {{ 'act.creacion' | t }}
               @if (sortField() === 'CreatedOn') {
                 <span class="acts__arrow">{{ sortDescending() ? '↓' : '↑' }}</span>
               }
@@ -269,9 +267,9 @@
               type="button"
               [class.acts__sort--on]="sortField() === 'DueDate'"
               (click)="setSort('DueDate')"
-              matTooltip="Fecha y hora de la consigna. Pulsa de nuevo para invertir el orden"
+              [matTooltip]="'act.programadaTip' | t"
             >
-              Programada
+              {{ 'act.programada' | t }}
               @if (sortField() === 'DueDate') {
                 <span class="acts__arrow">{{ sortDescending() ? '↓' : '↑' }}</span>
               }
@@ -280,7 +278,7 @@
         </div>
 
         @if (isFiltered()) {
-          <button mat-button type="button" (click)="clearFilters()">Limpiar filtros</button>
+          <button mat-button type="button" (click)="clearFilters()">{{ 'act.limpiarFiltros' | t }}</button>
         }
       </section>
     }
@@ -299,13 +297,13 @@
         </span>
 
         @if (isFiltered()) {
-          <h2>Ninguna actividad coincide</h2>
-          <p>Prueba con otro término o quita los filtros para ver todas.</p>
-          <button mat-stroked-button type="button" (click)="clearFilters()">Ver todas</button>
+          <h2>{{ 'act.ningunaCoincide' | t }}</h2>
+          <p>{{ 'act.ningunaCoincideHint' | t }}</p>
+          <button mat-stroked-button type="button" (click)="clearFilters()">{{ 'act.verTodas' | t }}</button>
         } @else {
-          <h2>Todavía no hay actividades</h2>
+          <h2>{{ 'act.todaviaNo' | t }}</h2>
           @if (puedeCrear()) {
-            <p>Crea la primera para empezar a diligenciar este formulario.</p>
+            <p>{{ 'act.creaPrimera' | t }}</p>
             <button
               mat-flat-button
               type="button"
@@ -314,14 +312,13 @@
               [disabled]="creating()"
             >
               <vt-icon name="clipboard" [size]="17" />
-              Nueva actividad
+              {{ 'act.nueva' | t }}
             </button>
           } @else {
             <!-- Sin el botón hay que decir por qué: si no, parece que falta un
                  permiso o que la pantalla está a medias. -->
             <p>
-              Este formulario <strong>solo recibe consignas</strong>: las
-              actividades llegan despachadas, no se crean desde aquí.
+              {{ 'act.soloConsignas1' | t }} <strong>{{ 'act.soloConsignas2' | t }}</strong>{{ 'act.soloConsignas3' | t }}
             </p>
           }
         }
@@ -353,7 +350,7 @@
               <!-- La bolita lleva el estado: es lo primero que se busca al
                    repasar la lista, y un disco de color se localiza de un
                    vistazo sin leer nada. -->
-              <span class="acts__bubble" [matTooltip]="card.state.description">
+              <span class="acts__bubble" [matTooltip]="estadoDesc(card.state)">
                 <vt-icon [name]="card.state.icon" [size]="20" />
                 @if (card.dispatchColor) {
                   <!-- Punto con el color del estado de despacho que configuró
@@ -370,7 +367,7 @@
                     } @else if (card.descriptors.length > 0) {
                       {{ card.descriptors[0].val }}
                     } @else {
-                      Actividad sin datos
+                      {{ 'act.sinDatos' | t }}
                     }
                   </span>
 
@@ -382,7 +379,7 @@
                        primero que se ve, y la leyenda que configuró quien
                        escribió la regla va abajo. -->
                   @if (card.answer.NoEntrar) {
-                    <span class="acts__lock" matTooltip="No se puede volver a abrir">
+                    <span class="acts__lock" [matTooltip]="'act.noReabrir' | t">
                       <vt-icon name="lock" [size]="14" />
                     </span>
                   }
@@ -398,7 +395,7 @@
                 }
 
                 <span class="acts__tags">
-                  <span class="acts__state">{{ card.state.label }}</span>
+                  <span class="acts__state">{{ estadoLabel(card.state) }}</span>
 
                   <!-- Cuánto le queda en el equipo. Solo sale cuando el
                        formulario tiene regla de borrado y la actividad ya está
@@ -408,9 +405,9 @@
                        minutos, que es lo que decide si da tiempo a terminarlo
                        ahora o hay que guardarlo ya. -->
                   @if (card.borrador) {
-                    <span class="acts__borrador" matTooltip="Se descarta sola si no se guarda. Lo diligenciado se pierde.">
+                    <span class="acts__borrador" [matTooltip]="'act.borradorTip' | t">
                       <vt-icon name="alert" [size]="13" />
-                      se borra en {{ card.borrador }}
+                      {{ 'act.seBorraEn' | t: { t: card.borrador } }}
                     </span>
                   }
 
@@ -433,7 +430,7 @@
                   }
 
                   @if (card.retires) {
-                    <span class="acts__retires" matTooltip="Sigue en Visitrack: solo se libera el espacio de este equipo">
+                    <span class="acts__retires" [matTooltip]="'act.retiraTip' | t">
                       <vt-icon name="trash" [size]="13" />
                       {{ card.retires }}
                     </span>
@@ -465,7 +462,7 @@
                     }
                   </span>
                 } @else {
-                  <span class="acts__blank">Sin datos diligenciados todavía</span>
+                  <span class="acts__blank">{{ 'act.sinDiligenciar' | t }}</span>
                 }
 
                 @if (card.answer.NoEntrar) {
@@ -483,11 +480,11 @@
                 }
 
                 <span class="acts__foot">
-                  <span class="acts__foot-item" matTooltip="Fecha de creación">
+                  <span class="acts__foot-item" [matTooltip]="'act.fechaCreacion' | t">
                     <vt-icon name="clipboard" [size]="12" />
                     {{ card.created }}
                   </span>
-                  <span class="acts__foot-item" matTooltip="Última modificación">
+                  <span class="acts__foot-item" [matTooltip]="'act.ultimaModificacion' | t">
                     <vt-icon name="refresh" [size]="12" />
                     {{ card.updated }}
                   </span>
@@ -502,8 +499,8 @@
                 type="button"
                 class="acts__more"
                 (click)="openActions(card)"
-                matTooltip="Opciones"
-                aria-label="Opciones de la actividad"
+                [matTooltip]="'act.opciones' | t"
+                [attr.aria-label]="'act.opcionesActividad' | t"
               >
                 <vt-icon name="menu" [size]="18" />
               </button>
@@ -519,10 +516,10 @@
     <!-- Barra de la selección: abajo y fija, donde va el pulgar. Sustituye al
          botón de nueva actividad mientras se selecciona. -->
     @if (seleccionando()) {
-      <div class="acts__lote" role="toolbar" aria-label="Acciones sobre las seleccionadas">
+      <div class="acts__lote" role="toolbar" [attr.aria-label]="'act.accionesSeleccionadas' | t">
         <div class="acts__lote-info">
           <strong class="vt-figure">{{ marcadasCards().length }}</strong>
-          {{ marcadasCards().length === 1 ? 'seleccionada' : 'seleccionadas' }}
+          {{ (marcadasCards().length === 1 ? 'act.seleccionada' : 'act.seleccionadas') | t }}
           @if (trabajando()) {
             <span class="acts__lote-trabajando">· {{ trabajando() }}</span>
           }
@@ -530,27 +527,27 @@
 
         <div class="acts__lote-botones">
           <button type="button" class="acts__lote-btn" (click)="marcarTodas()" [disabled]="!!trabajando()">
-            Todas
+            {{ 'act.todas' | t }}
           </button>
           <button
             type="button"
             class="acts__lote-btn"
             (click)="reprocesarVarias()"
             [disabled]="!marcadasCards().length || !!trabajando()"
-            matTooltip="Vuelve a subir sus archivos"
+            [matTooltip]="'act.reprocesarTip' | t"
           >
             <vt-icon name="cloud-upload" [size]="16" />
-            <span>Reprocesar archivos</span>
+            <span>{{ 'act.reprocesar' | t }}</span>
           </button>
           <button
             type="button"
             class="acts__lote-btn"
             (click)="reasignarVarias()"
             [disabled]="!marcadasCards().length || !!trabajando()"
-            matTooltip="Pasarlas a otro usuario"
+            [matTooltip]="'act.reasignarVariasTip' | t"
           >
             <vt-icon name="send" [size]="16" />
-            <span>Reasignar</span>
+            <span>{{ 'act.reasignar' | t }}</span>
           </button>
           <button
             type="button"
@@ -559,14 +556,14 @@
             [disabled]="!marcadasCards().length || !!trabajando()"
           >
             <vt-icon name="trash" [size]="16" />
-            <span>Eliminar</span>
+            <span>{{ 'comun.eliminar' | t }}</span>
           </button>
           <button
             type="button"
             class="acts__lote-cerrar"
             (click)="salirDeSeleccion()"
             [disabled]="!!trabajando()"
-            aria-label="Dejar de seleccionar"
+            [attr.aria-label]="'act.dejarSeleccionar' | t"
           >
             <vt-icon name="close" [size]="18" />
           </button>
@@ -579,7 +576,7 @@
       <span class="acts__fab-icon">
         <vt-icon name="clipboard" [size]="19" />
       </span>
-      <span class="acts__fab-label">{{ creating() ? 'Creando…' : 'Nueva actividad' }}</span>
+      <span class="acts__fab-label">{{ (creating() ? 'act.creando' : 'act.nueva') | t }}</span>
     </button>
     }
 
@@ -587,11 +584,11 @@
       [open]="removing()"
       tone="danger"
       icon="trash"
-      [title]="'¿Eliminar ' + removingLabel() + '?'"
-      message="Se borrará esta actividad y los archivos que tenga asociados. No se puede deshacer."
+      [title]="'act.eliminarPregunta' | t: { que: removingLabel() }"
+      [message]="'act.eliminarMensaje' | t"
       [detail]="removingDetail()"
-      confirmLabel="Eliminar"
-      cancelLabel="Conservar"
+      [confirmLabel]="'comun.eliminar' | t"
+      [cancelLabel]="'act.conservar' | t"
       (confirm)="remove()"
       (cancel)="removing.set(false)"
     />
@@ -603,8 +600,8 @@
       [title]="borrandoVariasTitulo()"
       [message]="borrandoVariasMensaje()"
       [detail]="borrandoVariasDetalle()"
-      [confirmLabel]="borrandoVarias()?.aptas?.length ? 'Eliminar' : 'Entendido'"
-      cancelLabel="Conservar"
+      [confirmLabel]="(borrandoVarias()?.aptas?.length ? 'comun.eliminar' : 'act.entendido') | t"
+      [cancelLabel]="'act.conservar' | t"
       (confirm)="eliminarVarias()"
       (cancel)="borrandoVarias.set(null)"
     />
@@ -612,8 +609,8 @@
     @if (selected(); as chosen) {
       <vt-activity-actions
         [open]="actionsOpen()"
-        [title]="chosen.descriptors[0]?.val || chosen.answer.LocationName || 'Actividad'"
-        [subtitle]="chosen.state.label + ' · ' + chosen.updated"
+        [title]="chosen.descriptors[0]?.val || chosen.answer.LocationName || ('act.actividad' | t)"
+        [subtitle]="estadoLabel(chosen.state) + ' · ' + chosen.updated"
         [actions]="actions()"
         (choose)="onAction($event)"
         (close)="closeActions()"
@@ -625,9 +622,9 @@
     <span class="acts__empty-icon">
       <vt-icon name="alert" [size]="28" />
     </span>
-    <h2>Formulario no encontrado</h2>
-    <p>No está en este equipo. Sincroniza tus datos y vuelve a intentarlo.</p>
-    <a mat-flat-button class="acts__cta" routerLink="/formularios">Volver a formularios</a>
+    <h2>{{ 'act.formNoEncontrado' | t }}</h2>
+    <p>{{ 'act.formNoEncontradoHint' | t }}</p>
+    <a mat-flat-button class="acts__cta" routerLink="/formularios">{{ 'act.volverFormularios' | t }}</a>
   </div>
 }
 

@@ -14,7 +14,8 @@ import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/c
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { ToTopComponent } from '../../shared/components/to-top/to-top.component';
 import { Descriptor, parseAnswerTitles } from '../../shared/utils/descriptors';
-import { localeActual } from '../../core/i18n/idioma.service';
+import { localeActual, traducir } from '../../core/i18n/idioma.service';
+import { TPipe } from '../../core/i18n/t.pipe';
 
 /** Un borrador, listo para pintar. */
 interface DraftCard {
@@ -56,7 +57,7 @@ interface DraftCard {
 @Component({
   selector: 'vt-drafts',
   standalone: true,
-  imports: [ConfirmDialogComponent, IconComponent, RouterLink, ToTopComponent],
+  imports: [ConfirmDialogComponent, IconComponent, RouterLink, ToTopComponent, TPipe],
   templateUrl: './drafts.component.html',
   styleUrl: './drafts.component.scss',
 })
@@ -84,7 +85,7 @@ export class DraftsComponent {
 
   readonly counter = computed(() => {
     const total = this.drafts().length;
-    return `${total} ${total === 1 ? 'borrador' : 'borradores'}`;
+    return total === 1 ? traducir('borr.unBorrador') : traducir('borr.nBorradores', { n: total });
   });
 
   constructor() {
@@ -139,7 +140,7 @@ export class DraftsComponent {
     return {
       guid: draft.GUID,
       surveyId: draft.SurveyID,
-      surveyTitle: survey?.Title || titles[0]?.val || 'Formulario',
+      surveyTitle: survey?.Title || titles[0]?.val || traducir('borr.formulario'),
       place: [draft.LocationName, draft.AssetName].filter(Boolean).join(' · '),
       descriptors: titles.slice(1),
 
@@ -147,7 +148,7 @@ export class DraftsComponent {
       createdLabel: absolute(draft.CreatedOn ?? ''),
 
       expires,
-      expiresLabel: expires ? relative(expires) : 'sin fecha de caducidad',
+      expiresLabel: expires ? relative(expires) : traducir('borr.sinCaducidad'),
       urgent: remaining <= 2 * 60 * 60 * 1000,
     };
   }
@@ -171,7 +172,7 @@ export class DraftsComponent {
     await this.policy.discard(card.guid);
     this.revisions.touchActivities();
 
-    this.toasts.info('Borrador eliminado', card.surveyTitle);
+    this.toasts.info(traducir('borr.eliminado'), card.surveyTitle);
   }
 
   /** Limpia ahora lo que ya caducó, sin esperar a la revisión periódica. */
@@ -179,7 +180,7 @@ export class DraftsComponent {
     const removed = await this.maintenance.run();
 
     if (removed === 0) {
-      this.toasts.info('No había borradores caducados', 'Todo lo que ves sigue dentro de plazo.');
+      this.toasts.info(traducir('borr.noHabiaCaducados'), traducir('borr.dentroPlazo'));
     }
   }
 }
@@ -188,14 +189,14 @@ export class DraftsComponent {
 function relative(date: Date): string {
   const minutes = Math.round((date.getTime() - Date.now()) / 60000);
 
-  if (minutes <= 0) return 'ya caducó';
-  if (minutes < 60) return `en ${minutes} ${minutes === 1 ? 'minuto' : 'minutos'}`;
+  if (minutes <= 0) return traducir('borr.yaCaduco');
+  if (minutes < 60) return traducir(minutes === 1 ? 'borr.enMinuto' : 'borr.enMinutos', { n: minutes });
 
   const hours = Math.round(minutes / 60);
-  if (hours < 24) return `en ${hours} ${hours === 1 ? 'hora' : 'horas'}`;
+  if (hours < 24) return traducir(hours === 1 ? 'borr.enHora' : 'borr.enHoras', { n: hours });
 
   const days = Math.round(hours / 24);
-  return `en ${days} ${days === 1 ? 'día' : 'días'}`;
+  return traducir(days === 1 ? 'borr.enDia' : 'borr.enDias', { n: days });
 }
 
 /** Fecha y hora de creación, para saber de cuándo viene. */

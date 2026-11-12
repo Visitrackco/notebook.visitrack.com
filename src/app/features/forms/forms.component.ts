@@ -1,3 +1,4 @@
+import { TPipe } from '../../core/i18n/t.pipe';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 
@@ -45,7 +46,7 @@ type SortMode = 'title' | 'activity';
 @Component({
   selector: 'vt-forms',
   standalone: true,
-  imports: [IconComponent, RouterLink],
+  imports: [IconComponent, RouterLink, TPipe],
   templateUrl: './forms.component.html',
   styleUrl: './forms.component.scss',
 })

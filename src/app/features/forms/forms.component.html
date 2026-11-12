@@ -1,15 +1,15 @@
 <div class="forms">
   <header class="forms__header">
     <div>
-      <h1>Formularios</h1>
+      <h1>{{ 'forms.titulo' | t }}</h1>
       <p>
         @if (loading()) {
-          Cargando…
+          {{ 'comun.cargando' | t }}
         } @else if (total() === 0) {
-          Todavía no tienes formularios en este equipo
+          {{ 'forms.sinFormsEquipo' | t }}
         } @else {
-          {{ total() }} {{ total() === 1 ? 'formulario' : 'formularios' }} ·
-          {{ totalActivities() }} {{ totalActivities() === 1 ? 'actividad' : 'actividades' }}
+          {{ (total() === 1 ? 'forms.nFormulario' : 'forms.nFormularios') | t: { n: total() } }} ·
+          {{ (totalActivities() === 1 ? 'act.nActividad' : 'act.nActividades') | t: { n: totalActivities() } }}
         }
       </p>
     </div>
@@ -26,26 +26,26 @@
       </span>
       <input
         type="search"
-        placeholder="Buscar formulario…"
-        aria-label="Buscar formulario"
+        [placeholder]="'forms.buscarPlaceholder' | t"
+        [attr.aria-label]="'forms.buscar' | t"
         [value]="search()"
         (input)="onSearch($event)"
       />
       @if (search()) {
-        <button type="button" class="forms__search-clear" (click)="clearSearch()" aria-label="Limpiar búsqueda">
+        <button type="button" class="forms__search-clear" (click)="clearSearch()" [attr.aria-label]="'act.limpiarBusqueda' | t">
           <vt-icon name="close" [size]="16" />
         </button>
       }
     </div>
 
-    <div class="forms__sort" role="group" aria-label="Ordenar por">
+    <div class="forms__sort" role="group" [attr.aria-label]="'act.ordenarPor' | t">
       <button
         type="button"
         [class.forms__sort-btn--active]="sortMode() === 'title'"
         class="forms__sort-btn"
         (click)="setSort('title')"
       >
-        Nombre
+        {{ 'forms.nombre' | t }}
       </button>
       <button
         type="button"
@@ -53,7 +53,7 @@
         class="forms__sort-btn"
         (click)="setSort('activity')"
       >
-        Actividad
+        {{ 'forms.actividad' | t }}
       </button>
     </div>
   </div>
@@ -72,20 +72,19 @@
       </span>
 
       @if (search()) {
-        <h2>Sin resultados para «{{ search() }}»</h2>
-        <p>Revisa la palabra o borra el filtro para ver todos tus formularios.</p>
+        <h2>{{ 'act.sinResultadosPara' | t: { q: search() } }}</h2>
+        <p>{{ 'forms.sinResultadosHint' | t }}</p>
         <button type="button" class="vt-btn vt-btn-ghost" (click)="clearSearch()">
-          Ver todos
+          {{ 'forms.verTodos' | t }}
         </button>
       } @else {
-        <h2>Aún no hay formularios</h2>
+        <h2>{{ 'forms.aunNo' | t }}</h2>
         <p>
-          Los formularios se descargan desde Visitrack. Ve a Sincronización y trae tus datos para
-          empezar.
+          {{ 'forms.aunNoHint' | t }}
         </p>
         <a class="vt-btn vt-btn-primary" routerLink="/sincronizacion">
           <vt-icon name="refresh" [size]="17" />
-          Ir a Sincronización
+          {{ 'forms.irSync' | t }}
         </a>
       }
     </div>
@@ -115,7 +114,7 @@
             @if (card.count > 0) {
               <span class="forms__count">
                 <span class="vt-figure">{{ card.count }}</span>
-                <small>{{ card.count === 1 ? 'actividad' : 'actividades' }}</small>
+                <small>{{ (card.count === 1 ? 'forms.actividadMin' : 'forms.actividadesMin') | t }}</small>
               </span>
             }
           </header>
@@ -128,9 +127,9 @@
             <!-- Cuándo cambió el formato por última vez, en la hora de quien
                  mira: así se sabe si se tiene la última versión sin preguntar. -->
             @if (cuandoSeActualizo(card.survey); as actualizado) {
-              <p class="forms__actualizado" [title]="'Última actualización del formato'">
+              <p class="forms__actualizado" [title]="'forms.ultimaActFormato' | t">
                 <vt-icon name="refresh" [size]="12" />
-                Actualizado {{ actualizado }}
+                {{ 'act.actualizado' | t: { cuando: actualizado } }}
               </p>
             }
           </div>
@@ -139,20 +138,20 @@
             @if (card.waiting > 0) {
               <span class="forms__tag forms__tag--waiting">
                 <vt-icon name="image" [size]="13" />
-                {{ card.waiting }} esperando archivos
+                {{ 'forms.esperandoArchivos' | t: { n: card.waiting } }}
               </span>
             } @else if (card.survey.hasAsset === 1) {
               <span class="forms__tag">
                 <vt-icon name="box" [size]="13" />
-                Con activo
+                {{ 'forms.conActivo' | t }}
               </span>
             }
             @if (card.count === 0) {
-              <span class="forms__tag forms__tag--muted">Sin actividades</span>
+              <span class="forms__tag forms__tag--muted">{{ 'forms.sinActividades' | t }}</span>
             }
 
             <span class="forms__open">
-              Abrir
+              {{ 'act.accAbrir' | t }}
               <vt-icon name="chevron" [size]="15" />
             </span>
           </footer>

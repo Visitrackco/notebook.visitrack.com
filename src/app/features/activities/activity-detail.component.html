@@ -28,8 +28,8 @@
           type="button"
           class="detail__back"
           (click)="leave()"
-          matTooltip="Volver a las actividades"
-          aria-label="Volver a las actividades"
+          [matTooltip]="'act.volverActividades' | t"
+          [attr.aria-label]="'act.volverActividades' | t"
         >
           <vt-icon name="chevron" [size]="20" />
         </button>
@@ -43,14 +43,14 @@
           } @else if (act.LocationName) {
             {{ act.LocationName }}
           } @else {
-            Actividad nueva
+            {{ 'act.actividadNueva' | t }}
           }
           <!-- Cuándo cambió el formato, en la zona de quien mira: arriba,
                para saber qué versión se está llenando sin ir a buscarlo. -->
           @if (formularioActualizado(); as cuando) {
-            <span class="detail__updated" [matTooltip]="'Última actualización del formulario'">
+            <span class="detail__updated" [matTooltip]="'act.ultimaActForm' | t">
               <vt-icon name="refresh" [size]="11" />
-              Actualizado {{ cuando }}
+              {{ 'act.actualizado' | t: { cuando: cuando } }}
             </span>
           }
         </p>
@@ -69,9 +69,9 @@
           class="detail__context-toggle"
           [class.detail__context-toggle--open]="contextoAbierto()"
           (click)="toggleContexto()"
-          [matTooltip]="contextoAbierto() ? 'Ocultar dónde y sobre qué' : 'Ver dónde y sobre qué'"
+          [matTooltip]="(contextoAbierto() ? 'act.ocultarContexto' : 'act.verContexto') | t"
           [attr.aria-expanded]="contextoAbierto()"
-          aria-label="Ubicación y activo"
+          [attr.aria-label]="'act.ubicacionYActivo' | t"
         >
           <vt-icon name="map-pin" [size]="16" />
           <vt-icon name="chevron" [size]="14" class="detail__context-caret" />
@@ -97,10 +97,10 @@
         @if (state(); as info) {
           <span
             [class]="'detail__state detail__state--' + info.tone"
-            [matTooltip]="info.description"
+            [matTooltip]="estadoDesc(info)"
           >
             <vt-icon [name]="info.icon" [size]="13" />
-            <span>{{ info.label }}</span>
+            <span>{{ estadoLabel(info) }}</span>
           </span>
         }
       </div>
@@ -129,7 +129,7 @@
             </span>
 
             <div class="detail__entity-text">
-              <small>Ubicación</small>
+              <small>{{ 'act.ubicacion' | t }}</small>
               <strong>{{ loc.Name }}</strong>
 
               <!-- La dirección o la etiqueta: es lo que confirma que la sede es
@@ -148,7 +148,7 @@
             </span>
 
             <div class="detail__entity-text">
-              <small>Activo</small>
+              <small>{{ 'act.activo' | t }}</small>
               <strong>{{ ast.Name }}</strong>
 
               @if (assetDetail(ast); as detail) {
@@ -174,19 +174,19 @@
           <span class="detail__blocked-icon"><vt-icon name="alert" [size]="28" /></span>
 
           <div class="detail__blocked-text">
-            <strong>Falta elegir el activo de esta ubicación</strong>
+            <strong>{{ 'act.faltaActivo' | t }}</strong>
             <p>{{ problem.message }}</p>
           </div>
 
           <div class="detail__blocked-actions">
             <button type="button" class="vt-btn vt-btn--primary" (click)="changeAsset()">
               <vt-icon name="box" [size]="17" />
-              Elegir activo
+              {{ 'act.elegirActivo' | t }}
             </button>
 
             <button type="button" class="vt-btn" (click)="changeLocation()">
               <vt-icon name="map-pin" [size]="17" />
-              Cambiar ubicación
+              {{ 'act.cambiarUbicacion' | t }}
             </button>
           </div>
         </div>
@@ -217,7 +217,7 @@
           <vt-icon name="clipboard" [size]="16" />
         </span>
         <span class="detail__fact-text">
-          <small>Creada</small>
+          <small>{{ 'act.creada' | t }}</small>
           <strong>{{ formatDate(act.CreatedOn) }}</strong>
         </span>
       </div>
@@ -227,7 +227,7 @@
           <vt-icon name="refresh" [size]="16" />
         </span>
         <span class="detail__fact-text">
-          <small>Modificada</small>
+          <small>{{ 'act.modificada' | t }}</small>
           <strong>{{ formatDate(act.UpdatedOn) }}</strong>
         </span>
       </div>
@@ -238,7 +238,7 @@
             <vt-icon name="refresh" [size]="16" />
           </span>
           <span class="detail__fact-text">
-            <small>Formulario actualizado</small>
+            <small>{{ 'act.formActualizado' | t }}</small>
             <strong>{{ cuando }}</strong>
           </span>
         </div>
@@ -250,7 +250,7 @@
             <vt-icon name="check" [size]="16" />
           </span>
           <span class="detail__fact-text">
-            <small>Consecutivo</small>
+            <small>{{ 'act.consecutivo' | t }}</small>
             <strong class="vt-figure">#{{ act.Consecutive }}</strong>
           </span>
         </div>
@@ -262,13 +262,13 @@
         type="button"
         class="detail__fact detail__fact--copy"
         (click)="copyGuid()"
-        title="Copiar el identificador completo"
+        [title]="'act.copiarIdCompleto' | t"
       >
         <span class="detail__fact-icon">
           <vt-icon name="copy" [size]="16" />
         </span>
         <span class="detail__fact-text">
-          <small>Identificador</small>
+          <small>{{ 'act.identificador' | t }}</small>
           <strong class="detail__guid">{{ shortGuid() }}</strong>
         </span>
 
@@ -279,8 +279,8 @@
     @if (expiresAt(); as expiry) {
       <p class="detail__expiry">
         <vt-icon name="alert" [size]="15" />
-        Como borrador, se eliminará sola dentro de <strong>{{ draftLeft() }}</strong>
-        —el {{ formatDate(expiry) }}— si no se guarda.
+        {{ 'act.borradorExpira1' | t }} <strong>{{ draftLeft() }}</strong>
+        {{ 'act.borradorExpira2' | t: { fecha: formatDate(expiry) } }}
       </p>
     } @else if (deleteRule().enabled) {
       <p class="detail__rule">
@@ -293,7 +293,7 @@
          lo condicionan. Aquí solo queda descartar, que no depende de ellas. -->
     @if (isDiscardable()) {
       <footer class="detail__actions">
-        <button mat-button type="button" (click)="askDiscard()" [disabled]="!!noEliminar()" [matTooltip]="noEliminar()">Descartar actividad</button>
+        <button mat-button type="button" (click)="askDiscard()" [disabled]="!!noEliminar()" [matTooltip]="noEliminar()">{{ 'act.descartarActividad' | t }}</button>
       </footer>
     }
   </div>
@@ -304,11 +304,11 @@
     [open]="dialog() === 'exit'"
     tone="warning"
     icon="alert"
-    title="Esta actividad no se ha guardado"
-    message="Tienes desactivado el modo borrador, así que al salir se descartará todo lo diligenciado."
-    detail="Puedes cambiarlo en Mi perfil → Preferencias → Guardar borradores."
-    confirmLabel="Salir y descartar"
-    cancelLabel="Seguir aquí"
+    [title]="'act.noGuardadaTitulo' | t"
+    [message]="'act.noGuardadaMensaje' | t"
+    [detail]="'act.noGuardadaDetalle' | t"
+    [confirmLabel]="'act.salirDescartar' | t"
+    [cancelLabel]="'act.seguirAqui' | t"
     (confirm)="confirmExit()"
     (cancel)="closeDialog()"
   />
@@ -317,10 +317,10 @@
     [open]="dialog() === 'discard'"
     tone="danger"
     icon="trash"
-    title="¿Descartar esta actividad?"
-    message="Se borrará lo diligenciado hasta ahora. No se puede deshacer."
-    confirmLabel="Descartar"
-    cancelLabel="Conservar"
+    [title]="'act.descartarPregunta' | t"
+    [message]="'act.descartarMensaje' | t"
+    [confirmLabel]="'act.descartar' | t"
+    [cancelLabel]="'act.conservar' | t"
     (confirm)="confirmDiscard()"
     (cancel)="closeDialog()"
   />
@@ -329,10 +329,10 @@
     <span class="detail__missing-icon">
       <vt-icon name="alert" [size]="26" />
     </span>
-    <h2>Actividad no encontrada</h2>
-    <p>Puede que se haya eliminado o que su borrador ya haya caducado.</p>
+    <h2>{{ 'act.noEncontrada' | t }}</h2>
+    <p>{{ 'act.noEncontradaHint' | t }}</p>
     <a mat-flat-button class="detail__cta" [routerLink]="['/formularios', surveyId()]">
-      Volver a las actividades
+      {{ 'act.volverActividades' | t }}
     </a>
   </div>
 }

@@ -5,8 +5,8 @@
       type="button"
       class="picker__back"
       (click)="back.emit()"
-      matTooltip="Volver"
-      aria-label="Volver"
+      [matTooltip]="'comun.volver' | t"
+      [attr.aria-label]="'comun.volver' | t"
     >
       <vt-icon name="chevron" [size]="20" />
     </button>
@@ -25,9 +25,9 @@
     <!-- Cuántas hay, como una pastilla alineada con el título: antes era una
          cifra suelta a la derecha que no cuadraba con nada. -->
     @if (totalCount() > 0) {
-      <span class="picker__count" [attr.aria-label]="totalCount() + ' opciones'">
+      <span class="picker__count" [attr.aria-label]="totalCount() + ' ' + ('act.opcionesMin' | t)">
         <span class="vt-figure">{{ totalCount() }}</span>
-        <small>{{ totalCount() === 1 ? 'opción' : 'opciones' }}</small>
+        <small>{{ (totalCount() === 1 ? 'act.opcionMin' : 'act.opcionesMin') | t }}</small>
       </span>
     }
 
@@ -47,15 +47,15 @@
     </span>
     <input
       type="search"
-      placeholder="Buscar por nombre o por cualquier descriptivo…"
-      aria-label="Buscar"
+      [placeholder]="'act.pickerBuscar' | t"
+      [attr.aria-label]="'comun.buscar' | t"
       [value]="searchTerm()"
       (input)="onSearch($event)"
     />
     @if (searching()) {
-      <span class="picker__spinner" aria-label="Buscando"></span>
+      <span class="picker__spinner" [attr.aria-label]="'act.buscando' | t"></span>
     } @else if (searchTerm()) {
-      <button mat-icon-button type="button" (click)="clearSearch()" aria-label="Limpiar búsqueda">
+      <button mat-icon-button type="button" (click)="clearSearch()" [attr.aria-label]="'act.limpiarBusqueda' | t">
         <vt-icon name="close" [size]="16" />
       </button>
     }
@@ -65,7 +65,7 @@
        evita que alguien concluya que le faltan datos por no haber paginado. -->
   @if (searchTerm() && !searching()) {
     <p class="picker__hint">
-      {{ items().length }} de {{ totalCount() }} coinciden con «{{ searchTerm() }}»
+      {{ 'act.pickerCoinciden' | t: { n: items().length, total: totalCount(), q: searchTerm() } }}
     </p>
   }
 
@@ -81,11 +81,11 @@
         <vt-icon [name]="icon()" [size]="26" />
       </span>
       @if (searchTerm()) {
-        <h2>Sin resultados para «{{ searchTerm() }}»</h2>
-        <p>Se buscó en el nombre y en todos los descriptivos. Prueba con otra palabra.</p>
-        <button mat-stroked-button type="button" (click)="clearSearch()">Ver todas</button>
+        <h2>{{ 'act.sinResultadosPara' | t: { q: searchTerm() } }}</h2>
+        <p>{{ 'act.pickerSinResultadosHint' | t }}</p>
+        <button mat-stroked-button type="button" (click)="clearSearch()">{{ 'act.verTodas' | t }}</button>
       } @else {
-        <h2>Nada para elegir</h2>
+        <h2>{{ 'act.nadaElegir' | t }}</h2>
         <p>{{ emptyMessage() }}</p>
       }
     </div>
@@ -123,9 +123,9 @@
 
     @if (hasMore()) {
       <button mat-stroked-button type="button" class="picker__more" (click)="loadMore.emit()">
-        Cargar más
+        {{ 'act.cargarMas' | t }}
         <span class="picker__more-count">
-          {{ items().length }} de {{ totalCount() }}
+          {{ 'act.nDeTotal' | t: { n: items().length, total: totalCount() } }}
         </span>
       </button>
     }

@@ -17,6 +17,8 @@ import { PermissionsService } from '../../core/services/permissions.service';
 import { DraftPolicyService } from '../../core/services/draft-policy.service';
 import { esModoPublico } from '../../core/config/modo-publico';
 import { normalizar } from '../../shared/utils/resaltado';
+import { traducir } from '../../core/i18n/idioma.service';
+import { TPipe } from '../../core/i18n/t.pipe';
 import { EntityPickerComponent, PickerItem } from './entity-picker/entity-picker.component';
 
 /** Cuántas ubicaciones se traen por página. */
@@ -39,7 +41,7 @@ const SEARCH_DELAY_MS = 300;
 @Component({
   selector: 'vt-location-picker',
   standalone: true,
-  imports: [EntityPickerComponent],
+  imports: [EntityPickerComponent, TPipe],
   template: `
     <vt-entity-picker
       icon="map-pin"
@@ -51,10 +53,10 @@ const SEARCH_DELAY_MS = 300;
       [hasMore]="hasMore()"
       [searchTerm]="search()"
       [totalCount]="total()"
-      emptyMessage="Este tipo de ubicación no tiene registros en este equipo. Sincroniza tus datos e inténtalo de nuevo."
+      [emptyMessage]="'act.sinUbicaciones' | t"
       (search)="onSearch($event)"
       (loadMore)="loadMore()"
-      [createLabel]="canCreate() ? 'Nueva ubicación' : ''"
+      [createLabel]="canCreate() ? ('act.nuevaUbicacion' | t) : ''"
       [createBlocked]="permissions.entitiesReason()"
       (choose)="choose($event)"
       (create)="createNew()"
@@ -100,11 +102,11 @@ export class LocationPickerComponent {
 
   private searchTimer?: ReturnType<typeof setTimeout>;
 
-  readonly title = computed(() => this.typeName() || 'Ubicaciones');
+  readonly title = computed(() => this.typeName() || traducir('act.ubicaciones'));
 
   readonly subtitle = computed(() => {
     const survey = this.survey();
-    return survey ? `Elige la ubicación para «${survey.Title}»` : '';
+    return survey ? traducir('act.eligeUbicacionPara', { form: survey.Title }) : '';
   });
 
   /** Lo que se muestra: los resultados de la búsqueda o la página cargada. */
@@ -355,7 +357,7 @@ export class LocationPickerComponent {
   private toItem(location: LocationForm): PickerItem {
     return {
       id: location.GUID,
-      name: location.Name || 'Sin nombre',
+      name: location.Name || traducir('act.sinNombre'),
       hint: location.FullAddress || '',
       descriptors: this.descriptorsOf(location),
     };

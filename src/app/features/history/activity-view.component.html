@@ -1,6 +1,6 @@
 <section class="act">
   @if (loading()) {
-    <p class="act__state">Abriendo la actividad…</p>
+    <p class="act__state">{{ 'hist.abriendo' | t }}</p>
   } @else if (error()) {
     <p class="act__state act__state--error">
       <vt-icon name="alert" [size]="16" />
@@ -11,7 +11,7 @@
       <div class="act__head-main">
         <!-- Vuelve por donde se entró y conserva la consulta: ver el
              comentario de `back()`. -->
-        <button type="button" class="act__back" (click)="back()" aria-label="Volver">
+        <button type="button" class="act__back" (click)="back()" [attr.aria-label]="'comun.volver' | t">
           <vt-icon name="chevron" [size]="18" />
         </button>
 
@@ -25,22 +25,22 @@
         @if (downloaded()) {
           <span class="act__done">
             <vt-icon name="check" [size]="15" />
-            En este dispositivo
+            {{ 'hist.enDispositivo' | t }}
           </span>
 
           <button type="button" class="act__ghost" (click)="exportFiles()" [disabled]="exporting()">
             <vt-icon name="download" [size]="15" />
-            {{ exporting() ? 'Exportando…' : 'Archivos al computador' }}
+            {{ (exporting() ? 'hist.exportando' : 'hist.archivosComputador') | t }}
           </button>
 
           <button type="button" class="act__ghost" (click)="ask()" [disabled]="downloading()">
             <vt-icon name="refresh" [size]="15" />
-            {{ downloading() ? 'Actualizando…' : 'Traer de nuevo' }}
+            {{ (downloading() ? 'hist.actualizando' : 'hist.traerDeNuevo') | t }}
           </button>
         } @else {
           <button type="button" class="act__download" (click)="ask()" [disabled]="downloading()">
             <vt-icon name="download" [size]="15" />
-            {{ downloading() ? 'Descargando…' : 'Descargar actividad' }}
+            {{ (downloading() ? 'hist.descargando' : 'hist.descargarActividad') | t }}
           </button>
         }
       </div>
@@ -52,21 +52,19 @@
     <p class="act__note">
       <vt-icon name="info" [size]="15" />
       <span>
-        Estás viendo esta actividad <strong>en modo lectura</strong>.
+        {{ 'hist.lectura1' | t }} <strong>{{ 'hist.lectura2' | t }}</strong>.
         @if (data.isMine) {
-          Es tuya: al descargarla queda en el dispositivo con sus archivos y la puedes abrir
-          y modificar como cualquier otra.
+          {{ 'hist.esTuya' | t }}
         } @else {
-          Es de {{ data.AssignedToName || 'otro usuario' }}: al descargarla queda con sus
-          archivos para consultarla sin conexión, pero no se puede modificar ni reenviar.
+          {{ 'hist.esDe' | t: { nombre: data.AssignedToName || ('hist.otroUsuario' | t) } }}
         }
       </span>
     </p>
 
     <dl class="act__facts">
-      <div><dt>Creada</dt><dd>{{ dateOf(data.CreatedOn) }}</dd></div>
-      <div><dt>Cerrada</dt><dd>{{ dateOf(data.CompletedOn) }}</dd></div>
-      <div><dt>Estado</dt><dd>{{ data.StatusName || '—' }}</dd></div>
+      <div><dt>{{ 'act.creada' | t }}</dt><dd>{{ dateOf(data.CreatedOn) }}</dd></div>
+      <div><dt>{{ 'hist.cerrada' | t }}</dt><dd>{{ dateOf(data.CompletedOn) }}</dd></div>
+      <div><dt>{{ 'act.estado' | t }}</dt><dd>{{ data.StatusName || '—' }}</dd></div>
     </dl>
 
     <!-- Los correos que pidió el flujo y en qué quedaron: es aquí a donde
@@ -83,7 +81,7 @@
           class="act__step"
           (click)="previousPage()"
           [disabled]="page() === 0"
-          aria-label="Página anterior"
+          [attr.aria-label]="'hist.paginaAnterior' | t"
         >
           <vt-icon name="chevron" [size]="16" />
         </button>
@@ -103,7 +101,7 @@
           class="act__step act__step--next"
           (click)="nextPage()"
           [disabled]="page() === pageLabels().length - 1"
-          aria-label="Página siguiente"
+          [attr.aria-label]="'hist.paginaSiguiente' | t"
         >
           <vt-icon name="chevron" [size]="16" />
         </button>
@@ -142,14 +140,14 @@
                     } @else {
                       <a class="act__file" [href]="file.url" target="_blank" rel="noopener">
                         <vt-icon name="file" [size]="15" />
-                        Abrir archivo
+                        {{ 'hist.abrirArchivo' | t }}
                       </a>
                     }
                   }
                 </div>
               } @else {
                 <!-- Sin archivo, pero la pregunta existía y se muestra. -->
-                <p class="act__blank">Sin archivo</p>
+                <p class="act__blank">{{ 'hist.sinArchivo' | t }}</p>
               }
             } @else {
               <!-- El mismo componente que dibuja el formulario al
@@ -163,7 +161,7 @@
             }
           </div>
       } @empty {
-        <p class="act__state">Esta página no tiene campos visibles.</p>
+        <p class="act__state">{{ 'hist.paginaSinCampos' | t }}</p>
       }
     </div>
   }
@@ -177,14 +175,10 @@
     [open]="asking()"
     [tone]="localPending() ? 'danger' : 'brand'"
     [icon]="localPending() ? 'alert' : 'download'"
-    [title]="localPending() ? '¿Reemplazar tu versión?' : '¿Traerla de nuevo?'"
+    [title]="(localPending() ? 'hist.reemplazarPregunta' : 'hist.traerPregunta') | t"
     [message]="title()"
-    [detail]="
-      localPending()
-        ? 'Esta actividad ya está en este dispositivo y tiene cambios que todavía no se han enviado a Visitrack. Si la traes de nuevo, se reemplaza por la del servidor y esos cambios se pierden.'
-        : 'Ya la tienes en este dispositivo. Se reemplazará por la versión que hay en Visitrack.'
-    "
-    [confirmLabel]="localPending() ? 'Reemplazar' : 'Traer de nuevo'"
+    [detail]="(localPending() ? 'hist.reemplazarDetalle' : 'hist.traerDetalle') | t"
+    [confirmLabel]="(localPending() ? 'hist.reemplazar' : 'hist.traerDeNuevo') | t"
     [busy]="downloading()"
     (confirm)="download()"
     (cancel)="asking.set(false)"

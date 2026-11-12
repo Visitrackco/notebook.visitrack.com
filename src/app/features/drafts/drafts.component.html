@@ -1,11 +1,11 @@
 <section class="dft">
   <header class="dft__head">
     <div class="dft__title">
-      <h1>Borradores</h1>
+      <h1>{{ 'borr.titulo' | t }}</h1>
       <p>
         {{ counter() }}
         @if (urgentCount() > 0) {
-          · <em>{{ urgentCount() }} por caducar</em>
+          · <em>{{ 'borr.porCaducar' | t: { n: urgentCount() } }}</em>
         }
       </p>
     </div>
@@ -13,7 +13,7 @@
     @if (drafts().length > 0) {
       <button type="button" class="dft__purge" (click)="purgeNow()">
         <vt-icon name="trash" [size]="16" />
-        Limpiar caducados
+        {{ 'borr.limpiarCaducados' | t }}
       </button>
     }
   </header>
@@ -26,14 +26,13 @@
   <p class="dft__note">
     <vt-icon name="info" [size]="15" />
     <span>
-      Son actividades que abriste y nunca guardaste. Se conservan
-      <strong>{{ hours() }} horas</strong> desde que las creaste y luego se
-      eliminan solas. Ábrelas y guárdalas para conservarlas.
+      {{ 'borr.nota1' | t }}
+      <strong>{{ 'borr.nHoras' | t: { n: hours() } }}</strong> {{ 'borr.nota2' | t }}
     </span>
   </p>
 
   @if (loading()) {
-    <div class="dft__ghosts" aria-label="Cargando borradores">
+    <div class="dft__ghosts" [attr.aria-label]="'borr.cargando' | t">
       @for (row of [1, 2, 3]; track row) {
         <div class="dft__ghost"></div>
       }
@@ -73,11 +72,11 @@
               }
 
               <span class="dft__meta">
-                <span>Creado {{ card.createdLabel }}</span>
+                <span>{{ 'borr.creado' | t: { cuando: card.createdLabel } }}</span>
 
                 <span class="dft__expires" [class.dft__expires--urgent]="card.urgent">
                   <vt-icon name="alert" [size]="12" />
-                  Se borra {{ card.expiresLabel }}
+                  {{ 'borr.seBorra' | t: { cuando: card.expiresLabel } }}
                 </span>
               </span>
             </span>
@@ -89,8 +88,8 @@
             type="button"
             class="dft__drop"
             (click)="askRemove(card)"
-            [attr.aria-label]="'Eliminar el borrador de ' + card.surveyTitle"
-            title="Eliminar ahora"
+            [attr.aria-label]="'borr.eliminarDe' | t: { form: card.surveyTitle }"
+            [title]="'borr.eliminarAhora' | t"
           >
             <vt-icon name="trash" [size]="16" />
           </button>
@@ -100,7 +99,7 @@
   } @else {
     <div class="dft__empty">
       <span class="dft__empty-icon"><vt-icon name="check" [size]="26" /></span>
-      <p>No tienes actividades a medias. Todo lo que abriste está guardado.</p>
+      <p>{{ 'borr.vacio' | t }}</p>
     </div>
   }
 </section>
@@ -111,10 +110,10 @@
   [open]="asking()"
   tone="danger"
   icon="trash"
-  title="¿Eliminar este borrador?"
+  [title]="'borr.eliminarPregunta' | t"
   [message]="removalName()"
-  detail="Se perderá lo que llevabas respondido, incluidas sus fotos."
-  confirmLabel="Eliminar"
+  [detail]="'borr.eliminarDetalle' | t"
+  [confirmLabel]="'comun.eliminar' | t"
   (confirm)="confirmRemove()"
   (cancel)="cancelRemove()"
 />

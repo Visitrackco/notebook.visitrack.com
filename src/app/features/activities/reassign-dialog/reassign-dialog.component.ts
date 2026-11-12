@@ -3,6 +3,8 @@ import { Component, computed, effect, inject, input, output, signal, untracked }
 import { SurveyAnswer } from '../../../core/models/entities.model';
 import { Colleague, ReassignService } from '../../../core/services/reassign.service';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
+import { traducir } from '../../../core/i18n/idioma.service';
+import { TPipe } from '../../../core/i18n/t.pipe';
 
 /**
  * A quién se le pasa la actividad.
@@ -31,7 +33,7 @@ export interface ReasignacionHecha {
 @Component({
   selector: 'vt-reassign-dialog',
   standalone: true,
-  imports: [IconComponent],
+  imports: [IconComponent, TPipe],
   templateUrl: './reassign-dialog.component.html',
   styleUrl: './reassign-dialog.component.scss',
 })
@@ -97,7 +99,7 @@ export class ReassignDialogComponent {
     if (this.varias()) {
       return this.loading() || this.aptas().length
         ? ''
-        : 'Ninguna de las seleccionadas se puede reasignar. ' + (this.omitidas()[0] ?? '');
+        : traducir('act.reaNinguna') + ' ' + (this.omitidas()[0] ?? '');
     }
 
     const answer = this.answer() ?? this.todas()[0] ?? null;
@@ -110,15 +112,16 @@ export class ReassignDialogComponent {
 
     if (pending > 0) {
       return (
-        `Hay ${pending} ${pending === 1 ? 'archivo' : 'archivos'} sin terminar de subir. ` +
-        'Súbelos antes de reasignar.'
+        (pending === 1 ? traducir('act.unArchivoSinSubir') : traducir('act.nArchivosSinSubir', { n: pending })) +
+        '. ' +
+        traducir('act.reaSubelos')
       );
     }
 
     const entities = this.pendingEntities();
 
     return entities
-      ? `${entities} Al reasignar se borra la actividad de este equipo, y con ella lo que no haya subido.`
+      ? `${entities} ${traducir('act.reaSeBorra')}`
       : '';
   });
 
@@ -170,7 +173,7 @@ export class ReassignDialogComponent {
       this.colleagues.set(await this.service.colleagues());
     } catch (error) {
       this.error.set(
-        error instanceof Error ? error.message : 'No se pudo consultar los usuarios.',
+        error instanceof Error ? error.message : traducir('act.reaErrorUsuarios'),
       );
     } finally {
       this.loading.set(false);
@@ -183,7 +186,7 @@ export class ReassignDialogComponent {
     const omitidas: string[] = [];
 
     for (const a of todas) {
-      const nombre = a.LocationName || a.Consecutive || 'Actividad';
+      const nombre = a.LocationName || a.Consecutive || traducir('act.actividad');
       const regla = this.service.canReassign(a);
       if (regla) {
         omitidas.push(`${nombre}: ${regla}`);
@@ -191,7 +194,7 @@ export class ReassignDialogComponent {
       }
       const archivos = await this.service.pendingFiles(a.GUID);
       if (archivos > 0) {
-        omitidas.push(`${nombre}: tiene archivos sin terminar de subir.`);
+        omitidas.push(`${nombre}: ${traducir('act.tieneArchivosSinSubir')}.`);
         continue;
       }
       const entidades = await this.service.pendingEntities(a);
@@ -243,14 +246,14 @@ export class ReassignDialogComponent {
           await this.service.reassign(a, person);
           hechas++;
         } catch (error) {
-          const nombre = a.LocationName || a.Consecutive || 'Actividad';
-          fallidas.push(`${nombre}: ${error instanceof Error ? error.message : 'no se pudo'}`);
+          const nombre = a.LocationName || a.Consecutive || traducir('act.actividad');
+          fallidas.push(`${nombre}: ${error instanceof Error ? error.message : traducir('act.noSePudo')}`);
         }
       }
       this.done.emit({ person, hechas, fallidas, omitidas: this.omitidas() });
     } catch (error) {
       this.error.set(
-        error instanceof Error ? error.message : 'No se pudo reasignar la actividad.',
+        error instanceof Error ? error.message : traducir('act.reaError'),
       );
     } finally {
       this.working.set(false);
