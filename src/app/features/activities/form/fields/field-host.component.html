@@ -199,6 +199,7 @@
         [matDatepickerFilter]="filtroDeDias()"
         [ngModel]="dateValue()"
         [readonly]="true"
+        [disabled]="readOnly()"
         [placeholder]="f.pho || ('campo.formatoFecha' | t)"
         (click)="readOnly() || datePicker.open()"
         (dateChange)="onDate($event.value)"
@@ -224,6 +225,8 @@
         [matTimepickerMax]="horaHasta()"
         [ngModel]="timeValue()"
         [readonly]="readOnly()"
+        [disabled]="readOnly()"
+        [matTimepickerOpenOnClick]="!readOnly()"
         (valueChange)="onTime($event)"
       />
       <mat-timepicker-toggle matIconSuffix [for]="timePicker" [disabled]="readOnly()" />
@@ -254,6 +257,7 @@
             [matDatepickerFilter]="filtroDeDias()"
             [ngModel]="dateValue()"
             [readonly]="true"
+            [disabled]="readOnly()"
             (click)="readOnly() || dtDate.open()"
             (dateChange)="onDate($event.value)"
           />
@@ -270,6 +274,8 @@
             [matTimepickerMax]="horaHasta()"
             [ngModel]="timeValue()"
             [readonly]="readOnly()"
+            [disabled]="readOnly()"
+            [matTimepickerOpenOnClick]="!readOnly()"
             (valueChange)="onTime($event)"
           />
           <mat-timepicker-toggle matIconSuffix [for]="dtTime" [disabled]="readOnly()" />

@@ -111,6 +111,7 @@
         >
           <vt-field-host
             [field]="field"
+            [soloLecturaDelFlujo]="deLaRegla?.soloLectura ?? null"
             [value]="level.engine.valueOf(field.id)"
             [obligatorioDelFlujo]="deLaRegla?.obligatorio ?? null"
             [limites]="limitesDe(deLaRegla)"

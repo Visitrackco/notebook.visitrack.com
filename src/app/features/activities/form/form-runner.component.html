@@ -284,6 +284,7 @@
             [lineasDelFlujo]="flujo?.lineas ?? null"
             [entrada]="entradaDe(flujo)"
             [field]="field"
+            [soloLecturaDelFlujo]="flujo?.soloLectura ?? null"
             [value]="eng.valueOf(field.id)"
             [obligatorioDelFlujo]="flujo?.obligatorio ?? null"
             [invalid]="eng.showsError(field)"

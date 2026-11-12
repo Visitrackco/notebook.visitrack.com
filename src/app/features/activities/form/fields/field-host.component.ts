@@ -497,7 +497,14 @@ export class FieldHostComponent {
 
   /** Texto de la opción elegida, que acompaña a las estrellas. */
   readonly ratingLabel = computed(() => this.options()[this.ratingIndex()]?.txt ?? '');
-  readonly readOnly = computed(() => Boolean(this.field().rea));
+  /** Lo que un flujo dijo de si el campo se edita; `null` si no dijo nada. */
+  readonly soloLecturaDelFlujo = input<boolean | null>(null);
+
+  /**
+   * Solo lectura: lo del flujo, si dijo algo —una regla que lo bloquea o lo
+   * libera gana, como en el teléfono—, y si no, el `rea` del formulario.
+   */
+  readonly readOnly = computed(() => this.soloLecturaDelFlujo() ?? this.field().rea === true);
 
   /**
    * Tipo del `<input>` para los campos de texto.
@@ -601,6 +608,7 @@ export class FieldHostComponent {
 
   /** Fecha elegida en el calendario. */
   onDate(value: Date | null): void {
+    if (this.readOnly()) return;
     const valid = value && !Number.isNaN(value.getTime()) ? value : null;
 
     if (this.field().fty !== 'datetime') {
@@ -615,6 +623,7 @@ export class FieldHostComponent {
 
   /** Hora elegida en el reloj. */
   onTime(value: Date | null): void {
+    if (this.readOnly()) return;
     const valid = value && !Number.isNaN(value.getTime()) ? value : null;
 
     if (this.field().fty === 'time') {
