@@ -11,6 +11,8 @@ import { AuthService } from '../../../core/services/auth.service';
 import { EntityUploadService } from '../../../core/sync/entity-upload.service';
 import { PendingUploadService } from '../../../core/sync/pending-upload.service';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
+import { traducir } from '../../../core/i18n/idioma.service';
+import { TPipe } from '../../../core/i18n/t.pipe';
 
 /**
  * Largo máximo del identificador de un navegador.
@@ -71,16 +73,14 @@ interface Pendientes {
 @Component({
   selector: 'vt-renovar-equipo',
   standalone: true,
-  imports: [IconComponent],
+  imports: [IconComponent, TPipe],
   template: `
     <div class="re">
       <div class="re-tarjeta">
         <span class="re-marca"><vt-icon name="refresh" [size]="30" /></span>
-        <h1 class="re-titulo">Este navegador necesita un identificador nuevo</h1>
+        <h1 class="re-titulo">{{ 're.titulo' | t }}</h1>
         <p class="re-texto">
-          El identificador de este equipo viene de una versión anterior y es demasiado largo. Para
-          corregirlo se sube todo lo que tengas pendiente, se borran los datos guardados en este
-          navegador y vuelves a iniciar sesión. Después se descarga todo de nuevo.
+          {{ 're.texto' | t }}
         </p>
 
         <div class="re-caja">
@@ -88,12 +88,12 @@ interface Pendientes {
           <span>
             @if (pendientes(); as p) {
               @if (hayAlgo(p)) {
-                Pendiente por subir: {{ texto(p) }}.
+                {{ 're.pendiente' | t: { que: texto(p) } }}
               } @else {
-                No tienes nada pendiente por subir.
+                {{ 're.nada' | t }}
               }
             } @else {
-              Revisando lo pendiente…
+              {{ 're.revisando' | t }}
             }
           </span>
         </div>
@@ -108,14 +108,13 @@ interface Pendientes {
           [disabled]="trabajando()"
           (click)="renovar()"
         >
-          {{ trabajando() ? paso() : 'Subir pendientes y actualizar' }}
+          {{ trabajando() ? paso() : ('re.boton' | t) }}
         </button>
         <button type="button" class="vt-btn vt-btn-ghost" [disabled]="trabajando()" (click)="ahoraNo()">
-          Ahora no
+          {{ 'shell.ahoraNo' | t }}
         </button>
         <p class="re-nota">
-          Si eliges «Ahora no», puedes seguir trabajando. Te lo volveremos a pedir la próxima vez que
-          abras Visitrack.
+          {{ 're.nota' | t }}
         </p>
       </div>
     </div>
@@ -232,9 +231,13 @@ export class RenovarEquipoComponent {
 
   texto(p: Pendientes): string {
     const partes = [
-      p.actividades ? `${p.actividades} actividad${p.actividades === 1 ? '' : 'es'}` : '',
-      p.archivos ? `${p.archivos} archivo${p.archivos === 1 ? '' : 's'}` : '',
-      p.entidades ? `${p.entidades} ubicación${p.entidades === 1 ? '' : 'es'} o activo${p.entidades === 1 ? '' : 's'}` : '',
+      p.actividades
+        ? traducir(p.actividades === 1 ? 're.actividad' : 're.actividades', { n: p.actividades })
+        : '',
+      p.archivos ? traducir(p.archivos === 1 ? 're.archivo' : 're.archivos', { n: p.archivos }) : '',
+      p.entidades
+        ? traducir(p.entidades === 1 ? 're.entidad' : 're.entidades', { n: p.entidades })
+        : '',
     ].filter(Boolean);
 
     return partes.join(', ');
@@ -248,24 +251,21 @@ export class RenovarEquipoComponent {
 
     try {
       // 1. Subir todo con la cola de siempre: entidades, archivos y actividades.
-      this.paso.set('Subiendo pendientes…');
+      this.paso.set(traducir('re.subiendo'));
       await this.cola.run();
 
       // 2. Comprobar que no quedó nada.
-      this.paso.set('Comprobando…');
+      this.paso.set(traducir('re.comprobando'));
       const quedan = await this.contar();
       this.pendientes.set(quedan);
 
       if (this.hayAlgo(quedan)) {
-        this.error.set(
-          `No se pudo subir todo: quedan ${this.texto(quedan)}. ` +
-            'Revisa la conexión e inténtalo de nuevo. No se borró nada.',
-        );
+        this.error.set(traducir('re.quedan', { que: this.texto(quedan) }));
         return;
       }
 
       // 3. Cerrar sesión y dejar el navegador como recién estrenado.
-      this.paso.set('Reiniciando el equipo…');
+      this.paso.set(traducir('re.reiniciando'));
       await this.auth.logout();
       await this.db.deleteDatabase();
       localStorage.removeItem(CLAVE_DEL_EQUIPO);
@@ -278,7 +278,7 @@ export class RenovarEquipoComponent {
       this.error.set(
         e instanceof Error && e.message.includes('pestañas')
           ? e.message
-          : 'Algo falló al subir los pendientes. No se borró nada. Inténtalo de nuevo.',
+          : traducir('re.fallo'),
       );
     } finally {
       this.trabajando.set(false);

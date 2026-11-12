@@ -53,6 +53,19 @@ export const textosLogin = {
     'You signed in offline. It will sync when the internet comes back.',
   ],
 
+  // ── Mensajes de la autenticación (AuthService) ────────────────────────────
+  'auth.sinSesion': ['No hay sesión abierta', 'No open session'],
+  'auth.escribeUsuario': ['Escribe tu usuario y contraseña.', 'Enter your username and password.'],
+  'auth.incorrectos': ['Usuario o contraseña incorrectos.', 'Incorrect username or password.'],
+  'auth.sinServidorNueva': [
+    'No hay conexión con el servidor y esta cuenta no ha iniciado sesión antes en este dispositivo.',
+    "Can't reach the server and this account hasn't signed in on this device before.",
+  ],
+  'auth.escribeCuenta': ['Escribe la cuenta a la que quieres entrar.', 'Enter the account you want to sign in to.'],
+  'auth.confirmaClave': ['Confirma con tu contraseña.', 'Confirm with your password.'],
+  'auth.necesitasSesion': ['Necesitas tu sesión abierta.', 'You need to be signed in.'],
+  'auth.vuelveAEntrar': ['Vuelve a iniciar sesión para continuar.', 'Sign in again to continue.'],
+
   // ── Recuperar contraseña ──────────────────────────────────────────────────
   'rec.titulo': ['Recuperar contraseña', 'Reset password'],
   'rec.subUsuario': [

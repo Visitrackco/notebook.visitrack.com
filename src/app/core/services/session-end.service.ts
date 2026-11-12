@@ -5,6 +5,7 @@ import { esModoPublico } from '../config/modo-publico';
 import { AuthService } from './auth.service';
 import { NotifyService } from './notify.service';
 import { SessionsApi } from './sessions.api';
+import { traducir } from '../i18n/idioma.service';
 
 /**
  * Qué hacer cuando el servidor deja de aceptar la sesión.
@@ -107,11 +108,11 @@ export class SessionEndService {
       // Pudo cerrarse por otra vía mientras se preguntaba.
       if (!this.auth.isAuthenticated()) return false;
 
-      const message = detail || 'Vuelve a iniciar sesión para continuar.';
+      const message = detail || traducir('auth.vuelveAEntrar');
 
       // Con sonido, y del sistema si la pestaña no está a la vista: la sesión
       // puede caerse mientras la sincronización trabaja en segundo plano.
-      void this.notify.failure('Tu sesión terminó', message);
+      void this.notify.failure(traducir('login.sesionTermino'), message);
 
       // Y por escrito, que es lo que sigue ahí cuando el aviso se desvanece.
       this.auth.noteSessionEnded(message);

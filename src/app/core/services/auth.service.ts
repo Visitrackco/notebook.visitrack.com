@@ -12,6 +12,7 @@ import { ConnectivityService } from './connectivity.service';
 import { DeviceService } from './device.service';
 
 import { MomentosDeLaAppService } from '../geocercas/momentos-de-la-app.service';
+import { traducir } from '../i18n/idioma.service';
 /** Resultado de un intento de inicio de sesión. */
 export interface LoginResult {
   success: boolean;
@@ -168,7 +169,7 @@ export class AuthService {
    */
   async refreshUserData(): Promise<{ ok: boolean; activo: boolean; error?: string }> {
     const user = this.currentUser();
-    if (!user) return { ok: false, activo: false, error: 'No hay sesión abierta' };
+    if (!user) return { ok: false, activo: false, error: traducir('auth.sinSesion') };
 
     try {
       const res = await firstValueFrom(
@@ -179,7 +180,7 @@ export class AuthService {
       );
 
       if (!res?.status || !res.response) {
-        return { ok: false, activo: false, error: res?.error ?? 'No se pudieron traer tus datos' };
+        return { ok: false, activo: false, error: res?.error ?? traducir('perfil.fbErrDatos') };
       }
 
       await this.users.refreshFromServer(user.UserID, res.response);
@@ -229,7 +230,7 @@ export class AuthService {
     const cleanLogin = login.trim().toLowerCase();
 
     if (!cleanLogin || !password) {
-      return { success: false, message: 'Escribe tu usuario y contraseña.' };
+      return { success: false, message: traducir('auth.escribeUsuario') };
     }
 
     this.isAuthenticating.set(true);
@@ -260,7 +261,7 @@ export class AuthService {
           message:
             response?.message ??
             response?.error ??
-            'Usuario o contraseña incorrectos.',
+            traducir('auth.incorrectos'),
         };
       }
 
@@ -296,14 +297,13 @@ export class AuthService {
 
         return {
           success: false,
-          message:
-            'No hay conexión con el servidor y esta cuenta no ha iniciado sesión antes en este dispositivo.',
+          message: traducir('auth.sinServidorNueva'),
         };
       }
 
       return {
         success: false,
-        message: apiError?.message ?? 'No se pudo iniciar sesión.',
+        message: apiError?.message ?? traducir('login.errorEntrar'),
       };
     } finally {
       this.isAuthenticating.set(false);
@@ -322,7 +322,7 @@ export class AuthService {
 
     if (!stored) return { success: false };
     if (stored.Password !== password) {
-      return { success: false, message: 'Usuario o contraseña incorrectos.' };
+      return { success: false, message: traducir('auth.incorrectos') };
     }
 
     const user = await this.users.upsertAndActivate(stored);
@@ -581,11 +581,11 @@ export class AuthService {
    */
   async enterAs(targetLogin: string, myPassword: string): Promise<LoginResult> {
     const destino = targetLogin.trim().toLowerCase();
-    if (!destino) return { success: false, message: 'Escribe la cuenta a la que quieres entrar.' };
-    if (!myPassword) return { success: false, message: 'Confirma con tu contraseña.' };
+    if (!destino) return { success: false, message: traducir('auth.escribeCuenta') };
+    if (!myPassword) return { success: false, message: traducir('auth.confirmaClave') };
 
     const admin = this.currentUser();
-    if (!admin) return { success: false, message: 'Necesitas tu sesión abierta.' };
+    if (!admin) return { success: false, message: traducir('auth.necesitasSesion') };
 
     try {
       const response = await firstValueFrom(
@@ -600,7 +600,7 @@ export class AuthService {
 
       const data = response?.response ?? response?.body;
       if (!response?.status || !data) {
-        return { success: false, message: response?.error ?? response?.message ?? 'No se pudo entrar a la cuenta.' };
+        return { success: false, message: response?.error ?? response?.message ?? traducir('perfil.errEntrarComo') };
       }
 
       // La cuenta destino, sin contraseña: no la conocemos ni hace falta.
@@ -620,7 +620,7 @@ export class AuthService {
       return { success: true };
     } catch (error) {
       const apiError = error as ApiError;
-      return { success: false, message: apiError?.message ?? 'No se pudo entrar a la cuenta.' };
+      return { success: false, message: apiError?.message ?? traducir('perfil.errEntrarComo') };
     }
   }
 
@@ -657,7 +657,7 @@ export class AuthService {
 
       const data = response?.response ?? response?.body;
       if (!response?.status || !data) {
-        return { success: false, message: response?.error ?? response?.message ?? 'No se pudo entrar a la cuenta.' };
+        return { success: false, message: response?.error ?? response?.message ?? traducir('perfil.errEntrarComo') };
       }
 
       const login = String((data as { Login?: string }).Login ?? '').trim().toLowerCase();
@@ -682,7 +682,7 @@ export class AuthService {
       return { success: true };
     } catch (error) {
       const apiError = error as ApiError;
-      return { success: false, message: apiError?.message ?? 'No se pudo entrar a la cuenta.' };
+      return { success: false, message: apiError?.message ?? traducir('perfil.errEntrarComo') };
     }
   }
 

@@ -236,6 +236,38 @@ export const textosPerfil = {
   'ses.haceDia': ['hace {n} día', '{n} day ago'],
   'ses.haceDias': ['hace {n} días', '{n} days ago'],
 
+  // ── Renovar el identificador del equipo ───────────────────────────────────
+  're.titulo': ['Este navegador necesita un identificador nuevo', 'This browser needs a new identifier'],
+  're.texto': [
+    'El identificador de este equipo viene de una versión anterior y es demasiado largo. Para corregirlo se sube todo lo que tengas pendiente, se borran los datos guardados en este navegador y vuelves a iniciar sesión. Después se descarga todo de nuevo.',
+    "This device's identifier comes from an older version and is too long. To fix it, everything pending is uploaded, the data stored in this browser is deleted and you sign in again. Then everything is downloaded again.",
+  ],
+  're.pendiente': ['Pendiente por subir: {que}.', 'Pending upload: {que}.'],
+  're.nada': ['No tienes nada pendiente por subir.', 'You have nothing pending upload.'],
+  're.revisando': ['Revisando lo pendiente…', 'Checking what is pending…'],
+  're.boton': ['Subir pendientes y actualizar', 'Upload pending and update'],
+  're.nota': [
+    'Si eliges «Ahora no», puedes seguir trabajando. Te lo volveremos a pedir la próxima vez que abras Visitrack.',
+    "If you choose “Not now”, you can keep working. We'll ask again the next time you open Visitrack.",
+  ],
+  're.actividad': ['{n} actividad', '{n} activity'],
+  're.actividades': ['{n} actividades', '{n} activities'],
+  're.archivo': ['{n} archivo', '{n} file'],
+  're.archivos': ['{n} archivos', '{n} files'],
+  're.entidad': ['{n} ubicación o activo', '{n} location or asset'],
+  're.entidades': ['{n} ubicaciones o activos', '{n} locations or assets'],
+  're.subiendo': ['Subiendo pendientes…', 'Uploading pending items…'],
+  're.comprobando': ['Comprobando…', 'Checking…'],
+  're.quedan': [
+    'No se pudo subir todo: quedan {que}. Revisa la conexión e inténtalo de nuevo. No se borró nada.',
+    'Not everything could be uploaded: {que} remain. Check the connection and try again. Nothing was deleted.',
+  ],
+  're.reiniciando': ['Reiniciando el equipo…', 'Resetting the device…'],
+  're.fallo': [
+    'Algo falló al subir los pendientes. No se borró nada. Inténtalo de nuevo.',
+    'Something failed while uploading pending items. Nothing was deleted. Try again.',
+  ],
+
   // ── Novedades ─────────────────────────────────────────────────────────────
   'nov.sub': ['Qué trae cada versión.', 'What each version brings.'],
   'nov.cargando': ['Cargando novedades…', "Loading what's new…"],
