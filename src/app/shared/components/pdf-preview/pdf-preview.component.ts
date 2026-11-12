@@ -3,6 +3,7 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 
 import { ConnectivityService } from '../../../core/services/connectivity.service';
 import { IconComponent } from '../icon/icon.component';
+import { TPipe } from '../../../core/i18n/t.pipe';
 
 /**
  * Vista previa del PDF de una actividad, dentro de la aplicación.
@@ -25,7 +26,7 @@ import { IconComponent } from '../icon/icon.component';
 @Component({
   selector: 'vt-pdf-preview',
   standalone: true,
-  imports: [IconComponent],
+  imports: [IconComponent, TPipe],
   templateUrl: './pdf-preview.component.html',
   styleUrl: './pdf-preview.component.scss',
 })

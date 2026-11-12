@@ -15,15 +15,15 @@
       <div class="pv-acciones">
         <button type="button" class="pv-btn" (click)="descargar()" [disabled]="descargando()">
           <vt-icon name="download" [size]="15" />
-          <span class="pv-btn-txt">{{ descargando() ? 'Descargando…' : 'Descargar' }}</span>
+          <span class="pv-btn-txt">{{ (descargando() ? 'pdf.descargando' : 'pdf.descargar') | t }}</span>
         </button>
 
         <button type="button" class="pv-btn" (click)="abrirEnPestana()" title="Abrir en una pestaña aparte">
           <vt-icon name="download" [size]="15" />
-          <span class="pv-btn-txt">Abrir aparte</span>
+          <span class="pv-btn-txt">{{ 'pdf.abrirAparte' | t }}</span>
         </button>
 
-        <button type="button" class="pv-x" (click)="cerrado.emit()" title="Cerrar (Esc)" aria-label="Cerrar">
+        <button type="button" class="pv-x" (click)="cerrado.emit()" [title]="'esc.cerrarEsc' | t" [attr.aria-label]="'comun.cerrar' | t">
           <vt-icon name="close" [size]="17" />
         </button>
       </div>
@@ -35,18 +35,17 @@
              antes, en vez de dejar una pantalla en blanco que parece un fallo. -->
         <div class="pv-estado">
           <vt-icon name="connection-off" [size]="32" />
-          <p>Sin conexión</p>
+          <p>{{ 'comun.sinConexion' | t }}</p>
           <span class="pv-estado-nota">
-            El PDF lo arma el servidor en el momento. Vuelve a intentarlo cuando
-            tengas señal.
+            {{ 'pdf.sinConexion' | t }}
           </span>
         </div>
       } @else {
         @if (!listo()) {
           <div class="pv-estado">
             <span class="pv-aro"></span>
-            <p>Generando el documento…</p>
-            <span class="pv-estado-nota">Suele tardar unos segundos</span>
+            <p>{{ 'pdf.generando' | t }}</p>
+            <span class="pv-estado-nota">{{ 'pdf.tarda' | t }}</span>
           </div>
         }
 

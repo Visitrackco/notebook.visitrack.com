@@ -15,13 +15,15 @@
  * fallan de forma muda: fuera de HTTPS el navegador ni siquiera expone
  * `mediaDevices`, y el error genérico que resultaría no dice qué hacer.
  */
+import { traducir } from '../../core/i18n/idioma.service';
+
 export function motivoSinCamara(): string {
   if (typeof window !== 'undefined' && window.isSecureContext === false) {
-    return 'La cámara solo funciona en una conexión segura (HTTPS). Abre Visitrack desde su dirección https:// y vuelve a intentarlo.';
+    return traducir('cam.https');
   }
 
   if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
-    return 'Este navegador no permite usar la cámara.';
+    return traducir('cam.noPermite');
   }
 
   return '';
@@ -34,18 +36,18 @@ export function describeCameraError(error: unknown): string {
   switch (name) {
     case 'NotAllowedError':
     case 'PermissionDeniedError':
-      return 'No se concedió el permiso de cámara. Habilítalo desde el icono de la barra de direcciones y vuelve a intentarlo.';
+      return traducir('cam.sinPermiso');
     case 'NotFoundError':
     case 'DevicesNotFoundError':
     case 'OverconstrainedError':
-      return 'No se encontró ninguna cámara en este dispositivo.';
+      return traducir('cam.noHay');
     case 'NotReadableError':
     case 'TrackStartError':
-      return 'La cámara está siendo usada por otra aplicación. Ciérrala e inténtalo de nuevo.';
+      return traducir('cam.ocupada');
     case 'SecurityError':
-      return 'El navegador bloqueó la cámara en esta página. Comprueba que esté en HTTPS y que el sitio tenga permiso.';
+      return traducir('cam.bloqueada');
     default:
-      return 'No se pudo abrir la cámara. Comprueba que la página esté en HTTPS.';
+      return traducir('cam.noAbre');
   }
 }
 

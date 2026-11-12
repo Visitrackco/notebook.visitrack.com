@@ -13,6 +13,8 @@ import {
 
 import { describeCameraError, detenerCaptura, motivoSinCamara } from '../../utils/camara';
 import { IconComponent } from '../icon/icon.component';
+import { traducir } from '../../../core/i18n/idioma.service';
+import { TPipe } from '../../../core/i18n/t.pipe';
 import { LectorDeCodigos, crearLector } from './lector-de-codigos';
 
 /** La forma del recuadro: cuadrado para QR, ancho y bajo para barras. */
@@ -59,7 +61,7 @@ interface FalloDelEscaner {
 @Component({
   selector: 'vt-code-scanner',
   standalone: true,
-  imports: [IconComponent],
+  imports: [IconComponent, TPipe],
   templateUrl: './code-scanner.component.html',
   styleUrl: './code-scanner.component.scss',
 })
@@ -68,7 +70,8 @@ export class CodeScannerComponent implements OnInit, OnDestroy {
   readonly modo = input<ModoDeEscaneo | null>(null);
 
   /** Qué se está escaneando, para el título: «Escanear código QR», etc. */
-  readonly titulo = input('Escanear código');
+  /** Sin valor sale «Escanear código» en el idioma actual. */
+  readonly titulo = input<string>('');
 
   /** Se ofrece escribir el código a mano cuando la cámara no sirve. */
   readonly permitirManual = input(true);
@@ -109,10 +112,10 @@ export class CodeScannerComponent implements OnInit, OnDestroy {
   readonly motor = signal<'nativo' | 'zxing' | ''>('');
 
   readonly indicacion = computed(() => {
-    if (this.leyo()) return 'Código leído';
+    if (this.leyo()) return traducir('esc.leido');
     return this.modoActual() === 'barras'
-      ? 'Acerca la cámara hasta que el código de barras llene el recuadro de lado a lado'
-      : 'Centra el código QR dentro del recuadro';
+      ? traducir('esc.indicaBarras')
+      : traducir('esc.indicaQr');
   });
 
   private stream: MediaStream | null = null;
@@ -189,8 +192,7 @@ export class CodeScannerComponent implements OnInit, OnDestroy {
       console.error('[Escáner] no se pudo cargar el reconocedor', error);
       captura.then(detenerCaptura, () => undefined);
       this.fallar(
-        'No se pudo cargar el lector de códigos en este navegador. Si estás sin conexión, ' +
-          'conéctate un momento y vuelve a intentarlo.',
+        traducir('esc.sinLector'),
         true,
       );
       return;

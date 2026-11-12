@@ -20,4 +20,62 @@ export const textosComun = {
   'comun.ocultar': ['Ocultar', 'Hide'],
   'comun.cerrarAviso': ['Cerrar aviso', 'Dismiss'],
   'comun.volverArriba': ['Volver arriba', 'Back to top'],
+
+  // ── Cámara (compartido por fotos y escáner) ───────────────────────────────
+  'cam.https': [
+    'La cámara solo funciona en una conexión segura (HTTPS). Abre Visitrack desde su dirección https:// y vuelve a intentarlo.',
+    'The camera only works over a secure connection (HTTPS). Open Visitrack from its https:// address and try again.',
+  ],
+  'cam.noPermite': ['Este navegador no permite usar la cámara.', "This browser doesn't allow camera use."],
+  'cam.sinPermiso': [
+    'No se concedió el permiso de cámara. Habilítalo desde el icono de la barra de direcciones y vuelve a intentarlo.',
+    'Camera permission was not granted. Enable it from the icon in the address bar and try again.',
+  ],
+  'cam.noHay': ['No se encontró ninguna cámara en este dispositivo.', 'No camera was found on this device.'],
+  'cam.ocupada': [
+    'La cámara está siendo usada por otra aplicación. Ciérrala e inténtalo de nuevo.',
+    'The camera is being used by another app. Close it and try again.',
+  ],
+  'cam.bloqueada': [
+    'El navegador bloqueó la cámara en esta página. Comprueba que esté en HTTPS y que el sitio tenga permiso.',
+    'The browser blocked the camera on this page. Check that it is on HTTPS and the site has permission.',
+  ],
+  'cam.noAbre': [
+    'No se pudo abrir la cámara. Comprueba que la página esté en HTTPS.',
+    'Could not open the camera. Check that the page is on HTTPS.',
+  ],
+
+  // ── Escáner de códigos ────────────────────────────────────────────────────
+  'esc.cerrarEsc': ['Cerrar (Esc)', 'Close (Esc)'],
+  'esc.camara': ['Cámara', 'Camera'],
+  'esc.cambiarCamara': ['Cambiar de cámara', 'Switch camera'],
+  'esc.apagarLinterna': ['Apagar la linterna', 'Turn off flashlight'],
+  'esc.encenderLinterna': ['Encender la linterna', 'Turn on flashlight'],
+  'esc.aManoCodigo': ['Escribir el código a mano', 'Type the code manually'],
+  'esc.aMano': ['Escribir a mano', 'Type manually'],
+  'esc.abriendo': ['Abriendo la cámara…', 'Opening the camera…'],
+  'esc.tipo': ['Tipo de código', 'Code type'],
+  'esc.qr': ['Código QR', 'QR code'],
+  'esc.barras': ['Código de barras', 'Barcode'],
+  'esc.leido': ['Código leído', 'Code read'],
+  'esc.indicaBarras': [
+    'Acerca la cámara hasta que el código de barras llene el recuadro de lado a lado',
+    'Move the camera closer until the barcode fills the box from side to side',
+  ],
+  'esc.indicaQr': ['Centra el código QR dentro del recuadro', 'Center the QR code inside the box'],
+  'esc.sinLector': [
+    'No se pudo cargar el lector de códigos en este navegador. Si estás sin conexión, conéctate un momento y vuelve a intentarlo.',
+    "The code reader couldn't load in this browser. If you're offline, connect briefly and try again.",
+  ],
+
+  // ── Vista previa de PDF ───────────────────────────────────────────────────
+  'pdf.sinConexion': [
+    'El PDF lo arma el servidor en el momento. Vuelve a intentarlo cuando tengas señal.',
+    'The server builds the PDF on the fly. Try again when you have signal.',
+  ],
+  'pdf.generando': ['Generando el documento…', 'Generating the document…'],
+  'pdf.tarda': ['Suele tardar unos segundos', 'Usually takes a few seconds'],
+  'pdf.descargando': ['Descargando…', 'Downloading…'],
+  'pdf.descargar': ['Descargar', 'Download'],
+  'pdf.abrirAparte': ['Abrir aparte', 'Open separately'],
 } as const;
