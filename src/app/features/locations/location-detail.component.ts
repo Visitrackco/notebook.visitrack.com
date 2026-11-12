@@ -25,7 +25,8 @@ import {
   entityDescriptors,
 } from '../../shared/utils/descriptors';
 import { DetailGroup, DetailItem, groupEntityValues } from './entity-detail.model';
-import { localeActual } from '../../core/i18n/idioma.service';
+import { localeActual, traducir } from '../../core/i18n/idioma.service';
+import { TPipe } from '../../core/i18n/t.pipe';
 
 /** Un activo de la ubicación, listo para pintar. */
 interface AssetCard {
@@ -70,6 +71,7 @@ type Tab = 'info' | 'assets' | 'activities' | 'history';
   selector: 'vt-location-detail',
   standalone: true,
   imports: [
+    TPipe,
     ActivityHistoryComponent,
     ConfirmDialogComponent,
     DescriptorTableComponent,
@@ -202,7 +204,7 @@ export class LocationDetailComponent {
 
   readonly typeName = computed(() => {
     const title = this.isAsset() ? this.current()?.typeTitle : this.location()?.typeTitle;
-    return title || (this.isAsset() ? 'Activo' : 'Ubicación');
+    return title || traducir(this.isAsset() ? 'ubic.activo' : 'ubic.ubicacionMay');
   });
 
   /**
@@ -382,8 +384,8 @@ export class LocationDetailComponent {
         .filter((asset) => asset.isDeleted !== '1')
         .map((asset) => ({
           guid: asset.GUID,
-          name: asset.Name || 'Sin nombre',
-          typeName: asset.typeTitle || 'Sin tipo',
+          name: asset.Name || traducir('ubic.sinNombre'),
+          typeName: asset.typeTitle || traducir('ubic.sinTipo'),
           descriptors: entityDescriptors(asset),
           located: Boolean(asset.Latitude && asset.Longitude),
           pending: asset.CreateWithMovil === '1' && asset.Upload !== '1',
@@ -424,7 +426,7 @@ export class LocationDetailComponent {
       surveyId: answer.SurveyID,
       // El primer descriptivo es el nombre del formulario: así lo escribe el
       // motor al guardar, con la etiqueta `[DEF]`.
-      title: titles[0]?.val || 'Actividad',
+      title: titles[0]?.val || traducir('ubic.actividad'),
       when: answer.UpdatedOn || answer.CreatedOn || '',
       descriptors: titles.slice(1),
       synced: answer.isSaved === 2,
@@ -524,7 +526,7 @@ export class LocationDetailComponent {
       );
     } catch (error) {
       console.error('[Ubicaciones] no se pudo comenzar la actividad', error);
-      this.startError.set('No se pudo comenzar la actividad.');
+      this.startError.set(traducir('ubic.errorComenzar'));
     } finally {
       this.starting.set(false);
     }
@@ -556,23 +558,23 @@ export class LocationDetailComponent {
 /** Los datos fijos de una ubicación que tienen valor. */
 function locationBasics(record: LocationForm): DetailItem[] {
   return [
-    { lab: 'Dirección', val: record.FullAddress || record.Street, kind: 'address' as const, wide: true },
-    { lab: 'Ciudad', val: [record.City, record.State].filter(Boolean).join(', '), kind: 'text' as const },
-    { lab: 'Contacto', val: record.ContactName, kind: 'text' as const },
-    { lab: 'Correo', val: record.Email, kind: 'email' as const },
-    { lab: 'Teléfono', val: record.Phone, kind: 'phone' as const },
-    { lab: 'Identificador', val: record.LocationID, kind: 'text' as const },
+    { lab: traducir('ubic.direccion'), val: record.FullAddress || record.Street, kind: 'address' as const, wide: true },
+    { lab: traducir('ubic.ciudad'), val: [record.City, record.State].filter(Boolean).join(', '), kind: 'text' as const },
+    { lab: traducir('ubic.contacto'), val: record.ContactName, kind: 'text' as const },
+    { lab: traducir('ubic.correo'), val: record.Email, kind: 'email' as const },
+    { lab: traducir('ubic.telefono'), val: record.Phone, kind: 'phone' as const },
+    { lab: traducir('ubic.identificador'), val: record.LocationID, kind: 'text' as const },
   ].filter((entry) => Boolean(entry.val?.trim()));
 }
 
 /** Lo mismo para un activo: marca, modelo y serie son columnas suyas. */
 function assetBasics(record: Asset): DetailItem[] {
   return [
-    { lab: 'Marca', val: record.Make, kind: 'text' as const },
-    { lab: 'Modelo', val: record.Model, kind: 'text' as const },
-    { lab: 'Serie', val: record.SerialNumber, kind: 'text' as const },
-    { lab: 'Etiqueta', val: record.TagUID, kind: 'text' as const },
-    { lab: 'Descripción', val: record.Description, kind: 'text' as const, wide: true },
-    { lab: 'Identificador', val: String(record.AssetID || ''), kind: 'text' as const },
+    { lab: traducir('ubic.marca'), val: record.Make, kind: 'text' as const },
+    { lab: traducir('ubic.modelo'), val: record.Model, kind: 'text' as const },
+    { lab: traducir('ubic.serie'), val: record.SerialNumber, kind: 'text' as const },
+    { lab: traducir('ubic.etiqueta'), val: record.TagUID, kind: 'text' as const },
+    { lab: traducir('ubic.descripcion'), val: record.Description, kind: 'text' as const, wide: true },
+    { lab: traducir('ubic.identificador'), val: String(record.AssetID || ''), kind: 'text' as const },
   ].filter((entry) => Boolean(entry.val?.trim()));
 }

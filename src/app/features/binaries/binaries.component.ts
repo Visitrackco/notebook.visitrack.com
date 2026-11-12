@@ -31,7 +31,8 @@ import {
 import { AudioPlayerComponent } from '../activities/form/fields/audio-player/audio-player.component';
 import { MediaViewerComponent } from '../activities/form/fields/media-viewer/media-viewer.component';
 import { DatabaseService } from '../../core/database/database.service';
-import { localeActual } from '../../core/i18n/idioma.service';
+import { localeActual, traducir } from '../../core/i18n/idioma.service';
+import { TPipe } from '../../core/i18n/t.pipe';
 
 /**
  * Cuántos archivos por página.
@@ -61,6 +62,7 @@ const PAGE_SIZE = 12;
   selector: 'vt-binaries',
   standalone: true,
   imports: [
+    TPipe,
     AudioPlayerComponent,
     CompartirEnSalaComponent,
     IconComponent,
@@ -146,7 +148,7 @@ export class BinariesComponent implements OnDestroy {
 
     const from = page * PAGE_SIZE + 1;
     const to = Math.min(matching, from + PAGE_SIZE - 1);
-    return `${from}–${to} de ${matching}`;
+    return traducir('bin.rango', { desde: from, hasta: to, total: matching });
   });
 
   readonly busy = computed(
@@ -293,9 +295,9 @@ export class BinariesComponent implements OnDestroy {
   readonly exportLabel = computed(() => {
     const progress = this.exportProgress();
 
-    if (progress) return `Exportando ${progress.done} de ${progress.total}…`;
+    if (progress) return traducir('bin.exportando', { n: progress.done, total: progress.total });
 
-    return this.exporter.canWriteFolder ? 'Guardar en una carpeta' : 'Descargar comprimido';
+    return traducir(this.exporter.canWriteFolder ? 'bin.guardarCarpeta' : 'bin.descargarZip');
   });
 
   /**
@@ -324,7 +326,7 @@ export class BinariesComponent implements OnDestroy {
 
     if (files.length === 0) {
       this.exporting.set(false);
-      this.feedback.set('No hay archivos con contenido guardado en este dispositivo.');
+      this.feedback.set(traducir('bin.sinContenido'));
       return;
     }
 
@@ -344,7 +346,7 @@ export class BinariesComponent implements OnDestroy {
   async download(entry: BinaryEntry): Promise<void> {
     const url = await this.storage.objectUrl(entry.resource.GUID);
     if (!url) {
-      this.feedback.set('El archivo ya no está en este dispositivo.');
+      this.feedback.set(traducir('bin.yaNoEsta'));
       return;
     }
 
@@ -367,7 +369,7 @@ export class BinariesComponent implements OnDestroy {
     const blob = await this.storage.loadBlob(entry.resource.GUID);
 
     if (!blob) {
-      this.feedback.set('El archivo ya no está en este dispositivo.');
+      this.feedback.set(traducir('bin.yaNoEsta'));
       return;
     }
 
@@ -389,7 +391,7 @@ export class BinariesComponent implements OnDestroy {
       const url = await this.storage.objectUrl(entry.resource.GUID);
 
       if (!url) {
-        this.feedback.set('El archivo ya no está en este dispositivo.');
+        this.feedback.set(traducir('bin.yaNoEsta'));
         return;
       }
 

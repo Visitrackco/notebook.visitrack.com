@@ -12,14 +12,14 @@
         igual y se ve al volver a entrar en la sala.
       -->
       @if (!conectado()) {
-        <span class="chat__sin-vivo" title="Los mensajes nuevos no llegarán solos">
-          Sin conexión en vivo
+        <span class="chat__sin-vivo" [title]="'chat.sinVivoHint' | t">
+          {{ 'chat.sinVivo' | t }}
         </span>
       }
     </header>
 
     @if (cargandoSalas()) {
-      <p class="chat__nada">Buscando tus salas…</p>
+      <p class="chat__nada">{{ 'chat.buscandoSalas' | t }}</p>
     } @else {
       <ul class="chat__lista">
         @for (sala of salas(); track sala.id) {
@@ -62,8 +62,8 @@
           <li>
             <ng-container
               *ngTemplateOutlet="buzonVacio; context: {
-                titulo: 'Sin salas de chat en tu empresa',
-                detalle: 'Quien administre una puede agregarte desde Module.'
+                titulo: ('chat.sinSalas' | t),
+                detalle: ('chat.sinSalasModule' | t)
               }"
             ></ng-container>
           </li>
@@ -78,15 +78,15 @@
       <header class="chat__cab">
         <!-- En pantalla estrecha la lista se pliega, así que hace falta cómo
              volver. En ancha no se pinta: la lista está ahí al lado. -->
-        <button type="button" class="chat__volver" (click)="volverALaLista()" aria-label="Volver a las salas">‹</button>
+        <button type="button" class="chat__volver" (click)="volverALaLista()" [attr.aria-label]="'chat.volverSalas' | t">‹</button>
 
         <div class="chat__cab-texto">
           <h3>{{ sala.nombre }}</h3>
 
           <p class="chat__gente">
             @if (mirandoAqui() > 1) {
-              <span class="chat__mirando" title="Personas con esta sala abierta ahora">
-                {{ mirandoAqui() }} mirando
+              <span class="chat__mirando" [title]="'chat.mirandoHint' | t">
+                {{ 'chat.mirando' | t: { n: mirandoAqui() } }}
               </span>
             }
 
@@ -106,7 +106,7 @@
       <div class="chat__lienzo">
       <div class="chat__mensajes" #caja (scroll)="alDesplazar()">
         @if (cargandoSala()) {
-          <p class="chat__nada">Abriendo la sala…</p>
+          <p class="chat__nada">{{ 'chat.abriendo' | t }}</p>
         }
 
         <!--
@@ -118,9 +118,9 @@
           tiene algo que decir.
         -->
         @if (cargandoArriba()) {
-          <p class="chat__masarriba">Trayendo lo anterior…</p>
+          <p class="chat__masarriba">{{ 'chat.trayendoAnterior' | t }}</p>
         } @else if (mensajes().length && !hayMasArriba() && !cargandoSala()) {
-          <p class="chat__masarriba">Aquí empieza la conversación.</p>
+          <p class="chat__masarriba">{{ 'chat.inicio' | t }}</p>
         }
 
         @for (m of mensajes(); track m.clientId || m.seq) {
@@ -131,8 +131,8 @@
                 <button
                   type="button"
                   class="chat__borrar"
-                  title="Eliminar mensaje"
-                  aria-label="Eliminar mensaje"
+                  [title]="'chat.eliminarMensaje' | t"
+                  [attr.aria-label]="'chat.eliminarMensaje' | t"
                   (click)="porBorrar.set(m)"
                 >
                   <vt-icon name="trash" [size]="14" />
@@ -155,11 +155,11 @@
                   <span class="chat__actividad-icono"><vt-icon name="file" [size]="18" /></span>
 
                   <span class="chat__actividad-texto">
-                    <strong>Actividad</strong>
-                    <small>Compartida en el chat</small>
+                    <strong>{{ 'ubic.actividad' | t }}</strong>
+                    <small>{{ 'chat.compartida' | t }}</small>
                   </span>
 
-                  <span class="chat__actividad-ver">Ver PDF</span>
+                  <span class="chat__actividad-ver">{{ 'chat.verPdf' | t }}</span>
                 </button>
               } @else if (m.tipo === 'formulario') {
                 <!-- Un acceso directo: «Crear actividad» de ese formulario. -->
@@ -172,12 +172,12 @@
                   <span class="chat__actividad-icono">⚡</span>
 
                   <span class="chat__actividad-texto">
-                    <strong>{{ m.formulario?.nombre || 'Formulario ' + m.texto }}</strong>
-                    <small>Acceso directo</small>
+                    <strong>{{ m.formulario?.nombre || ('chat.formularioN' | t: { id: m.texto }) }}</strong>
+                    <small>{{ 'chat.accesoDirecto' | t }}</small>
                   </span>
 
                   <span class="chat__actividad-ver">
-                    {{ creandoDesde() === m.id ? 'Creando…' : 'Crear actividad' }}
+                    {{ (creandoDesde() === m.id ? 'chat.creando' : 'chat.crearActividad') | t }}
                   </span>
                 </button>
               } @else if (m.texto) {
@@ -187,7 +187,7 @@
               @for (a of m.adjuntos; track a.id) {
                 @if (m.tipo === 'voz') {
                   <button type="button" class="chat__nota" (click)="abrirAdjunto(a.id)">
-                    ▶ Nota de voz · {{ m.segundos }}s
+                    ▶ {{ 'chat.notaVoz' | t }} · {{ m.segundos }}s
                   </button>
                 } @else if (esFoto(a)) {
                   <!-- Una foto se ve; lo demás se abre. La foto es el mensaje
@@ -206,20 +206,20 @@
 
                     <!-- Ver y descargar son intenciones distintas. La dirección
                          se pide al pulsar porque caduca en cinco minutos. -->
-                    <button type="button" (click)="abrirAdjunto(a.id)">Ver</button>
-                    <button type="button" (click)="abrirAdjunto(a.id, true)">Descargar</button>
+                    <button type="button" (click)="abrirAdjunto(a.id)">{{ 'comun.ver' | t }}</button>
+                    <button type="button" (click)="abrirAdjunto(a.id, true)">{{ 'bin.descargar' | t }}</button>
                   </div>
                 }
               }
 
               <span class="chat__hora">
-                {{ m.enviando ? 'Enviando…' : aLaHora(m.creadoEn) }}
+                {{ m.enviando ? ('chat.enviando' | t) : aLaHora(m.creadoEn) }}
               </span>
             </div>
           </article>
         } @empty {
           @if (!cargandoSala()) {
-            <p class="chat__nada">Todavía no hay nada. Escribe lo primero.</p>
+            <p class="chat__nada">{{ 'chat.vacio' | t }}</p>
           }
         }
       </div>
@@ -231,8 +231,8 @@
           type="button"
           class="chat__ir-abajo"
           (click)="irAbajo()"
-          title="Ir al último mensaje"
-          aria-label="Ir al último mensaje"
+          [title]="'chat.irUltimo' | t"
+          [attr.aria-label]="'chat.irUltimo' | t"
         >
           <vt-icon name="chevron" [size]="18" class="chat__ir-abajo-flecha" />
           @if (nuevosAbajo() > 0) {
@@ -252,7 +252,7 @@
       -->
       <!-- Alguien tiene la palabra: se dice, para que nadie hable encima. -->
       @if (hablaOtro(); as quien) {
-        <p class="chat__hablando" aria-live="polite">🔊 Está hablando {{ quien.nombre }}…</p>
+        <p class="chat__hablando" aria-live="polite">🔊 {{ 'chat.estaHablando' | t: { nombre: quien.nombre } }}</p>
       }
 
       <p class="chat__escribiendo" aria-live="polite">
@@ -265,9 +265,9 @@
             </span>
 
             @if (quienes.length === 1) {
-              {{ quienes[0] }} está escribiendo
+              {{ 'chat.escribiendo1' | t: { nombre: quienes[0] } }}
             } @else {
-              {{ quienes.length }} personas están escribiendo
+              {{ 'chat.escribiendoN' | t: { n: quienes.length } }}
             }
           }
         }
@@ -286,8 +286,8 @@
         andar tocando otra cosa sin querer.
       -->
       @if (hablandoYo()) {
-        <div class="vt-hablando" role="dialog" aria-label="Transmitiendo">
-          <p class="vt-hablando__donde">Transmitiendo a {{ sala.nombre }}</p>
+        <div class="vt-hablando" role="dialog" [attr.aria-label]="'chat.transmitiendo' | t">
+          <p class="vt-hablando__donde">{{ 'chat.transmitiendoA' | t: { sala: sala.nombre } }}</p>
 
           <!-- El círculo respira con la voz: los anillos se abren al hablar y
                se quedan pegados en silencio. Es un medidor de nivel leído de un
@@ -302,10 +302,10 @@
           <p class="vt-hablando__cuenta" [class.vt-hablando__cuenta--poco]="quedanSegundos() <= 5">
             {{ quedanSegundos() }}
           </p>
-          <p class="vt-hablando__unidad">segundos</p>
+          <p class="vt-hablando__unidad">{{ 'chat.segundos' | t }}</p>
 
           <button type="button" class="vt-hablando__parar" (click)="alternarHabla()">
-            Terminar
+            {{ 'chat.terminar' | t }}
           </button>
         </div>
       }
@@ -313,12 +313,12 @@
       <footer class="chat__escribir">
         <!-- Escondido por CSS y no con `hidden`: `hidden` lo saca también del
              tabulador, y entonces con teclado no hay forma de adjuntar. -->
-        <label class="chat__clip" title="Compartir una foto o un archivo">
+        <label class="chat__clip" [title]="'chat.compartirArchivo' | t">
           <input
             type="file"
             class="chat__clip-entrada"
             accept="image/*,application/pdf"
-            aria-label="Compartir una foto o un archivo"
+            [attr.aria-label]="'chat.compartirArchivo' | t"
             (change)="adjuntar($event)"
           />
           📎
@@ -327,8 +327,8 @@
         <button
           type="button"
           class="chat__clip"
-          title="Compartir un acceso directo a un formulario"
-          aria-label="Compartir un acceso directo a un formulario"
+          [title]="'chat.compartirFormulario' | t"
+          [attr.aria-label]="'chat.compartirFormulario' | t"
           (click)="abrirFormularios()"
         >
           ⚡
@@ -337,8 +337,8 @@
         <textarea
           class="chat__campo"
           rows="1"
-          placeholder="Escribe un mensaje…"
-          title="Enter manda el mensaje. Mayús+Enter salta de línea."
+          [placeholder]="'chat.escribe' | t"
+          [title]="'chat.escribeHint' | t"
           [ngModel]="texto()"
           (ngModelChange)="alEscribirTexto($event)"
           (keydown)="alTeclear($event)"
@@ -359,12 +359,12 @@
             [disabled]="!hablandoYo() && !!hablaOtro()"
             [title]="
               hablandoYo()
-                ? 'Pulsa para dejar de hablar'
+                ? ('chat.pulsaDejar' | t)
                 : hablaOtro()
-                  ? 'Está hablando otra persona'
-                  : 'Pulsa para hablar (hasta ' + TOPE_DE_SEGUNDOS + ' s)'
+                  ? ('chat.hablaOtro' | t)
+                  : ('chat.pulsaHablar' | t: { n: TOPE_DE_SEGUNDOS })
             "
-            [attr.aria-label]="hablandoYo() ? 'Dejar de hablar' : 'Hablar'"
+            [attr.aria-label]="(hablandoYo() ? 'chat.dejarHablar' : 'chat.hablar') | t"
             [attr.aria-pressed]="hablandoYo()"
             (click)="alternarHabla()"
           >
@@ -375,7 +375,7 @@
         <button
           type="button"
           class="chat__enviar"
-          aria-label="Enviar"
+          [attr.aria-label]="'chat.enviar' | t"
           [disabled]="!texto().trim()"
           (click)="enviar()"
         >
@@ -387,15 +387,15 @@
         @if (hayAlgo()) {
           <ng-container
             *ngTemplateOutlet="buzonVacio; context: {
-              titulo: 'Elige una sala para ver la conversación',
+              titulo: ('chat.eligeSala' | t),
               detalle: ''
             }"
           ></ng-container>
         } @else {
           <ng-container
             *ngTemplateOutlet="buzonVacio; context: {
-              titulo: 'Sin salas de chat en tu empresa',
-              detalle: 'Cuando te agreguen a una, aparecerá aquí.'
+              titulo: ('chat.sinSalas' | t),
+              detalle: ('chat.sinSalasHint' | t)
             }"
           ></ng-container>
         }
@@ -414,7 +414,7 @@
 @if (actividadVista(); as guid) {
   <vt-pdf-preview
     [url]="urlDeActividad(guid)"
-    titulo="Actividad compartida"
+    [titulo]="'chat.actividadCompartida' | t"
     (cerrado)="actividadVista.set('')"
   />
 }
@@ -423,10 +423,10 @@
   [open]="!!porBorrar()"
   tone="danger"
   icon="trash"
-  title="¿Eliminar el mensaje?"
-  message="Se borra para todos los de la sala, con sus fotos o archivos. No se puede deshacer."
-  confirmLabel="Eliminar"
-  cancelLabel="Cancelar"
+  [title]="'chat.eliminarTitulo' | t"
+  [message]="'chat.eliminarMsg' | t"
+  [confirmLabel]="'comun.eliminar' | t"
+  [cancelLabel]="'comun.cancelar' | t"
   [busy]="borrando()"
   (confirm)="borrarMensaje()"
   (cancel)="porBorrar.set(null)"
@@ -435,16 +435,16 @@
 <!-- Mis formularios, para compartir un acceso directo. -->
 @if (eligiendoFormulario()) {
   <div class="chat__velo" (click)="eligiendoFormulario.set(false)">
-    <div class="chat__elegir" role="dialog" aria-label="Compartir un formulario" (click)="$event.stopPropagation()">
+    <div class="chat__elegir" role="dialog" [attr.aria-label]="'chat.compartirUnFormulario' | t" (click)="$event.stopPropagation()">
       <header class="chat__elegir-cabeza">
-        <strong>Acceso directo a un formulario</strong>
-        <small>Quien lo reciba podrá crear una actividad con un clic.</small>
+        <strong>{{ 'chat.accesoAFormulario' | t }}</strong>
+        <small>{{ 'chat.accesoHint' | t }}</small>
       </header>
 
       <input
         class="chat__elegir-busca"
         type="search"
-        placeholder="Buscar formulario"
+        [placeholder]="'chat.buscarFormulario' | t"
         [ngModel]="buscaFormulario()"
         (ngModelChange)="buscaFormulario.set($event)"
       />
@@ -455,12 +455,12 @@
             <button type="button" (click)="compartirFormulario(f)">{{ f.Title }}</button>
           </li>
         } @empty {
-          <li class="chat__elegir-nada">No hay formularios.</li>
+          <li class="chat__elegir-nada">{{ 'chat.sinFormularios' | t }}</li>
         }
       </ul>
 
       <button type="button" class="vt-btn vt-btn-ghost" (click)="eligiendoFormulario.set(false)">
-        Cancelar
+        {{ 'comun.cancelar' | t }}
       </button>
     </div>
   </div>

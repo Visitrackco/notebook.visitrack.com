@@ -18,7 +18,8 @@ import {
 } from '../../core/geocercas/evento-de-geocerca';
 import { EventoDeGeocercaService } from '../../core/geocercas/evento-de-geocerca.service';
 import { IconComponent } from '../../shared/components/icon/icon.component';
-import { localeActual } from '../../core/i18n/idioma.service';
+import { localeActual, traducir } from '../../core/i18n/idioma.service';
+import { TPipe } from '../../core/i18n/t.pipe';
 
 /**
  * «Evento de geocerca»: a donde lleva tocar una alerta de geocerca.
@@ -37,7 +38,7 @@ import { localeActual } from '../../core/i18n/idioma.service';
 @Component({
   selector: 'vt-geocerca-evento',
   standalone: true,
-  imports: [IconComponent],
+  imports: [IconComponent, TPipe],
   templateUrl: './geocerca-evento.component.html',
   styleUrl: './geocerca-evento.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -79,7 +80,7 @@ export class GeocercaEventoComponent {
     return v ? enlaceAGoogleMaps(v.lat, v.lng) : '';
   });
 
-  readonly tituloAlerta = computed(() => (this.titulo() ?? '').trim() || 'Alerta de geocerca');
+  readonly tituloAlerta = computed(() => (this.titulo() ?? '').trim() || traducir('geo.alerta'));
 
   readonly abriendo = signal(false);
 
@@ -116,9 +117,9 @@ export class GeocercaEventoComponent {
 
   /** «a 35 m del borde», con kilómetros si son muchos. */
   distancia(m: number): string {
-    if (m < 1) return 'justo en el borde';
+    if (m < 1) return traducir('geo.enElBorde');
     const cifra = m >= 1000 ? `${(m / 1000).toLocaleString(localeActual(), { maximumFractionDigits: 1 })} km` : `${m} m`;
-    return `a ${cifra} del borde`;
+    return traducir('geo.delBorde', { cifra });
   }
 
   async abrirActividad(): Promise<void> {

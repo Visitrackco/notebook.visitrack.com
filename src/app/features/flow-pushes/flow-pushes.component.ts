@@ -8,6 +8,8 @@ import {
   PushPendiente,
 } from '../../core/services/push-flujo.service';
 import { ToastService } from '../../core/services/toast.service';
+import { traducir } from '../../core/i18n/idioma.service';
+import { TPipe } from '../../core/i18n/t.pipe';
 
 /** Las que se pintan de una vez, y las que se guardan en memoria como mucho. */
 const POR_TANDA = 50;
@@ -42,7 +44,7 @@ const TOPE_EN_MEMORIA = 500;
 @Component({
   selector: 'vt-flow-pushes',
   standalone: true,
-  imports: [NearEndDirective],
+  imports: [NearEndDirective, TPipe],
   templateUrl: './flow-pushes.component.html',
   styleUrl: './flow-pushes.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -137,13 +139,13 @@ export class FlowPushesComponent implements OnInit {
       this.toasts.show({
         title: salida.aceptados
           ? salida.aceptados === 1
-            ? 'Entro en la cola'
-            : `${salida.aceptados} entraron en la cola`
-          : 'Todavia no puede entrar',
+            ? traducir('flujos.entroCola')
+            : traducir('flujos.entraronCola', { n: salida.aceptados })
+          : traducir('flujos.noPuedeEntrar'),
         detail: salida.aceptados
-          ? 'Lo manda el servidor enseguida.'
+          ? traducir('flujos.loMandaServidor')
           : String(salida.motivo ?? '').trim() ||
-            'La actividad tiene que estar en Visitrack y sus fotos subidas.',
+            traducir('flujos.tieneQueEstar'),
         tone: salida.aceptados ? 'success' : 'info',
       });
     } finally {
@@ -212,9 +214,9 @@ export class FlowPushesComponent implements OnInit {
       this.toasts.show({
         title: aceptados
           ? aceptados === 1
-            ? '1 notificación entró en la cola'
-            : `${aceptados} notificaciones entraron en la cola`
-          : 'Ninguna pudo entrar todavía',
+            ? traducir('flujos.push1Cola')
+            : traducir('flujos.pushesNCola', { n: aceptados })
+          : traducir('flujos.ningunaPudo'),
 
         /*
          * El motivo manda sobre el texto genérico.
@@ -224,7 +226,7 @@ export class FlowPushesComponent implements OnInit {
          * la compañía. Ese es justo el caso que hay que poder leer.
          */
         detail:
-          motivo || (aceptados ? undefined : 'Necesitan conexión, o que su actividad termine de subir.'),
+          motivo || (aceptados ? undefined : traducir('flujos.necesitanConexion')),
         tone: aceptados ? 'success' : motivo ? 'warning' : 'info',
       });
     } finally {
@@ -249,9 +251,9 @@ export class FlowPushesComponent implements OnInit {
   comoSeLee(push: PushPendiente): string {
     const estado = this.estadoDe(push);
 
-    if (estado === 'mal') return 'No se pudo';
+    if (estado === 'mal') return traducir('flujos.noSePudo');
 
-    return estado === 'cola' ? 'En la cola' : 'Esperando';
+    return traducir(estado === 'cola' ? 'flujos.enCola' : 'flujos.esperando');
   }
 
   /**
@@ -268,12 +270,12 @@ export class FlowPushesComponent implements OnInit {
       .map((uno) => uno.trim())
       .filter(Boolean)
       .map((uno) => {
-        if (uno.toLowerCase() === '@asignado') return 'al asignado';
-        if (uno.toLowerCase() === '@creador') return 'a quien la creó';
+        if (uno.toLowerCase() === '@asignado') return traducir('flujos.alAsignado');
+        if (uno.toLowerCase() === '@creador') return traducir('flujos.alCreador');
 
         return uno;
       });
 
-    return partes.length ? partes.join(', ') : '(sin destinatario)';
+    return partes.length ? partes.join(', ') : traducir('flujos.sinDestinatario');
   }
 }

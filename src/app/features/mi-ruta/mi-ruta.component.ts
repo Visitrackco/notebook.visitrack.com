@@ -5,7 +5,9 @@ import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
-import { localeActual } from '../../core/i18n/idioma.service';
+import { localeActual, traducir } from '../../core/i18n/idioma.service';
+import { TPipe } from '../../core/i18n/t.pipe';
+import type { ClaveTexto } from '../../core/i18n/textos';
 
 interface Punto {
   ID: number;
@@ -35,13 +37,13 @@ interface Jornada {
   puntos: Punto[];
 }
 
-const ESTADOS: Record<string, string> = {
-  PENDIENTE: 'Pendiente',
-  CUMPLIDO: 'Cumplido',
-  FUERA_DE_RANGO: 'Fuera de rango',
-  NOVEDAD: 'Con novedad',
-  INCUMPLIDO: 'Incumplido',
-  PROGRAMADO: 'Programado',
+const ESTADOS: Record<string, ClaveTexto> = {
+  PENDIENTE: 'ruta.e.pendiente',
+  CUMPLIDO: 'ruta.e.cumplido',
+  FUERA_DE_RANGO: 'ruta.e.fueraDeRango',
+  NOVEDAD: 'ruta.e.novedad',
+  INCUMPLIDO: 'ruta.e.incumplido',
+  PROGRAMADO: 'ruta.e.programado',
 };
 
 /**
@@ -59,30 +61,30 @@ const ESTADOS: Record<string, string> = {
 @Component({
   selector: 'app-mi-ruta',
   standalone: true,
-  imports: [RouterLink, FormsModule],
+  imports: [RouterLink, FormsModule, TPipe],
   template: `
     <section class="mr">
       <header class="mr-cab">
         <div>
-          <h1>Mi ruta</h1>
-          <p>Los puntos de tu ruta, en orden, y cuántos te faltan.</p>
+          <h1>{{ 'ruta.titulo' | t }}</h1>
+          <p>{{ 'ruta.subtitulo' | t }}</p>
         </div>
         <div class="mr-acciones">
           <label class="mr-fecha-campo">
-            Día
+            {{ 'ruta.dia' | t }}
             <input type="date" [(ngModel)]="fecha" (change)="cargar()" />
           </label>
           @if (fecha) {
-            <button type="button" class="mr-btn" (click)="fecha = ''; cargar()">Hoy</button>
+            <button type="button" class="mr-btn" (click)="fecha = ''; cargar()">{{ 'ruta.hoy' | t }}</button>
           }
           <button type="button" class="mr-btn" (click)="cargar()" [disabled]="cargando()">
-            {{ cargando() ? 'Cargando…' : 'Actualizar' }}
+            {{ (cargando() ? 'comun.cargando' : 'ruta.actualizar') | t }}
           </button>
         </div>
       </header>
 
       @if (fecha) {
-        <p class="mr-consulta">Consulta del {{ fecha }}: solo para mirar.</p>
+        <p class="mr-consulta">{{ 'ruta.consulta' | t: { fecha: fecha } }}</p>
       }
 
       @if (error()) {
@@ -96,33 +98,33 @@ const ESTADOS: Record<string, string> = {
 
           <p class="mr-faltan" [class.mr-completa]="faltan(j) === 0 && j.Estado !== 'PROGRAMADA'">
             @if (j.Estado === 'PROGRAMADA') {
-              Ruta programada: sus consignas llegan la noche anterior.
+              {{ 'ruta.programada' | t }}
             } @else if (faltan(j) === 0) {
-              Ruta completa.
+              {{ 'ruta.completa' | t }}
             } @else {
-              Te {{ faltan(j) === 1 ? 'falta 1 punto' : 'faltan ' + faltan(j) + ' puntos' }} de {{ j.puntos.length }}.
+              {{ (faltan(j) === 1 ? 'ruta.falta1' : 'ruta.faltanN') | t: { n: faltan(j), total: j.puntos.length } }}
             }
           </p>
 
           @if (j.FinUtc && !fecha) {
             <p class="mr-turno" [class.mr-turno-fin]="terminada(j)">
               @if (terminada(j)) {
-                Tu turno terminó a las {{ hora(j.FinUtc) }}: ya no puedes diligenciar esta ruta.
+                {{ 'ruta.turnoTermino' | t: { hora: hora(j.FinUtc) } }}
               } @else {
-                Tu turno termina a las {{ hora(j.FinUtc) }}.
-                @if (j.BorrarAlFinal) { Lo que no guardes antes se borra. }
+                {{ 'ruta.turnoTermina' | t: { hora: hora(j.FinUtc) } }}
+                @if (j.BorrarAlFinal) { {{ 'ruta.seBorra' | t }} }
               }
             </p>
           }
 
           @if (!j.MarcacionAsignada || (j.FormNovedadID && !j.NovedadAsignada)) {
             <p class="mr-sin-form">
-              No tienes asignado
-              @if (!j.MarcacionAsignada) { el formulario de marcación «{{ j.FormMarcacion }}» }
-              @if (!j.MarcacionAsignada && j.FormNovedadID && !j.NovedadAsignada) { ni }
-              @if (j.FormNovedadID && !j.NovedadAsignada) { el de novedad «{{ j.FormNovedad }}» }.
-              {{ j.MarcacionAsignada ? 'No podrás registrar novedades' : 'No puedes hacer esta ruta' }}:
-              pídele a tu administrador que te lo asigne.
+              {{ 'ruta.noAsignado' | t }}
+              @if (!j.MarcacionAsignada) { {{ 'ruta.formMarcacion' | t: { nombre: j.FormMarcacion } }} }
+              @if (!j.MarcacionAsignada && j.FormNovedadID && !j.NovedadAsignada) { {{ 'ruta.ni' | t }} }
+              @if (j.FormNovedadID && !j.NovedadAsignada) { {{ 'ruta.formNovedad' | t: { nombre: j.FormNovedad } }} }.
+              {{ (j.MarcacionAsignada ? 'ruta.noNovedades' : 'ruta.noRuta') | t }}:
+              {{ 'ruta.pideAdmin' | t }}
             </p>
           }
 
@@ -133,15 +135,15 @@ const ESTADOS: Record<string, string> = {
                 <div class="mr-dato">
                   <strong>{{ p.Nombre }}</strong>
                   <small>
-                    {{ estados[p.Estado] ?? p.Estado }}
-                    @if (p.HoraEsperada) { · a las {{ p.HoraEsperada }} }
-                    @if (p === siguiente(j)) { · sigue este }
+                    {{ estado(p.Estado) }}
+                    @if (p.HoraEsperada) { · {{ 'ruta.aLas' | t: { hora: p.HoraEsperada } }} }
+                    @if (p === siguiente(j)) { · {{ 'ruta.sigueEste' | t }} }
                   </small>
                 </div>
                 @if (p.ActividadGUID && j.MarcacionAsignada && !fecha && !terminada(j)) {
-                  <a class="mr-abrir" [routerLink]="['/formularios', j.FormMarcacionID, 'actividad', p.ActividadGUID]">Abrir</a>
+                  <a class="mr-abrir" [routerLink]="['/formularios', j.FormMarcacionID, 'actividad', p.ActividadGUID]">{{ 'ruta.abrir' | t }}</a>
                 } @else if (!p.ActividadGUID) {
-                  <span class="mr-espera">Aún sin consigna</span>
+                  <span class="mr-espera">{{ 'ruta.sinConsigna' | t }}</span>
                 }
               </li>
             }
@@ -149,7 +151,7 @@ const ESTADOS: Record<string, string> = {
         </article>
       } @empty {
         @if (!cargando() && !error()) {
-          <p class="mr-nada">{{ fecha ? 'No tuviste ruta ese día.' : 'No tienes ruta para hoy.' }}</p>
+          <p class="mr-nada">{{ (fecha ? 'ruta.nadaEseDia' : 'ruta.nadaHoy') | t }}</p>
         }
       }
     </section>
@@ -217,7 +219,12 @@ const ESTADOS: Record<string, string> = {
 export class MiRutaComponent implements OnInit {
   private readonly http = inject(HttpClient);
 
-  readonly estados = ESTADOS;
+  /** Nombre del estado de un punto en el idioma de la interfaz. */
+  estado(codigo: string): string {
+    const clave = ESTADOS[codigo];
+    return clave ? traducir(clave) : codigo;
+  }
+
   readonly jornadas = signal<Jornada[]>([]);
   readonly cargando = signal(false);
   readonly error = signal('');
@@ -241,7 +248,7 @@ export class MiRutaComponent implements OnInit {
       // Solo las de la fecha pedida: un servidor viejo ignora el filtro.
       this.jornadas.set(this.fecha ? todas.filter((j) => j.Fecha === this.fecha) : todas);
     } catch {
-      this.error.set('No se pudo leer tu ruta. Revisa la conexión e inténtalo de nuevo.');
+      this.error.set(traducir('ruta.error'));
     } finally {
       this.cargando.set(false);
     }

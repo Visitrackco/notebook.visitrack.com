@@ -4,6 +4,7 @@ import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { filter, map, startWith } from 'rxjs';
 
 import { ChatSocketService } from './chat-socket.service';
+import { TPipe } from '../../core/i18n/t.pipe';
 
 /**
  * «Te está hablando Fulano», flotando abajo mientras dura la transmisión.
@@ -31,6 +32,7 @@ import { ChatSocketService } from './chat-socket.service';
 @Component({
   selector: 'vt-hablando-que-flota',
   standalone: true,
+  imports: [TPipe],
   template: `
     @if (loQueSuena(); as turno) {
       <button type="button" class="hab" (click)="abrir(turno.salaId)">
@@ -41,8 +43,8 @@ import { ChatSocketService } from './chat-socket.service';
         </span>
 
         <span class="hab__texto">
-          <strong>{{ turno.nombre || 'Alguien' }} te está hablando</strong>
-          <small>Pulsa para abrir la sala</small>
+          <strong>{{ 'chat.teHabla' | t: { nombre: turno.nombre || ('chat.alguien' | t) } }}</strong>
+          <small>{{ 'chat.pulsaAbrirSala' | t }}</small>
         </span>
 
         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">

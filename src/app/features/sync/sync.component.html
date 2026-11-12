@@ -1,13 +1,13 @@
 <div class="sync">
   <header class="sync__header">
     <div>
-      <h1>Sincronización</h1>
-      <p>Qué información tienes guardada y qué falta por descargar.</p>
+      <h1>{{ 'sync.titulo' | t }}</h1>
+      <p>{{ 'sync.subtitulo' | t }}</p>
     </div>
 
     <div class="sync__actions">
       @if (sync.isRunning()) {
-        <button type="button" class="vt-btn vt-btn-ghost" (click)="cancel()">Cancelar</button>
+        <button type="button" class="vt-btn vt-btn-ghost" (click)="cancel()">{{ 'comun.cancelar' | t }}</button>
       } @else {
         <button
           type="button"
@@ -16,7 +16,7 @@
           (click)="check()"
         >
           <vt-icon name="check" [size]="17" />
-          {{ status.checking() ? 'Comparando…' : 'Comparar' }}
+          {{ (status.checking() ? 'sync.comparando' : 'sync.comparar') | t }}
         </button>
         <!-- La salida cuando se sincroniza y no baja nada. No toca los datos:
              solo le dice al servidor que este equipo se lo tiene que volver a
@@ -26,10 +26,10 @@
           class="vt-btn vt-btn-ghost"
           [disabled]="connectivity.isOffline()"
           (click)="resyncEverything()"
-          title="Vuelve a marcar todos tus datos como pendientes para este equipo"
+          [title]="'sync.pedirTodoHint' | t"
         >
           <vt-icon name="cloud-upload" [size]="17" />
-          Volver a pedirlo todo
+          {{ 'sync.pedirTodo' | t }}
         </button>
 
         <button
@@ -39,7 +39,7 @@
           (click)="downloadAll()"
         >
           <vt-icon name="refresh" [size]="17" />
-          Descargar datos
+          {{ 'sync.descargar' | t }}
         </button>
       }
     </div>
@@ -49,10 +49,9 @@
     <div class="sync__note sync__note--warning">
       <vt-icon name="connection-off" [size]="19" />
       <div>
-        <strong>Sin conexión</strong>
+        <strong>{{ 'comun.sinConexion' | t }}</strong>
         <span>
-          Puedes seguir trabajando con lo que ya está guardado. Para descargar datos nuevos
-          necesitas internet.
+          {{ 'sync.sinConexionHint' | t }}
         </span>
       </div>
     </div>
@@ -90,7 +89,7 @@
       </div>
       <span class="sync__progress-detail vt-figure">
         {{ sync.state().processed }}@if (sync.state().total > 0) { / {{ sync.state().total }} }
-        registros
+        {{ 'sync.registros' | t }}
       </span>
     </section>
   }
@@ -99,26 +98,26 @@
   <section class="sync__summary">
     <article class="sync__stat">
       <span class="sync__stat-value vt-figure">{{ totalLocal() }}</span>
-      <span class="sync__stat-label">Registros guardados</span>
+      <span class="sync__stat-label">{{ 'sync.registrosGuardados' | t }}</span>
     </article>
 
     <article class="sync__stat" [class.sync__stat--alert]="totalMissing() > 0">
       <span class="sync__stat-value vt-figure">{{ totalMissing() }}</span>
-      <span class="sync__stat-label">Faltan por descargar</span>
+      <span class="sync__stat-label">{{ 'sync.faltanDescargar' | t }}</span>
     </article>
 
     <article class="sync__stat">
       <span class="sync__stat-value vt-figure">{{ storage()?.used ?? '—' }}</span>
-      <span class="sync__stat-label">Espacio ocupado</span>
+      <span class="sync__stat-label">{{ 'sync.espacio' | t }}</span>
     </article>
   </section>
 
   <!-- Detalle por entidad -->
   <section class="sync__panel">
     <header class="sync__panel-head">
-      <h2>Detalle por tipo de dato</h2>
+      <h2>{{ 'sync.detalle' | t }}</h2>
       @if (lastCheck()) {
-        <span class="sync__panel-meta">Comparado {{ lastCheck() }}</span>
+        <span class="sync__panel-meta">{{ 'sync.comparadoA' | t: { hora: lastCheck() } }}</span>
       }
     </header>
 
@@ -126,10 +125,10 @@
       <table mat-table [dataSource]="cards()" class="sync__table">
         <!-- Tipo de dato -->
         <ng-container matColumnDef="entity">
-          <th mat-header-cell *matHeaderCellDef>Dato</th>
+          <th mat-header-cell *matHeaderCellDef>{{ 'sync.colDato' | t }}</th>
           <td mat-cell *matCellDef="let card">
-            <span class="sync__name">{{ card.label }}</span>
-            <span class="sync__hint">{{ card.hint }}</span>
+            <span class="sync__name">{{ etiqueta(card) }}</span>
+            <span class="sync__hint">{{ pista(card) }}</span>
             <!-- Los flujos se pueden consultar: es lo primero que hay que mirar
                  cuando un formulario o una geocerca no hace lo esperado. -->
             @if (tipoDeFlujo(card)) {
@@ -139,7 +138,7 @@
                 [attr.aria-expanded]="verFlujos() === tipoDeFlujo(card)"
                 (click)="abrirFlujos(card)"
               >
-                {{ verFlujos() === tipoDeFlujo(card) ? 'Ocultar los flujos' : 'Ver los flujos' }}
+                {{ (verFlujos() === tipoDeFlujo(card) ? 'sync.ocultarFlujos' : 'sync.verFlujos') | t }}
               </button>
             }
           </td>
@@ -147,7 +146,7 @@
 
         <!-- Cantidad local -->
         <ng-container matColumnDef="local">
-          <th mat-header-cell *matHeaderCellDef class="sync__num">Aquí</th>
+          <th mat-header-cell *matHeaderCellDef class="sync__num">{{ 'sync.colAqui' | t }}</th>
           <td mat-cell *matCellDef="let card" class="sync__num vt-figure">
             {{ card.localCount }}
           </td>
@@ -155,7 +154,7 @@
 
         <!-- Cantidad en el servidor -->
         <ng-container matColumnDef="server">
-          <th mat-header-cell *matHeaderCellDef class="sync__num">Servidor</th>
+          <th mat-header-cell *matHeaderCellDef class="sync__num">{{ 'sync.colServidor' | t }}</th>
           <td mat-cell *matCellDef="let card" class="sync__num vt-figure">
             {{ card.status === 'unknown' ? '—' : card.serverCount }}
           </td>
@@ -163,7 +162,7 @@
 
         <!-- Diferencia -->
         <ng-container matColumnDef="missing">
-          <th mat-header-cell *matHeaderCellDef class="sync__num">Faltan</th>
+          <th mat-header-cell *matHeaderCellDef class="sync__num">{{ 'sync.colFaltan' | t }}</th>
           <td mat-cell *matCellDef="let card" class="sync__num vt-figure">
             @if (card.missing > 0) {
               <span class="sync__missing">{{ card.missing }}</span>
@@ -175,7 +174,7 @@
 
         <!-- Estado -->
         <ng-container matColumnDef="status">
-          <th mat-header-cell *matHeaderCellDef>Estado</th>
+          <th mat-header-cell *matHeaderCellDef>{{ 'sync.colEstado' | t }}</th>
           <td mat-cell *matCellDef="let card">
             <span class="sync__chip" [class]="'sync__chip--' + card.status">
               <span class="sync__dot"></span>
@@ -189,7 +188,7 @@
 
         <!-- Acciones -->
         <ng-container matColumnDef="actions">
-          <th mat-header-cell *matHeaderCellDef aria-label="Acciones"></th>
+          <th mat-header-cell *matHeaderCellDef [attr.aria-label]="'sync.colAcciones' | t"></th>
           <!-- El panel lo monta el overlay de Material fuera del flujo: un menú
                posicionado en absoluto dentro de la tabla quedaba recortado por
                el `overflow-x` del contenedor con scroll. -->
@@ -198,7 +197,7 @@
               type="button"
               class="sync__more"
               [matMenuTriggerFor]="rowMenu"
-              [attr.aria-label]="'Opciones de ' + card.label"
+              [attr.aria-label]="'sync.opcionesDe' | t: { nombre: etiqueta(card) }"
             >
               ⋯
             </button>
@@ -208,8 +207,8 @@
                 <span class="sync__menu-item">
                   <vt-icon name="refresh" [size]="16" />
                   <span>
-                    <strong>Pedir todo de nuevo</strong>
-                    <small>El servidor reenviará esta información</small>
+                    <strong>{{ 'sync.pedirDeNuevo' | t }}</strong>
+                    <small>{{ 'sync.pedirDeNuevoHint' | t }}</small>
                   </span>
                 </span>
               </button>
@@ -218,8 +217,8 @@
                 <span class="sync__menu-item sync__menu-item--danger">
                   <vt-icon name="close" [size]="16" />
                   <span>
-                    <strong>Borrar de este equipo</strong>
-                    <small>Se descargará completa la próxima vez</small>
+                    <strong>{{ 'sync.borrarEquipo' | t }}</strong>
+                    <small>{{ 'sync.borrarEquipoHint' | t }}</small>
                   </span>
                 </span>
               </button>

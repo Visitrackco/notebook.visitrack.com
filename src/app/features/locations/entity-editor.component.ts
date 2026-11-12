@@ -15,6 +15,8 @@ import { IconComponent } from '../../shared/components/icon/icon.component';
 import { ToTopComponent } from '../../shared/components/to-top/to-top.component';
 import { FieldHostComponent } from '../activities/form/fields/field-host.component';
 import { nuevoGuid } from '../../shared/utils/guid';
+import { traducir } from '../../core/i18n/idioma.service';
+import { TPipe } from '../../core/i18n/t.pipe';
 
 /** Qué se está editando. */
 type Subject = 'location' | 'asset';
@@ -45,7 +47,7 @@ type Subject = 'location' | 'asset';
 @Component({
   selector: 'vt-entity-editor',
   standalone: true,
-  imports: [FieldHostComponent, IconComponent, RequiredDialogComponent, ToTopComponent],
+  imports: [FieldHostComponent, IconComponent, RequiredDialogComponent, ToTopComponent, TPipe],
   templateUrl: './entity-editor.component.html',
   styleUrl: './entity-editor.component.scss',
 })
@@ -101,8 +103,9 @@ export class EntityEditorComponent {
   );
 
   readonly title = computed(() => {
-    const what = this.subject() === 'asset' ? 'activo' : 'ubicación';
-    return this.isNew() ? `Nuevo ${what}` : `Editar ${what}`;
+    const asset = this.subject() === 'asset';
+    if (this.isNew()) return traducir(asset ? 'ubic.nuevoActivo' : 'ubic.nueva');
+    return traducir(asset ? 'ubic.editarActivo' : 'ubic.editarUbicacion');
   });
 
   /**
@@ -152,7 +155,7 @@ export class EntityEditorComponent {
       else await this.loadLocation(guid);
     } catch (error) {
       console.error('[Ubicaciones] no se pudo abrir el editor', error);
-      this.error.set('No se pudo abrir el editor.');
+      this.error.set(traducir('ubic.errorEditor'));
     } finally {
       this.loading.set(false);
     }
@@ -172,7 +175,7 @@ export class EntityEditorComponent {
     const record = await this.editor.findLocation(guid);
 
     if (!record) {
-      this.error.set('Esta ubicación ya no está en el dispositivo.');
+      this.error.set(traducir('ubic.ubicacionYaNo'));
       return;
     }
 
@@ -199,7 +202,7 @@ export class EntityEditorComponent {
     const location = await this.editor.findLocation(locationGuid);
 
     if (!location) {
-      this.error.set('La ubicación de este activo ya no está en el dispositivo.');
+      this.error.set(traducir('ubic.ubicacionDelActivoYaNo'));
       return;
     }
 
@@ -232,7 +235,7 @@ export class EntityEditorComponent {
     const record = await this.editor.findAsset(assetGuid);
 
     if (!record) {
-      this.error.set('Este activo ya no está en el dispositivo.');
+      this.error.set(traducir('ubic.activoYaNo'));
       return;
     }
 
@@ -304,7 +307,7 @@ export class EntityEditorComponent {
 
   /** Nombre de cada página, para titular los grupos del aviso. */
   readonly pageLabels = computed(() =>
-    (this.engine()?.pages ?? []).map((page, index) => page.lab || `Página ${index + 1}`),
+    (this.engine()?.pages ?? []).map((page, index) => page.lab || traducir('ubic.pagina', { n: index + 1 })),
   );
 
   /**
@@ -320,7 +323,7 @@ export class EntityEditorComponent {
 
     if (!this.name().trim()) {
       entries.push({
-        field: { id: '__name', fty: 'TextLine', lab: 'Nombre', req: true },
+        field: { id: '__name', fty: 'TextLine', lab: traducir('ubic.nombre'), req: true },
         page: 0,
         go: () => focusName(),
       });
@@ -351,7 +354,7 @@ export class EntityEditorComponent {
     engine?.markSubmitted();
 
     if (!type) {
-      this.error.set('Elige un tipo antes de guardar.');
+      this.error.set(traducir('ubic.eligeTipoAntes'));
       return;
     }
 
@@ -405,7 +408,7 @@ export class EntityEditorComponent {
       await this.afterSave();
     } catch (error) {
       console.error('[Ubicaciones] no se pudo guardar', error);
-      this.error.set('No se pudo guardar. Inténtalo de nuevo.');
+      this.error.set(traducir('ubic.errorGuardar'));
     } finally {
       this.saving.set(false);
     }

@@ -6,10 +6,9 @@
   <header class="gev__cab">
     <span class="gev__ico" aria-hidden="true"><vt-icon name="geocerca-eventos" [size]="22" /></span>
     <div class="gev__cab-texto">
-      <h1 class="gev__titulo">Eventos de geocerca</h1>
+      <h1 class="gev__titulo">{{ 'geo.titulo' | t }}</h1>
       <p class="gev__sub">
-        Cada vez que entraste, saliste, pasaste cerca o hiciste algo dentro de una geocerca
-        con un flujo activo. Toca uno para ver el detalle y el mapa.
+        {{ 'geo.subtitulo' | t }}
       </p>
     </div>
     <button
@@ -17,29 +16,29 @@
       class="gev__btn gev__btn--icono"
       (click)="cargar()"
       [disabled]="cargando()"
-      aria-label="Recargar"
-      title="Recargar"
+      [attr.aria-label]="'geo.recargar' | t"
+      [title]="'geo.recargar' | t"
     >
       <vt-icon name="refresh" [size]="18" />
     </button>
   </header>
 
   <!-- Filtros: rango de fechas y geocerca. Viven en la dirección. -->
-  <form class="gev__filtros" (submit)="$event.preventDefault()" aria-label="Filtros">
-    <div class="gev__rapidos" role="group" aria-label="Rango rápido">
+  <form class="gev__filtros" (submit)="$event.preventDefault()" [attr.aria-label]="'geo.filtros' | t">
+    <div class="gev__rapidos" role="group" [attr.aria-label]="'geo.rangoRapido' | t">
       <button type="button" class="gev__chip" [class.gev__chip--activo]="esRango(1)" (click)="ultimosDias(1)">
-        Hoy
+        {{ 'ruta.hoy' | t }}
       </button>
       <button type="button" class="gev__chip" [class.gev__chip--activo]="esRango(7)" (click)="ultimosDias(7)">
-        7 días
+        {{ 'geo.nDias' | t: { n: 7 } }}
       </button>
       <button type="button" class="gev__chip" [class.gev__chip--activo]="esRango(30)" (click)="ultimosDias(30)">
-        30 días
+        {{ 'geo.nDias' | t: { n: 30 } }}
       </button>
     </div>
 
     <label class="gev__campo">
-      <span>Desde</span>
+      <span>{{ 'geo.desde' | t }}</span>
       <input
         type="date"
         [value]="filtro().desde"
@@ -48,7 +47,7 @@
       />
     </label>
     <label class="gev__campo">
-      <span>Hasta</span>
+      <span>{{ 'geo.hasta' | t }}</span>
       <input
         type="date"
         [value]="filtro().hasta"
@@ -57,19 +56,19 @@
       />
     </label>
     <label class="gev__campo gev__campo--ancho">
-      <span>Geocerca</span>
+      <span>{{ 'geo.geocerca' | t }}</span>
       <select (change)="cambiarGeocerca($any($event.target).value)">
-        <option value="" [selected]="filtro().geocerca === null">Todas</option>
+        <option value="" [selected]="filtro().geocerca === null">{{ 'desp.todas' | t }}</option>
         @for (g of geocercas(); track g.id) {
           <option [value]="g.id" [selected]="filtro().geocerca === g.id">
-            {{ g.nombre || 'Geocerca ' + g.id }}
+            {{ g.nombre || ('geo.geocercaN' | t: { id: g.id }) }}
           </option>
         }
       </select>
     </label>
 
     @if (hayFiltrosPropios()) {
-      <button type="button" class="gev__enlace" (click)="limpiar()">Quitar filtros</button>
+      <button type="button" class="gev__enlace" (click)="limpiar()">{{ 'geo.quitarFiltros' | t }}</button>
     }
   </form>
 
@@ -77,16 +76,16 @@
     <p class="gev__aviso" role="status">
       <vt-icon name="connection-off" [size]="16" />
       <span>
-        Sin conexión: se muestran los eventos guardados en este navegador.
-        <span class="gev__aviso-sub">Guarda solo los de la última semana.</span>
+        {{ 'geo.sinConexion' | t }}
+        <span class="gev__aviso-sub">{{ 'geo.ultimaSemana' | t }}</span>
       </span>
-      <button type="button" class="gev__enlace" (click)="cargar()">Reintentar</button>
+      <button type="button" class="gev__enlace" (click)="cargar()">{{ 'comun.reintentar' | t }}</button>
     </p>
   }
 
   @if (cargando() && !resultado()) {
     <!-- La primera carga: un esqueleto con la forma de la lista. -->
-    <ul class="gev__lista" aria-busy="true" aria-label="Cargando eventos">
+    <ul class="gev__lista" aria-busy="true" [attr.aria-label]="'geo.cargando' | t">
       @for (i of [1, 2, 3, 4, 5]; track i) {
         <li class="gev__fila gev__fila--esqueleto" aria-hidden="true">
           <span class="gev__tipo gev__tipo--otro"></span>
@@ -94,14 +93,14 @@
         </li>
       }
     </ul>
-    <span class="gev__oculto" role="status">Cargando los eventos…</span>
+    <span class="gev__oculto" role="status">{{ 'geo.cargando' | t }}</span>
   } @else if (fallo()) {
     <div class="gev__vacio">
       <span class="gev__vacio-ico gev__vacio-ico--mal"><vt-icon name="alert" [size]="26" /></span>
-      <p class="gev__vacio-tit">No pudimos leer los eventos</p>
-      <p class="gev__sub">Ni el servidor ni este navegador respondieron. Prueba otra vez en un momento.</p>
+      <p class="gev__vacio-tit">{{ 'geo.noPudimos' | t }}</p>
+      <p class="gev__sub">{{ 'geo.noPudimosHint' | t }}</p>
       <button type="button" class="gev__btn" (click)="cargar()">
-        <vt-icon name="refresh" [size]="16" /> Reintentar
+        <vt-icon name="refresh" [size]="16" /> {{ 'comun.reintentar' | t }}
       </button>
     </div>
   } @else if (!filas().length) {
@@ -109,14 +108,13 @@
     <div class="gev__vacio">
       <span class="gev__vacio-ico"><vt-icon name="geocerca-eventos" [size]="26" /></span>
       @if (hayFiltrosPropios()) {
-        <p class="gev__vacio-tit">Ningún evento con estos filtros</p>
-        <p class="gev__sub">Prueba con un rango de fechas más amplio o con todas las geocercas.</p>
-        <button type="button" class="gev__btn" (click)="limpiar()">Quitar filtros</button>
+        <p class="gev__vacio-tit">{{ 'geo.ningunEvento' | t }}</p>
+        <p class="gev__sub">{{ 'geo.ningunEventoHint' | t }}</p>
+        <button type="button" class="gev__btn" (click)="limpiar()">{{ 'geo.quitarFiltros' | t }}</button>
       } @else {
-        <p class="gev__vacio-tit">Sin eventos en los últimos 7 días</p>
+        <p class="gev__vacio-tit">{{ 'geo.sinEventos' | t }}</p>
         <p class="gev__sub">
-          Aparecen aquí en cuanto una geocerca de tus flujos se dispare, desde el teléfono o
-          con esta pestaña abierta.
+          {{ 'geo.sinEventosHint' | t }}
         </p>
       }
     </div>
@@ -143,7 +141,7 @@
                   </span>
 
                   <span class="gev__cuerpo">
-                    <span class="gev__evento">{{ f.evento || 'Evento de geocerca' }}</span>
+                    <span class="gev__evento">{{ f.evento || ('geo.evento' | t) }}</span>
                     <span class="gev__meta">
                       @if (f.geocerca?.nombre) {
                         <span class="gev__geocerca">{{ f.geocerca?.nombre }}</span>
@@ -154,7 +152,7 @@
                           [class.gev__estado--dentro]="f.dentro"
                           [class.gev__estado--fuera]="!f.dentro"
                         >
-                          {{ f.dentro ? 'Dentro' : 'Fuera' }}@if (f.distanciaMetros !== null) {
+                          {{ (f.dentro ? 'geo.dentro' : 'geo.fuera') | t }}@if (f.distanciaMetros !== null) {
                             · {{ distancia(f.distanciaMetros) }}
                           }
                         </span>
@@ -172,8 +170,8 @@
                   <span class="gev__lado">
                     <span class="gev__hora">{{ hora(f.en) }}</span>
                     @if (f.pendiente) {
-                      <span class="gev__pill gev__pill--pendiente" title="Este navegador aún no lo ha contado al servidor">
-                        Pendiente de enviar
+                      <span class="gev__pill gev__pill--pendiente" [title]="'geo.pendienteHint' | t">
+                        {{ 'geo.pendienteEnviar' | t }}
                       </span>
                     }
                   </span>
@@ -187,23 +185,23 @@
     </div>
 
     @if (paginas() > 1) {
-      <nav class="gev__paginas" aria-label="Páginas">
+      <nav class="gev__paginas" [attr.aria-label]="'geo.paginas' | t">
         <button
           type="button"
           class="gev__btn"
           (click)="irAPagina(numeroDePagina() - 1)"
           [disabled]="numeroDePagina() <= 1 || cargando()"
         >
-          Anterior
+          {{ 'bin.anterior' | t }}
         </button>
-        <span class="gev__pagina">Página {{ numeroDePagina() }} de {{ paginas() }}</span>
+        <span class="gev__pagina">{{ 'geo.paginaDe' | t: { n: numeroDePagina(), total: paginas() } }}</span>
         <button
           type="button"
           class="gev__btn"
           (click)="irAPagina(numeroDePagina() + 1)"
           [disabled]="numeroDePagina() >= paginas() || cargando()"
         >
-          Siguiente
+          {{ 'bin.siguiente' | t }}
         </button>
       </nav>
     }

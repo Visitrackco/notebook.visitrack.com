@@ -1,4 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
+import { traducir } from '../i18n/idioma.service';
 
 import { resolveCatalogOwnerId } from '../config/company-rules';
 import { esModoPublico } from '../config/modo-publico';
@@ -119,9 +120,9 @@ export class EntityUploadService {
    * Es idempotente y silenciosa: si no hay nada, no consulta nada.
    */
   async run(): Promise<EntityUploadSummary> {
-    if (this.running()) return this.lastSummary() ?? empty('Ya hay una subida en curso.');
-    if (!this.auth.currentUser()) return empty('No hay una sesión activa.');
-    if (!this.connectivity.isOnline()) return empty('Sin conexión.');
+    if (this.running()) return this.lastSummary() ?? empty(traducir('sync.up.enCurso'));
+    if (!this.auth.currentUser()) return empty(traducir('sync.sinSesion'));
+    if (!this.connectivity.isOnline()) return empty(traducir('sync.entsub.sinConexion'));
 
     this.running.set(true);
 
@@ -129,7 +130,7 @@ export class EntityUploadService {
       const pending = await this.collect();
 
       if (pending.locations.length + pending.assets.length + pending.items.length === 0) {
-        const summary = empty('No hay entidades pendientes.');
+        const summary = empty(traducir('sync.entsub.sinPendientes'));
         this.lastSummary.set(summary);
         return summary;
       }
@@ -633,17 +634,17 @@ function depth(row: ListDetail, rows: readonly ListDetail[]): number {
 function describe(done: Counters): string {
   const parts: string[] = [];
 
-  if (done.locations > 0) parts.push(`${done.locations} ubicación(es)`);
-  if (done.assets > 0) parts.push(`${done.assets} activo(s)`);
-  if (done.items > 0) parts.push(`${done.items} ítem(s) de lista`);
+  if (done.locations > 0) parts.push(traducir('sync.entsub.ubicaciones', { n: done.locations }));
+  if (done.assets > 0) parts.push(traducir('sync.entsub.activos', { n: done.assets }));
+  if (done.items > 0) parts.push(traducir('sync.entsub.items', { n: done.items }));
 
   if (parts.length === 0) {
-    if (done.failed > 0) return 'No se pudo subir ninguna entidad.';
-    return done.deferred > 0 ? 'Las entidades esperan a su registro padre.' : 'Nada que subir.';
+    if (done.failed > 0) return traducir('sync.entsub.ninguna');
+    return done.deferred > 0 ? traducir('sync.entsub.esperanPadre') : traducir('sync.entsub.nada');
   }
 
-  const sent = `${parts.join(' · ')} subidas`;
-  return done.deferred > 0 ? `${sent} · ${done.deferred} en espera de su padre` : sent;
+  const sent = traducir('sync.entsub.subidas', { lista: parts.join(' · ') });
+  return done.deferred > 0 ? `${sent} · ${traducir('sync.entsub.enEsperaPadre', { n: done.deferred })}` : sent;
 }
 
 function empty(message: string): EntityUploadSummary {

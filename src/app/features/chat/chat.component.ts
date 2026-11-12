@@ -42,6 +42,8 @@ import {
 } from './chat.api';
 import { FotoDeChatComponent } from './foto-de-chat.component';
 import { nuevoGuid } from '../../shared/utils/guid';
+import { traducir } from '../../core/i18n/idioma.service';
+import { TPipe } from '../../core/i18n/t.pipe';
 
 /**
  * El chat en el diligenciador.
@@ -70,6 +72,7 @@ import { nuevoGuid } from '../../shared/utils/guid';
     FotoDeChatComponent,
     MediaViewerComponent,
     ConfirmDialogComponent,
+    TPipe,
   ],
   templateUrl: './chat.component.html',
   styleUrl: './chat.component.scss',
@@ -325,7 +328,7 @@ export class ChatComponent implements OnDestroy {
     try {
       this.salas.set(await this.api.salas());
     } catch {
-      this.toasts.show({ title: 'No se pudieron cargar las salas.', tone: 'error' });
+      this.toasts.show({ title: traducir('chat.errorSalas'), tone: 'error' });
     } finally {
       this.cargandoSalas.set(false);
     }
@@ -416,7 +419,7 @@ export class ChatComponent implements OnDestroy {
       await this.marcarLeidoTodo();
       this.bajarDelTodo();
     } catch {
-      this.toasts.show({ title: 'No se pudo abrir la sala.', tone: 'error' });
+      this.toasts.show({ title: traducir('chat.errorAbrirSala'), tone: 'error' });
     } finally {
       this.cargandoSala.set(false);
     }
@@ -484,7 +487,7 @@ export class ChatComponent implements OnDestroy {
       this.mensajes.update((lista) => lista.filter((m) => m.clientId !== clientId));
       this.texto.set(texto);
 
-      this.toasts.show({ title: 'No se pudo enviar. Inténtalo otra vez.', tone: 'error' });
+      this.toasts.show({ title: traducir('chat.errorEnviar'), tone: 'error' });
     }
   }
 
@@ -511,7 +514,7 @@ export class ChatComponent implements OnDestroy {
 
       this.texto.set('');
     } catch {
-      this.toasts.show({ title: 'No se pudo compartir el archivo.', tone: 'error' });
+      this.toasts.show({ title: traducir('chat.errorArchivo'), tone: 'error' });
     }
   }
 
@@ -529,8 +532,8 @@ export class ChatComponent implements OnDestroy {
       this.porBorrar.set(null);
     } catch {
       this.toasts.show({
-        title: 'No se pudo borrar el mensaje.',
-        detail: 'Solo quien administra la sala puede borrar mensajes.',
+        title: traducir('chat.errorBorrar'),
+        detail: traducir('chat.errorBorrarDet'),
         tone: 'error',
       });
     } finally {
@@ -567,7 +570,7 @@ export class ChatComponent implements OnDestroy {
         }),
       );
     } catch {
-      this.toasts.show({ title: 'No se pudo compartir el formulario.', tone: 'error' });
+      this.toasts.show({ title: traducir('chat.errorFormulario'), tone: 'error' });
     }
   }
 
@@ -581,7 +584,7 @@ export class ChatComponent implements OnDestroy {
    */
   async crearDesde(m: MensajeDeSala): Promise<void> {
     const id = String(m.formulario?.id ?? m.texto ?? '').trim();
-    const nombre = m.formulario?.nombre || 'ese formulario';
+    const nombre = m.formulario?.nombre || traducir('chat.eseFormulario');
     const user = this.auth.currentUser();
     if (!id || !user || this.creandoDesde()) return;
 
@@ -593,15 +596,15 @@ export class ChatComponent implements OnDestroy {
 
       if (!survey || !esMio) {
         this.toasts.show({
-          title: `No tienes el formulario «${nombre}».`,
-          detail: 'Pide que te lo asignen y sincroniza.',
+          title: traducir('chat.noTienes', { nombre }),
+          detail: traducir('chat.pideAsignen'),
           tone: 'warning',
         });
         return;
       }
 
       if (survey.CreateEnabled === 0) {
-        this.toasts.show({ title: 'Ese formulario no permite crear actividades.', tone: 'warning' });
+        this.toasts.show({ title: traducir('chat.noPermiteCrear'), tone: 'warning' });
         return;
       }
 
@@ -618,7 +621,7 @@ export class ChatComponent implements OnDestroy {
         { queryParams: { actividad: answer.GUID } },
       );
     } catch {
-      this.toasts.show({ title: 'No se pudo crear la actividad.', tone: 'error' });
+      this.toasts.show({ title: traducir('chat.errorCrear'), tone: 'error' });
     } finally {
       this.creandoDesde.set(0);
     }
@@ -631,7 +634,7 @@ export class ChatComponent implements OnDestroy {
     // Sin GUID no hay documento que pedir: el generador contestaría con un
     // error y el visor se quedaría en blanco, que se lee como que falló la red.
     if (!limpio) {
-      this.toasts.show({ title: 'Ese mensaje no trae una actividad válida.', tone: 'error' });
+      this.toasts.show({ title: traducir('chat.actividadInvalida'), tone: 'error' });
       return;
     }
 
@@ -664,7 +667,7 @@ export class ChatComponent implements OnDestroy {
 
       window.open(url, '_blank', 'noopener');
     } catch {
-      this.toasts.show({ title: 'No se pudo abrir el archivo.', tone: 'error' });
+      this.toasts.show({ title: traducir('chat.errorAbrirArchivo'), tone: 'error' });
     }
   }
 
@@ -741,7 +744,7 @@ export class ChatComponent implements OnDestroy {
 
     if (!this.hayVoz) {
       this.toasts.show({
-        title: 'Este navegador no puede transmitir voz. Prueba con Chrome o Edge.',
+        title: traducir('chat.sinVoz'),
         tone: 'warning',
       });
 
@@ -752,7 +755,7 @@ export class ChatComponent implements OnDestroy {
 
     if (!r.ok) {
       this.toasts.show({
-        title: r.motivo ? `No se puede hablar: ${r.motivo}.` : 'No se pudo hablar.',
+        title: r.motivo ? traducir('chat.noPuedeHablar', { motivo: r.motivo }) : traducir('chat.noPudoHablar'),
         tone: 'info',
       });
 
@@ -768,7 +771,7 @@ export class ChatComponent implements OnDestroy {
         this.socket.terminarDeHablar(sala.id);
 
         this.toasts.show({
-          title: `Se cortó a los ${TOPE_DE_SEGUNDOS} segundos.`,
+          title: traducir('chat.seCorto', { n: TOPE_DE_SEGUNDOS }),
           tone: 'info',
         });
       },
@@ -776,7 +779,7 @@ export class ChatComponent implements OnDestroy {
 
     if (!pudo) {
       this.socket.terminarDeHablar(sala.id);
-      this.toasts.show({ title: 'No se pudo usar el micrófono.', tone: 'error' });
+      this.toasts.show({ title: traducir('chat.errorMicrofono'), tone: 'error' });
     }
   }
 
@@ -1012,10 +1015,10 @@ export class ChatComponent implements OnDestroy {
   }
 
   comoSeVe(estado?: string): string {
-    if (estado === 'activo') return 'Conectado';
-    if (estado === 'ausente') return 'Abierto, sin mirar';
+    if (estado === 'activo') return traducir('chat.conectado');
+    if (estado === 'ausente') return traducir('chat.ausente');
 
-    return 'Desconectado';
+    return traducir('chat.desconectado');
   }
 
   comoPesa(bytes: number): string {

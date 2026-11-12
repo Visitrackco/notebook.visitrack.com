@@ -19,6 +19,7 @@ import {
 } from './entity-mappers';
 import { DispatchFilesService } from './dispatch-files.service';
 import { ToastService } from '../services/toast.service';
+import { traducir } from '../i18n/idioma.service';
 import { BrillantexMailService } from '../rules/brillantex-mail.service';
 
 /** Fase en la que va la descarga. */
@@ -144,12 +145,12 @@ export class SyncService {
 
     const session = await this.users.getActiveSession();
     if (!session) {
-      this.fail('No hay una sesión activa.');
+      this.fail(traducir('sync.sinSesion'));
       return 0;
     }
 
     if (this.connectivity.isOffline()) {
-      this.fail('Sin conexión. Conéctate para descargar tus datos.');
+      this.fail(traducir('sync.sinConexionDescargar'));
       return 0;
     }
 
@@ -243,7 +244,7 @@ export class SyncService {
         this.state.update((s) => ({
           ...s,
           phase: 'done',
-          message: saved > 0 ? `${saved} registros actualizados` : 'Ya tienes todo al día',
+          message: saved > 0 ? traducir('sync.actualizados', { n: saved }) : traducir('sync.yaAlDia'),
         }));
 
         /*
@@ -284,7 +285,7 @@ export class SyncService {
           this.fail(
             error instanceof Error
               ? error.message
-              : 'No se pudo completar la descarga.',
+              : traducir('sync.errorDescarga'),
           );
           return this.state().processed;
         }
@@ -306,7 +307,7 @@ export class SyncService {
     this.state.update((s) => ({
       ...s,
       phase: 'cancelled',
-      message: 'Descarga cancelada. Lo ya guardado se conserva.',
+      message: traducir('sync.cancelada'),
     }));
   }
 
@@ -325,7 +326,10 @@ export class SyncService {
       total: 0,
       processed: 0,
       byEntity: {},
-      message: attempt === 1 ? 'Conectando…' : `Reintentando (${attempt}/${MAX_RETRIES})…`,
+      message:
+        attempt === 1
+          ? traducir('sync.conectando')
+          : traducir('sync.reintentando', { n: attempt, max: MAX_RETRIES }),
     });
 
     const base = environment.useLocalApi ? environment.localApiUrl : environment.apiUrl;
@@ -346,7 +350,7 @@ export class SyncService {
       ...s,
       phase: 'downloading',
       total,
-      message: 'Descargando datos…',
+      message: traducir('sync.descargandoDatos'),
     }));
 
     const reader = response.body.getReader();
@@ -493,8 +497,8 @@ export class SyncService {
         processed: s.processed + items.length,
         byEntity,
         message: s.total
-          ? `Guardando ${s.processed + items.length} de ${s.total}…`
-          : `Guardando ${s.processed + items.length} registros…`,
+          ? traducir('sync.guardandoDe', { n: s.processed + items.length, total: s.total })
+          : traducir('sync.guardandoN', { n: s.processed + items.length }),
       };
     });
 
@@ -683,19 +687,19 @@ export class SyncService {
     if (received === 0) return;
 
     const detail = files > 0
-      ? `Se descargaron ${files} ${files === 1 ? 'archivo adjunto' : 'archivos adjuntos'}.`
-      : 'Revisa qué te asignaron y desde dónde empezar.';
+      ? traducir(files === 1 ? 'sync.adjunto1' : 'sync.adjuntosN', { n: files })
+      : traducir('sync.revisaAsignado');
 
     this.toasts.show({
       title:
         received === 1
-          ? 'Llegó una consigna nueva'
-          : `Llegaron ${received} consignas nuevas`,
+          ? traducir('sync.consignaNueva')
+          : traducir('sync.consignasNuevas', { n: received }),
       detail,
       tone: 'info',
       icon: 'send',
       action: {
-        label: 'Ver',
+        label: traducir('comun.ver'),
         run: () => void this.router.navigate(['/consignas']),
       },
     });

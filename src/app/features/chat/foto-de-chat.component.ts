@@ -1,6 +1,7 @@
 import { Component, OnInit, inject, input, output, signal } from '@angular/core';
 
 import { AdjuntoDeMensaje, ChatApi, propiedadesDe } from './chat.api';
+import { TPipe } from '../../core/i18n/t.pipe';
 
 /**
  * Las direcciones ya pedidas, con hasta cuándo valen.
@@ -33,6 +34,7 @@ const VALEN_MS = 4 * 60 * 1000;
 @Component({
   selector: 'vt-foto-de-chat',
   standalone: true,
+  imports: [TPipe],
   template: `
     <figure class="foto" [class.foto--mia]="mia()">
       <button
@@ -40,12 +42,12 @@ const VALEN_MS = 4 * 60 * 1000;
         class="foto__marco"
         [disabled]="cargando()"
         (click)="fallo() ? pedir() : abrir()"
-        [attr.aria-label]="fallo() ? 'Reintentar cargar la foto' : 'Ver en grande'"
+        [attr.aria-label]="(fallo() ? 'chat.reintentarFoto' : 'bin.verGrande') | t"
       >
         @if (cargando()) {
-          <span class="foto__espera">Cargando…</span>
+          <span class="foto__espera">{{ 'comun.cargando' | t }}</span>
         } @else if (fallo()) {
-          <span class="foto__espera">No se pudo cargar. Pulsa para reintentar.</span>
+          <span class="foto__espera">{{ 'chat.fotoFallo' | t }}</span>
         } @else {
           <img [src]="url()" [alt]="adjunto().nombre" loading="lazy" (error)="seRompio()" />
         }
@@ -54,7 +56,7 @@ const VALEN_MS = 4 * 60 * 1000;
       <figcaption class="foto__pie">
         <span class="foto__datos" [title]="adjunto().nombre">{{ descripcion() }}</span>
         <button type="button" class="foto__bajar" (click)="descargar.emit(adjunto())">
-          Descargar
+          {{ 'bin.descargar' | t }}
         </button>
       </figcaption>
     </figure>

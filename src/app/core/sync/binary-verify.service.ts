@@ -1,4 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
+import { traducir } from '../i18n/idioma.service';
 
 import { BinaryResource, BinaryState } from '../models/sync.model';
 import { BinaryResourceRepository } from '../repositories/binary.repository';
@@ -221,7 +222,7 @@ export class BinaryVerifyService {
     companyId: string | number,
   ): Promise<VerifyOutcome> {
     if (resources.length === 0) {
-      const outcome = { ...empty(), message: 'No hay archivos por confirmar.' };
+      const outcome = { ...empty(), message: traducir('sync.ver.nada') };
       this.lastOutcome.set(outcome);
       return outcome;
     }
@@ -235,7 +236,7 @@ export class BinaryVerifyService {
         const outcome: VerifyOutcome = {
           ...empty(),
           notImplemented: true,
-          message: 'El servidor todavía no puede confirmar archivos. Se dan por enviados.',
+          message: traducir('sync.ver.noImplementado'),
         };
         this.lastOutcome.set(outcome);
         return outcome;
@@ -244,7 +245,7 @@ export class BinaryVerifyService {
       if (!report.ok) {
         const outcome: VerifyOutcome = {
           ...empty(),
-          message: report.error ?? 'No se pudo confirmar el estado de los archivos.',
+          message: report.error ?? traducir('sync.ver.error'),
         };
         this.lastOutcome.set(outcome);
         return outcome;
@@ -331,13 +332,13 @@ function mapState(state: BucketState): BinaryState | null {
 function describe(confirmed: number, queued: number, missing: number): string {
   const parts: string[] = [];
 
-  if (confirmed > 0) parts.push(`${confirmed} confirmado(s) en línea`);
-  if (queued > 0) parts.push(`${queued} esperando al servidor`);
-  if (missing > 0) parts.push(`${missing} por volver a subir`);
+  if (confirmed > 0) parts.push(traducir('sync.ver.confirmados', { n: confirmed }));
+  if (queued > 0) parts.push(traducir('sync.ver.esperando', { n: queued }));
+  if (missing > 0) parts.push(traducir('sync.ver.porSubir', { n: missing }));
 
   return parts.length > 0
     ? parts.join(' · ')
-    : 'Los archivos todavía no están disponibles. Inténtalo en un momento.';
+    : traducir('sync.ver.noDisponibles');
 }
 
 function empty(): VerifyOutcome {

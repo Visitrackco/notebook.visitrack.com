@@ -1,4 +1,5 @@
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
+import { traducir } from '../i18n/idioma.service';
 
 import { ANSWER_STATE } from '../models/activity.model';
 import { SurveyAnswer } from '../models/entities.model';
@@ -169,7 +170,7 @@ export class PendingUploadService {
    */
   async run(answerGuid?: string): Promise<RunSummary> {
     if (this.running()) {
-      return this.lastSummary() ?? emptySummary('Ya hay una subida en curso.');
+      return this.lastSummary() ?? emptySummary(traducir('sync.up.enCurso'));
     }
 
     this.running.set(true);
@@ -367,15 +368,15 @@ function describe(
 ): string {
   const parts: string[] = [];
 
-  if (entities > 0) parts.push(`${entities} entidad(es) creadas`);
-  if (uploaded > 0) parts.push(`${uploaded} archivo(s) subidos`);
-  if (confirmed > 0) parts.push(`${confirmed} confirmado(s)`);
-  if (sent > 0) parts.push(`${sent} actividad(es) enviadas`);
+  if (entities > 0) parts.push(traducir('sync.pend.entidades', { n: entities }));
+  if (uploaded > 0) parts.push(traducir('sync.pend.archivos', { n: uploaded }));
+  if (confirmed > 0) parts.push(traducir('sync.pend.confirmados', { n: confirmed }));
+  if (sent > 0) parts.push(traducir('sync.pend.actividades', { n: sent }));
 
   if (parts.length === 0) {
     return waiting > 0
-      ? 'Nada nuevo por ahora. Los archivos siguen procesándose en el servidor.'
-      : 'Todo está al día.';
+      ? traducir('sync.pend.nadaNuevo')
+      : traducir('sync.todoAlDia');
   }
 
   return parts.join(' · ');

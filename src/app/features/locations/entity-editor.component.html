@@ -1,11 +1,11 @@
 <section class="edit">
   <header class="edit__bar">
-    <button type="button" class="edit__back" (click)="leave()" aria-label="Volver">
+    <button type="button" class="edit__back" (click)="leave()" [attr.aria-label]="'comun.volver' | t">
       <vt-icon name="chevron" [size]="20" />
     </button>
 
     <div class="edit__heading">
-      <p>{{ subject() === 'asset' ? 'Activo' : 'Ubicación' }}</p>
+      <p>{{ (subject() === 'asset' ? 'ubic.activo' : 'ubic.ubicacionMay') | t }}</p>
       <h1>{{ title() }}</h1>
     </div>
   </header>
@@ -18,7 +18,7 @@
       </div>
     </div>
   } @else if (loading()) {
-    <p class="edit__loading">Cargando…</p>
+    <p class="edit__loading">{{ 'comun.cargando' | t }}</p>
   } @else {
     <div class="edit__body">
       @if (error()) {
@@ -32,10 +32,10 @@
            cambiarlo después dejaría las respuestas sin campo donde vivir. -->
       @if (canChooseType()) {
         <label class="edit__field edit__field--type">
-          <span class="edit__label">Tipo <em>*</em></span>
+          <span class="edit__label">{{ 'ubic.tipo' | t }} <em>*</em></span>
 
           <select (change)="onTypePicked($event)">
-            <option value="">Elige un tipo…</option>
+            <option value="">{{ 'ubic.eligeTipo' | t }}</option>
             @for (option of types(); track option.ID) {
               <option [value]="option.ID" [selected]="type()?.ID === option.ID">
                 {{ option.Name }}
@@ -55,7 +55,7 @@
              es lo único obligatorio siempre. Va arriba y aparte, como en la
              app. -->
         <label class="edit__field">
-          <span class="edit__label">Nombre <em>*</em></span>
+          <span class="edit__label">{{ 'ubic.nombre' | t }} <em>*</em></span>
 
           <input
             type="text"
@@ -64,12 +64,12 @@
             [class.edit__input--invalid]="nameMissing()"
             [value]="name()"
             (input)="onName($event)"
-            placeholder="Con qué se reconoce"
+            [placeholder]="'ubic.nombreHint' | t"
             autocomplete="off"
           />
 
           @if (nameMissing()) {
-            <small class="edit__hint">El nombre es obligatorio.</small>
+            <small class="edit__hint">{{ 'ubic.nombreObligatorio' | t }}</small>
           }
         </label>
 
@@ -82,7 +82,7 @@
                   [class.edit__page--on]="$index === eng.page()"
                   (click)="eng.goTo($index)"
                 >
-                  {{ page.lab || 'Página ' + ($index + 1) }}
+                  {{ page.lab || ('ubic.pagina' | t: { n: $index + 1 }) }}
                 </button>
               }
             </nav>
@@ -108,7 +108,7 @@
                 />
               </div>
             } @empty {
-              <p class="edit__none">Este tipo no pide más datos que el nombre.</p>
+              <p class="edit__none">{{ 'ubic.soloNombre' | t }}</p>
             }
           </div>
         }
@@ -116,8 +116,7 @@
         <div class="edit__empty">
           <span class="edit__empty-icon"><vt-icon name="alert" [size]="24" /></span>
           <p>
-            No hay tipos descargados en este dispositivo, así que no se puede
-            crear. Sincroniza y vuelve a intentarlo.
+            {{ 'ubic.sinTipos' | t }}
           </p>
         </div>
       }
@@ -129,16 +128,16 @@
           <span class="edit__pending">
             <vt-icon name="alert" [size]="14" />
             {{ missing().length }}
-            {{ missing().length === 1 ? 'campo obligatorio' : 'campos obligatorios' }}
+            {{ (missing().length === 1 ? 'ubic.campoObligatorio' : 'ubic.camposObligatorios') | t }}
           </span>
         }
 
         <span class="edit__buttons">
-          <button type="button" class="edit__cancel" (click)="leave()">Cancelar</button>
+          <button type="button" class="edit__cancel" (click)="leave()">{{ 'comun.cancelar' | t }}</button>
 
           <button type="button" class="edit__save" [disabled]="saving()" (click)="save()">
             <vt-icon name="check" [size]="16" />
-            {{ saving() ? 'Guardando…' : isNew() ? 'Crear' : 'Guardar cambios' }}
+            {{ (saving() ? 'ubic.guardando' : isNew() ? 'ubic.crear' : 'ubic.guardarCambios') | t }}
           </button>
         </span>
       </footer>

@@ -2,7 +2,7 @@
   <div class="csala__panel">
     <header class="csala__cab">
       <div>
-        <h2>Compartir en una sala</h2>
+        <h2>{{ 'chat.compartirEnSala' | t }}</h2>
         @if (que(); as q) {
           <p>{{ q.titulo }}</p>
         }
@@ -11,7 +11,7 @@
       <button
         type="button"
         class="csala__cerrar"
-        aria-label="Cerrar"
+        [attr.aria-label]="'comun.cerrar' | t"
         [disabled]="!!enviandoA()"
         (click)="cerrar()"
       >
@@ -20,11 +20,11 @@
     </header>
 
     @if (cargando()) {
-      <p class="csala__nada">Buscando tus salas…</p>
+      <p class="csala__nada">{{ 'chat.buscandoSalas' | t }}</p>
     } @else if (error()) {
       <div class="csala__nada">
         <p>{{ error() }}</p>
-        <button type="button" class="csala__reintentar" (click)="traerSalas()">Reintentar</button>
+        <button type="button" class="csala__reintentar" (click)="traerSalas()">{{ 'comun.reintentar' | t }}</button>
       </div>
     } @else {
       <ul class="csala__lista">
@@ -40,11 +40,11 @@
 
               <span class="csala__texto">
                 <span class="csala__nombre">{{ sala.nombre }}</span>
-                <span class="csala__pie">{{ sala.miembros }} personas</span>
+                <span class="csala__pie">{{ 'chat.personas' | t: { n: sala.miembros } }}</span>
               </span>
 
               @if (enviandoA() === sala.nombre) {
-                <span class="csala__yendo">Enviando…</span>
+                <span class="csala__yendo">{{ 'chat.enviando' | t }}</span>
               } @else {
                 <vt-icon name="send" [size]="17" />
               }
@@ -55,7 +55,7 @@
                quién puede hacerlo, porque ante una lista vacía lo primero que
                se piensa es que la aplicación no cargó. -->
           <li class="csala__nada">
-            No estás en ninguna sala todavía. Quien administre una puede agregarte desde Module.
+            {{ 'chat.ningunaSala' | t }}
           </li>
         }
       </ul>

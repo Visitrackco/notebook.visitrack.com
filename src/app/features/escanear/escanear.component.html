@@ -1,19 +1,19 @@
 <section class="scn">
   <header class="scn__head">
-    <h1>Escanear código</h1>
-    <p>Lee la etiqueta de una ubicación o de un activo para comenzar una actividad allí.</p>
+    <h1>{{ 'ubic.escanear' | t }}</h1>
+    <p>{{ 'esc.subtitulo' | t }}</p>
   </header>
 
   <div class="scn__card">
     <button type="button" class="scn__camara" (click)="escanear()" [disabled]="buscando()">
       <vt-icon name="scan" [size]="22" />
-      <span>Escanear con la cámara</span>
+      <span>{{ 'esc.conCamara' | t }}</span>
     </button>
 
     <!-- El respaldo de la cámara: el código escrito o pegado. Un lector de
          códigos USB también escribe aquí, que es como se usa en un mostrador. -->
     <form class="scn__manual" (submit)="onEnviar($event)">
-      <label class="scn__label" for="scn-codigo">O escribe el código de la etiqueta</label>
+      <label class="scn__label" for="scn-codigo">{{ 'esc.escribe' | t }}</label>
       <div class="scn__fila">
         <input
           #caja
@@ -23,34 +23,34 @@
           autocomplete="off"
           autocapitalize="off"
           spellcheck="false"
-          placeholder="Código de la etiqueta"
+          [placeholder]="'esc.codigo' | t"
           [value]="buscado()"
         />
-        <button type="submit" class="scn__buscar" [disabled]="buscando()">Buscar</button>
+        <button type="submit" class="scn__buscar" [disabled]="buscando()">{{ 'comun.buscar' | t }}</button>
       </div>
     </form>
   </div>
 
   @if (buscando()) {
-    <p class="scn__estado" role="status">Buscando «{{ buscado() }}»…</p>
+    <p class="scn__estado" role="status">{{ 'esc.buscando' | t: { codigo: buscado() } }}</p>
   } @else if (resultados(); as lista) {
     @if (lista.length === 0) {
       <div class="scn__vacio" role="alert">
         <vt-icon name="alert" [size]="26" />
         <div>
-          <strong>No existe el código escaneado</strong>
+          <strong>{{ 'esc.noExiste' | t }}</strong>
           <p>
-            Ninguna ubicación ni activo de este dispositivo tiene la etiqueta
-            <code>{{ buscado() }}</code>. Si es nueva, puede que falte sincronizar.
+            {{ 'esc.ninguna' | t }}
+            <code>{{ buscado() }}</code>{{ 'esc.faltaSync' | t }}
           </p>
         </div>
-        <button type="button" class="scn__otra" (click)="escanear()">Escanear otra vez</button>
+        <button type="button" class="scn__otra" (click)="escanear()">{{ 'esc.otraVez' | t }}</button>
       </div>
     } @else {
       <div class="scn__lista">
         <p class="scn__lista-titulo">
-          {{ lista.length === 1 ? 'Un resultado' : lista.length + ' resultados' }} para
-          <code>{{ buscado() }}</code>{{ lista.length > 1 ? '. Elige con cuál vas a trabajar:' : '' }}
+          {{ (lista.length === 1 ? 'esc.unResultado' : 'esc.nResultados') | t: { n: lista.length } }}
+          <code>{{ buscado() }}</code>{{ lista.length > 1 ? ('esc.elige' | t) : '' }}
         </p>
 
         <ul>
@@ -92,7 +92,7 @@
 
 @if (escaneando()) {
   <vt-code-scanner
-    titulo="Escanear etiqueta"
+    [titulo]="'esc.escanearEtiqueta' | t"
     (leido)="onLeido($event)"
     (cancel)="escaneando.set(false)"
     (manual)="escribir()"

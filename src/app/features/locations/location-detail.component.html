@@ -5,7 +5,7 @@
          acciones que se ejercen sobre ella. -->
     <header class="det__hero">
       <div class="det__hero-top">
-        <a class="det__back" [routerLink]="backLink()" aria-label="Volver">
+        <a class="det__back" [routerLink]="backLink()" [attr.aria-label]="'comun.volver' | t">
           <vt-icon name="chevron" [size]="20" />
         </a>
 
@@ -13,9 +13,9 @@
 
         <span class="det__hero-actions">
           @if (canEdit()) {
-            <a class="det__action" [routerLink]="editLink()" title="Editar">
+            <a class="det__action" [routerLink]="editLink()" [title]="'comun.editar' | t">
               <vt-icon name="pen" [size]="17" />
-              <span>Editar</span>
+              <span>{{ 'comun.editar' | t }}</span>
             </a>
           }
 
@@ -24,7 +24,7 @@
               type="button"
               class="det__action det__action--danger"
               (click)="asking.set(true)"
-              title="Eliminar"
+              [title]="'comun.eliminar' | t"
             >
               <vt-icon name="trash" [size]="17" />
             </button>
@@ -52,14 +52,14 @@
         } @else {
           <span class="det__chip det__chip--off">
             <vt-icon name="map-pin" [size]="14" />
-            Sin coordenadas
+            {{ 'ubic.sinCoordenadas' | t }}
           </span>
         }
 
         @if (pending()) {
           <span class="det__chip det__chip--warn">
             <vt-icon name="cloud-upload" [size]="14" />
-            Pendiente de subir
+            {{ 'ubic.pendienteSubir' | t }}
           </span>
         }
       </div>
@@ -72,7 +72,7 @@
         (click)="openStart()"
       >
         <vt-icon name="plus" [size]="17" />
-        <span>Comenzar actividad</span>
+        <span>{{ 'ubic.comenzar' | t }}</span>
       </button>
     </header>
 
@@ -80,15 +80,14 @@
          Los formularios que se pueden empezar aquí, con esta entidad ya
          puesta. Es a donde lleva escanear su etiqueta, igual que en el móvil. -->
     @if (choosing()) {
-      <section id="det-comenzar" class="det__comenzar" aria-label="Comenzar actividad">
+      <section id="det-comenzar" class="det__comenzar" [attr.aria-label]="'ubic.comenzar' | t">
         @if (startable(); as surveys) {
           @if (surveys.length === 0) {
             <p class="det__comenzar-vacio">
-              Ningún formulario de los descargados se diligencia sobre
-              {{ isAsset() ? 'este tipo de activo' : 'este tipo de ubicación' }}.
+              {{ (isAsset() ? 'ubic.ningunFormActivo' : 'ubic.ningunFormUbicacion') | t }}
             </p>
           } @else {
-            <p class="det__comenzar-titulo">¿Qué formulario vas a diligenciar?</p>
+            <p class="det__comenzar-titulo">{{ 'ubic.queFormulario' | t }}</p>
             <ul class="det__comenzar-lista">
               @for (survey of surveys; track survey.SurveyID) {
                 <li>
@@ -105,19 +104,19 @@
             <p class="det__comenzar-error" role="alert">{{ startError() }}</p>
           }
         } @else {
-          <p class="det__comenzar-vacio">Buscando formularios…</p>
+          <p class="det__comenzar-vacio">{{ 'ubic.buscandoFormularios' | t }}</p>
         }
       </section>
     }
 
     <nav class="det__tabs">
       <button type="button" [class.det__tab--on]="tab() === 'info'" (click)="show('info')">
-        Información
+        {{ 'ubic.tabInfo' | t }}
       </button>
 
       @if (!isAsset()) {
         <button type="button" [class.det__tab--on]="tab() === 'assets'" (click)="show('assets')">
-          Activos
+          {{ 'sync.ent.12' | t }}
           <span class="vt-figure">{{ assetList().length }}</span>
         </button>
       }
@@ -127,12 +126,12 @@
         [class.det__tab--on]="tab() === 'activities'"
         (click)="show('activities')"
       >
-        Actividades
+        {{ 'ubic.tabActividades' | t }}
         <span class="vt-figure">{{ activityList().length }}</span>
       </button>
 
       <button type="button" [class.det__tab--on]="tab() === 'history'" (click)="show('history')">
-        Historial
+        {{ 'ubic.tabHistorial' | t }}
       </button>
     </nav>
 
@@ -143,7 +142,7 @@
           <section class="card">
             <h2 class="card__title">
               <vt-icon name="info" [size]="15" />
-              Datos generales
+              {{ 'ubic.datosGenerales' | t }}
             </h2>
 
             <dl class="card__grid">
@@ -173,7 +172,7 @@
           <section class="card">
             <h2 class="card__title">
               <vt-icon name="database" [size]="15" />
-              {{ group.title || 'Datos de ' + typeName() }}
+              {{ group.title || ('ubic.datosDe' | t: { tipo: typeName() }) }}
             </h2>
 
             <dl class="card__grid">
@@ -188,13 +187,13 @@
                       } @else {
                         <span class="field__muted">
                           <vt-icon name="image" [size]="14" />
-                          Archivo no disponible en este dispositivo
+                          {{ 'ubic.archivoNoDisponible' | t }}
                         </span>
                       }
                     } @else if (item.kind === 'file') {
                       <span class="field__muted">
                         <vt-icon name="file" [size]="14" />
-                        Archivo adjunto
+                        {{ 'ubic.archivoAdjunto' | t }}
                       </span>
                     } @else if (actionOf(item)) {
                       <a [href]="actionOf(item)" target="_blank" rel="noopener">
@@ -212,7 +211,7 @@
         }
 
         @if (basics().length === 0 && groups().length === 0) {
-          <p class="det__none">No hay más datos registrados.</p>
+          <p class="det__none">{{ 'ubic.sinMasDatos' | t }}</p>
         }
       }
 
@@ -227,7 +226,7 @@
               type="search"
               [value]="search()"
               (input)="onSearch($event)"
-              placeholder="Buscar activo"
+              [placeholder]="'ubic.buscarActivo' | t"
               autocomplete="off"
             />
           </label>
@@ -237,7 +236,7 @@
               <vt-icon name="box" [size]="15" />
 
               <select [value]="assetType()" (change)="onTypePicked($event)">
-                <option value="">Todos los tipos ({{ assetList().length }})</option>
+                <option value="">{{ 'ubic.todosTipos' | t: { n: assetList().length } }}</option>
 
                 @for (entry of assetTypes(); track entry.name) {
                   <option [value]="entry.name">{{ entry.name }} ({{ entry.count }})</option>
@@ -248,7 +247,7 @@
 
           <a class="det__new" [routerLink]="['/ubicaciones', guid(), 'activo', 'nuevo']">
             <vt-icon name="plus" [size]="16" />
-            Nuevo activo
+            {{ 'ubic.nuevoActivo' | t }}
           </a>
         </div>
 
@@ -272,7 +271,7 @@
                     @if (item.pending) {
                       <span class="row__pending">
                         <vt-icon name="cloud-upload" [size]="12" />
-                        Pendiente de subir
+                        {{ 'ubic.pendienteSubir' | t }}
                       </span>
                     }
                   </span>
@@ -286,15 +285,15 @@
           @if (hasMore()) {
             <div class="det__more" vtNearEnd (reached)="showMore()">
               <span class="det__spinner" aria-hidden="true"></span>
-              Cargando más…
+              {{ 'ubic.cargandoMasCorto' | t }}
             </div>
           }
         } @else {
           <p class="det__none">
             @if (search() || assetType()) {
-              Ningún activo coincide con lo que buscas.
+              {{ 'ubic.ningunActivoCoincide' | t }}
             } @else {
-              Esta ubicación todavía no tiene activos.
+              {{ 'ubic.sinActivos' | t }}
             }
           </p>
         }
@@ -310,7 +309,7 @@
                 type="search"
                 [value]="search()"
                 (input)="onSearch($event)"
-                placeholder="Buscar actividad"
+                [placeholder]="'ubic.buscarActividad' | t"
                 autocomplete="off"
               />
             </label>
@@ -349,9 +348,9 @@
                   </span>
 
                   @if (item.synced) {
-                    <span class="badge badge--ok">Sincronizada</span>
+                    <span class="badge badge--ok">{{ 'ubic.sincronizada' | t }}</span>
                   } @else {
-                    <span class="badge">Pendiente</span>
+                    <span class="badge">{{ 'bin.estado.pendiente' | t }}</span>
                   }
                 </a>
               </li>
@@ -361,17 +360,17 @@
           @if (hasMore()) {
             <div class="det__more" vtNearEnd (reached)="showMore()">
               <span class="det__spinner" aria-hidden="true"></span>
-              Cargando más…
+              {{ 'ubic.cargandoMasCorto' | t }}
             </div>
           }
         } @else if (search()) {
-          <p class="det__none">Ninguna actividad coincide con lo que buscas.</p>
+          <p class="det__none">{{ 'ubic.ningunaActividadCoincide' | t }}</p>
         } @else {
           <p class="det__none">
             @if (isAsset()) {
-              Todavía no se ha registrado ninguna actividad sobre este activo.
+              {{ 'ubic.sinActividadesActivo' | t }}
             } @else {
-              Todavía no se ha registrado ninguna actividad aquí.
+              {{ 'ubic.sinActividades' | t }}
             }
           </p>
         }
@@ -392,11 +391,9 @@
         } @else {
           <p class="det__empty">
             @if (isAsset()) {
-              Este activo se creó aquí y todavía no está en Visitrack, así que no tiene
-              historial que consultar.
+              {{ 'ubic.sinHistorialActivo' | t }}
             } @else {
-              Esta ubicación se creó aquí y todavía no está en Visitrack, así que no tiene
-              historial que consultar.
+              {{ 'ubic.sinHistorialUbicacion' | t }}
             }
           </p>
         }
@@ -406,9 +403,9 @@
 } @else if (!loading()) {
   <div class="det__missing">
     <span class="det__missing-icon"><vt-icon name="alert" [size]="26" /></span>
-    <h2>{{ isAsset() ? 'Activo no encontrado' : 'Ubicación no encontrada' }}</h2>
-    <p>Puede que se haya eliminado o que todavía no se haya descargado.</p>
-    <a class="det__new" [routerLink]="backLink()">Volver</a>
+    <h2>{{ (isAsset() ? 'ubic.activoNoEncontrado' : 'ubic.ubicacionNoEncontrada') | t }}</h2>
+    <p>{{ 'ubic.noEncontradaHint' | t }}</p>
+    <a class="det__new" [routerLink]="backLink()">{{ 'comun.volver' | t }}</a>
   </div>
 }
 
@@ -418,10 +415,10 @@
   [open]="asking()"
   tone="danger"
   icon="trash"
-  [title]="isAsset() ? '¿Eliminar este activo?' : '¿Eliminar esta ubicación?'"
+  [title]="(isAsset() ? 'ubic.eliminarActivo' : 'ubic.eliminarUbicacion') | t"
   [message]="name()"
-  detail="Se borrará de este dispositivo. Solo es posible porque todavía no se ha subido."
-  confirmLabel="Eliminar"
+  [detail]="'ubic.eliminarDetalle' | t"
+  [confirmLabel]="'comun.eliminar' | t"
   (confirm)="remove()"
   (cancel)="asking.set(false)"
 />

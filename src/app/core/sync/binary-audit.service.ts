@@ -4,6 +4,7 @@ import { BinaryResource, BinaryState, BinaryType } from '../models/sync.model';
 import { BinaryResourceRepository } from '../repositories/binary.repository';
 import { SurveyAnswerRepository } from '../repositories/survey-answer.repository';
 import { AuthService } from '../services/auth.service';
+import { traducir } from '../i18n/idioma.service';
 
 /** Un archivo con el contexto que hace falta para auditarlo. */
 export interface BinaryEntry {
@@ -141,35 +142,32 @@ export function describeBinaryState(state: BinaryState): {
   switch (state) {
     case BinaryState.Online:
       return {
-        label: 'En línea',
-        detail: 'Confirmado en el servidor de archivos. Su actividad ya puede enviarse.',
+        label: traducir('bin.estado.online'),
+        detail: traducir('bin.estado.onlineDet'),
         tone: 'success',
       };
     case BinaryState.InRepository:
       return {
-        label: 'En servidor',
-        detail:
-          'El servidor lo recibió y está esperando a publicarse. Suele tardar cerca de un minuto.',
+        label: traducir('bin.estado.servidor'),
+        detail: traducir('bin.estado.servidorDet'),
         tone: 'info',
       };
     case BinaryState.Discarded:
       return {
-        label: 'Descartado',
-        detail:
-          'El servidor no pudo clasificarlo y nunca se publicará. No impide enviar la actividad.',
+        label: traducir('bin.estado.descartado'),
+        detail: traducir('bin.estado.descartadoDet'),
         tone: 'danger',
       };
     case BinaryState.Unrecoverable:
       return {
-        label: 'No disponible',
-        detail:
-          'El archivo ya no está en este dispositivo y nunca llegó al servidor. Se perdió.',
+        label: traducir('bin.estado.perdido'),
+        detail: traducir('bin.estado.perdidoDet'),
         tone: 'danger',
       };
     default:
       return {
-        label: 'Pendiente',
-        detail: 'Solo está en este dispositivo. Falta subirlo al servidor.',
+        label: traducir('bin.estado.pendiente'),
+        detail: traducir('bin.estado.pendienteDet'),
         tone: 'warning',
       };
   }
@@ -179,15 +177,15 @@ export function describeBinaryState(state: BinaryState): {
 export function describeBinaryType(type: BinaryType): { label: string; icon: string } {
   switch (type) {
     case BinaryType.Signature:
-      return { label: 'Firma', icon: 'user' };
+      return { label: traducir('bin.tipo.firma'), icon: 'user' };
     case BinaryType.Video:
-      return { label: 'Video', icon: 'video' };
+      return { label: traducir('bin.tipo.video'), icon: 'video' };
     case BinaryType.Audio:
-      return { label: 'Audio', icon: 'mic' };
+      return { label: traducir('bin.tipo.audio'), icon: 'mic' };
     case BinaryType.File:
-      return { label: 'Documento', icon: 'file' };
+      return { label: traducir('bin.tipo.documento'), icon: 'file' };
     default:
-      return { label: 'Fotografía', icon: 'image' };
+      return { label: traducir('bin.tipo.foto'), icon: 'image' };
   }
 }
 
@@ -199,7 +197,7 @@ export function describeBinaryType(type: BinaryType): { label: string; icon: str
  * devuelve un texto neutro en vez de romper la pantalla entera.
  */
 function describeAnswer(titles: string): string {
-  if (!titles?.trim()) return 'Actividad sin descriptivos';
+  if (!titles?.trim()) return traducir('bin.sinDescriptivos');
 
   try {
     const parsed = JSON.parse(titles);
@@ -207,8 +205,8 @@ function describeAnswer(titles: string): string {
       ? parsed.map((item) => String(item?.val ?? '')).filter(Boolean)
       : [];
 
-    return values.length > 0 ? values.slice(0, 2).join(' · ') : 'Actividad sin descriptivos';
+    return values.length > 0 ? values.slice(0, 2).join(' · ') : traducir('bin.sinDescriptivos');
   } catch {
-    return 'Actividad sin descriptivos';
+    return traducir('bin.sinDescriptivos');
   }
 }

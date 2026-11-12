@@ -1,25 +1,25 @@
 <section class="locs">
   <header class="locs__head">
     <div class="locs__title">
-      <h1>Ubicaciones</h1>
+      <h1>{{ 'sync.ent.1' | t }}</h1>
       <p>
         {{ counter() }}
         @if (pendingCount() > 0) {
-          · <em>{{ pendingCount() }} sin subir</em>
+          · <em>{{ 'ubic.sinSubir' | t: { n: pendingCount() } }}</em>
         }
       </p>
     </div>
 
     <!-- Encontrar una sede por su etiqueta sin buscarla en la lista. -->
-    <a class="locs__scan" routerLink="/escanear" title="Escanear la etiqueta de una ubicación o un activo">
+    <a class="locs__scan" routerLink="/escanear" [title]="'ubic.escanearHint' | t">
       <vt-icon name="scan" [size]="17" />
-      Escanear código
+      {{ 'ubic.escanear' | t }}
     </a>
 
     @if (canCreate()) {
       <a class="locs__new" routerLink="/ubicaciones/nueva">
         <vt-icon name="plus" [size]="17" />
-        Nueva ubicación
+        {{ 'ubic.nueva' | t }}
       </a>
     } @else if (noPermission()) {
       <!-- Se dice por qué falta el botón: sin esto parece que la aplicación lo
@@ -40,7 +40,7 @@
         type="search"
         [value]="search()"
         (input)="onSearch($event)"
-        placeholder="Buscar por nombre o por sus datos"
+        [placeholder]="'ubic.buscar' | t"
         autocomplete="off"
       />
     </label>
@@ -54,7 +54,7 @@
         <vt-icon name="box" [size]="15" />
 
         <select [value]="typeFilter()" (change)="onTypePicked($event)">
-          <option value="">Todos los tipos ({{ all().length }})</option>
+          <option value="">{{ 'ubic.todosTipos' | t: { n: all().length } }}</option>
 
           @for (tab of tabs(); track tab.name) {
             <option [value]="tab.name">{{ tab.name }} ({{ tab.count }})</option>
@@ -65,7 +65,7 @@
   </div>
 
   @if (loading()) {
-    <div class="locs__ghosts" aria-label="Cargando ubicaciones">
+    <div class="locs__ghosts" [attr.aria-label]="'ubic.cargando' | t">
       @for (row of [1, 2, 3, 4]; track row) {
         <div class="locs__ghost"></div>
       }
@@ -87,7 +87,7 @@
                 <vt-resaltado [texto]="card.name" [busqueda]="search()" />
 
                 @if (card.own) {
-                  <em class="loc__tag">Creada aquí</em>
+                  <em class="loc__tag">{{ 'ubic.creadaAqui' | t }}</em>
                 }
               </span>
 
@@ -100,7 +100,7 @@
               @if (card.pending) {
                 <span class="loc__pending">
                   <vt-icon name="cloud-upload" [size]="13" />
-                  Pendiente de subir
+                  {{ 'ubic.pendienteSubir' | t }}
                 </span>
               }
             </span>
@@ -116,7 +116,7 @@
     @if (hasMore()) {
       <div class="locs__more" vtNearEnd (reached)="showMore()">
         <span class="locs__spinner" aria-hidden="true"></span>
-        Cargando más ubicaciones…
+        {{ 'ubic.cargandoMas' | t }}
       </div>
     }
   } @else {
@@ -124,9 +124,9 @@
       <span class="locs__empty-icon"><vt-icon name="map-pin" [size]="26" /></span>
       <p>
         @if (search() || typeFilter()) {
-          Ninguna ubicación coincide con lo que buscas.
+          {{ 'ubic.ningunaCoincide' | t }}
         } @else {
-          No hay ubicaciones descargadas. Sincroniza o crea la primera.
+          {{ 'ubic.vacio' | t }}
         }
       </p>
     </div>

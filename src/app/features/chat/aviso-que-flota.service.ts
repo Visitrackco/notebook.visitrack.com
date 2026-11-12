@@ -1,6 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 
 import { MensajeDeSala } from './chat.api';
+import { traducir } from '../../core/i18n/idioma.service';
 
 /**
  * Cuánto se queda un aviso antes de irse solo.
@@ -146,7 +147,7 @@ export class AvisoQueFlotaService {
     this.puesto.set({
       clave: `${m.salaId}-${m.id}-${this.cuantosVan}`,
       salaId: m.salaId,
-      autor: autor || 'Mensaje nuevo',
+      autor: autor || traducir('chat.mensajeNuevo'),
       inicial: autor ? autor[0].toUpperCase() : '?',
       resumen: unTrozo(m),
       duracionMs,
@@ -187,13 +188,13 @@ export class AvisoQueFlotaService {
  * nada.
  */
 function unTrozo(m: MensajeDeSala): string {
-  if (m.tipo === 'voz') return `Nota de voz (${m.segundos}s)`;
-  if (m.tipo === 'actividad') return 'Compartió una actividad';
-  if (m.tipo === 'archivo') return m.adjuntos?.[0]?.nombre ?? 'Compartió un archivo';
+  if (m.tipo === 'voz') return `${traducir('chat.notaVoz')} (${m.segundos}s)`;
+  if (m.tipo === 'actividad') return traducir('chat.compartioActividad');
+  if (m.tipo === 'archivo') return m.adjuntos?.[0]?.nombre ?? traducir('chat.compartioArchivo');
 
   const texto = String(m.texto ?? '').trim();
 
-  if (!texto) return 'Mensaje nuevo';
+  if (!texto) return traducir('chat.mensajeNuevo');
 
   return texto.length > 90 ? `${texto.slice(0, 90)}…` : texto;
 }

@@ -19,7 +19,8 @@ import { IconComponent } from '../../shared/components/icon/icon.component';
 import { DescriptorTableComponent } from '../../shared/components/descriptor-table/descriptor-table.component';
 import { ToTopComponent } from '../../shared/components/to-top/to-top.component';
 import { Descriptor, entityDescriptors, parseEntityDescriptors } from '../../shared/utils/descriptors';
-import { localeActual } from '../../core/i18n/idioma.service';
+import { localeActual, traducir } from '../../core/i18n/idioma.service';
+import { TPipe } from '../../core/i18n/t.pipe';
 
 /** Qué clase de registro es. Decide el icono y a dónde lleva. */
 type Kind = 'location' | 'asset' | 'item';
@@ -84,7 +85,7 @@ interface EntityCard {
 @Component({
   selector: 'vt-entities',
   standalone: true,
-  imports: [DescriptorTableComponent, IconComponent, NgTemplateOutlet, RouterLink, ToTopComponent],
+  imports: [DescriptorTableComponent, IconComponent, NgTemplateOutlet, RouterLink, ToTopComponent, TPipe],
   templateUrl: './entities.component.html',
   styleUrl: './entities.component.scss',
 })
@@ -106,8 +107,8 @@ export class EntitiesComponent {
   readonly counter = computed(() => {
     const total = this.cards().length;
 
-    if (total === 0) return 'Todo está en Visitrack';
-    return total === 1 ? '1 registro por subir' : `${total} registros por subir`;
+    if (total === 0) return traducir('ent.todoEnVisitrack');
+    return total === 1 ? traducir('ent.porSubir1') : traducir('ent.porSubirN', { n: total });
   });
 
   /** Cuántas esperan a otro registro. Se dice aparte: no es lo mismo que fallar. */
@@ -179,16 +180,16 @@ export class EntitiesComponent {
     if (this.uploads.running()) return;
 
     if (this.connectivity.isOffline()) {
-      this.toasts.info('Sin conexión', 'Se subirán solas en cuanto vuelva la red.');
+      this.toasts.info(traducir('comun.sinConexion'), traducir('ent.subiranSolas'));
       return;
     }
 
     const summary = await this.uploads.run();
 
     if (summary.failed > 0) {
-      this.toasts.error('Algunas no pudieron subir', summary.message);
+      this.toasts.error(traducir('ent.algunasNo'), summary.message);
     } else {
-      this.toasts.success('Listo', summary.message);
+      this.toasts.success(traducir('ent.listo'), summary.message);
     }
 
     await this.load();
@@ -200,8 +201,8 @@ export class EntitiesComponent {
     return {
       key: `loc:${row.GUID}`,
       kind: 'location',
-      name: row.Name || 'Ubicación sin nombre',
-      origin: row.typeTitle || 'Ubicación',
+      name: row.Name || traducir('ent.ubicacionSinNombre'),
+      origin: row.typeTitle || traducir('ubic.ubicacionMay'),
       descriptors: entityDescriptors(row),
 
       // Sin identificador de Visitrack, nunca ha estado allá.
@@ -221,15 +222,15 @@ export class EntitiesComponent {
     return {
       key: `ast:${row.GUID}`,
       kind: 'asset',
-      name: row.Name || 'Activo sin nombre',
-      origin: row.typeTitle || 'Activo',
+      name: row.Name || traducir('ent.activoSinNombre'),
+      origin: row.typeTitle || traducir('ubic.activo'),
       descriptors: entityDescriptors(row),
       isNew: !row.AssetID,
 
       updated: row.UpdatedOn || row.CreatedOn || '',
       updatedLabel: when(row.UpdatedOn || row.CreatedOn),
 
-      waiting: held ? 'Espera a que suba su ubicación.' : '',
+      waiting: held ? traducir('ent.esperaUbicacion') : '',
 
       // La ficha del activo cuelga de su sede, también en la dirección.
       link: guid ? ['/ubicaciones', guid, 'activo', row.GUID] : null,
@@ -247,8 +248,8 @@ export class EntitiesComponent {
     return {
       key: `itm:${row.GUID}`,
       kind: 'item',
-      name: row.Name || 'Ítem sin nombre',
-      origin: byList.get(String(row.ListIDBD ?? ''))?.Name || 'Ítem de lista',
+      name: row.Name || traducir('ent.itemSinNombre'),
+      origin: byList.get(String(row.ListIDBD ?? ''))?.Name || traducir('ent.itemDeLista'),
       descriptors: parseEntityDescriptors(row.JSONTilte, row.jsonValues),
 
       // Un ítem se referencia por su GUID: no hay identificador que mirar, así
@@ -258,7 +259,7 @@ export class EntitiesComponent {
       updated: row.UpdatedOn || row.CreatedOn || '',
       updatedLabel: when(row.UpdatedOn || row.CreatedOn),
 
-      waiting: held ? 'Espera al ítem del que cuelga.' : '',
+      waiting: held ? traducir('ent.esperaItem') : '',
 
       /**
        * Un ítem de lista no tiene pantalla propia.
@@ -277,8 +278,8 @@ export class EntitiesComponent {
   }
 
   labelOf(kind: Kind): string {
-    if (kind === 'location') return 'Ubicación';
-    return kind === 'asset' ? 'Activo' : 'Ítem de lista';
+    if (kind === 'location') return traducir('ubic.ubicacionMay');
+    return traducir(kind === 'asset' ? 'ubic.activo' : 'ent.itemDeLista');
   }
 }
 
@@ -289,15 +290,15 @@ function when(raw: string | undefined): string {
 
   const minutes = Math.floor((Date.now() - date.getTime()) / 60000);
 
-  if (minutes < 1) return 'hace un momento';
-  if (minutes < 60) return `hace ${minutes} min`;
+  if (minutes < 1) return traducir('ent.haceMomento');
+  if (minutes < 60) return traducir('ent.haceMin', { n: minutes });
 
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `hace ${hours} h`;
+  if (hours < 24) return traducir('ent.haceH', { n: hours });
 
   const days = Math.floor(hours / 24);
-  if (days === 1) return 'ayer';
-  if (days < 30) return `hace ${days} días`;
+  if (days === 1) return traducir('ent.ayer');
+  if (days < 30) return traducir('ent.haceDias', { n: days });
 
   return date.toLocaleDateString(localeActual(), { day: 'numeric', month: 'short', year: 'numeric' });
 }

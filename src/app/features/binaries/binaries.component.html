@@ -1,8 +1,8 @@
 <div class="bins">
   <header class="bins__head">
     <div class="bins__title">
-      <h1>Archivos</h1>
-      <p>Fotografías, firmas, grabaciones y documentos capturados en este dispositivo.</p>
+      <h1>{{ 'bin.titulo' | t }}</h1>
+      <p>{{ 'bin.subtitulo' | t }}</p>
     </div>
 
     <div class="bins__actions">
@@ -13,7 +13,7 @@
         (click)="uploadPending()"
       >
         <vt-icon name="cloud-upload" [size]="17" />
-        Subir pendientes
+        {{ 'bin.subirPendientes' | t }}
       </button>
 
       <button
@@ -23,7 +23,7 @@
         (click)="confirmOnline()"
       >
         <vt-icon name="refresh" [size]="17" />
-        Confirmar en línea
+        {{ 'bin.confirmarEnLinea' | t }}
       </button>
 
       <button
@@ -33,7 +33,7 @@
         (click)="processAll()"
       >
         <vt-icon name="send" [size]="17" />
-        Procesar todo
+        {{ 'bin.procesarTodo' | t }}
       </button>
 
       <!-- Sacar los archivos del navegador. No necesita conexión: lo que se
@@ -53,13 +53,13 @@
       <div class="bins__space-head">
         <span>
           <strong>{{ storage.formatSize(space.usage) }}</strong>
-          de {{ storage.formatSize(space.quota) }} usados en este navegador
+          {{ 'bin.deUsados' | t: { cuota: storage.formatSize(space.quota) } }}
         </span>
 
         @if (spaceTight()) {
           <span class="bins__space-warn">
             <vt-icon name="alert" [size]="15" />
-            Queda poco espacio. Exporta y libera lo que ya esté en Visitrack.
+            {{ 'bin.pocoEspacio' | t }}
           </span>
         }
       </div>
@@ -75,7 +75,7 @@
   @if (!connectivity.isOnline()) {
     <p class="bins__offline">
       <vt-icon name="connection-off" [size]="16" />
-      Sin conexión. Los archivos se guardan en este dispositivo y se subirán cuando vuelva la red.
+      {{ 'bin.sinConexion' | t }}
     </p>
   }
 
@@ -84,11 +84,11 @@
       <span class="bins__spinner" aria-hidden="true"></span>
       <span>
         @if (uploads.isRunning()) {
-          Subiendo archivos… {{ uploads.progress().done }} de {{ uploads.progress().total }}
+          {{ 'bin.subiendo' | t: { n: uploads.progress().done, total: uploads.progress().total } }}
         } @else if (verify.verifying()) {
-          Consultando al servidor cuáles ya están publicados…
+          {{ 'bin.consultando' | t }}
         } @else {
-          Procesando pendientes…
+          {{ 'bin.procesando' | t }}
         }
       </span>
     </div>
@@ -107,7 +107,7 @@
       (click)="setFilter(-1)"
     >
       <span class="vt-figure">{{ stats().total }}</span>
-      <small>Total</small>
+      <small>{{ 'bin.total' | t }}</small>
     </button>
 
     <button
@@ -117,7 +117,7 @@
       (click)="setFilter(0)"
     >
       <span class="vt-figure">{{ stats().pending }}</span>
-      <small>Pendientes</small>
+      <small>{{ 'bin.pendientes' | t }}</small>
     </button>
 
     <button
@@ -127,7 +127,7 @@
       (click)="setFilter(1)"
     >
       <span class="vt-figure">{{ stats().inRepository }}</span>
-      <small>En servidor</small>
+      <small>{{ 'bin.estado.servidor' | t }}</small>
     </button>
 
     <button
@@ -137,7 +137,7 @@
       (click)="setFilter(2)"
     >
       <span class="vt-figure">{{ stats().online }}</span>
-      <small>En línea</small>
+      <small>{{ 'bin.estado.online' | t }}</small>
     </button>
 
     @if (stats().unrecoverable > 0 || stats().discarded > 0) {
@@ -148,7 +148,7 @@
         (click)="setFilter(4)"
       >
         <span class="vt-figure">{{ stats().unrecoverable + stats().discarded }}</span>
-        <small>No disponibles</small>
+        <small>{{ 'bin.noDisponibles' | t }}</small>
       </button>
     }
   </div>
@@ -159,22 +159,22 @@
       type="search"
       [value]="search()"
       (input)="onSearch($event)"
-      placeholder="Buscar por actividad, identificador o extensión"
+      [placeholder]="'bin.buscar' | t"
     />
   </label>
 
   <!-- ── Listado ─────────────────────────────────────────────────────────── -->
   @if (loading()) {
-    <p class="bins__empty">Cargando archivos…</p>
+    <p class="bins__empty">{{ 'bin.cargando' | t }}</p>
   } @else if (entries().length === 0) {
     <div class="bins__empty-box">
       <span class="bins__empty-icon"><vt-icon name="image" [size]="28" /></span>
-      <strong>No hay archivos que mostrar</strong>
+      <strong>{{ 'bin.vacio' | t }}</strong>
       <small>
         @if (search() || state() !== -1) {
-          Prueba a quitar el filtro o la búsqueda.
+          {{ 'bin.quitaFiltro' | t }}
         } @else {
-          Los archivos aparecerán aquí a medida que captures fotos, firmas o grabaciones.
+          {{ 'bin.vacioHint' | t }}
         }
       </small>
     </div>
@@ -193,10 +193,10 @@
               class="bin__frame"
               [class.bin__frame--sign]="isSignature(entry)"
               (click)="open(entry)"
-              title="Ver en grande"
+              [title]="'bin.verGrande' | t"
             >
               <img [src]="previewUrl(entry)" alt="" loading="lazy" />
-              <span class="bin__zoom"><vt-icon name="image" [size]="14" /> Ampliar</span>
+              <span class="bin__zoom"><vt-icon name="image" [size]="14" /> {{ 'bin.ampliar' | t }}</span>
             </button>
           } @else if (isVideo(entry)) {
             <!-- El video no se reproduce en la lista: veinte reproductores
@@ -208,7 +208,7 @@
                  los videos cayendo en la rama del documento genérico. -->
             <button type="button" class="bin__frame bin__frame--video" (click)="open(entry)">
               <span class="bin__play"><vt-icon name="play" [size]="22" /></span>
-              <span class="bin__zoom"><vt-icon name="video" [size]="14" /> Reproducir</span>
+              <span class="bin__zoom"><vt-icon name="video" [size]="14" /> {{ 'bin.reproducir' | t }}</span>
             </button>
           } @else {
             <span class="bin__badge">
@@ -238,7 +238,7 @@
                 <span>{{ captured(entry) }}</span>
               }
               @if (entry.resource.VerifyAttempts) {
-                <span>{{ entry.resource.VerifyAttempts }} intento(s)</span>
+                <span>{{ 'bin.intentos' | t: { n: entry.resource.VerifyAttempts } }}</span>
               }
             </div>
 
@@ -255,12 +255,12 @@
               type="button"
               class="bin__tool"
               (click)="share(entry)"
-              title="Enviar una copia a una sala del chat"
+              [title]="'bin.compartir' | t"
             >
               <vt-icon name="message-circle" [size]="17" />
             </button>
 
-            <button type="button" class="bin__tool" (click)="download(entry)" title="Descargar">
+            <button type="button" class="bin__tool" (click)="download(entry)" [title]="'bin.descargar' | t">
               <vt-icon name="download" [size]="17" />
             </button>
           </div>
@@ -286,7 +286,7 @@
           (click)="goToPage(result().page - 1)"
         >
           <vt-icon name="chevron" [size]="17" class="bins__flip" />
-          Anterior
+          {{ 'bin.anterior' | t }}
         </button>
 
         <span class="bins__range">{{ range() }}</span>
@@ -297,7 +297,7 @@
           [disabled]="result().page >= result().pages - 1"
           (click)="goToPage(result().page + 1)"
         >
-          Siguiente
+          {{ 'bin.siguiente' | t }}
           <vt-icon name="chevron" [size]="17" />
         </button>
       </nav>

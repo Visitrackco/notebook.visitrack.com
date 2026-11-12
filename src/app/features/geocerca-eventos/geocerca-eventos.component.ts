@@ -21,7 +21,8 @@ import {
 import { EventosDeGeocercaService } from '../../core/geocercas/eventos-de-geocerca.service';
 import { ConnectivityService } from '../../core/services/connectivity.service';
 import { IconComponent } from '../../shared/components/icon/icon.component';
-import { localeActual } from '../../core/i18n/idioma.service';
+import { localeActual, traducir } from '../../core/i18n/idioma.service';
+import { TPipe } from '../../core/i18n/t.pipe';
 
 /** Un día de la lista, con su encabezado. */
 interface GrupoDelDia {
@@ -52,7 +53,7 @@ interface GrupoDelDia {
 @Component({
   selector: 'vt-geocerca-eventos',
   standalone: true,
-  imports: [IconComponent],
+  imports: [IconComponent, TPipe],
   templateUrl: './geocerca-eventos.component.html',
   styleUrl: './geocerca-eventos.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -98,7 +99,7 @@ export class GeocercaEventosComponent {
     const lista = this.resultado()?.geocercas ?? [];
     const elegida = this.filtro().geocerca;
     if (elegida === null || lista.some((g) => g.id === elegida)) return lista;
-    return [...lista, { id: elegida, nombre: `Geocerca ${elegida}` }];
+    return [...lista, { id: elegida, nombre: traducir('geo.geocercaN', { id: elegida }) }];
   });
 
   readonly hayFiltrosPropios = computed(() => {
@@ -122,9 +123,9 @@ export class GeocercaEventosComponent {
       if (!grupo || grupo.dia !== dia) {
         const titulo =
           dia === hoy
-            ? 'Hoy'
+            ? traducir('ruta.hoy')
             : dia === ayer
-              ? 'Ayer'
+              ? traducir('geo.ayer')
               : dia
                 ? fecha.toLocaleDateString(localeActual(), {
                     weekday: 'long',
@@ -132,7 +133,7 @@ export class GeocercaEventosComponent {
                     month: 'long',
                     year: fecha.getFullYear() === new Date().getFullYear() ? undefined : 'numeric',
                   })
-                : 'Sin fecha';
+                : traducir('geo.sinFecha');
         grupo = { dia, titulo, filas: [] };
         grupos.push(grupo);
       }
@@ -248,10 +249,10 @@ export class GeocercaEventosComponent {
 
   /** «a 35 m del borde», con kilómetros si son muchos. */
   distancia(m: number): string {
-    if (m < 1) return 'en el borde';
+    if (m < 1) return traducir('geo.enElBorde');
     const cifra =
       m >= 1000 ? `${(m / 1000).toLocaleString(localeActual(), { maximumFractionDigits: 1 })} km` : `${Math.round(m)} m`;
-    return `a ${cifra} del borde`;
+    return traducir('geo.delBorde', { cifra });
   }
 
   /** El color del disco de cada tipo; la palabra va en el texto. */
@@ -284,6 +285,8 @@ export class GeocercaEventosComponent {
     if (!r || !r.total) return '';
     const inicio = (r.pagina - 1) * r.tam + 1;
     const fin = Math.min(r.total, inicio + r.tam - 1);
-    return r.total <= r.tam ? `${r.total} evento${r.total === 1 ? '' : 's'}` : `${inicio}–${fin} de ${r.total}`;
+    return r.total <= r.tam
+      ? traducir(r.total === 1 ? 'geo.evento1' : 'geo.eventosN', { n: r.total })
+      : traducir('bin.rango', { desde: inicio, hasta: fin, total: r.total });
   }
 }

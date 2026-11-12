@@ -4,6 +4,8 @@ import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } 
 
 import { CorreoPendiente, CorreoRepository, CorreoService } from '../../core/services/correo.service';
 import { ToastService } from '../../core/services/toast.service';
+import { traducir } from '../../core/i18n/idioma.service';
+import { TPipe } from '../../core/i18n/t.pipe';
 
 /** Las que se pintan de una vez, y las que se guardan en memoria como mucho. */
 const POR_TANDA = 50;
@@ -29,7 +31,7 @@ const TOPE_EN_MEMORIA = 500;
 @Component({
   selector: 'vt-flow-emails',
   standalone: true,
-  imports: [NearEndDirective],
+  imports: [NearEndDirective, TPipe],
   templateUrl: './flow-emails.component.html',
   styleUrl: './flow-emails.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -124,13 +126,13 @@ export class FlowEmailsComponent implements OnInit {
       this.toasts.show({
         title: salida.aceptados
           ? salida.aceptados === 1
-            ? 'Entro en la cola'
-            : `${salida.aceptados} entraron en la cola`
-          : 'Todavia no puede entrar',
+            ? traducir('flujos.entroCola')
+            : traducir('flujos.entraronCola', { n: salida.aceptados })
+          : traducir('flujos.noPuedeEntrar'),
         detail: salida.aceptados
-          ? 'Lo manda el servidor enseguida.'
+          ? traducir('flujos.loMandaServidor')
           : String(salida.mensaje ?? '').trim() ||
-            'La actividad tiene que estar en Visitrack y sus fotos subidas.',
+            traducir('flujos.tieneQueEstar'),
         tone: salida.aceptados ? 'success' : 'info',
       });
     } finally {
@@ -186,12 +188,12 @@ export class FlowEmailsComponent implements OnInit {
       this.toasts.show({
         title: aceptados
           ? aceptados === 1
-            ? '1 correo entró en la cola'
-            : `${aceptados} correos entraron en la cola`
-          : 'Ninguno pudo entrar todavía',
+            ? traducir('flujos.correo1Cola')
+            : traducir('flujos.correosNCola', { n: aceptados })
+          : traducir('flujos.ningunoPudo'),
         detail: aceptados
           ? undefined
-          : 'Necesitan conexión, o que su actividad termine de subir.',
+          : traducir('flujos.necesitanConexion'),
         tone: aceptados ? 'success' : 'info',
       });
     } finally {
@@ -216,8 +218,8 @@ export class FlowEmailsComponent implements OnInit {
   comoSeLee(correo: CorreoPendiente): string {
     const estado = this.estadoDe(correo);
 
-    if (estado === 'mal') return 'No se pudo';
+    if (estado === 'mal') return traducir('flujos.noSePudo');
 
-    return estado === 'cola' ? 'En la cola' : 'Esperando';
+    return traducir(estado === 'cola' ? 'flujos.enCola' : 'flujos.esperando');
   }
 }

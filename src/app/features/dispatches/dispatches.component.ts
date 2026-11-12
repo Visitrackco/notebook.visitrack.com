@@ -23,7 +23,8 @@ import {
   ReasignacionHecha,
   ReassignDialogComponent,
 } from '../activities/reassign-dialog/reassign-dialog.component';
-import { localeActual } from '../../core/i18n/idioma.service';
+import { localeActual, traducir } from '../../core/i18n/idioma.service';
+import { TPipe } from '../../core/i18n/t.pipe';
 
 /** Cómo se ordena la lista. */
 type Orden = 'programada' | 'recibida';
@@ -91,6 +92,7 @@ interface DispatchCard {
   selector: 'vt-dispatches',
   standalone: true,
   imports: [
+    TPipe,
     ConfirmDialogComponent,
     IconComponent,
     NearEndDirective,
@@ -171,9 +173,11 @@ export class DispatchesComponent {
   readonly counter = computed(() => {
     const shown = this.matching().length;
     const total = this.all().length;
-    const noun = total === 1 ? 'consigna' : 'consignas';
+    const noun = traducir(total === 1 ? 'desp.consigna' : 'desp.consignas');
 
-    return shown === total ? `${total} ${noun}` : `${shown} de ${total} ${noun}`;
+    return shown === total
+      ? `${total} ${noun}`
+      : traducir('desp.deTotal', { n: shown, total, nombre: noun });
   });
 
   constructor() {
@@ -232,7 +236,7 @@ export class DispatchesComponent {
     const titles = parseAnswerTitles(answer.Titles);
 
     const place = [answer.LocationName, answer.AssetName].filter(Boolean).join(' · ');
-    const surveyTitle = survey?.Title || titles[0]?.val || 'Formulario';
+    const surveyTitle = survey?.Title || titles[0]?.val || traducir('desp.formulario');
 
     return {
       guid: answer.GUID,
@@ -241,7 +245,7 @@ export class DispatchesComponent {
       surveyTitle,
       place,
 
-      statusName: status?.Name || 'Sin estado',
+      statusName: status?.Name || traducir('desp.sinEstado'),
       statusColor: colorOf(status),
 
       received: answer.Received || answer.CreatedOn || '',
@@ -416,7 +420,7 @@ export class DispatchesComponent {
     const lote = this.marcadasCards();
     if (!lote.length || this.trabajando()) return;
 
-    this.trabajando.set('Marcando archivos…');
+    this.trabajando.set(traducir('desp.marcandoArchivos'));
     let archivos = 0;
     try {
       for (const card of lote) archivos += await this.activities.reprocessBinaries(card.guid);
@@ -426,11 +430,11 @@ export class DispatchesComponent {
 
     this.toasts.success(
       archivos === 0
-        ? 'Ninguna tenía archivos'
+        ? traducir('desp.ningunaArchivos')
         : archivos === 1
-          ? 'Se marcó 1 archivo para volver a subirse'
-          : `Se marcaron ${archivos} archivos para volver a subirse`,
-      lote.length === 1 ? 'De 1 consigna.' : `De ${lote.length} consignas.`,
+          ? traducir('desp.marcado1')
+          : traducir('desp.marcadosN', { n: archivos }),
+      lote.length === 1 ? traducir('desp.de1') : traducir('desp.deN', { n: lote.length }),
     );
     this.salirDeSeleccion();
   }
@@ -447,13 +451,13 @@ export class DispatchesComponent {
     const sinHacer = [...r.omitidas, ...r.fallidas];
     if (r.hechas) {
       this.toasts.success(
-        r.hechas === 1 ? '1 consigna reasignada' : `${r.hechas} consignas reasignadas`,
-        `Ahora son de ${r.person.name}.`,
+        r.hechas === 1 ? traducir('desp.reasignada1') : traducir('desp.reasignadasN', { n: r.hechas }),
+        traducir('desp.ahoraDe', { nombre: r.person.name }),
       );
     }
     if (sinHacer.length) {
       this.toasts.warning(
-        sinHacer.length === 1 ? '1 no se reasignó' : `${sinHacer.length} no se reasignaron`,
+        sinHacer.length === 1 ? traducir('desp.noReasignada1') : traducir('desp.noReasignadasN', { n: sinHacer.length }),
         sinHacer.slice(0, 3).join(' · ') + (sinHacer.length > 3 ? ' …' : ''),
       );
     }
@@ -466,7 +470,7 @@ export class DispatchesComponent {
     const lote = this.marcadasCards();
     if (!lote.length || this.trabajando()) return;
 
-    this.trabajando.set('Revisando…');
+    this.trabajando.set(traducir('desp.revisando'));
     const aptas: DispatchCard[] = [];
     const omitidas: string[] = [];
     try {
@@ -477,7 +481,7 @@ export class DispatchesComponent {
           continue;
         }
         if (card.answer.eraser !== 1 && (await this.activities.countBlockingBinaries(card.guid)) > 0) {
-          omitidas.push(`${this.nombreDe(card)}: tiene archivos sin terminar de subir`);
+          omitidas.push(`${this.nombreDe(card)}: ${traducir('desp.archivosSinSubir')}`);
           continue;
         }
         aptas.push(card);
@@ -492,21 +496,21 @@ export class DispatchesComponent {
   readonly borrandoVariasTitulo = computed(() => {
     const b = this.borrandoVarias();
     if (!b) return '';
-    if (!b.aptas.length) return 'Ninguna se puede eliminar';
-    return b.aptas.length === 1 ? '¿Eliminar 1 consigna?' : `¿Eliminar ${b.aptas.length} consignas?`;
+    if (!b.aptas.length) return traducir('desp.ningunaEliminable');
+    return b.aptas.length === 1 ? traducir('desp.eliminar1') : traducir('desp.eliminarN', { n: b.aptas.length });
   });
 
   readonly borrandoVariasMensaje = computed(() =>
     this.borrandoVarias()?.aptas.length
-      ? 'Se borrarán con los archivos que tengan asociados. Las que ya están en Visitrack también se borran allí. No se puede deshacer.'
-      : 'Ninguna de las seleccionadas cumple las condiciones para eliminarse.',
+      ? traducir('desp.eliminarMsg')
+      : traducir('desp.ningunaCumple'),
   );
 
   readonly borrandoVariasDetalle = computed(() => {
     const b = this.borrandoVarias();
     if (!b?.omitidas.length) return '';
     const cuantas =
-      b.omitidas.length === 1 ? 'Esta no se puede eliminar' : `Estas ${b.omitidas.length} no se pueden eliminar`;
+      b.omitidas.length === 1 ? traducir('desp.estaNo') : traducir('desp.estasNo', { n: b.omitidas.length });
     return `${cuantas}: ${b.omitidas.slice(0, 5).join(' · ')}${b.omitidas.length > 5 ? ' …' : ''}`;
   });
 
@@ -515,7 +519,7 @@ export class DispatchesComponent {
     this.borrandoVarias.set(null);
     if (!b?.aptas.length) return;
 
-    this.trabajando.set(`Eliminando ${b.aptas.length}…`);
+    this.trabajando.set(traducir('desp.eliminando', { n: b.aptas.length }));
     let hechas = 0;
     let enVisitrack = 0;
     const fallidas: string[] = [];
@@ -527,7 +531,7 @@ export class DispatchesComponent {
           if (r === 'flagged') enVisitrack++;
         } catch (error) {
           console.error('[Consignas] no se pudo eliminar', error);
-          fallidas.push(`${this.nombreDe(card)}: no se pudo`);
+          fallidas.push(`${this.nombreDe(card)}: ${traducir('desp.noSePudo')}`);
         }
       }
     } finally {
@@ -536,14 +540,14 @@ export class DispatchesComponent {
 
     if (hechas) {
       this.toasts.success(
-        hechas === 1 ? '1 consigna eliminada' : `${hechas} consignas eliminadas`,
-        enVisitrack ? 'Las que ya estaban en Visitrack se borran allí en la próxima sincronización.' : undefined,
+        hechas === 1 ? traducir('desp.eliminada1') : traducir('desp.eliminadasN', { n: hechas }),
+        enVisitrack ? traducir('desp.seBorranAlla') : undefined,
       );
     }
     const sinHacer = [...b.omitidas, ...fallidas];
     if (sinHacer.length) {
       this.toasts.warning(
-        sinHacer.length === 1 ? '1 no se eliminó' : `${sinHacer.length} no se eliminaron`,
+        sinHacer.length === 1 ? traducir('desp.noEliminada1') : traducir('desp.noEliminadasN', { n: sinHacer.length }),
         sinHacer.slice(0, 3).join(' · ') + (sinHacer.length > 3 ? ' …' : ''),
       );
     }

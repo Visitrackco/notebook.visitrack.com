@@ -5,6 +5,9 @@ import { DatabaseService } from '../../../core/database/database.service';
 import { SurveyRepository } from '../../../core/repositories/entity.repositories';
 import { AuthService } from '../../../core/services/auth.service';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
+import { traducir } from '../../../core/i18n/idioma.service';
+import { TPipe } from '../../../core/i18n/t.pipe';
+import type { ClaveTexto } from '../../../core/i18n/textos';
 
 /** Qué flujos se miran: los de formulario (entidad 100) o los de geocerca (101). */
 export type TipoDeFlujo = 'formulario' | 'geocerca';
@@ -25,44 +28,50 @@ export interface FlujoVisto {
   ilegible: boolean;
 }
 
-const MOMENTOS: Record<string, string> = {
+const MOMENTOS: Record<string, ClaveTexto> = {
   // Formulario
-  crear: 'al crear',
-  abrir: 'al abrir',
-  cambia: 'al cambiar un campo',
-  guardar: 'al guardar',
-  hijo: 'al responder un hijo',
-  timer: 'por timer',
+  crear: 'flujos.m.crear',
+  abrir: 'flujos.m.abrir',
+  cambia: 'flujos.m.cambia',
+  guardar: 'flujos.m.guardar',
+  hijo: 'flujos.m.hijo',
+  timer: 'flujos.m.timer',
   // Geocerca
-  entrar: 'al entrar',
-  salir: 'al salir',
-  cerca: 'cerca de un punto',
-  permanecer: 'al quedarse',
+  entrar: 'flujos.m.entrar',
+  salir: 'flujos.m.salir',
+  cerca: 'flujos.m.cerca',
+  permanecer: 'flujos.m.permanecer',
   // Geocerca, por momento de la app
-  'actividad-crear': 'al crear una actividad',
-  'actividad-guardar': 'al guardar una actividad',
-  'actividad-actualizar': 'al actualizar una actividad',
-  'actividad-eliminar': 'al eliminar una actividad',
-  'sesion-iniciar': 'al iniciar sesión',
-  'sesion-cerrar': 'al cerrar sesión',
-  'recorrido-empezar': 'al empezar el recorrido (solo en la app)',
-  'recorrido-terminar': 'al terminar el recorrido (solo en la app)',
+  'actividad-crear': 'flujos.m.actividadCrear',
+  'actividad-guardar': 'flujos.m.actividadGuardar',
+  'actividad-actualizar': 'flujos.m.actividadActualizar',
+  'actividad-eliminar': 'flujos.m.actividadEliminar',
+  'sesion-iniciar': 'flujos.m.sesionIniciar',
+  'sesion-cerrar': 'flujos.m.sesionCerrar',
+  'recorrido-empezar': 'flujos.m.recorridoEmpezar',
+  'recorrido-terminar': 'flujos.m.recorridoTerminar',
 };
 
-const DONDE: Record<string, string> = {
-  dentro: 'estando dentro',
-  fuera: 'estando fuera',
-  cerca: 'estando cerca',
+const DONDE: Record<string, ClaveTexto> = {
+  dentro: 'flujos.d.dentro',
+  fuera: 'flujos.d.fuera',
+  cerca: 'flujos.d.cerca',
 };
 
 /** Lo que el servidor hace con un evento: no baja al navegador, solo se avisa. */
-const ACCIONES: Record<string, string> = {
-  'crear-actividad': 'crear actividad',
-  notificar: 'notificar',
-  'enviar-correo': 'enviar correo',
-  'enviar-push': 'enviar aviso',
-  'mensaje-chat': 'mensaje en el chat',
+const ACCIONES: Record<string, ClaveTexto> = {
+  'crear-actividad': 'flujos.a.crearActividad',
+  notificar: 'flujos.a.notificar',
+  'enviar-correo': 'flujos.a.enviarCorreo',
+  'enviar-push': 'flujos.a.enviarPush',
+  'mensaje-chat': 'flujos.a.mensajeChat',
 };
+
+/** Texto de un mapa de claves, o el propio valor si no está. */
+function textoDe(mapa: Record<string, ClaveTexto>, valor: string): string {
+  const clave = mapa[valor];
+  return clave ? traducir(clave) : valor;
+}
 
 /**
  * Los flujos guardados en este navegador, para poder consultarlos.
@@ -75,26 +84,25 @@ const ACCIONES: Record<string, string> = {
 @Component({
   selector: 'vt-flujos-guardados',
   standalone: true,
-  imports: [IconComponent],
+  imports: [IconComponent, TPipe],
   template: `
     <section class="flujos" [attr.aria-label]="titulo()">
       <header class="flujos__head">
         <div>
           <h2>{{ titulo() }}</h2>
           <span class="flujos__meta">
-            {{ cargando() ? 'Leyendo…' : flujos().length + (flujos().length === 1 ? ' guardado' : ' guardados') + ' en este navegador' }}
+            {{ cargando() ? ('flujos.leyendo' | t) : ((flujos().length === 1 ? 'flujos.guardado1' : 'flujos.guardadosN') | t: { n: flujos().length }) }}
           </span>
         </div>
         <button type="button" class="vt-btn vt-btn-ghost" (click)="cerrar.emit()">
           <vt-icon name="close" [size]="16" />
-          Cerrar
+          {{ 'comun.cerrar' | t }}
         </button>
       </header>
 
       @if (!cargando() && flujos().length === 0) {
         <p class="flujos__vacio">
-          No hay flujos de {{ tipo() === 'geocerca' ? 'geocerca' : 'formulario' }} guardados. Si
-          esperabas alguno, descarga los datos o pide esta información de nuevo.
+          {{ (tipo() === 'geocerca' ? 'flujos.vacioGeocerca' : 'flujos.vacioFormulario') | t }}
         </p>
       }
 
@@ -105,29 +113,29 @@ const ACCIONES: Record<string, string> = {
               <summary>
                 <vt-icon name="chevron" [size]="15" class="flujos__flecha" />
                 <span class="flujos__titulo">
-                  <strong>{{ f.nombre || 'Sin nombre' }}</strong>
+                  <strong>{{ f.nombre || ('flujos.sinNombre' | t) }}</strong>
                   <small>{{ f.pertenece }}</small>
                 </span>
                 @if (f.dirigido) {
-                  <span class="flujos__chip">Personal</span>
+                  <span class="flujos__chip">{{ 'flujos.personal' | t }}</span>
                 }
                 <span class="flujos__chip" [class.flujos__chip--on]="f.activo">
-                  {{ f.activo ? 'Activo' : 'Inactivo' }}
+                  {{ (f.activo ? 'flujos.activo' : 'flujos.inactivo') | t }}
                 </span>
               </summary>
 
               <div class="flujos__cuerpo">
                 @if (f.ilegible) {
-                  <p class="flujos__vacio">No se pudo leer la definición de este flujo.</p>
+                  <p class="flujos__vacio">{{ 'flujos.ilegible' | t }}</p>
                 } @else {
-                  <h3>Reglas</h3>
+                  <h3>{{ 'flujos.reglas' | t }}</h3>
                   @if (f.reglas.length === 0) {
-                    <p class="flujos__vacio">Sin reglas.</p>
+                    <p class="flujos__vacio">{{ 'flujos.sinReglas' | t }}</p>
                   }
                   <ul class="flujos__reglas">
                     @for (r of f.reglas; track $index) {
                       <li>
-                        <span>{{ r.nombre || 'Regla sin nombre' }}</span>
+                        <span>{{ r.nombre || ('flujos.reglaSinNombre' | t) }}</span>
                         @if (r.cuando) {
                           <small class="flujos__cuando">{{ r.cuando }}</small>
                         }
@@ -139,12 +147,12 @@ const ACCIONES: Record<string, string> = {
                   </ul>
 
                   @if (f.timers.length) {
-                    <h3>Timers</h3>
+                    <h3>{{ 'flujos.timers' | t }}</h3>
                     <ul class="flujos__reglas">
-                      @for (t of f.timers; track $index) {
+                      @for (tm of f.timers; track $index) {
                         <li>
-                          <span>{{ t.nombre || 'Timer sin nombre' }}</span>
-                          <small class="flujos__cuando">{{ t.duracion }}</small>
+                          <span>{{ tm.nombre || ('flujos.timerSinNombre' | t) }}</span>
+                          <small class="flujos__cuando">{{ tm.duracion }}</small>
                         </li>
                       }
                     </ul>
@@ -152,8 +160,7 @@ const ACCIONES: Record<string, string> = {
 
                   @if (f.avisaServidor) {
                     <p class="flujos__nota">
-                      Algunas reglas también avisan al servidor, que hace lo que necesita red
-                      (correos, avisos, chat).
+                      {{ 'flujos.avisaServidor' | t }}
                     </p>
                   }
                 }
@@ -288,7 +295,7 @@ export class FlujosGuardadosComponent {
   readonly cargando = signal(true);
 
   readonly titulo = () =>
-    this.tipo() === 'geocerca' ? 'Flujos de geocerca' : 'Flujos de formularios';
+    traducir(this.tipo() === 'geocerca' ? 'sync.ent.101' : 'sync.ent.100');
 
   constructor() {
     effect(() => {
@@ -341,8 +348,8 @@ export class FlujosGuardadosComponent {
       id: Number(f?.ID),
       nombre: String(f?.Name ?? ''),
       pertenece: titulo
-        ? `Formulario: ${titulo}`
-        : `Formulario ${f?.SurveyID ?? ''} (no está descargado)`,
+        ? traducir('flujos.formularioDe', { titulo })
+        : traducir('flujos.formularioNoDescargado', { id: f?.SurveyID ?? '' }),
       dirigido: f?.WorkflowUserID != null,
       activo: Number(f?.IsActive) === 1,
       reglas: [],
@@ -388,8 +395,10 @@ export class FlujosGuardadosComponent {
         .map((g: any) => String(g?.nombre ?? ''))
         .filter(Boolean);
       visto.pertenece = geocercas.length
-        ? `${geocercas.length === 1 ? 'Geocerca' : 'Geocercas'}: ${geocercas.join(', ')}`
-        : 'Sin geocercas';
+        ? traducir(geocercas.length === 1 ? 'flujos.geocerca1' : 'flujos.geocercasN', {
+            lista: geocercas.join(', '),
+          })
+        : traducir('flujos.sinGeocercas');
 
       const reglas = Array.isArray(flujo?.reglas) ? flujo.reglas : [];
       visto.avisaServidor = reglas.some((r: any) => r?.avisaServidor === true);
@@ -404,16 +413,16 @@ export class FlujosGuardadosComponent {
       );
     } catch {
       visto.ilegible = true;
-      visto.pertenece = 'Sin geocercas';
+      visto.pertenece = traducir('flujos.sinGeocercas');
     }
     return visto;
   }
 
   private async accionDe(a: any): Promise<string> {
-    const nombre = ACCIONES[String(a?.accion ?? '')] ?? String(a?.accion ?? 'acción');
+    const nombre = a?.accion ? textoDe(ACCIONES, String(a.accion)) : traducir('flujos.accion');
     if (a?.accion === 'crear-actividad') {
       const titulo = await this.tituloDelFormulario(a?.surveyId);
-      return `${nombre}: ${titulo || `formulario ${a?.surveyId ?? ''}`}`;
+      return `${nombre}: ${titulo || traducir('flujos.formularioN', { id: a?.surveyId ?? '' })}`;
     }
     if (a?.accion === 'notificar' && a?.titulo) return `${nombre}: «${a.titulo}»`;
     return nombre;
@@ -424,14 +433,14 @@ export class FlujosGuardadosComponent {
 function cuandoDe(cuando: unknown, regla?: any): string {
   const lista = Array.isArray(cuando) ? cuando : cuando ? [cuando] : [];
   const textos = lista.map((c) => {
-    const base = MOMENTOS[String(c)] ?? String(c);
+    const base = textoDe(MOMENTOS, String(c));
     if (c === 'cerca' && regla?.metros) return `${base} (${regla.metros} m)`;
     if (c === 'permanecer' && regla?.minutos) return `${base} (${regla.minutos} min)`;
     // Los momentos de la app dicen además dónde tiene que estar la persona.
     if (regla && /^(actividad|sesion|recorrido)-/.test(String(c))) {
       const donde = String(regla?.donde || 'dentro');
       const metros = donde === 'cerca' && regla?.metros ? ` (${regla.metros} m)` : '';
-      return `${base}, ${DONDE[donde] ?? donde}${metros}`;
+      return `${base}, ${textoDe(DONDE, donde)}${metros}`;
     }
     return base;
   });
@@ -440,7 +449,7 @@ function cuandoDe(cuando: unknown, regla?: any): string {
 
 /** Minutos, en palabras. */
 function duracionDe(minutos: number): string {
-  if (!Number.isFinite(minutos) || minutos <= 0) return 'sin duración';
+  if (!Number.isFinite(minutos) || minutos <= 0) return traducir('flujos.sinDuracion');
   if (minutos < 60) return `${minutos} min`;
   const h = Math.floor(minutos / 60);
   const m = minutos % 60;

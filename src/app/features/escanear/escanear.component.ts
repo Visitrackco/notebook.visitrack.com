@@ -6,6 +6,7 @@ import { EtiquetasService } from '../../core/services/etiquetas.service';
 import { CodeScannerComponent } from '../../shared/components/code-scanner/code-scanner.component';
 import { DescriptorTableComponent } from '../../shared/components/descriptor-table/descriptor-table.component';
 import { IconComponent } from '../../shared/components/icon/icon.component';
+import { TPipe } from '../../core/i18n/t.pipe';
 
 /**
  * Escanear una etiqueta para comenzar una actividad.
@@ -30,7 +31,7 @@ import { IconComponent } from '../../shared/components/icon/icon.component';
 @Component({
   selector: 'vt-escanear',
   standalone: true,
-  imports: [CodeScannerComponent, DescriptorTableComponent, IconComponent, RouterLink],
+  imports: [CodeScannerComponent, DescriptorTableComponent, IconComponent, RouterLink, TPipe],
   templateUrl: './escanear.component.html',
   styleUrl: './escanear.component.scss',
 })

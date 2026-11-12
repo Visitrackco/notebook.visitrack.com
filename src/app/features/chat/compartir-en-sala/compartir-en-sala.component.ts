@@ -14,6 +14,8 @@ import { ToastService } from '../../../core/services/toast.service';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
 import { ChatApi, SalaResumen } from '../chat.api';
 import { nuevoGuid } from '../../../shared/utils/guid';
+import { traducir } from '../../../core/i18n/idioma.service';
+import { TPipe } from '../../../core/i18n/t.pipe';
 
 /**
  * Lo que se está mandando a una sala.
@@ -50,7 +52,7 @@ export type ParaCompartir =
 @Component({
   selector: 'vt-compartir-en-sala',
   standalone: true,
-  imports: [IconComponent],
+  imports: [IconComponent, TPipe],
   templateUrl: './compartir-en-sala.component.html',
   styleUrl: './compartir-en-sala.component.scss',
 })
@@ -97,7 +99,7 @@ export class CompartirEnSalaComponent {
     try {
       this.salas.set(await this.api.salas());
     } catch {
-      this.error.set('No se pudieron cargar tus salas.');
+      this.error.set(traducir('chat.errorTusSalas'));
     } finally {
       this.cargando.set(false);
     }
@@ -142,8 +144,8 @@ export class CompartirEnSalaComponent {
       this.cerrado.emit();
     } catch {
       this.toasts.show({
-        title: 'No se pudo compartir.',
-        detail: 'Inténtalo otra vez.',
+        title: traducir('chat.errorCompartir'),
+        detail: traducir('chat.intentaOtraVez'),
         tone: 'error',
       });
     } finally {

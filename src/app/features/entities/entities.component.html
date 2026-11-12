@@ -1,11 +1,11 @@
 <section class="ent">
   <header class="ent__head">
     <div class="ent__title">
-      <h1>Entidades por subir</h1>
+      <h1>{{ 'ent.titulo' | t }}</h1>
       <p>
         {{ counter() }}
         @if (waitingCount() > 0) {
-          · <em>{{ waitingCount() }} en espera de otro registro</em>
+          · <em>{{ 'ent.enEspera' | t: { n: waitingCount() } }}</em>
         }
       </p>
     </div>
@@ -18,7 +18,7 @@
         (click)="runNow()"
       >
         <vt-icon name="cloud-upload" [size]="16" />
-        {{ uploads.running() ? 'Subiendo…' : 'Subir ahora' }}
+        {{ (uploads.running() ? 'ent.subiendo' : 'ent.subirAhora') | t }}
       </button>
     }
   </header>
@@ -33,10 +33,9 @@
   <p class="ent__note">
     <vt-icon name="info" [size]="15" />
     <span>
-      Ubicaciones, activos e ítems de lista
-      <strong>creados o modificados en este equipo</strong> que aún no están en
-      Visitrack. Suben solas cada minuto, siempre
-      <strong>antes que las actividades</strong> que las usan.
+      {{ 'ent.nota1' | t }}
+      <strong>{{ 'ent.nota2' | t }}</strong> {{ 'ent.nota3' | t }}
+      <strong>{{ 'ent.nota4' | t }}</strong> {{ 'ent.nota5' | t }}
     </span>
   </p>
 
@@ -44,19 +43,18 @@
     <p class="ent__blocked">
       <vt-icon name="alert" [size]="15" />
       <span>
-        El servidor todavía no acepta entidades creadas desde el dispositivo. Se
-        quedan aquí, sin perderse, hasta que se habilite.
+        {{ 'ent.noImplementado' | t }}
       </span>
     </p>
   } @else if (connectivity.isOffline()) {
     <p class="ent__blocked">
       <vt-icon name="alert" [size]="15" />
-      <span>Sin conexión. Subirán en cuanto vuelva la red.</span>
+      <span>{{ 'ent.sinConexion' | t }}</span>
     </p>
   }
 
   @if (loading()) {
-    <div class="ent__ghosts" aria-label="Cargando">
+    <div class="ent__ghosts" [attr.aria-label]="'comun.cargando' | t">
       @for (row of [1, 2, 3]; track row) {
         <div class="ent__ghost"></div>
       }
@@ -83,9 +81,9 @@
   } @else {
     <div class="ent__empty">
       <span class="ent__empty-icon"><vt-icon name="check" [size]="26" /></span>
-      <h2>No hay nada por subir</h2>
+      <h2>{{ 'ent.vacio' | t }}</h2>
       <p>
-        Todo lo que has creado o modificado en este equipo ya está en Visitrack.
+        {{ 'ent.vacioHint' | t }}
       </p>
     </div>
   }
@@ -105,7 +103,7 @@
       <!-- Nueva o modificada: cambia lo que pasa al subir, y quien mira quiere
            saber si el registro ya existe allá o va a nacer ahora. -->
       <em class="ent__tag" [class.ent__tag--new]="card.isNew">
-        {{ card.isNew ? 'nueva' : 'modificada' }}
+        {{ (card.isNew ? 'ent.nueva' : 'ent.modificada') | t }}
       </em>
     </span>
 

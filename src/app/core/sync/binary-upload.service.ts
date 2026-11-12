@@ -1,4 +1,5 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
+import { traducir } from '../i18n/idioma.service';
 
 import { BinaryResource, BinaryState } from '../models/sync.model';
 import { BinaryResourceRepository } from '../repositories/binary.repository';
@@ -117,7 +118,7 @@ export class BinaryUploadService {
         done: 0,
         failed: 0,
         current: '',
-        message: 'No hay archivos pendientes por subir.',
+        message: traducir('sync.up.sinPendientes'),
       });
       return 0;
     }
@@ -129,7 +130,7 @@ export class BinaryUploadService {
         done: 0,
         failed: 0,
         current: '',
-        message: 'Sin conexión. Los archivos se subirán cuando vuelva la red.',
+        message: traducir('bin.sinConexion'),
       });
       return 0;
     }
@@ -140,7 +141,7 @@ export class BinaryUploadService {
       done: 0,
       failed: 0,
       current: '',
-      message: 'Subiendo archivos…',
+      message: traducir('sync.up.subiendo'),
     });
 
     let uploaded = 0;
@@ -233,9 +234,9 @@ export class BinaryUploadService {
 }
 
 function describeOutcome(uploaded: number, failed: number): string {
-  if (failed === 0 && uploaded === 0) return 'No había archivos pendientes.';
-  if (failed === 0) return `${uploaded} archivo(s) enviados al servidor.`;
-  if (uploaded === 0) return `No se pudo subir ningún archivo (${failed} fallaron).`;
+  if (failed === 0 && uploaded === 0) return traducir('sync.up.noHabia');
+  if (failed === 0) return traducir('sync.up.enviados', { n: uploaded });
+  if (uploaded === 0) return traducir('sync.up.ninguno', { n: failed });
 
-  return `${uploaded} archivo(s) enviados · ${failed} con error.`;
+  return traducir('sync.up.mixto', { n: uploaded, fallidos: failed });
 }

@@ -8,16 +8,15 @@
 <section class="fe">
   <header class="fe__cab">
     <div>
-      <h1 class="fe__titulo">Correos del flujo</h1>
+      <h1 class="fe__titulo">{{ 'flujos.correosTitulo' | t }}</h1>
       <p class="fe__sub">
-        El correo no se manda desde aquí: se apunta y lo envía el servidor cuando
-        la actividad ya está en Visitrack con sus archivos.
+        {{ 'flujos.correosSub' | t }}
       </p>
     </div>
 
     <div class="fe__acciones">
       <button type="button" class="fe__btn" (click)="cargar()" [disabled]="cargando()">
-        Recargar
+        {{ 'geo.recargar' | t }}
       </button>
 
       @if (pendientes() > 0) {
@@ -27,7 +26,7 @@
           (click)="reintentar()"
           [disabled]="reintentando()"
         >
-          {{ reintentando() ? 'Reintentando…' : 'Reintentar pendientes' }}
+          {{ (reintentando() ? 'flujos.reintentando' : 'flujos.reintentarPendientes') | t }}
         </button>
       }
     </div>
@@ -36,13 +35,13 @@
   @if (cargando()) {
     <div class="fe__cargando" role="status" aria-live="polite">
       <span class="fe__rueda" aria-hidden="true"></span>
-      <span>Leyendo la bandeja…</span>
+      <span>{{ 'flujos.leyendoBandeja' | t }}</span>
     </div>
   } @else if (!filas().length) {
     <!-- El hueco habla: en blanco se leería como algo que falló. -->
     <div class="fe__vacio">
-      <p class="fe__vacio-tit">Ningún flujo ha pedido correos todavía</p>
-      <p class="fe__sub">Aparecen aquí en cuanto una regla pida uno.</p>
+      <p class="fe__vacio-tit">{{ 'flujos.correosVacio' | t }}</p>
+      <p class="fe__sub">{{ 'flujos.correosVacioHint' | t }}</p>
     </div>
   } @else {
     <!--
@@ -56,17 +55,17 @@
     <div class="fe__contadores">
       @if (enEspera() > 0) {
         <span class="fe__chip fe__chip--espera">
-          {{ enEspera() }} esperando
+          {{ 'flujos.nEsperando' | t: { n: enEspera() } }}
         </span>
       }
       @if (enCola() > 0) {
         <span class="fe__chip fe__chip--cola">
-          {{ enCola() }} en la cola
+          {{ 'flujos.nEnCola' | t: { n: enCola() } }}
         </span>
       }
       @if (conFallo() > 0) {
         <span class="fe__chip fe__chip--mal">
-          {{ conFallo() }} no se pudieron
+          {{ 'flujos.nNoSePudieron' | t: { n: conFallo() } }}
         </span>
       }
     </div>
@@ -79,7 +78,7 @@
           </span>
 
           <div class="fe__cuerpo">
-            <p class="fe__asunto" [title]="c.Asunto">{{ c.Asunto || '(sin asunto)' }}</p>
+            <p class="fe__asunto" [title]="c.Asunto">{{ c.Asunto || ('flujos.sinAsunto' | t) }}</p>
             <p class="fe__para" [title]="c.Para">{{ c.Para }}</p>
 
             <!-- El motivo, cuando lo hay. Es lo único que va a quedar de un
@@ -90,7 +89,7 @@
 
             <p class="fe__pie">
               @if (c.Intentos) {
-                {{ c.Intentos }} intento(s) ·
+                {{ 'bin.intentos' | t: { n: c.Intentos } }} ·
               }
               {{ zona.fechaCorta(c.CreatedOn) }}
             </p>
@@ -110,7 +109,7 @@
                   (click)="dispararUno(c)"
                   [disabled]="empujando() === c.ID"
                 >
-                  {{ empujando() === c.ID ? 'Enviando…' : 'Enviar ahora' }}
+                  {{ (empujando() === c.ID ? 'chat.enviando' : 'flujos.enviarAhora') | t }}
                 </button>
               </p>
             }
@@ -121,7 +120,7 @@
     </ul>
 
     @if (hayMas()) {
-      <div class="fe__mas" vtNearEnd (reached)="verMas()">Cargando más…</div>
+      <div class="fe__mas" vtNearEnd (reached)="verMas()">{{ 'ubic.cargandoMasCorto' | t }}</div>
     }
   }
 </section>

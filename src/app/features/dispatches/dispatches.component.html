@@ -1,11 +1,11 @@
 <section class="disp">
   <header class="disp__head">
     <div class="disp__title">
-      <h1>Mis consignas</h1>
+      <h1>{{ 'desp.titulo' | t }}</h1>
       <p>
         {{ counter() }}
         @if (pendingCount() > 0) {
-          · <em>{{ pendingCount() }} por hacer</em>
+          · <em>{{ 'desp.porHacer' | t: { n: pendingCount() } }}</em>
         }
       </p>
     </div>
@@ -18,7 +18,7 @@
         (click)="alternarSeleccion()"
       >
         <vt-icon [name]="seleccionando() ? 'close' : 'check'" [size]="16" />
-        {{ seleccionando() ? 'Cancelar' : 'Seleccionar' }}
+        {{ (seleccionando() ? 'comun.cancelar' : 'desp.seleccionar') | t }}
       </button>
     }
   </header>
@@ -32,7 +32,7 @@
         type="search"
         [value]="search()"
         (input)="onSearch($event)"
-        placeholder="Buscar por formulario, sede o estado"
+        [placeholder]="'desp.buscar' | t"
         autocomplete="off"
       />
     </label>
@@ -42,7 +42,7 @@
         <vt-icon name="clipboard" [size]="15" />
 
         <select [value]="surveyFilter()" (change)="onSurveyPicked($event)">
-          <option value="">Todos los formularios</option>
+          <option value="">{{ 'desp.todosFormularios' | t }}</option>
 
           @for (option of surveyOptions(); track option.name) {
             <option [value]="option.name">{{ option.name }} ({{ option.count }})</option>
@@ -54,15 +54,15 @@
     <label class="disp__filter">
       <vt-icon name="timer" [size]="15" />
 
-      <select [value]="orden()" (change)="onOrdenPicked($event)" aria-label="Ordenar por">
-        <option value="programada">Ordenar por fecha programada</option>
-        <option value="recibida">Ordenar por fecha recibida</option>
+      <select [value]="orden()" (change)="onOrdenPicked($event)" [attr.aria-label]="'desp.ordenarPor' | t">
+        <option value="programada">{{ 'desp.ordenProgramada' | t }}</option>
+        <option value="recibida">{{ 'desp.ordenRecibida' | t }}</option>
       </select>
     </label>
   </div>
 
   @if (loading()) {
-    <div class="disp__ghosts" aria-label="Cargando consignas">
+    <div class="disp__ghosts" [attr.aria-label]="'desp.cargando' | t">
       @for (row of [1, 2, 3, 4]; track row) {
         <div class="disp__ghost"></div>
       }
@@ -101,7 +101,7 @@
                 </span>
 
                 @if (card.receivedLabel) {
-                  <span class="disp__when">Recibida {{ card.receivedLabel }}</span>
+                  <span class="disp__when">{{ 'desp.recibida' | t: { fecha: card.receivedLabel } }}</span>
                 }
               </span>
 
@@ -138,7 +138,7 @@
             @if (card.done) {
               <span class="disp__badge">
                 <vt-icon name="check" [size]="12" />
-                Terminada
+                {{ 'desp.terminada' | t }}
               </span>
             }
 
@@ -156,7 +156,7 @@
               <button type="button" class="files__toggle" (click)="toggleFiles(card.guid)">
                 <vt-icon name="file" [size]="14" />
                 {{ card.files.length }}
-                {{ card.files.length === 1 ? 'archivo adjunto' : 'archivos adjuntos' }}
+                {{ (card.files.length === 1 ? 'desp.adjunto' : 'desp.adjuntos') | t }}
                 <vt-icon
                   name="chevron"
                   [size]="14"
@@ -179,7 +179,7 @@
                         [href]="file.url"
                         target="_blank"
                         rel="noopener"
-                        title="Ver en el servidor"
+                        [title]="'desp.verServidor' | t"
                       >
                         <vt-icon name="image" [size]="15" />
                       </a>
@@ -188,7 +188,7 @@
                         type="button"
                         class="files__act"
                         (click)="download(file, card)"
-                        title="Guardar en el equipo"
+                        [title]="'desp.guardarEquipo' | t"
                       >
                         <vt-icon name="download" [size]="15" />
                       </button>
@@ -198,7 +198,7 @@
                   @if (card.files.length > 1) {
                     <button type="button" class="files__all" (click)="downloadAll(card)">
                       <vt-icon name="download" [size]="14" />
-                      Guardar todos en el equipo
+                      {{ 'desp.guardarTodos' | t }}
                     </button>
                   }
                 </div>
@@ -212,7 +212,7 @@
     @if (hasMore()) {
       <div class="disp__more" vtNearEnd (reached)="showMore()">
         <span class="disp__spinner" aria-hidden="true"></span>
-        Cargando más consignas…
+        {{ 'desp.cargandoMas' | t }}
       </div>
     }
   } @else {
@@ -220,9 +220,9 @@
       <span class="disp__empty-icon"><vt-icon name="check" [size]="26" /></span>
       <p>
         @if (search() || surveyFilter()) {
-          Ninguna consigna coincide con lo que buscas.
+          {{ 'desp.ningunaCoincide' | t }}
         } @else {
-          No tienes consignas asignadas. Si esperas alguna, sincroniza.
+          {{ 'desp.vacio' | t }}
         }
       </p>
     </div>
@@ -231,10 +231,10 @@
 
 <!-- Barra de la selección: abajo y fija, donde va el pulgar. -->
 @if (seleccionando()) {
-  <div class="disp__lote" role="toolbar" aria-label="Acciones sobre las seleccionadas">
+  <div class="disp__lote" role="toolbar" [attr.aria-label]="'desp.accionesLote' | t">
     <div class="disp__lote-info">
       <strong>{{ marcadasCards().length }}</strong>
-      {{ marcadasCards().length === 1 ? 'seleccionada' : 'seleccionadas' }}
+      {{ (marcadasCards().length === 1 ? 'desp.seleccionada' : 'desp.seleccionadas') | t }}
       @if (trabajando()) {
         <span class="disp__lote-trabajando">· {{ trabajando() }}</span>
       }
@@ -242,27 +242,27 @@
 
     <div class="disp__lote-botones">
       <button type="button" class="disp__lote-btn" (click)="marcarTodas()" [disabled]="!!trabajando()">
-        Todas
+        {{ 'desp.todas' | t }}
       </button>
       <button
         type="button"
         class="disp__lote-btn"
         (click)="reprocesarVarias()"
         [disabled]="!marcadasCards().length || !!trabajando()"
-        title="Vuelve a subir sus archivos"
+        [title]="'desp.reprocesarHint' | t"
       >
         <vt-icon name="cloud-upload" [size]="16" />
-        <span>Reprocesar archivos</span>
+        <span>{{ 'desp.reprocesar' | t }}</span>
       </button>
       <button
         type="button"
         class="disp__lote-btn"
         (click)="reasignarVarias()"
         [disabled]="!marcadasCards().length || !!trabajando()"
-        title="Pasarlas a otro usuario"
+        [title]="'desp.reasignarHint' | t"
       >
         <vt-icon name="send" [size]="16" />
-        <span>Reasignar</span>
+        <span>{{ 'desp.reasignar' | t }}</span>
       </button>
       <button
         type="button"
@@ -271,14 +271,14 @@
         [disabled]="!marcadasCards().length || !!trabajando()"
       >
         <vt-icon name="trash" [size]="16" />
-        <span>Eliminar</span>
+        <span>{{ 'comun.eliminar' | t }}</span>
       </button>
       <button
         type="button"
         class="disp__lote-cerrar"
         (click)="salirDeSeleccion()"
         [disabled]="!!trabajando()"
-        aria-label="Dejar de seleccionar"
+        [attr.aria-label]="'desp.dejarSeleccionar' | t"
       >
         <vt-icon name="close" [size]="18" />
       </button>
@@ -293,8 +293,8 @@
   [title]="borrandoVariasTitulo()"
   [message]="borrandoVariasMensaje()"
   [detail]="borrandoVariasDetalle()"
-  [confirmLabel]="borrandoVarias()?.aptas?.length ? 'Eliminar' : 'Entendido'"
-  cancelLabel="Conservar"
+  [confirmLabel]="(borrandoVarias()?.aptas?.length ? 'comun.eliminar' : 'desp.entendido') | t"
+  [cancelLabel]="'desp.conservar' | t"
   (confirm)="eliminarVarias()"
   (cancel)="borrandoVarias.set(null)"
 />

@@ -1,6 +1,6 @@
 <section class="lnk">
   <header class="lnk__head">
-    <h1>Vincular teléfono</h1>
+    <h1>{{ 'vinc.titulo' | t }}</h1>
     <p>{{ headline() }}</p>
   </header>
 
@@ -11,28 +11,26 @@
       <span class="lnk__intro-icon"><vt-icon name="send" [size]="26" /></span>
 
       <div>
-        <h2>Trae aquí lo que tienes en el teléfono</h2>
+        <h2>{{ 'vinc.introTitulo' | t }}</h2>
         <p>
-          Tus actividades, las ubicaciones y activos que creaste, los ítems de
-          lista y tus fotos — <strong>incluido lo que todavía no ha subido a
-          Visitrack</strong>. Nada se borra del teléfono: es una copia.
+          {{ 'vinc.intro1' | t }} <strong>{{ 'vinc.intro2' | t }}</strong>{{ 'vinc.intro3' | t }}
         </p>
       </div>
     </div>
 
     <button type="button" class="lnk__go" (click)="start()">
       <vt-icon name="send" [size]="17" />
-      Generar código
+      {{ 'vinc.generar' | t }}
     </button>
 
     @if (lastLink(); as previous) {
       <p class="lnk__previous">
         <vt-icon name="info" [size]="15" />
         <span>
-          La última vez fue desde <strong>{{ previous.phone.model || previous.phone.name || 'un teléfono' }}</strong>,
-          el {{ whenLinked(previous.at) }} · {{ previous.records }} registros
+          {{ 'vinc.ultimaVez' | t }} <strong>{{ previous.phone.model || previous.phone.name || ('vinc.unTelefono' | t) }}</strong>,
+          {{ 'vinc.el' | t }} {{ whenLinked(previous.at) }} · {{ 'login.registros' | t: { n: previous.records } }}
           @if (previous.files > 0) {
-            y {{ previous.files }} archivos
+            {{ 'vinc.yArchivos' | t: { n: previous.files } }}
           }
         </span>
       </p>
@@ -41,22 +39,22 @@
 
   @if (link.state() === 'pendiente') {
     <div class="lnk__qr">
-      <canvas #qr width="260" height="260" aria-label="Código para escanear"></canvas>
+      <canvas #qr width="260" height="260" [attr.aria-label]="'login.codigoEscanear' | t"></canvas>
 
       <!-- La cuenta atrás a la vista: un código sin caducar en una pantalla es
            una sesión al alcance de quien pase por detrás. -->
       <p class="lnk__timer" [class.lnk__timer--soon]="secondsLeft() < 60">
-        Caduca en {{ countdown() }}
+        {{ 'login.caducaEn' | t: { tiempo: countdown() } }}
       </p>
     </div>
 
     <ol class="lnk__steps">
-      <li>Abre Visitrack en tu teléfono, con tu sesión iniciada.</li>
-      <li>Entra a <strong>Vincular dispositivo</strong>.</li>
-      <li>Escanea este código y acepta.</li>
+      <li>{{ 'vinc.paso1' | t }}</li>
+      <li>{{ 'vinc.paso2' | t }} <strong>{{ 'login.qrVincular' | t }}</strong>.</li>
+      <li>{{ 'vinc.paso3' | t }}</li>
     </ol>
 
-    <button type="button" class="lnk__cancel" (click)="cancel()">Cancelar</button>
+    <button type="button" class="lnk__cancel" (click)="cancel()">{{ 'comun.cancelar' | t }}</button>
   }
 
   @if (
@@ -70,7 +68,7 @@
       @if (link.phone(); as phone) {
         <p class="lnk__phone">
           <vt-icon name="check" [size]="15" />
-          {{ phone.model || phone.name || 'Teléfono' }}
+          {{ phone.model || phone.name || ('vinc.telefono' | t) }}
           @if (phone.os) {
             · {{ phone.os }}
           }
@@ -91,26 +89,25 @@
       </div>
 
       <p class="lnk__counts">
-        {{ link.savedRecords() }} registros nuevos
+        {{ 'vinc.nuevos' | t: { n: link.savedRecords() } }}
         @if (link.updated() > 0) {
-          · {{ link.updated() }} actualizados
+          · {{ 'vinc.actualizados' | t: { n: link.updated() } }}
         }
         @if (link.skipped() > 0) {
-          · {{ link.skipped() }} que ya tenías
+          · {{ 'vinc.yaTenias' | t: { n: link.skipped() } }}
         }
         @if (link.totalFiles() > 0) {
-          · {{ link.savedFiles() }} de {{ link.totalFiles() }} archivos
+          {{ 'login.archivosDe' | t: { hechos: link.savedFiles(), total: link.totalFiles() } }}
         }
       </p>
 
       @if (link.state() === 'sincronizando') {
         <p class="lnk__note">
-          Trayendo tus formularios, ubicaciones y listas. Es lo que la cuenta
-          necesita para poder trabajar aquí.
+          {{ 'vinc.trayendoDatos' | t }}
         </p>
       } @else {
         <p class="lnk__note">
-          No cierres esta pestaña ni uses el teléfono hasta que termine.
+          {{ 'vinc.noCierres' | t }}
         </p>
       }
     </div>
@@ -120,37 +117,33 @@
     <div class="lnk__done">
       <span class="lnk__done-icon"><vt-icon name="check" [size]="28" /></span>
 
-      <h2>Tu trabajo ya está aquí</h2>
+      <h2>{{ 'vinc.listoTitulo' | t }}</h2>
 
       <p>
-        Llegaron <strong>{{ link.savedRecords() }} registros nuevos</strong>
+        {{ 'vinc.llegaron' | t }} <strong>{{ 'vinc.nuevos' | t: { n: link.savedRecords() } }}</strong>
         @if (link.updated() > 0) {
-          y se actualizaron <strong>{{ link.updated() }}</strong> que el teléfono
-          tenía más recientes
+          {{ 'vinc.seActualizaron' | t: { n: link.updated() } }}
         }
         @if (link.savedFiles() > 0) {
-          · <strong>{{ link.savedFiles() }} archivos</strong>
+          · <strong>{{ 'vinc.nArchivos' | t: { n: link.savedFiles() } }}</strong>
         }.
-        Lo que estaba pendiente de subir sigue pendiente, y se enviará solo.
+        {{ 'vinc.pendienteSigue' | t }}
       </p>
 
       <!-- Lo que no se trajo, y por qué. Sin decirlo, quien esperaba doscientas
            actividades y ve que llegaron tres cree que algo falló. -->
       @if (link.skipped() > 0) {
         <p class="lnk__note">
-          {{ link.skipped() }} registros ya estaban en este equipo y se dejaron
-          como estaban: son los mismos, y los de aquí pueden tener cambios más
-          nuevos.
+          {{ 'vinc.omitidos' | t: { n: link.skipped() } }}
         </p>
       }
 
       <p class="lnk__note">
-        El teléfono conserva su copia: si sube antes que este equipo, no pasa
-        nada — es el mismo registro.
+        {{ 'vinc.conservaCopia' | t }}
       </p>
 
       <button type="button" class="lnk__go" (click)="start()">
-        Vincular otro teléfono
+        {{ 'vinc.otro' | t }}
       </button>
     </div>
   }
@@ -158,9 +151,9 @@
   @if (expired() || link.state() === 'error') {
     <div class="lnk__failed">
       <span class="lnk__failed-icon"><vt-icon name="alert" [size]="24" /></span>
-      <p>{{ link.error() || 'El código caducó. Genera uno nuevo.' }}</p>
+      <p>{{ link.error() || ('vinc.caducoGenera' | t) }}</p>
 
-      <button type="button" class="lnk__go" (click)="start()">Generar otro código</button>
+      <button type="button" class="lnk__go" (click)="start()">{{ 'vinc.generarOtro' | t }}</button>
     </div>
   }
 </section>

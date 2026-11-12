@@ -9,7 +9,27 @@ import { AuthService } from '../../core/services/auth.service';
 import { ConnectivityService } from '../../core/services/connectivity.service';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { FlujosGuardadosComponent, TipoDeFlujo } from './flujos-guardados/flujos-guardados.component';
-import { localeActual } from '../../core/i18n/idioma.service';
+import { localeActual, traducir } from '../../core/i18n/idioma.service';
+import { TPipe } from '../../core/i18n/t.pipe';
+import type { ClaveTexto } from '../../core/i18n/textos';
+
+/** Nombre y descripción de cada entidad en la tabla, por número de entidad. */
+const kEtiquetas: Record<number, [ClaveTexto, ClaveTexto]> = {
+  0: ['sync.ent.0', 'sync.pista.0'],
+  1: ['sync.ent.1', 'sync.pista.1'],
+  2: ['sync.ent.2', 'sync.pista.2'],
+  7: ['sync.ent.7', 'sync.pista.7'],
+  8: ['sync.ent.8', 'sync.pista.8'],
+  9: ['sync.ent.9', 'sync.pista.9'],
+  10: ['sync.ent.10', 'sync.pista.10'],
+  12: ['sync.ent.12', 'sync.pista.12'],
+  14: ['sync.ent.14', 'sync.pista.14'],
+  15: ['sync.ent.15', 'sync.pista.15'],
+  35: ['sync.ent.35', 'sync.pista.35'],
+  79: ['sync.ent.79', 'sync.pista.79'],
+  100: ['sync.ent.100', 'sync.pista.100'],
+  101: ['sync.ent.101', 'sync.pista.101'],
+};
 
 /**
  * Sincronización.
@@ -21,7 +41,7 @@ import { localeActual } from '../../core/i18n/idioma.service';
 @Component({
   selector: 'vt-sync',
   standalone: true,
-  imports: [IconComponent, MatTableModule, MatMenuModule, FlujosGuardadosComponent],
+  imports: [IconComponent, MatTableModule, MatMenuModule, FlujosGuardadosComponent, TPipe],
   templateUrl: './sync.component.html',
   styleUrl: './sync.component.scss',
 })
@@ -135,13 +155,13 @@ export class SyncComponent {
    * aunque el usuario tenga todo asignado.
    */
   async resyncEverything(): Promise<void> {
-    this.feedback.set('Marcando tus datos para este equipo…');
+    this.feedback.set(traducir('sync.marcando'));
 
     try {
       const result = await this.sync.resyncEverything();
 
       if (!result) {
-        this.showFeedback('No hay una sesión activa.');
+        this.showFeedback(traducir('sync.sinSesion'));
         return;
       }
 
@@ -149,14 +169,14 @@ export class SyncComponent {
       // nada, que es un problema distinto y en otro sitio.
       this.showFeedback(
         result.pending > 0
-          ? `${result.pending} registros marcados. Descargando…`
-          : 'No hay nada asignado a tu usuario. Revisa «Configurar mis datos».',
+          ? traducir('sync.marcados', { n: result.pending })
+          : traducir('sync.nadaAsignado'),
       );
 
       if (result.pending > 0) await this.downloadAll();
     } catch (error) {
       this.showFeedback(
-        error instanceof Error ? error.message : 'No se pudo marcar los datos.',
+        error instanceof Error ? error.message : traducir('sync.errorMarcar'),
       );
     }
   }
@@ -172,7 +192,7 @@ export class SyncComponent {
     }
 
     this.showFeedback(
-      saved > 0 ? `Se guardaron ${saved} registros.` : 'No había datos nuevos por descargar.',
+      saved > 0 ? traducir('sync.guardados', { n: saved }) : traducir('sync.nadaNuevo'),
     );
   }
 
@@ -182,8 +202,8 @@ export class SyncComponent {
     if (ok) {
       this.showFeedback(
         this.totalMissing() > 0
-          ? `Faltan ${this.totalMissing()} registros por descargar.`
-          : 'Todo está al día.',
+          ? traducir('sync.faltanN', { n: this.totalMissing() })
+          : traducir('sync.todoAlDia'),
       );
     }
   }
@@ -211,11 +231,11 @@ export class SyncComponent {
     const ok = await this.status.resetEntity(card.entity);
 
     if (!ok) {
-      this.showFeedback(this.status.lastError() || 'No se pudo solicitar el reenvío.');
+      this.showFeedback(this.status.lastError() || traducir('sync.errorReenvio'));
       return;
     }
 
-    this.showFeedback(`${card.label}: marcada. Descargando…`);
+    this.showFeedback(traducir('sync.entidadMarcada', { nombre: this.etiqueta(card) }));
     await this.downloadAll();
   }
 
@@ -243,13 +263,13 @@ export class SyncComponent {
 
     if (!ok) {
       this.showFeedback(
-        `${card.label}: datos eliminados, pero el servidor no aceptó reenviarlos. ` +
-          (this.status.lastError() || 'Vuelve a intentarlo con «Reiniciar».'),
+        traducir('sync.eliminadosSinReenvio', { nombre: this.etiqueta(card) }) +
+          (this.status.lastError() || traducir('sync.intentaReiniciar')),
       );
       return;
     }
 
-    this.showFeedback(`${card.label}: datos locales eliminados. Descargando…`);
+    this.showFeedback(traducir('sync.eliminadosDescargando', { nombre: this.etiqueta(card) }));
     await this.downloadAll();
   }
 
@@ -257,14 +277,26 @@ export class SyncComponent {
   statusLabel(card: EntityCard): string {
     switch (card.status) {
       case 'synced':
-        return 'Al día';
+        return traducir('sync.alDia');
       case 'outdated':
-        return `Faltan ${card.missing}`;
+        return traducir('sync.faltanCorto', { n: card.missing });
       case 'ahead':
-        return 'Más que el servidor';
+        return traducir('sync.masQueServidor');
       default:
-        return 'Sin comparar';
+        return traducir('sync.sinComparar');
     }
+  }
+
+  /** Nombre de la entidad en el idioma de la interfaz. */
+  etiqueta(card: EntityCard): string {
+    const claves = kEtiquetas[card.entity];
+    return claves ? traducir(claves[0]) : card.label;
+  }
+
+  /** Descripción corta de la entidad en el idioma de la interfaz. */
+  pista(card: EntityCard): string {
+    const claves = kEtiquetas[card.entity];
+    return claves ? traducir(claves[1]) : card.hint;
   }
 
   private async readStorage(): Promise<void> {

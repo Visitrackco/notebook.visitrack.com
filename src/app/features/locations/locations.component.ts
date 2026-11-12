@@ -14,6 +14,8 @@ import { ResaltadoComponent } from '../../shared/components/resaltado/resaltado.
 import { ToTopComponent } from '../../shared/components/to-top/to-top.component';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { NearEndDirective } from '../../shared/directives/near-end.directive';
+import { traducir } from '../../core/i18n/idioma.service';
+import { TPipe } from '../../core/i18n/t.pipe';
 import {
   Descriptor,
   descriptorsMatch,
@@ -55,7 +57,7 @@ export interface LocationCard {
 @Component({
   selector: 'vt-locations',
   standalone: true,
-  imports: [DescriptorTableComponent, IconComponent, NearEndDirective, ResaltadoComponent, RouterLink, ToTopComponent],
+  imports: [DescriptorTableComponent, IconComponent, NearEndDirective, ResaltadoComponent, RouterLink, ToTopComponent, TPipe],
   templateUrl: './locations.component.html',
   styleUrl: './locations.component.scss',
 })
@@ -149,9 +151,11 @@ export class LocationsComponent {
   readonly counter = computed(() => {
     const shown = this.matching().length;
     const total = this.all().length;
-    const noun = total === 1 ? 'ubicación' : 'ubicaciones';
+    const noun = traducir(total === 1 ? 'ubic.ubicacion' : 'ubic.ubicaciones');
 
-    return shown === total ? `${total} ${noun}` : `${shown} de ${total} ${noun}`;
+    return shown === total
+      ? `${total} ${noun}`
+      : traducir('desp.deTotal', { n: shown, total, nombre: noun });
   });
 
   constructor() {
@@ -202,14 +206,14 @@ export class LocationsComponent {
     return {
       location,
       guid: location.GUID,
-      name: location.Name || 'Sin nombre',
+      name: location.Name || traducir('ubic.sinNombre'),
 
       // El nombre del tipo puede venir en el propio registro —lo trae el sync—
       // o haber que buscarlo en el catálogo cuando se creó aquí.
       typeName:
         location.typeTitle ||
         types.get(String(location.LocationTypeGUID))?.Name ||
-        'Sin tipo',
+        traducir('ubic.sinTipo'),
 
       descriptors: entityDescriptors(location),
       located: Boolean(location.Latitude && location.Longitude),

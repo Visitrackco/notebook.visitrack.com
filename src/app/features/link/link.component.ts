@@ -4,7 +4,8 @@ import QRCode from 'qrcode';
 
 import { DeviceLinkService } from '../../core/services/device-link.service';
 import { IconComponent } from '../../shared/components/icon/icon.component';
-import { localeActual } from '../../core/i18n/idioma.service';
+import { localeActual, traducir } from '../../core/i18n/idioma.service';
+import { TPipe } from '../../core/i18n/t.pipe';
 
 /**
  * Traer al navegador el trabajo que está en el teléfono.
@@ -30,7 +31,7 @@ import { localeActual } from '../../core/i18n/idioma.service';
 @Component({
   selector: 'vt-link',
   standalone: true,
-  imports: [IconComponent],
+  imports: [IconComponent, TPipe],
   templateUrl: './link.component.html',
   styleUrl: './link.component.scss',
 })
@@ -53,28 +54,28 @@ export class LinkComponent {
   readonly headline = computed(() => {
     switch (this.link.state()) {
       case 'pendiente':
-        return 'Escanea este código con tu teléfono';
+        return traducir('vinc.escanea');
 
       case 'reclamado':
-        return 'Teléfono reconocido. Preparando el envío…';
+        return traducir('vinc.reconocido');
 
       case 'transfiriendo':
-        return 'Trayendo tu trabajo…';
+        return traducir('vinc.trayendo');
 
       case 'sincronizando':
-        return 'Descargando tus datos…';
+        return traducir('login.descargando');
 
       case 'listo':
-        return 'Listo';
+        return traducir('ent.listo');
 
       case 'caducado':
-        return 'El código caducó';
+        return traducir('vinc.caduco');
 
       case 'error':
-        return 'No se pudo vincular';
+        return traducir('vinc.noSePudo');
 
       default:
-        return 'Vincular teléfono';
+        return traducir('vinc.titulo');
     }
   });
 
