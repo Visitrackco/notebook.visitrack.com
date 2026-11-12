@@ -8,6 +8,7 @@ import { NotifyService } from '../../core/services/notify.service';
 import { DataRevisionService } from '../../core/sync/data-revision.service';
 import { PendingActivity, PendingUploadService } from '../../core/sync/pending-upload.service';
 import { IconComponent } from '../../shared/components/icon/icon.component';
+import { localeActual } from '../../core/i18n/idioma.service';
 
 /**
  * Lo que falta por llegar a Visitrack.
@@ -79,7 +80,7 @@ export class PendingComponent {
     const date = this.uploads.lastRun();
     if (!date) return 'Todavía no se ha ejecutado en esta sesión.';
 
-    return `Última revisión: ${date.toLocaleTimeString('es-CO', {
+    return `Última revisión: ${date.toLocaleTimeString(localeActual(), {
       hour: '2-digit',
       minute: '2-digit',
     })}`;
@@ -198,7 +199,7 @@ export class PendingComponent {
 
     if (!date || Number.isNaN(date.getTime())) return '';
 
-    return date.toLocaleString('es-CO', {
+    return date.toLocaleString(localeActual(), {
       day: '2-digit',
       month: 'short',
       hour: '2-digit',

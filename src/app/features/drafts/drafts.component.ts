@@ -14,6 +14,7 @@ import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/c
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { ToTopComponent } from '../../shared/components/to-top/to-top.component';
 import { Descriptor, parseAnswerTitles } from '../../shared/utils/descriptors';
+import { localeActual } from '../../core/i18n/idioma.service';
 
 /** Un borrador, listo para pintar. */
 interface DraftCard {
@@ -202,7 +203,7 @@ function absolute(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
 
-  return date.toLocaleString('es-CO', {
+  return date.toLocaleString(localeActual(), {
     day: '2-digit',
     month: 'short',
     hour: '2-digit',

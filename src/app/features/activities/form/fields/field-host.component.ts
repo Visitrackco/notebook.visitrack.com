@@ -45,6 +45,7 @@ import { MasterDetailFieldComponent } from './master-detail-field/master-detail-
 import { RichTextFieldComponent } from './rich-text-field/rich-text-field.component';
 import { LinkedFormFieldComponent } from './linked-form-field/linked-form-field.component';
 import { WebformFieldComponent } from './webform-field/webform-field.component';
+import { localeActual } from '../../../../core/i18n/idioma.service';
 
 /**
  * Formatos de fecha y hora.
@@ -135,7 +136,7 @@ const VT_DATE_FORMATS: MatDateFormats = {
     // El calendario y el reloj, en español: con el locale por defecto salen los
     // meses y el formato en inglés dentro de una aplicación que está entera en
     // español.
-    { provide: MAT_DATE_LOCALE, useValue: 'es-CO' },
+    { provide: MAT_DATE_LOCALE, useFactory: localeActual },
     { provide: MAT_DATE_FORMATS, useValue: VT_DATE_FORMATS },
   ],
   templateUrl: './field-host.component.html',

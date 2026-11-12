@@ -18,6 +18,7 @@ import {
 } from '../../core/geocercas/evento-de-geocerca';
 import { EventoDeGeocercaService } from '../../core/geocercas/evento-de-geocerca.service';
 import { IconComponent } from '../../shared/components/icon/icon.component';
+import { localeActual } from '../../core/i18n/idioma.service';
 
 /**
  * «Evento de geocerca»: a donde lleva tocar una alerta de geocerca.
@@ -103,7 +104,7 @@ export class GeocercaEventoComponent {
   cuando(iso: string): string {
     const fecha = new Date(iso);
     if (Number.isNaN(fecha.getTime())) return iso;
-    return fecha.toLocaleString('es-CO', {
+    return fecha.toLocaleString(localeActual(), {
       weekday: 'long',
       day: 'numeric',
       month: 'long',
@@ -116,7 +117,7 @@ export class GeocercaEventoComponent {
   /** «a 35 m del borde», con kilómetros si son muchos. */
   distancia(m: number): string {
     if (m < 1) return 'justo en el borde';
-    const cifra = m >= 1000 ? `${(m / 1000).toLocaleString('es', { maximumFractionDigits: 1 })} km` : `${m} m`;
+    const cifra = m >= 1000 ? `${(m / 1000).toLocaleString(localeActual(), { maximumFractionDigits: 1 })} km` : `${m} m`;
     return `a ${cifra} del borde`;
   }
 

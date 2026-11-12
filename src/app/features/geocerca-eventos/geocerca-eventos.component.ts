@@ -21,6 +21,7 @@ import {
 import { EventosDeGeocercaService } from '../../core/geocercas/eventos-de-geocerca.service';
 import { ConnectivityService } from '../../core/services/connectivity.service';
 import { IconComponent } from '../../shared/components/icon/icon.component';
+import { localeActual } from '../../core/i18n/idioma.service';
 
 /** Un día de la lista, con su encabezado. */
 interface GrupoDelDia {
@@ -125,7 +126,7 @@ export class GeocercaEventosComponent {
             : dia === ayer
               ? 'Ayer'
               : dia
-                ? fecha.toLocaleDateString('es-CO', {
+                ? fecha.toLocaleDateString(localeActual(), {
                     weekday: 'long',
                     day: 'numeric',
                     month: 'long',
@@ -242,14 +243,14 @@ export class GeocercaEventosComponent {
   hora(iso: string): string {
     const fecha = new Date(iso);
     if (Number.isNaN(fecha.getTime())) return '';
-    return fecha.toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' });
+    return fecha.toLocaleTimeString(localeActual(), { hour: 'numeric', minute: '2-digit' });
   }
 
   /** «a 35 m del borde», con kilómetros si son muchos. */
   distancia(m: number): string {
     if (m < 1) return 'en el borde';
     const cifra =
-      m >= 1000 ? `${(m / 1000).toLocaleString('es', { maximumFractionDigits: 1 })} km` : `${Math.round(m)} m`;
+      m >= 1000 ? `${(m / 1000).toLocaleString(localeActual(), { maximumFractionDigits: 1 })} km` : `${Math.round(m)} m`;
     return `a ${cifra} del borde`;
   }
 

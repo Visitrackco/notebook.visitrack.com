@@ -72,6 +72,13 @@
   }
 }
 
+// Selector de idioma y estado de conexión, juntos a la derecha.
+.login__topbar-side {
+  display: flex;
+  gap: var(--vt-space-3);
+  align-items: center;
+}
+
 .login__topbar-state {
   padding: 5px 13px;
   font-size: var(--vt-text-xs);

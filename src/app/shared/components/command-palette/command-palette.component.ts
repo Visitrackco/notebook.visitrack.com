@@ -21,6 +21,7 @@ import { IconComponent } from '../icon/icon.component';
 import { entityDescriptors } from '../../utils/descriptors';
 import { normalizar } from '../../utils/resaltado';
 import { ResaltadoComponent } from '../resaltado/resaltado.component';
+import { localeActual } from '../../../core/i18n/idioma.service';
 
 /** Algo a lo que se puede saltar. */
 interface Entry {
@@ -310,6 +311,6 @@ export class CommandPaletteComponent {
     const date = new Date(value);
     return Number.isNaN(date.getTime())
       ? ''
-      : date.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' });
+      : date.toLocaleDateString(localeActual(), { day: '2-digit', month: 'short' });
   }
 }

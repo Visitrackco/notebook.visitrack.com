@@ -17,7 +17,7 @@
           @if (n.titulo) {
             <h2 class="nv__nombre">{{ n.titulo }}</h2>
           }
-          <time class="nv__fecha">{{ n.creadaEn | date: 'd MMM y' }}</time>
+          <time class="nv__fecha">{{ n.creadaEn | date: 'd MMM y' : undefined : idioma.locale() }}</time>
         </header>
 
         @if (n.contenido) {

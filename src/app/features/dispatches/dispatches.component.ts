@@ -23,6 +23,7 @@ import {
   ReasignacionHecha,
   ReassignDialogComponent,
 } from '../activities/reassign-dialog/reassign-dialog.component';
+import { localeActual } from '../../core/i18n/idioma.service';
 
 /** Cómo se ordena la lista. */
 type Orden = 'programada' | 'recibida';
@@ -572,7 +573,7 @@ function when(value: string): string {
 
   const sameYear = date.getFullYear() === new Date().getFullYear();
 
-  return date.toLocaleDateString('es-CO', {
+  return date.toLocaleDateString(localeActual(), {
     day: '2-digit',
     month: 'short',
     ...(sameYear ? {} : { year: 'numeric' }),

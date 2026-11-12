@@ -31,6 +31,7 @@ import {
 import { AudioPlayerComponent } from '../activities/form/fields/audio-player/audio-player.component';
 import { MediaViewerComponent } from '../activities/form/fields/media-viewer/media-viewer.component';
 import { DatabaseService } from '../../core/database/database.service';
+import { localeActual } from '../../core/i18n/idioma.service';
 
 /**
  * Cuántos archivos por página.
@@ -426,7 +427,7 @@ export class BinariesComponent implements OnDestroy {
     const value = Number(entry.resource.tim);
     if (!Number.isFinite(value) || value <= 0) return '';
 
-    return new Date(value).toLocaleString('es-CO', {
+    return new Date(value).toLocaleString(localeActual(), {
       day: '2-digit',
       month: 'short',
       hour: '2-digit',

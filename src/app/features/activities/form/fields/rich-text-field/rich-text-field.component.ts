@@ -12,6 +12,7 @@ import {
 
 import { sanitizeHtml, serializeForStorage, toPlainText } from '../../../../../core/forms/rich-text';
 import { IconComponent } from '../../../../../shared/components/icon/icon.component';
+import { localeActual } from '../../../../../core/i18n/idioma.service';
 
 /** Colores de letra y de resaltado. Los mismos del editor de fotos. */
 const COLORS = [
@@ -147,7 +148,7 @@ export class RichTextFieldComponent {
   insertDateTime(): void {
     const now = new Date();
 
-    const stamp = now.toLocaleString('es-CO', {
+    const stamp = now.toLocaleString(localeActual(), {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',

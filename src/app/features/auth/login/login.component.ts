@@ -13,6 +13,9 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import QRCode from 'qrcode';
 
 import { DeviceLinkService } from '../../../core/services/device-link.service';
+import { traducir } from '../../../core/i18n/idioma.service';
+import { SelectorIdiomaComponent } from '../../../core/i18n/selector-idioma.component';
+import { TPipe } from '../../../core/i18n/t.pipe';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
 
 import { environment } from '../../../../environments/environment';
@@ -36,7 +39,7 @@ import { DatabaseService } from '../../../core/database/database.service';
 @Component({
   selector: 'vt-login',
   standalone: true,
-  imports: [FormsModule, IconComponent, RouterLink],
+  imports: [FormsModule, IconComponent, RouterLink, SelectorIdiomaComponent, TPipe],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss',
 })
@@ -114,9 +117,7 @@ export class LoginComponent {
       // Con una sola cuenta se precarga: es el caso más común, un equipo por persona.
       if (accounts.length === 1) this.login.set(accounts[0].Login);
     } catch (error) {
-      this.errorMessage.set(
-        'No se pudo preparar el almacenamiento local. Revisa que el navegador permita guardar datos de este sitio.',
-      );
+      this.errorMessage.set(traducir('login.errorAlmacenamiento'));
       console.error('[Login] Error inicializando', error);
     }
   }
@@ -146,12 +147,12 @@ export class LoginComponent {
     const result = await this.auth.login(this.login(), this.password());
 
     if (!result.success) {
-      this.errorMessage.set(result.message ?? 'No se pudo iniciar sesión.');
+      this.errorMessage.set(result.message ?? traducir('login.errorEntrar'));
       return;
     }
 
     if (result.offline) {
-      this.infoMessage.set('Entraste sin conexión. Se sincronizará cuando vuelva el internet.');
+      this.infoMessage.set(traducir('login.entrasteSinConexion'));
     }
 
     /**

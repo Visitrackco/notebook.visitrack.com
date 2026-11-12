@@ -25,6 +25,7 @@ import {
   entityDescriptors,
 } from '../../shared/utils/descriptors';
 import { DetailGroup, DetailItem, groupEntityValues } from './entity-detail.model';
+import { localeActual } from '../../core/i18n/idioma.service';
 
 /** Un activo de la ubicación, listo para pintar. */
 interface AssetCard {
@@ -548,7 +549,7 @@ export class LocationDetailComponent {
     const date = new Date(value);
     return Number.isNaN(date.getTime())
       ? ''
-      : date.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
+      : date.toLocaleDateString(localeActual(), { day: '2-digit', month: 'short', year: 'numeric' });
   }
 }
 

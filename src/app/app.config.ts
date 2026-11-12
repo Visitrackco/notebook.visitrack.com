@@ -1,7 +1,9 @@
-import { DATE_PIPE_DEFAULT_OPTIONS } from '@angular/common';
+import { DATE_PIPE_DEFAULT_OPTIONS, registerLocaleData } from '@angular/common';
+import localeEsCo from '@angular/common/locales/es-CO';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import {
   ApplicationConfig,
+  LOCALE_ID,
   inject,
   provideBrowserGlobalErrorListeners,
   provideZonelessChangeDetection,
@@ -16,6 +18,13 @@ import {
 import { routes } from './app.routes';
 import { authInterceptor } from './core/interceptors/auth.interceptor';
 import { ZonaHorariaService } from './core/services/zona-horaria.service';
+import { localeActual } from './core/i18n/idioma.service';
+
+/**
+ * Datos de formato del español de Colombia para los pipes de Angular (`date`,
+ * `number`). El inglés (`en-US`) ya viene incluido.
+ */
+registerLocaleData(localeEsCo, 'es-CO');
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -55,6 +64,15 @@ export const appConfig: ApplicationConfig = {
     ),
 
     provideHttpClient(withInterceptors([authInterceptor])),
+
+    /**
+     * Locale de los pipes según el idioma elegido (`es-CO` o `en-US`).
+     *
+     * `LOCALE_ID` se lee una sola vez al arrancar, así que solo vale como valor
+     * de partida: las plantillas con `| date` pasan además
+     * `idioma.locale()` como argumento para cambiar al instante, sin recargar.
+     */
+    { provide: LOCALE_ID, useFactory: localeActual },
 
     /**
      * Las fechas se pintan en la zona de la persona, no en la del navegador.

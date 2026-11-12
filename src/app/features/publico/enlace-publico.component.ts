@@ -1,4 +1,5 @@
 import { DatePipe } from '@angular/common';
+import { IdiomaService } from '../../core/i18n/idioma.service';
 import { Component, computed, inject, input, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { EntityUploadService } from '../../core/sync/entity-upload.service';
@@ -61,6 +62,7 @@ type Paso = 'abriendo' | 'retomar' | 'ubicacion' | 'activo' | 'cerrado' | 'error
   styleUrl: './enlace-publico.component.scss',
 })
 export class EnlacePublicoComponent {
+  protected readonly idioma = inject(IdiomaService);
   private readonly router = inject(Router);
   private readonly enlaces = inject(EnlacePublicoService);
   private readonly activities = inject(ActivityService);

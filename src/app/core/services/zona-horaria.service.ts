@@ -1,6 +1,7 @@
 import { Injectable, Injector, computed, effect, inject, signal } from '@angular/core';
 
 import { AuthService } from './auth.service';
+import { localeActual } from '../i18n/idioma.service';
 
 /** Dónde se recuerda la zona entre recargas. */
 const CLAVE = 'visitrack.zonaMinutos';
@@ -289,10 +290,10 @@ export class ZonaHorariaService {
 
     const m = this.minutos();
 
-    if (m === null) return t.toLocaleString('es', opciones);
+    if (m === null) return t.toLocaleString(localeActual(), opciones);
 
     return new Date(t.getTime() + m * 60_000)
-      .toLocaleString('es', { ...opciones, timeZone: 'UTC' });
+      .toLocaleString(localeActual(), { ...opciones, timeZone: 'UTC' });
   }
 }
 

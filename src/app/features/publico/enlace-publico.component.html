@@ -67,7 +67,7 @@
             <span class="ep-fila-texto">
               <span class="ep-fila-nombre">{{ survey()?.Title }}</span>
               <span class="ep-fila-fecha">
-                Empezada el {{ a.CreatedOn | date: 'd MMM, HH:mm' }}
+                Empezada el {{ a.CreatedOn | date: 'd MMM, HH:mm' : undefined : idioma.locale() }}
               </span>
             </span>
             <vt-icon name="chevron" [size]="18" />

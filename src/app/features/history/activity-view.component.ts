@@ -16,6 +16,7 @@ import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/c
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { ToTopComponent } from '../../shared/components/to-top/to-top.component';
 import { CorreosDelFlujoComponent } from '../../shared/components/correos-del-flujo/correos-del-flujo.component';
+import { localeActual } from '../../core/i18n/idioma.service';
 
 /** Un archivo de la actividad, listo para pintar. */
 interface FieldFile {
@@ -370,6 +371,6 @@ export class ActivityViewComponent {
 
     return Number.isNaN(date.getTime())
       ? String(raw).slice(0, 16)
-      : date.toLocaleString('es', { dateStyle: 'medium', timeStyle: 'short' });
+      : date.toLocaleString(localeActual(), { dateStyle: 'medium', timeStyle: 'short' });
   }
 }

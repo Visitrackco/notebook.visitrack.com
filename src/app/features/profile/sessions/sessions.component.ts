@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { SessionsApi, UserSession } from '../../../core/services/sessions.api';
 import { ToastService } from '../../../core/services/toast.service';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
+import { localeActual } from '../../../core/i18n/idioma.service';
 
 /** Lo que se está intentando cerrar. */
 type Target = { sessionId?: number; others?: boolean; label: string } | null;
@@ -151,6 +152,6 @@ export class SessionsComponent {
 
     if (days < 30) return `hace ${days} ${days === 1 ? 'día' : 'días'}`;
 
-    return date.toLocaleDateString('es', { dateStyle: 'medium' });
+    return date.toLocaleDateString(localeActual(), { dateStyle: 'medium' });
   }
 }

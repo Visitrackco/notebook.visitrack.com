@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
+import { localeActual } from '../../core/i18n/idioma.service';
 
 interface Punto {
   ID: number;
@@ -251,7 +252,7 @@ export class MiRutaComponent implements OnInit {
   }
 
   hora(iso: string): string {
-    return new Date(iso).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+    return new Date(iso).toLocaleTimeString(localeActual(), { hour: '2-digit', minute: '2-digit' });
   }
 
   faltan(j: Jornada): number {

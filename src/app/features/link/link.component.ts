@@ -4,6 +4,7 @@ import QRCode from 'qrcode';
 
 import { DeviceLinkService } from '../../core/services/device-link.service';
 import { IconComponent } from '../../shared/components/icon/icon.component';
+import { localeActual } from '../../core/i18n/idioma.service';
 
 /**
  * Traer al navegador el trabajo que está en el teléfono.
@@ -158,7 +159,7 @@ export class LinkComponent {
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return '';
 
-    return date.toLocaleString('es-CO', {
+    return date.toLocaleString(localeActual(), {
       day: 'numeric',
       month: 'short',
       hour: '2-digit',

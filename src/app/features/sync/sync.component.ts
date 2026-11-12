@@ -9,6 +9,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { ConnectivityService } from '../../core/services/connectivity.service';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { FlujosGuardadosComponent, TipoDeFlujo } from './flujos-guardados/flujos-guardados.component';
+import { localeActual } from '../../core/i18n/idioma.service';
 
 /**
  * Sincronización.
@@ -70,7 +71,7 @@ export class SyncComponent {
     const checkedAt = this.cards().find((c) => c.checkedAt)?.checkedAt;
     if (!checkedAt) return '';
 
-    return new Date(checkedAt).toLocaleTimeString('es', {
+    return new Date(checkedAt).toLocaleTimeString(localeActual(), {
       hour: '2-digit',
       minute: '2-digit',
     });

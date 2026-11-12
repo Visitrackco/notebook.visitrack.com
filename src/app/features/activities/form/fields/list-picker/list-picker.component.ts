@@ -5,6 +5,7 @@ import { ListDefinition, ListDetail } from '../../../../../core/models/entities.
 import { PermissionsService } from '../../../../../core/services/permissions.service';
 import { IconComponent } from '../../../../../shared/components/icon/icon.component';
 import { ListItemFormComponent } from './list-item-form.component';
+import { localeActual } from '../../../../../core/i18n/idioma.service';
 
 /**
  * Ventana para elegir un ítem de una lista.
@@ -119,7 +120,7 @@ export class ListPickerComponent {
   readonly contador = computed(() => {
     const source = this.source();
     if (!source?.paginable || source.total === undefined) return '';
-    const n = (valor: number) => valor.toLocaleString('es-CO');
+    const n = (valor: number) => valor.toLocaleString(localeActual());
     return `${n(source.choices.length)} de ${n(source.total)} cargados`;
   });
 

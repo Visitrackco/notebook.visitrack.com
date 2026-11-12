@@ -7,6 +7,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { SurveyRepository } from '../../../core/repositories/entity.repositories';
 import { ConnectivityService } from '../../../core/services/connectivity.service';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
+import { localeActual } from '../../../core/i18n/idioma.service';
 
 /**
  * La descarga que va entre entrar y trabajar.
@@ -72,7 +73,7 @@ export class LoadingComponent {
     const { total, processed } = this.sync.state();
     if (total === 0) return '';
 
-    return `${processed.toLocaleString('es-CO')} de ${total.toLocaleString('es-CO')}`;
+    return `${processed.toLocaleString(localeActual())} de ${total.toLocaleString(localeActual())}`;
   });
 
   constructor() {

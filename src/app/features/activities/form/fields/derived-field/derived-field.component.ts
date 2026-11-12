@@ -2,6 +2,7 @@ import { Component, computed, input } from '@angular/core';
 
 import { FormField } from '../../../../../core/forms/form-schema';
 import { IconComponent } from '../../../../../shared/components/icon/icon.component';
+import { localeActual } from '../../../../../core/i18n/idioma.service';
 
 /**
  * Campos que no se responden: se calculan.
@@ -46,7 +47,7 @@ export class DerivedFieldComponent {
     const parsed = Number(raw);
     if (!Number.isFinite(parsed)) return raw;
 
-    return parsed.toLocaleString('es-CO', { maximumFractionDigits: 4 });
+    return parsed.toLocaleString(localeActual(), { maximumFractionDigits: 4 });
   });
 
   /** Unidad que acompaña al número, si la tiene. */

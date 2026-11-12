@@ -20,6 +20,7 @@ import {
 import { AuthService } from '../../core/services/auth.service';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { ToTopComponent } from '../../shared/components/to-top/to-top.component';
+import { localeActual } from '../../core/i18n/idioma.service';
 
 /** Cuánto abarca el filtro de fechas por omisión. */
 const DEFAULT_MONTHS = 12;
@@ -535,7 +536,7 @@ export class ActivityHistoryComponent {
 
     return Number.isNaN(date.getTime())
       ? String(raw).slice(0, 16)
-      : date.toLocaleString('es', {
+      : date.toLocaleString(localeActual(), {
           day: '2-digit',
           month: 'short',
           year: 'numeric',

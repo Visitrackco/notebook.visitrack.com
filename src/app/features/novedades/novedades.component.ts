@@ -1,4 +1,6 @@
 import { DatePipe } from '@angular/common';
+import { IdiomaService } from '../../core/i18n/idioma.service';
+import { TPipe } from '../../core/i18n/t.pipe';
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 
@@ -48,12 +50,13 @@ function videoDeNovedad(url: string): VideoDeNovedad {
 @Component({
   selector: 'vt-novedades',
   standalone: true,
-  imports: [DatePipe],
+  imports: [DatePipe, TPipe],
   templateUrl: './novedades.component.html',
   styleUrl: './novedades.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class NovedadesComponent implements OnInit {
+  protected readonly idioma = inject(IdiomaService);
   private readonly auth = inject(AuthService);
   private readonly sanitizer = inject(DomSanitizer);
 

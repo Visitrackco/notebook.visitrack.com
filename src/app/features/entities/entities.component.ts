@@ -19,6 +19,7 @@ import { IconComponent } from '../../shared/components/icon/icon.component';
 import { DescriptorTableComponent } from '../../shared/components/descriptor-table/descriptor-table.component';
 import { ToTopComponent } from '../../shared/components/to-top/to-top.component';
 import { Descriptor, entityDescriptors, parseEntityDescriptors } from '../../shared/utils/descriptors';
+import { localeActual } from '../../core/i18n/idioma.service';
 
 /** Qué clase de registro es. Decide el icono y a dónde lleva. */
 type Kind = 'location' | 'asset' | 'item';
@@ -298,5 +299,5 @@ function when(raw: string | undefined): string {
   if (days === 1) return 'ayer';
   if (days < 30) return `hace ${days} días`;
 
-  return date.toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' });
+  return date.toLocaleDateString(localeActual(), { day: 'numeric', month: 'short', year: 'numeric' });
 }

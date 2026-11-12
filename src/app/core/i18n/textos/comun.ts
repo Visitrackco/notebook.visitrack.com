@@ -1,0 +1,21 @@
+/** Textos que se repiten en toda la aplicación. */
+export const textosComun = {
+  'comun.aceptar': ['Aceptar', 'OK'],
+  'comun.cancelar': ['Cancelar', 'Cancel'],
+  'comun.guardar': ['Guardar', 'Save'],
+  'comun.cerrar': ['Cerrar', 'Close'],
+  'comun.volver': ['Volver', 'Back'],
+  'comun.eliminar': ['Eliminar', 'Delete'],
+  'comun.editar': ['Editar', 'Edit'],
+  'comun.buscar': ['Buscar', 'Search'],
+  'comun.reintentar': ['Reintentar', 'Retry'],
+  'comun.continuar': ['Continuar', 'Continue'],
+  'comun.si': ['Sí', 'Yes'],
+  'comun.no': ['No', 'No'],
+  'comun.enLinea': ['En línea', 'Online'],
+  'comun.sinConexion': ['Sin conexión', 'Offline'],
+  'comun.cargando': ['Cargando…', 'Loading…'],
+  'comun.idioma': ['Idioma', 'Language'],
+  'comun.ver': ['Ver', 'Show'],
+  'comun.ocultar': ['Ocultar', 'Hide'],
+} as const;

@@ -8,6 +8,7 @@ import {
 } from '../../../../../core/services/geolocation.service';
 import { ConfirmDialogComponent } from '../../../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { IconComponent } from '../../../../../shared/components/icon/icon.component';
+import { localeActual } from '../../../../../core/i18n/idioma.service';
 
 /** Qué diálogo está abierto. */
 type GpsDialog = 'none' | 'explain' | 'error' | 'remove';
@@ -74,7 +75,7 @@ export class GpsFieldComponent {
     const value = this.reading();
     if (!value?.tim) return '';
 
-    return new Date(value.tim).toLocaleString('es', {
+    return new Date(value.tim).toLocaleString(localeActual(), {
       day: '2-digit',
       month: 'short',
       hour: '2-digit',
