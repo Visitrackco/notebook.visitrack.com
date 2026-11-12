@@ -10,6 +10,7 @@ import { CorreoService } from './correo.service';
 import { AuthService } from './auth.service';
 import { DeviceService } from './device.service';
 import { ToastService } from './toast.service';
+import { traducir } from '../i18n/idioma.service';
 
 /** Hasta cuándo se calló la tira, en `localStorage`. */
 const APLAZO_KEY = 'visitrack.pushPospuesto';
@@ -113,19 +114,19 @@ export class PushService {
   readonly explicacion = computed(() => {
     switch (this.estado()) {
       case 'sin-soporte':
-        return 'Este navegador no admite notificaciones.';
+        return traducir('push.sinSoporte');
 
       case 'bloqueado':
-        return 'Las bloqueaste en este navegador. Para volver a recibirlas hay que permitirlas desde el candado de la barra de direcciones.';
+        return traducir('push.bloqueado');
 
       case 'encendido':
-        return 'Recibirás los avisos aunque tengas Visitrack cerrado.';
+        return traducir('push.encendido');
 
       case 'pidiendo':
-        return 'Esperando a que respondas al navegador…';
+        return traducir('push.pidiendo');
 
       default:
-        return 'Actívalas para enterarte de una consigna nueva sin tener que entrar a mirar.';
+        return traducir('push.apagado');
     }
   });
 

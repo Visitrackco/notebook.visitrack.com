@@ -15,9 +15,9 @@
     }
 
     <footer class="cdlg__actions">
-      @if (cancelLabel()) {
+      @if (cancelLabel() !== '') {
         <button type="button" class="cdlg__cancel" (click)="cancel.emit()">
-          {{ cancelLabel() }}
+          {{ cancelLabel() ?? ('comun.cancelar' | t) }}
         </button>
       }
       <button
@@ -26,7 +26,7 @@
         [disabled]="busy()"
         (click)="confirm.emit()"
       >
-        {{ confirmLabel() }}
+        {{ confirmLabel() || ('comun.aceptar' | t) }}
       </button>
     </footer>
   </div>

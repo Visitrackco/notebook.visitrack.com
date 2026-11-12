@@ -64,6 +64,15 @@ export function traducir(clave: ClaveTexto, parametros?: ParametrosTexto): strin
   return texto;
 }
 
+/**
+ * Traduce una clave armada en tiempo de ejecución (`color.${nombre}`), o
+ * devuelve el respaldo si no existe. Para listas fijas cuyos textos viven en
+ * otro sitio, como los colores del tema o el menú.
+ */
+export function traducirSiExiste(clave: string, respaldo: string): string {
+  return clave in TEXTOS ? traducir(clave as ClaveTexto) : respaldo;
+}
+
 /** Locale para `toLocaleString`, `Intl` y el pipe `date` (`es-CO` / `en-US`). */
 export function localeActual(): string {
   return kLocales[idiomaActual()];

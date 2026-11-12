@@ -52,4 +52,56 @@ export const textosLogin = {
     'Entraste sin conexión. Se sincronizará cuando vuelva el internet.',
     'You signed in offline. It will sync when the internet comes back.',
   ],
+
+  // ── Recuperar contraseña ──────────────────────────────────────────────────
+  'rec.titulo': ['Recuperar contraseña', 'Reset password'],
+  'rec.subUsuario': [
+    'Escribe tu usuario y te enviaremos un código a tu correo.',
+    "Enter your username and we'll email you a code.",
+  ],
+  'rec.subCodigo': ['Escribe el código de 6 cifras que enviamos a', 'Enter the 6-digit code we sent to'],
+  'rec.tuCorreo': ['tu correo', 'your email'],
+  'rec.subClave': ['Escribe tu contraseña nueva.', 'Enter your new password.'],
+  'rec.subListo': ['Listo: tu contraseña cambió.', 'Done: your password was changed.'],
+  'rec.sinConexion': [
+    'Sin conexión. Para recuperar la contraseña necesitas internet.',
+    'Offline. You need internet to reset your password.',
+  ],
+  'rec.pasos': ['Pasos', 'Steps'],
+  'rec.pasoUsuario': ['Usuario', 'Username'],
+  'rec.pasoCodigo': ['Código', 'Code'],
+  'rec.codigo6': ['Código de 6 cifras', '6-digit code'],
+  'rec.reenviar': ['Reenviar código', 'Resend code'],
+  'rec.cambiarUsuario': ['Cambiar usuario', 'Change username'],
+  'rec.claveNueva': ['Contraseña nueva', 'New password'],
+  'rec.repite': ['Repite la contraseña', 'Repeat the password'],
+  'rec.alMenos': ['Al menos {n} caracteres', 'At least {n} characters'],
+  'rec.noCoinciden': ['Las contraseñas no coinciden', "Passwords don't match"],
+  'rec.enviarCodigo': ['Enviar código', 'Send code'],
+  'rec.validarCodigo': ['Validar código', 'Verify code'],
+  'rec.cambiarClave': ['Cambiar contraseña', 'Change password'],
+  'rec.irLogin': ['Ir a iniciar sesión', 'Go to sign in'],
+  'rec.volverLogin': ['Volver a iniciar sesión', 'Back to sign in'],
+  'rec.respuestaInvalida': ['Respuesta inválida del servidor', 'Invalid server response'],
+  'rec.sinServidor': [
+    'No se pudo contactar el servidor. Revisa tu conexión.',
+    'Could not reach the server. Check your connection.',
+  ],
+  'rec.codigoMal': ['El código no es correcto', 'The code is incorrect'],
+  'rec.noCambio': ['No se pudo cambiar la contraseña', 'Could not change the password'],
+  'rec.noEnvio': ['No se pudo enviar el código', 'Could not send the code'],
+
+  // ── Descarga inicial ──────────────────────────────────────────────────────
+  'carga.titulo': ['Preparando tus datos', 'Preparing your data'],
+  'carga.entrarIgual': ['Entrar de todos modos', 'Continue anyway'],
+  'carga.conectando': ['Conectando…', 'Connecting…'],
+  'carga.nota': [
+    'Solo se trae lo que cambió. La primera vez es la más larga.',
+    'Only what changed is downloaded. The first time takes the longest.',
+  ],
+  'carga.contador': ['{hechos} de {total}', '{hechos} of {total}'],
+  'carga.fallo': [
+    'No se pudieron traer tus datos. Puedes entrar y reintentar desde Sincronización.',
+    'Your data could not be downloaded. You can continue and retry from Sync.',
+  ],
 } as const;

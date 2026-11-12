@@ -6,14 +6,16 @@ import { AuthService } from '../../core/services/auth.service';
 import { ConnectivityService } from '../../core/services/connectivity.service';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { BrillantexMailService } from '../../core/rules/brillantex-mail.service';
+import type { ClaveTexto } from '../../core/i18n/textos';
+import { TPipe } from '../../core/i18n/t.pipe';
 
 /** Tarjeta de resumen del inicio. */
 interface SummaryCard {
   key: string;
-  label: string;
+  label: ClaveTexto;
   value: number;
   icon: string;
-  hint: string;
+  hint: ClaveTexto;
   /**
    * Familia de color del icono.
    *
@@ -34,7 +36,7 @@ interface SummaryCard {
 @Component({
   selector: 'vt-home',
   standalone: true,
-  imports: [RouterLink, IconComponent],
+  imports: [RouterLink, IconComponent, TPipe],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss',
 })
@@ -76,34 +78,34 @@ export class HomeComponent {
       this.cards.set([
         {
           key: 'surveys',
-          label: 'Formularios',
+          label: 'nav.forms',
           value: counts['Surveys'] ?? 0,
           icon: 'clipboard',
-          hint: 'Disponibles para diligenciar',
+          hint: 'inicio.formulariosHint',
           accent: 'brand',
         },
         {
           key: 'locations',
-          label: 'Ubicaciones',
+          label: 'nav.locations',
           value: counts['LocationsForms'] ?? 0,
           icon: 'map-pin',
-          hint: 'Sedes y puntos de trabajo',
+          hint: 'inicio.ubicacionesHint',
           accent: 'amber',
         },
         {
           key: 'assets',
-          label: 'Activos',
+          label: 'inicio.activos',
           value: counts['Assets'] ?? 0,
           icon: 'box',
-          hint: 'Equipos registrados',
+          hint: 'inicio.activosHint',
           accent: 'blue',
         },
         {
           key: 'answers',
-          label: 'Actividades',
+          label: 'inicio.actividades',
           value: counts['SurveyAnswers'] ?? 0,
           icon: 'check',
-          hint: 'Guardadas en este equipo',
+          hint: 'inicio.actividadesHint',
           accent: 'green',
         },
       ]);
@@ -119,11 +121,11 @@ export class HomeComponent {
     }
   }
 
-  private buildGreeting(): string {
+  private buildGreeting(): ClaveTexto {
     const hour = new Date().getHours();
-    if (hour < 12) return 'Buenos días';
-    if (hour < 19) return 'Buenas tardes';
-    return 'Buenas noches';
+    if (hour < 12) return 'inicio.buenosDias';
+    if (hour < 19) return 'inicio.buenasTardes';
+    return 'inicio.buenasNoches';
   }
 
   private formatBytes(bytes: number): string {

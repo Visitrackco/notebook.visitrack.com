@@ -8,6 +8,7 @@ import {
 } from '@angular/core';
 
 import { IconComponent } from '../icon/icon.component';
+import { TPipe } from '../../../core/i18n/t.pipe';
 
 /**
  * Botón para volver al principio.
@@ -34,10 +35,10 @@ import { IconComponent } from '../icon/icon.component';
 @Component({
   selector: 'vt-to-top',
   standalone: true,
-  imports: [IconComponent],
+  imports: [IconComponent, TPipe],
   template: `
     @if (visible()) {
-      <button type="button" class="totop" (click)="up()" aria-label="Volver arriba" title="Volver arriba">
+      <button type="button" class="totop" (click)="up()" [attr.aria-label]="'comun.volverArriba' | t" [title]="'comun.volverArriba' | t">
         <vt-icon name="chevron" [size]="20" />
       </button>
     }

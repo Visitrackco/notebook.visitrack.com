@@ -8,7 +8,7 @@
         @if (companyLogo(); as logo) {
           <span class="profile__logo-wrap">
             <span class="profile__logo-frame" [class.profile__logo-frame--placa]="logoConPlaca()">
-              <img [src]="logo" alt="Logo de la compañía" />
+              <img [src]="logo" [alt]="'perfil.logoCompania' | t" />
             </span>
 
             <!-- La última palabra la tiene quien lo está viendo: el formato solo
@@ -17,11 +17,11 @@
               class="profile__logo-fondo"
               [value]="fondoLogo()"
               (change)="cambiarFondoLogo($any($event.target).value)"
-              aria-label="Fondo del logo"
+              [attr.aria-label]="'perfil.fondoLogo' | t"
             >
-              <option value="auto">Fondo automático</option>
-              <option value="blanco">Sobre blanco</option>
-              <option value="sin">Sin fondo</option>
+              <option value="auto">{{ 'perfil.fondoAuto' | t }}</option>
+              <option value="blanco">{{ 'perfil.fondoBlanco' | t }}</option>
+              <option value="sin">{{ 'perfil.fondoSin' | t }}</option>
             </select>
           </span>
         } @else {
@@ -31,20 +31,20 @@
         <div class="profile__identity-info">
           <h1>{{ displayName(user) }}</h1>
           <p>
-            {{ user.Email || 'Sin correo registrado' }} · {{ user.Login }} · Compañía
-            {{ user.CompanyID }}
+            {{ user.Email || ('perfil.sinCorreo' | t) }} · {{ user.Login }} ·
+            {{ 'shell.compania' | t: { id: user.CompanyID } }}
           </p>
 
           <div class="profile__tags">
             @if (user.Active === '1' || user.Active === 'True') {
-              <span class="profile__tag profile__tag--ok">Activo</span>
+              <span class="profile__tag profile__tag--ok">{{ 'perfil.activo' | t }}</span>
             }
             <span
               class="profile__tag"
               [class.profile__tag--ok]="connectivity.isOnline()"
               [class.profile__tag--warn]="connectivity.isOffline()"
             >
-              {{ connectivity.isOnline() ? 'En línea' : 'Sin conexión' }}
+              {{ (connectivity.isOnline() ? 'comun.enLinea' : 'comun.sinConexion') | t }}
             </span>
           </div>
         </div>
@@ -61,15 +61,15 @@
             class="profile__btn"
             (click)="refrescarUsuario()"
             [disabled]="refrescandoUsuario()"
-            title="Traer del servidor tu nombre, zona, teléfono y demás datos"
+            [title]="'perfil.refrescarTitulo' | t"
           >
             <vt-icon name="refresh" [size]="16" />
-            {{ refrescandoUsuario() ? 'Actualizando…' : 'Actualizar mis datos' }}
+            {{ (refrescandoUsuario() ? 'perfil.actualizando' : 'perfil.actualizarDatos') | t }}
           </button>
 
           <button type="button" class="profile__btn profile__btn--danger" (click)="logout()">
             <vt-icon name="logout" [size]="16" />
-            Cerrar sesión
+            {{ 'shell.cerrarSesion' | t }}
           </button>
         </div>
       </div>
@@ -85,23 +85,23 @@
     <!-- ── Cuenta ──────────────────────────────────────────────────────────── -->
     <section class="profile__section">
       <header class="profile__section-head">
-        <h2>Cuenta</h2>
-        <p>Tus datos en Visitrack. Se cambian desde Module.</p>
+        <h2>{{ 'perfil.cuenta' | t }}</h2>
+        <p>{{ 'perfil.cuentaHint' | t }}</p>
       </header>
 
       <div class="profile__rows">
         <div class="profile__row">
           <div class="profile__row-text">
-            <strong>Identificador</strong>
-            <span>Número de tu usuario en Visitrack.</span>
+            <strong>{{ 'perfil.identificador' | t }}</strong>
+            <span>{{ 'perfil.identificadorHint' | t }}</span>
           </div>
           <span class="profile__row-value vt-figure">{{ user.UserID }}</span>
         </div>
 
         <div class="profile__row">
           <div class="profile__row-text">
-            <strong>Teléfono</strong>
-            <span>El que tienes registrado.</span>
+            <strong>{{ 'perfil.telefono' | t }}</strong>
+            <span>{{ 'perfil.telefonoHint' | t }}</span>
           </div>
           <span class="profile__row-value">{{ user.Phone || '—' }}</span>
         </div>
@@ -117,8 +117,8 @@
         -->
         <div class="profile__row">
           <div class="profile__row-text">
-            <strong>Zona horaria</strong>
-            <span>Con la que se muestran las fechas y horas.</span>
+            <strong>{{ 'perfil.zona' | t }}</strong>
+            <span>{{ 'perfil.zonaHint' | t }}</span>
           </div>
           <span class="profile__row-value">
             {{ user.UTCCode || '—' }}
@@ -127,19 +127,17 @@
               @if (zona.nombre()) {
                 ({{ zona.nombre() }})
               }
-              · según {{ zona.origen() }}
+              · {{ (zona.origen() === 'el servidor' ? 'perfil.segunServidor' : 'perfil.segunEquipo') | t }}
             </span>
           </span>
         </div>
 
         <div class="profile__row">
           <div class="profile__row-text">
-            <strong>Idioma</strong>
-            <span>Idioma de tu cuenta.</span>
+            <strong>{{ 'comun.idioma' | t }}</strong>
+            <span>{{ 'perfil.idiomaHint' | t }}</span>
           </div>
-          <span class="profile__row-value">
-            {{ user.DefaultLanguage === 'es' ? 'Español' : user.DefaultLanguage }}
-          </span>
+          <vt-selector-idioma />
         </div>
       </div>
     </section>
@@ -147,31 +145,31 @@
     <!-- ── Apariencia ──────────────────────────────────────────────────────── -->
     <section class="profile__section">
       <header class="profile__section-head">
-        <h2>Apariencia</h2>
-        <p>Cómo se ve la aplicación en este equipo.</p>
+        <h2>{{ 'perfil.apariencia' | t }}</h2>
+        <p>{{ 'perfil.aparienciaHint' | t }}</p>
       </header>
 
       <div class="profile__rows">
         <div class="profile__row">
           <div class="profile__row-text">
-            <strong>Seguir el tema del sistema</strong>
-            <span>Cambia sola entre claro y oscuro según la configuración de tu equipo.</span>
+            <strong>{{ 'perfil.temaSistema' | t }}</strong>
+            <span>{{ 'perfil.temaSistemaHint' | t }}</span>
           </div>
           <mat-slide-toggle
             [checked]="theme.mode() === 'system'"
             (change)="toggleSistema($event.checked)"
-            aria-label="Seguir el tema del sistema"
+            [attr.aria-label]="'perfil.temaSistema' | t"
           />
         </div>
 
         <div class="profile__row" [class.profile__row--off]="theme.mode() === 'system'">
           <div class="profile__row-text">
-            <strong>Modo oscuro</strong>
+            <strong>{{ 'perfil.oscuro' | t }}</strong>
             <span>
               @if (theme.mode() === 'system') {
-                Apaga «Seguir el tema del sistema» para elegirlo tú.
+                {{ 'perfil.oscuroApaga' | t }}
               } @else {
-                Fondo oscuro, más cómodo con poca luz.
+                {{ 'perfil.oscuroHint' | t }}
               }
             </span>
           </div>
@@ -179,14 +177,14 @@
             [checked]="theme.isDarkActive()"
             [disabled]="theme.mode() === 'system'"
             (change)="toggleOscuro($event.checked)"
-            aria-label="Modo oscuro"
+            [attr.aria-label]="'perfil.oscuro' | t"
           />
         </div>
 
         <div class="profile__row profile__row--stack">
           <div class="profile__row-text">
-            <strong>Color de la aplicación</strong>
-            <span>Tiñe los botones, los enlaces y los acentos.</span>
+            <strong>{{ 'perfil.color' | t }}</strong>
+            <span>{{ 'perfil.colorHint' | t }}</span>
           </div>
 
           <div class="profile__swatches">
@@ -199,20 +197,20 @@
                 (click)="setBrandColor(preset.value)"
               >
                 <span class="profile__swatch-dot" [style.background]="preset.value"></span>
-                <span class="profile__swatch-name">{{ preset.name }}</span>
+                <span class="profile__swatch-name">{{ nombreDeColor(preset.name) }}</span>
               </button>
             }
 
             <!-- Selector libre, para un color corporativo que no esté en la lista -->
-            <label class="profile__swatch profile__swatch--custom" title="Elegir otro color">
+            <label class="profile__swatch profile__swatch--custom" [title]="'perfil.otroColor' | t">
               <span class="profile__swatch-dot" [style.background]="theme.brandColor()"></span>
-              <span class="profile__swatch-name">Otro…</span>
+              <span class="profile__swatch-name">{{ 'perfil.otro' | t }}</span>
               <input type="color" [value]="theme.brandColor()" (change)="onCustomColor($event)" />
             </label>
           </div>
 
           <button type="button" class="profile__link" (click)="resetBrandColor()">
-            Restaurar original
+            {{ 'perfil.restaurar' | t }}
           </button>
         </div>
 
@@ -225,9 +223,9 @@
         -->
         <div class="profile__row profile__row--stack">
           <div class="profile__row-text">
-            <strong>Fondo de la página</strong>
+            <strong>{{ 'perfil.fondo' | t }}</strong>
             <span>
-              «El de la aplicación» es el que cambia solo entre claro y oscuro.
+              {{ 'perfil.fondoHint' | t }}
             </span>
           </div>
 
@@ -244,16 +242,16 @@
                   class="profile__swatch-dot"
                   [style.background]="preset.value || 'var(--vt-bg)'"
                 ></span>
-                <span class="profile__swatch-name">{{ preset.name }}</span>
+                <span class="profile__swatch-name">{{ nombreDeColor(preset.name) }}</span>
               </button>
             }
 
-            <label class="profile__swatch profile__swatch--custom" title="Elegir otro fondo">
+            <label class="profile__swatch profile__swatch--custom" [title]="'perfil.otroFondo' | t">
               <span
                 class="profile__swatch-dot"
                 [style.background]="theme.fondoColor() || 'var(--vt-bg)'"
               ></span>
-              <span class="profile__swatch-name">Otro…</span>
+              <span class="profile__swatch-name">{{ 'perfil.otro' | t }}</span>
               <input
                 type="color"
                 [value]="theme.fondoColor() || '#f5f6f8'"
@@ -268,8 +266,8 @@
     <!-- ── Preferencias ────────────────────────────────────────────────────── -->
     <section class="profile__section">
       <header class="profile__section-head">
-        <h2>Preferencias</h2>
-        <p>Son tuyas: no afectan a otras cuentas de este equipo.</p>
+        <h2>{{ 'perfil.preferencias' | t }}</h2>
+        <p>{{ 'perfil.preferenciasHint' | t }}</p>
       </header>
 
       <div class="profile__rows">
@@ -284,14 +282,14 @@
         @if (push.sePuedeOfrecer()) {
           <div class="profile__row">
             <div class="profile__row-text">
-              <strong>Notificaciones</strong>
+              <strong>{{ 'perfil.notificaciones' | t }}</strong>
               <span>{{ push.explicacion() }}</span>
             </div>
 
             @if (push.estado() === 'encendido') {
-              <span class="profile__badge">Activadas</span>
+              <span class="profile__badge">{{ 'perfil.activadas' | t }}</span>
             } @else if (push.estado() === 'bloqueado') {
-              <span class="profile__badge profile__badge--off">Bloqueadas</span>
+              <span class="profile__badge profile__badge--off">{{ 'perfil.bloqueadas' | t }}</span>
             } @else {
               <button
                 type="button"
@@ -299,7 +297,7 @@
                 [disabled]="push.estado() === 'pidiendo'"
                 (click)="activarNotificaciones()"
               >
-                {{ push.estado() === 'pidiendo' ? 'Esperando…' : 'Activar' }}
+                {{ (push.estado() === 'pidiendo' ? 'perfil.esperando' : 'shell.activar') | t }}
               </button>
             }
           </div>
@@ -307,24 +305,24 @@
 
         <div class="profile__row">
           <div class="profile__row-text">
-            <strong>Guardar borradores</strong>
+            <strong>{{ 'perfil.borradores' | t }}</strong>
             <span>
-              Al desactivarlo, las actividades que dejes a medias se eliminan al salir sin guardar.
+              {{ 'perfil.borradoresHint' | t }}
             </span>
           </div>
           <mat-slide-toggle
             [checked]="draftsEnabled()"
             [disabled]="savingPreference()"
             (change)="toggleDrafts()"
-            aria-label="Guardar borradores"
+            [attr.aria-label]="'perfil.borradores' | t"
           />
         </div>
 
         @if (draftsEnabled()) {
           <div class="profile__row profile__row--nested">
             <div class="profile__row-text">
-              <strong>Tiempo de conservación</strong>
-              <span>Los borradores se eliminan solos pasadas {{ draftHours() }} horas.</span>
+              <strong>{{ 'perfil.conservacion' | t }}</strong>
+              <span>{{ 'perfil.conservacionHint' | t: { n: draftHours() } }}</span>
             </div>
             <div class="profile__number-field">
               <input
@@ -333,7 +331,7 @@
                 max="720"
                 [value]="draftHours()"
                 (change)="changeDraftHours($event)"
-                aria-label="Horas de conservación"
+                [attr.aria-label]="'perfil.horasConservacion' | t"
               />
               <span>h</span>
             </div>
@@ -346,8 +344,8 @@
     @if (accounts().length > 1) {
       <section class="profile__section">
         <header class="profile__section-head">
-          <h2>Cuentas en este equipo</h2>
-          <p>Cambia de cuenta sin volver a escribir la contraseña.</p>
+          <h2>{{ 'perfil.cuentas' | t }}</h2>
+          <p>{{ 'perfil.cuentasHint' | t }}</p>
         </header>
 
         <div class="profile__rows">
@@ -366,7 +364,7 @@
                 <span>{{ account.Login }}</span>
               </span>
               @if (account.Login === user.Login) {
-                <span class="profile__tag profile__tag--ok">Activa</span>
+                <span class="profile__tag profile__tag--ok">{{ 'perfil.activa' | t }}</span>
               } @else {
                 <vt-icon name="chevron" [size]="16" />
               }
@@ -379,8 +377,8 @@
     <!-- ── Mis firmas ──────────────────────────────────────────────────────── -->
     <section class="profile__section">
       <header class="profile__section-head">
-        <h2>Mis firmas</h2>
-        <p>Firma una vez y elígela en cada actividad, como en la aplicación.</p>
+        <h2>{{ 'perfil.firmas' | t }}</h2>
+        <p>{{ 'perfil.firmasHint' | t }}</p>
       </header>
 
       <div class="profile__body">
@@ -391,8 +389,8 @@
     <!-- ── Sesiones ────────────────────────────────────────────────────────── -->
     <section class="profile__section">
       <header class="profile__section-head">
-        <h2>Sesiones abiertas</h2>
-        <p>Los equipos donde tu cuenta tiene la sesión iniciada.</p>
+        <h2>{{ 'perfil.sesiones' | t }}</h2>
+        <p>{{ 'perfil.sesionesHint' | t }}</p>
       </header>
 
       <div class="profile__body">
@@ -404,22 +402,21 @@
     @if (permisos.isSuperAdmin()) {
       <section class="profile__section">
         <header class="profile__section-head">
-          <h2>Soporte</h2>
-          <p>Herramientas para dar soporte a los usuarios de tu empresa.</p>
+          <h2>{{ 'perfil.soporte' | t }}</h2>
+          <p>{{ 'perfil.soporteHint' | t }}</p>
         </header>
 
         <div class="profile__rows">
           <div class="profile__row">
             <div class="profile__row-text">
-              <strong>Entrar como otro usuario</strong>
+              <strong>{{ 'perfil.entrarComo' | t }}</strong>
               <span>
-                Abre la cuenta de un usuario de tu empresa para darle soporte. Queda registrado
-                que fuiste tú; se confirma con tu contraseña.
+                {{ 'perfil.entrarComoHint' | t }}
               </span>
             </div>
             <button type="button" class="profile__btn" (click)="abrirEntrarComo()">
               <vt-icon name="user" [size]="16" />
-              Entrar como…
+              {{ 'perfil.entrarComoBtn' | t }}
             </button>
           </div>
         </div>
@@ -429,47 +426,46 @@
     <!-- ── Almacenamiento ──────────────────────────────────────────────────── -->
     <section class="profile__section">
       <header class="profile__section-head">
-        <h2>Almacenamiento</h2>
-        <p>Lo que ocupa la aplicación en este navegador.</p>
+        <h2>{{ 'perfil.almacenamiento' | t }}</h2>
+        <p>{{ 'perfil.almacenamientoHint' | t }}</p>
       </header>
 
       <div class="profile__rows">
         <div class="profile__row">
           <div class="profile__row-text">
-            <strong>Espacio usado</strong>
+            <strong>{{ 'perfil.espacio' | t }}</strong>
             @if (storage(); as st) {
               <div class="profile__storage-bar">
                 <div class="profile__storage-fill" [style.width.%]="st.percent"></div>
               </div>
             } @else {
-              <span>Este navegador no informa el espacio disponible.</span>
+              <span>{{ 'perfil.sinEspacio' | t }}</span>
             }
           </div>
           @if (storage(); as st) {
             <span class="profile__row-value">
-              <span class="vt-figure">{{ st.used }}</span> de {{ st.quota }}
+              <span class="vt-figure">{{ st.used }}</span> {{ 'perfil.de' | t }} {{ st.quota }}
             </span>
           }
         </div>
 
         <div class="profile__row">
           <div class="profile__row-text">
-            <strong>Protección de los datos</strong>
+            <strong>{{ 'perfil.proteccion' | t }}</strong>
             @if (persistentGranted()) {
-              <span>Datos protegidos: el navegador no los borrará por falta de espacio.</span>
+              <span>{{ 'perfil.protegidosHint' | t }}</span>
             } @else {
               <span>
-                Sin protección, el navegador puede borrar lo guardado si el disco se llena —
-                incluidas actividades sin sincronizar.
+                {{ 'perfil.sinProteccionHint' | t }}
               </span>
             }
           </div>
           @if (persistentGranted()) {
-            <span class="profile__badge">Protegidos</span>
+            <span class="profile__badge">{{ 'perfil.protegidos' | t }}</span>
           } @else {
             <button type="button" class="profile__btn profile__btn--warn" (click)="requestPersistence()">
               <vt-icon name="shield" [size]="16" />
-              Proteger mis datos
+              {{ 'perfil.proteger' | t }}
             </button>
           }
         </div>
@@ -479,38 +475,37 @@
     <!-- ── Este equipo ─────────────────────────────────────────────────────── -->
     <section class="profile__section">
       <header class="profile__section-head">
-        <h2>Este equipo</h2>
-        <p>El navegador desde el que usas Visitrack.</p>
+        <h2>{{ 'perfil.equipo' | t }}</h2>
+        <p>{{ 'perfil.equipoHint' | t }}</p>
       </header>
 
       <div class="profile__rows">
         <div class="profile__row">
-          <div class="profile__row-text"><strong>Navegador</strong></div>
+          <div class="profile__row-text"><strong>{{ 'perfil.navegador' | t }}</strong></div>
           <span class="profile__row-value">{{ deviceInfo.browser }}</span>
         </div>
         <div class="profile__row">
-          <div class="profile__row-text"><strong>Sistema</strong></div>
+          <div class="profile__row-text"><strong>{{ 'perfil.sistema' | t }}</strong></div>
           <span class="profile__row-value">{{ deviceInfo.os }}</span>
         </div>
         <div class="profile__row">
-          <div class="profile__row-text"><strong>Versión</strong></div>
+          <div class="profile__row-text"><strong>{{ 'perfil.version' | t }}</strong></div>
           <span class="profile__row-value">{{ appVersion }}</span>
         </div>
         <div class="profile__row">
           <div class="profile__row-text">
-            <strong>Identificador</strong>
-            <span>Identifica este navegador en tus sesiones.</span>
+            <strong>{{ 'perfil.identificador' | t }}</strong>
+            <span>{{ 'perfil.idEquipoHint' | t }}</span>
           </div>
           <span class="profile__row-value profile__mono">{{ deviceId }}</span>
         </div>
         <div class="profile__row">
           <div class="profile__row-text">
-            <strong>Logo de la compañía</strong>
+            <strong>{{ 'perfil.logoCompania' | t }}</strong>
             <span>
-              Se guarda aquí para verlo sin conexión y se actualiza solo al entrar; si acaban de
-              cambiarlo, tráelo ahora.
+              {{ 'perfil.logoHint' | t }}
               @if (connectivity.isOffline()) {
-                Necesitas conexión para traerlo.
+                {{ 'perfil.logoSinConexion' | t }}
               }
             </span>
           </div>
@@ -521,17 +516,17 @@
             (click)="syncCompanyLogo()"
           >
             <vt-icon name="refresh" [size]="16" />
-            {{ syncingLogo() ? 'Actualizando…' : 'Actualizar logo' }}
+            {{ (syncingLogo() ? 'perfil.actualizando' : 'perfil.actualizarLogo') | t }}
           </button>
         </div>
         <div class="profile__row">
-          <div class="profile__row-text"><strong>Legal</strong></div>
+          <div class="profile__row-text"><strong>{{ 'perfil.legal' | t }}</strong></div>
           <a
             class="profile__link"
             href="https://module.visitrack.com/terminos.html"
             target="_blank"
             rel="noopener"
-            >Términos del servicio</a
+            >{{ 'login.terminos' | t }}</a
           >
         </div>
       </div>
@@ -544,14 +539,13 @@
 <!-- «Entrar como»: cuenta destino + mi contraseña. Ver `enterAs`. -->
 @if (entrarComoAbierto()) {
   <div class="imp-velo" (click)="entrarComoAbierto.set(false)">
-    <div class="imp-caja" role="dialog" aria-label="Entrar como otro usuario" (click)="$event.stopPropagation()">
-      <h2 class="imp-titulo">Entrar como otro usuario</h2>
+    <div class="imp-caja" role="dialog" [attr.aria-label]="'perfil.entrarComo' | t" (click)="$event.stopPropagation()">
+      <h2 class="imp-titulo">{{ 'perfil.entrarComo' | t }}</h2>
       <p class="imp-texto">
-        Abres la cuenta de un usuario de tu empresa para darle soporte. Queda registrado que
-        fuiste tú. Confirma con tu propia contraseña.
+        {{ 'perfil.impTexto' | t }}
       </p>
 
-      <label class="imp-label">Cuenta (login) del usuario</label>
+      <label class="imp-label">{{ 'perfil.impCuenta' | t }}</label>
       <input
         class="imp-input"
         type="text"
@@ -560,7 +554,7 @@
         (ngModelChange)="impLogin.set($event)"
       />
 
-      <label class="imp-label">Tu contraseña</label>
+      <label class="imp-label">{{ 'perfil.impClave' | t }}</label>
       <input
         class="imp-input"
         type="password"
@@ -576,10 +570,10 @@
 
       <div class="imp-botones">
         <button type="button" class="vt-btn vt-btn-ghost" [disabled]="impTrabajando()" (click)="entrarComoAbierto.set(false)">
-          Cancelar
+          {{ 'comun.cancelar' | t }}
         </button>
         <button type="button" class="vt-btn vt-btn--primary" [disabled]="impTrabajando()" (click)="confirmarEntrarComo()">
-          {{ impTrabajando() ? 'Entrando…' : 'Entrar' }}
+          {{ (impTrabajando() ? 'perfil.entrando' : 'login.entrar') | t }}
         </button>
       </div>
     </div>

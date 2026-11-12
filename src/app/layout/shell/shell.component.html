@@ -4,8 +4,8 @@
   @if (auth.isImpersonating()) {
     <div class="shell__impersonando" role="status">
       <vt-icon name="user" [size]="16" />
-      <span>Estás viendo la cuenta de <strong>{{ auth.impersonatingName() }}</strong>.</span>
-      <button type="button" (click)="salirDeImpersonacion()">Salir</button>
+      <span>{{ 'shell.viendoCuenta' | t }} <strong>{{ auth.impersonatingName() }}</strong>.</span>
+      <button type="button" (click)="salirDeImpersonacion()">{{ 'shell.salir' | t }}</button>
     </div>
   }
 
@@ -15,11 +15,11 @@
     <div class="shell__version" role="status">
       <vt-icon name="alert" [size]="18" />
       <span>
-        <strong>Hay una nueva versión de Visitrack.</strong>
-        Actualízala por favor: lo que estás llenando queda guardado.
+        <strong>{{ 'shell.nuevaVersion' | t }}</strong>
+        {{ 'shell.nuevaVersionHint' | t }}
       </span>
-      <button type="button" class="shell__version-si" (click)="version.actualizar()">Actualizar</button>
-      <button type="button" class="shell__version-no" (click)="version.posponer()">Más tarde</button>
+      <button type="button" class="shell__version-si" (click)="version.actualizar()">{{ 'shell.actualizar' | t }}</button>
+      <button type="button" class="shell__version-no" (click)="version.posponer()">{{ 'shell.masTarde' | t }}</button>
     </div>
   }
 
@@ -75,7 +75,7 @@
             @if (!collapsed()) {
               <span class="shell__nav-label">{{ item.label }}</span>
               @if (item.comingSoon) {
-                <span class="shell__nav-soon">Pronto</span>
+                <span class="shell__nav-soon">{{ 'shell.pronto' | t }}</span>
               }
             }
 
@@ -102,7 +102,7 @@
               <span
                 class="shell__nav-badge"
                 [class.shell__nav-badge--rebota]="chatRebota()"
-                [title]="chatCount() + ' mensajes sin leer'"
+                [title]="'shell.mensajesSinLeer' | t: { n: chatCount() }"
               >
                 {{ chatCount() > 99 ? '99+' : chatCount() }}
               </span>
@@ -114,7 +114,7 @@
             @if (item.key === 'forms' && activityCount() > 0) {
               <span
                 class="shell__nav-badge shell__nav-badge--quiet"
-                [title]="activityCount() + ' actividades creadas'"
+                [title]="'shell.actividadesCreadas' | t: { n: activityCount() }"
               >
                 {{ activityCount() }}
               </span>
@@ -135,7 +135,7 @@
     <button type="button" class="shell__collapse" (click)="toggleSidebar()">
       <vt-icon name="chevron" [size]="18" />
       @if (!collapsed()) {
-        <span>Contraer menú</span>
+        <span>{{ 'shell.contraerMenu' | t }}</span>
       }
     </button>
 
@@ -175,7 +175,7 @@
   <!-- ── Contenido ─────────────────────────────────────────────────────── -->
   <div class="shell__main">
     <header class="shell__topbar">
-      <button type="button" class="shell__menu-btn" (click)="toggleMobile()" aria-label="Abrir menú">
+      <button type="button" class="shell__menu-btn" (click)="toggleMobile()" [attr.aria-label]="'shell.abrirMenu' | t">
         <vt-icon name="menu" [size]="22" />
       </button>
 
@@ -184,7 +184,7 @@
       @if (hasKeyboard()) {
         <button type="button" class="shell__palette" (click)="openPalette()">
           <vt-icon name="clipboard" [size]="16" />
-          <span>Buscar…</span>
+          <span>{{ 'shell.buscar' | t }}</span>
           <kbd>Ctrl</kbd><kbd>K</kbd>
         </button>
       }
@@ -198,11 +198,11 @@
         class="shell__scan"
         routerLink="/escanear"
         routerLinkActive="shell__scan--active"
-        title="Escanear la etiqueta de una ubicación o un activo"
-        aria-label="Escanear código"
+        [title]="'shell.escanearTitulo' | t"
+        [attr.aria-label]="'shell.escanearAria' | t"
       >
         <vt-icon name="scan" [size]="18" />
-        <span>Escanear</span>
+        <span>{{ 'shell.escanear' | t }}</span>
       </a>
 
       <!-- Estado de conexión: siempre visible, porque determina si lo que el
@@ -212,12 +212,12 @@
         [class.shell__connection--offline]="connectivity.isOffline()"
         [title]="
           connectivity.isOnline()
-            ? 'Conectado al servidor'
-            : 'Sin conexión. Los cambios se guardan en este equipo y se sincronizarán después.'
+            ? ('shell.conectado' | t)
+            : ('shell.desconectado' | t)
         "
       >
         <vt-icon [name]="connectivity.isOnline() ? 'connection' : 'connection-off'" [size]="17" />
-        <span>{{ connectivity.isOnline() ? 'En línea' : 'Sin conexión' }}</span>
+        <span>{{ (connectivity.isOnline() ? 'comun.enLinea' : 'comun.sinConexion') | t }}</span>
       </div>
 
       <!-- Geocercas: discreto, solo cuando hay flujos de geocerca que vigilar.
@@ -228,14 +228,14 @@
           [class.shell__connection--offline]="geocercas.estado() !== 'vigilando'"
           [title]="
             geocercas.estado() === 'vigilando'
-              ? 'Se vigilan ' + geocercas.flujosActivos() + ' flujos de geocerca mientras esta pestaña esté abierta.'
+              ? ('shell.geoVigilando' | t: { n: geocercas.flujosActivos() })
               : geocercas.estado() === 'sin-permiso'
-                ? 'Hay flujos de geocerca, pero el navegador no deja leer la ubicación. Permítela en la configuración del sitio.'
-                : 'Hay flujos de geocerca, pero este navegador no da la ubicación.'
+                ? ('shell.geoSinPermiso' | t)
+                : ('shell.geoSinUbicacion' | t)
           "
         >
           <vt-icon name="map-pin" [size]="17" />
-          <span>{{ geocercas.estado() === 'vigilando' ? 'Geocercas activas' : 'Geocercas sin ubicación' }}</span>
+          <span>{{ (geocercas.estado() === 'vigilando' ? 'shell.geoActivas' : 'shell.geoSinUbic') | t }}</span>
         </div>
       }
 
@@ -259,19 +259,19 @@
 
             <a class="shell__account-item" routerLink="/perfil" (click)="closeAccountMenu()">
               <vt-icon name="user" [size]="18" />
-              <span>Mi perfil</span>
+              <span>{{ 'nav.profile' | t }}</span>
             </a>
 
             <a class="shell__account-item" routerLink="/sincronizacion" (click)="closeAccountMenu()">
               <vt-icon name="refresh" [size]="18" />
-              <span>Sincronización</span>
+              <span>{{ 'nav.sync' | t }}</span>
             </a>
 
             <div class="shell__account-divider"></div>
 
             <button type="button" class="shell__account-item shell__account-item--danger" (click)="logout()">
               <vt-icon name="logout" [size]="18" />
-              <span>Cerrar sesión</span>
+              <span>{{ 'shell.cerrarSesion' | t }}</span>
             </button>
           </div>
         }
@@ -296,16 +296,16 @@
         <vt-icon name="alert" [size]="18" />
 
         <div class="shell__aviso-push-texto">
-          <strong>Activa las notificaciones</strong>
-          <span>Entérate de una consigna nueva sin tener que entrar a mirar.</span>
+          <strong>{{ 'shell.pushTitulo' | t }}</strong>
+          <span>{{ 'shell.pushTexto' | t }}</span>
         </div>
 
         <button type="button" class="shell__aviso-push-si" (click)="activarPush()">
-          Activar
+          {{ 'shell.activar' | t }}
         </button>
 
         <button type="button" class="shell__aviso-push-no" (click)="push.posponer()">
-          Ahora no
+          {{ 'shell.ahoraNo' | t }}
         </button>
       </div>
     }

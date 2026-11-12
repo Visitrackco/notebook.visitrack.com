@@ -1,6 +1,7 @@
 import { Component, ElementRef, effect, input, output, viewChild } from '@angular/core';
 
 import { IconComponent } from '../icon/icon.component';
+import { TPipe } from '../../../core/i18n/t.pipe';
 
 /** Tono del diálogo. Define el color del icono y del botón principal. */
 export type DialogTone = 'brand' | 'warning' | 'danger' | 'info';
@@ -37,7 +38,7 @@ export type DialogTone = 'brand' | 'warning' | 'danger' | 'info';
 @Component({
   selector: 'vt-confirm-dialog',
   standalone: true,
-  imports: [IconComponent],
+  imports: [IconComponent, TPipe],
   templateUrl: './confirm-dialog.component.html',
   styleUrl: './confirm-dialog.component.scss',
 })
@@ -53,13 +54,14 @@ export class ConfirmDialogComponent {
   readonly icon = input('info');
   readonly tone = input<DialogTone>('brand');
 
-  readonly confirmLabel = input('Aceptar');
+  /** Sin valor sale «Aceptar» en el idioma actual. */
+  readonly confirmLabel = input<string | undefined>(undefined);
 
   /**
    * Texto del botón de cancelar. Vacío lo oculta, para los avisos que solo
-   * informan y no preguntan nada.
+   * informan y no preguntan nada. Sin valor sale «Cancelar» en el idioma actual.
    */
-  readonly cancelLabel = input('Cancelar');
+  readonly cancelLabel = input<string | undefined>(undefined);
 
   /** Bloquea el botón principal mientras la acción está en curso. */
   readonly busy = input(false);

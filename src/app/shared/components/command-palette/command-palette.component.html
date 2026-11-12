@@ -10,7 +10,7 @@
           [value]="search()"
           (input)="onSearch($event)"
           (keydown)="onKey($event)"
-          placeholder="Busca un formulario, una ubicación o una actividad…"
+          [placeholder]="'pal.placeholder' | t"
           autocomplete="off"
           spellcheck="false"
         />
@@ -20,9 +20,9 @@
 
       <div class="pal__body">
         @if (loading() && results().length === 0) {
-          <p class="pal__note">Cargando…</p>
+          <p class="pal__note">{{ 'comun.cargando' | t }}</p>
         } @else if (results().length === 0) {
-          <p class="pal__note">Nada coincide con «{{ search() }}».</p>
+          <p class="pal__note">{{ 'pal.nada' | t: { q: search() } }}</p>
         } @else {
           @for (group of grouped(); track group.title) {
             <p class="pal__group">{{ group.title }}</p>
@@ -56,9 +56,9 @@
       </div>
 
       <footer class="pal__foot">
-        <span><kbd>↑</kbd><kbd>↓</kbd> moverse</span>
-        <span><kbd>Enter</kbd> abrir</span>
-        <span><kbd>?</kbd> ver todos los atajos</span>
+        <span><kbd>↑</kbd><kbd>↓</kbd> {{ 'pal.moverse' | t }}</span>
+        <span><kbd>Enter</kbd> {{ 'pal.abrir' | t }}</span>
+        <span><kbd>?</kbd> {{ 'pal.verAtajos' | t }}</span>
       </footer>
     </div>
   </div>

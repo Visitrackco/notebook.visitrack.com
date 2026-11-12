@@ -2,7 +2,9 @@ import { Component, computed, effect, inject, signal, untracked } from '@angular
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
 import { environment } from '../../../environments/environment';
-import { NAVIGATION, NavItem } from '../../core/config/navigation';
+import { NAVIGATION, NavItem, traducirSeccion } from '../../core/config/navigation';
+import { traducir } from '../../core/i18n/idioma.service';
+import { TPipe } from '../../core/i18n/t.pipe';
 import { AuthService } from '../../core/services/auth.service';
 import { ChatSocketService } from '../../features/chat/chat-socket.service';
 import { CompanyLogoService } from '../../core/services/company-logo.service';
@@ -45,6 +47,7 @@ const SIDEBAR_KEY = 'visitrack.sidebarCollapsed';
     IconComponent,
     CommandPaletteComponent,
     ShortcutsHelpComponent,
+    TPipe,
   ],
 
   host: {
@@ -103,7 +106,7 @@ export class ShellComponent {
    * incluido: un encabezado solo no lleva a ningún sitio.
    */
   readonly navigation = computed(() =>
-    NAVIGATION.map((section) => ({
+    NAVIGATION.map(traducirSeccion).map((section) => ({
       ...section,
       items: section.items.filter(
         (item) =>
@@ -124,8 +127,8 @@ export class ShellComponent {
       // `g e` de eventos: `g g` sería incómodo y `g c` ya está repetido.
       id: 'go-geofence-events',
       keys: 'g e',
-      label: 'Eventos de geocerca',
-      group: 'Navegación',
+      get label() { return traducir('atajo.geocercas'); },
+      get group() { return traducir('atajo.grupoNavegacion'); },
       run: () => void this.router.navigate(['/geocerca-eventos']),
     }));
     onCleanup(quitar);
@@ -198,29 +201,29 @@ export class ShellComponent {
       {
         id: 'palette',
         keys: 'ctrl+k',
-        label: 'Buscar y saltar a cualquier sitio',
-        group: 'General',
+        get label() { return traducir('atajo.paleta'); },
+        get group() { return traducir('atajo.grupoGeneral'); },
         run: () => this.shortcuts.togglePalette(),
       },
       {
         id: 'help',
         keys: '?',
-        label: 'Ver los atajos',
-        group: 'General',
+        get label() { return traducir('atajo.ayuda'); },
+        get group() { return traducir('atajo.grupoGeneral'); },
         run: () => this.shortcuts.toggleHelp(),
       },
       {
         id: 'close',
         keys: 'escape',
-        label: 'Cerrar lo que esté abierto',
-        group: 'General',
+        get label() { return traducir('atajo.cerrar'); },
+        get group() { return traducir('atajo.grupoGeneral'); },
         run: () => this.shortcuts.closeAll(),
       },
       {
         id: 'focus-search',
         keys: '/',
-        label: 'Buscar en esta pantalla',
-        group: 'General',
+        get label() { return traducir('atajo.buscarPantalla'); },
+        get group() { return traducir('atajo.grupoGeneral'); },
 
         /**
          * Enfoca el buscador de la pantalla, sea cual sea.
@@ -241,36 +244,36 @@ export class ShellComponent {
       {
         id: 'go-dispatches',
         keys: 'g c',
-        label: 'Mis consignas',
-        group: 'Navegación',
+        get label() { return traducir('atajo.consignas'); },
+        get group() { return traducir('atajo.grupoNavegacion'); },
         run: go('/consignas'),
       },
       {
         id: 'go-forms',
         keys: 'g f',
-        label: 'Formularios',
-        group: 'Navegación',
+        get label() { return traducir('atajo.formularios'); },
+        get group() { return traducir('atajo.grupoNavegacion'); },
         run: go('/formularios'),
       },
       {
         id: 'go-drafts',
         keys: 'g b',
-        label: 'Borradores',
-        group: 'Navegación',
+        get label() { return traducir('atajo.borradores'); },
+        get group() { return traducir('atajo.grupoNavegacion'); },
         run: go('/borradores'),
       },
       {
         id: 'go-pending',
         keys: 'g p',
-        label: 'Pendientes por subir',
-        group: 'Navegación',
+        get label() { return traducir('atajo.pendientes'); },
+        get group() { return traducir('atajo.grupoNavegacion'); },
         run: go('/pendientes'),
       },
       {
         id: 'go-flow-emails',
         keys: 'g c',
-        label: 'Correos del flujo',
-        group: 'Navegación',
+        get label() { return traducir('atajo.correosFlujo'); },
+        get group() { return traducir('atajo.grupoNavegacion'); },
         run: go('/correos-flujo'),
       },
       {
@@ -278,37 +281,37 @@ export class ShellComponent {
         // ambiguo con «actividades».
         id: 'go-flow-pushes',
         keys: 'g n',
-        label: 'Notificaciones del flujo',
-        group: 'Navegación',
+        get label() { return traducir('atajo.avisosFlujo'); },
+        get group() { return traducir('atajo.grupoNavegacion'); },
         run: go('/avisos-flujo'),
       },
       // `g e` (eventos de geocerca) va aparte, con su permiso: ver `atajoDeGeocercas`.
       {
         id: 'go-locations',
         keys: 'g u',
-        label: 'Ubicaciones',
-        group: 'Navegación',
+        get label() { return traducir('atajo.ubicaciones'); },
+        get group() { return traducir('atajo.grupoNavegacion'); },
         run: go('/ubicaciones'),
       },
       {
         id: 'go-sync',
         keys: 'g s',
-        label: 'Sincronización',
-        group: 'Navegación',
+        get label() { return traducir('atajo.sync'); },
+        get group() { return traducir('atajo.grupoNavegacion'); },
         run: go('/sincronizacion'),
       },
       {
         id: 'go-files',
         keys: 'g a',
-        label: 'Archivos',
-        group: 'Navegación',
+        get label() { return traducir('atajo.archivos'); },
+        get group() { return traducir('atajo.grupoNavegacion'); },
         run: go('/archivos'),
       },
       {
         id: 'go-home',
         keys: 'g i',
-        label: 'Inicio',
-        group: 'Navegación',
+        get label() { return traducir('atajo.inicio'); },
+        get group() { return traducir('atajo.grupoNavegacion'); },
         run: go('/inicio'),
       },
     ]);
@@ -351,7 +354,7 @@ export class ShellComponent {
    */
   readonly companyName = computed(() => {
     const id = this.auth.currentUser()?.CompanyID;
-    return id ? `Compañía ${id}` : 'Visitrack';
+    return id ? traducir('shell.compania', { id }) : 'Visitrack';
   });
 
   /** Inicial de respaldo mientras el logo carga o si la empresa no tiene. */

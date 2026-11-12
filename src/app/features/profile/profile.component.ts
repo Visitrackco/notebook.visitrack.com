@@ -25,6 +25,9 @@ import { IconComponent } from '../../shared/components/icon/icon.component';
 import { SessionsComponent } from './sessions/sessions.component';
 import { MisFirmasComponent } from './mis-firmas/mis-firmas.component';
 import { ZonaHorariaService } from '../../core/services/zona-horaria.service';
+import { traducir, traducirSiExiste } from '../../core/i18n/idioma.service';
+import { SelectorIdiomaComponent } from '../../core/i18n/selector-idioma.component';
+import { TPipe } from '../../core/i18n/t.pipe';
 
 /**
  * Perfil del usuario: sus datos, el estado del almacenamiento local, las
@@ -38,7 +41,15 @@ import { ZonaHorariaService } from '../../core/services/zona-horaria.service';
 @Component({
   selector: 'vt-profile',
   standalone: true,
-  imports: [IconComponent, FormsModule, MatSlideToggleModule, SessionsComponent, MisFirmasComponent],
+  imports: [
+    IconComponent,
+    FormsModule,
+    MatSlideToggleModule,
+    SessionsComponent,
+    MisFirmasComponent,
+    SelectorIdiomaComponent,
+    TPipe,
+  ],
   templateUrl: './profile.component.html',
   styleUrl: './profile.component.scss',
 })
@@ -85,7 +96,7 @@ export class ProfileComponent {
       return;
     }
 
-    this.impError.set(res.message ?? 'No se pudo entrar a la cuenta.');
+    this.impError.set(res.message ?? traducir('perfil.errEntrarComo'));
     this.impTrabajando.set(false);
   }
 
@@ -168,6 +179,11 @@ export class ProfileComponent {
     return fullName(user) || user.Login;
   }
 
+  /** Nombre de un color del tema en el idioma actual. */
+  nombreDeColor(nombre: string): string {
+    return traducirSiExiste(`color.${nombre}`, nombre);
+  }
+
   avatarInitials(user: User): string {
     return initials(user);
   }
@@ -184,7 +200,7 @@ export class ProfileComponent {
         next ? 'enabled' : 'disabled',
       );
       this.draftsEnabled.set(next);
-      this.showFeedback('Preferencia guardada.');
+      this.showFeedback(traducir('perfil.fbPreferencia'));
     } finally {
       this.savingPreference.set(false);
     }
@@ -196,7 +212,7 @@ export class ProfileComponent {
 
     this.draftHours.set(value);
     await this.settings.setNumber(SETTING_KEYS.DRAFT_HOURS, this.auth.currentUserId(), value);
-    this.showFeedback('Preferencia guardada.');
+    this.showFeedback(traducir('perfil.fbPreferencia'));
   }
 
   /** Trae de nuevo el logo de la compañía desde el servidor. */
@@ -209,11 +225,11 @@ export class ProfileComponent {
       const ok = await this.auth.refreshCompanyLogo();
       this.showFeedback(
         ok
-          ? 'Logo actualizado.'
-          : 'Tu compañía todavía no tiene un logo configurado en Visitrack.',
+          ? traducir('perfil.fbLogo')
+          : traducir('perfil.fbSinLogo'),
       );
     } catch {
-      this.showFeedback('No se pudo traer el logo. Inténtalo de nuevo.');
+      this.showFeedback(traducir('perfil.fbErrLogo'));
     } finally {
       this.syncingLogo.set(false);
     }
@@ -222,7 +238,7 @@ export class ProfileComponent {
   /** Cambia entre claro, oscuro y el del sistema. */
   setThemeMode(mode: ThemeMode): void {
     this.theme.setMode(mode);
-    this.showFeedback('Apariencia actualizada.');
+    this.showFeedback(traducir('perfil.fbApariencia'));
   }
 
   /**
@@ -247,7 +263,7 @@ export class ProfileComponent {
   /** Cambia el color de marca de toda la aplicación. */
   setBrandColor(color: string): void {
     this.theme.setBrandColor(color);
-    this.showFeedback('Color actualizado.');
+    this.showFeedback(traducir('perfil.fbColor'));
   }
 
   /** Aplica el color elegido en el selector nativo. */
@@ -267,7 +283,7 @@ export class ProfileComponent {
 
   resetBrandColor(): void {
     this.theme.resetBrandColor();
-    this.showFeedback('Se restauró el color original.');
+    this.showFeedback(traducir('perfil.fbColorOriginal'));
   }
 
   /**
@@ -287,12 +303,12 @@ export class ProfileComponent {
      * para superficies claras.
      */
     if (color && !this.theme.esFondoClaro(color)) {
-      this.showFeedback('Ese color es demasiado oscuro: los campos no se leerían encima.');
+      this.showFeedback(traducir('perfil.fbFondoOscuro'));
       return;
     }
 
     this.theme.setFondoColor(color);
-    this.showFeedback(color ? 'Fondo actualizado.' : 'Se restauró el fondo original.');
+    this.showFeedback(traducir(color ? 'perfil.fbFondo' : 'perfil.fbFondoOriginal'));
   }
 
   onCustomFondo(event: Event): void {
@@ -306,8 +322,8 @@ export class ProfileComponent {
 
     this.showFeedback(
       granted
-        ? 'Tus datos quedaron protegidos en este navegador.'
-        : 'El navegador no concedió el permiso. Puedes intentarlo de nuevo más adelante.',
+        ? traducir('perfil.fbProtegidos')
+        : traducir('perfil.fbNoProtegidos'),
     );
   }
 
@@ -335,14 +351,14 @@ export class ProfileComponent {
       const res = await this.auth.refreshUserData();
 
       if (!res.ok) {
-        this.showFeedback(res.error ?? 'No se pudieron traer tus datos');
+        this.showFeedback(res.error ?? traducir('perfil.fbErrDatos'));
         return;
       }
 
       this.showFeedback(
         res.activo
-          ? 'Tus datos quedaron actualizados'
-          : 'Tus datos se actualizaron, pero tu usuario ya no está activo',
+          ? traducir('perfil.fbDatos')
+          : traducir('perfil.fbDatosInactivo'),
       );
     } finally {
       this.refrescandoUsuario.set(false);

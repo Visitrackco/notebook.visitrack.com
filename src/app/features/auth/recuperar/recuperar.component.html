@@ -5,41 +5,45 @@
       <span>Visitrack</span>
     </div>
 
-    <span class="login__topbar-state" [class.login__topbar-state--off]="connectivity.isOffline()">
-      {{ connectivity.isOnline() ? 'En línea' : 'Sin conexión' }}
-    </span>
+    <div class="login__topbar-side">
+      <vt-selector-idioma [compacto]="true" />
+
+      <span class="login__topbar-state" [class.login__topbar-state--off]="connectivity.isOffline()">
+        {{ (connectivity.isOnline() ? 'comun.enLinea' : 'comun.sinConexion') | t }}
+      </span>
+    </div>
   </header>
 
   <main class="login__form-side">
     <div class="login__form-wrap">
-      <h1 class="login__title">Recuperar contraseña</h1>
+      <h1 class="login__title">{{ 'rec.titulo' | t }}</h1>
 
       @switch (paso()) {
         @case ('usuario') {
-          <p class="login__subtitle">Escribe tu usuario y te enviaremos un código a tu correo.</p>
+          <p class="login__subtitle">{{ 'rec.subUsuario' | t }}</p>
         }
         @case ('codigo') {
           <p class="login__subtitle">
-            Escribe el código de 6 cifras que enviamos a <strong>{{ correo() || 'tu correo' }}</strong>.
+            {{ 'rec.subCodigo' | t }} <strong>{{ correo() || ('rec.tuCorreo' | t) }}</strong>.
           </p>
         }
         @case ('clave') {
-          <p class="login__subtitle">Escribe tu contraseña nueva.</p>
+          <p class="login__subtitle">{{ 'rec.subClave' | t }}</p>
         }
         @case ('listo') {
-          <p class="login__subtitle">Listo: tu contraseña cambió.</p>
+          <p class="login__subtitle">{{ 'rec.subListo' | t }}</p>
         }
       }
 
       @if (connectivity.isOffline()) {
-        <p class="login__offline">Sin conexión. Para recuperar la contraseña necesitas internet.</p>
+        <p class="login__offline">{{ 'rec.sinConexion' | t }}</p>
       }
 
       <!-- Los pasos, de uno en uno -->
-      <ol class="rc-pasos" aria-label="Pasos">
-        <li [class.rc-on]="paso() === 'usuario'" [class.rc-hecho]="paso() !== 'usuario'">Usuario</li>
-        <li [class.rc-on]="paso() === 'codigo'" [class.rc-hecho]="paso() === 'clave' || paso() === 'listo'">Código</li>
-        <li [class.rc-on]="paso() === 'clave'" [class.rc-hecho]="paso() === 'listo'">Contraseña</li>
+      <ol class="rc-pasos" [attr.aria-label]="'rec.pasos' | t">
+        <li [class.rc-on]="paso() === 'usuario'" [class.rc-hecho]="paso() !== 'usuario'">{{ 'rec.pasoUsuario' | t }}</li>
+        <li [class.rc-on]="paso() === 'codigo'" [class.rc-hecho]="paso() === 'clave' || paso() === 'listo'">{{ 'rec.pasoCodigo' | t }}</li>
+        <li [class.rc-on]="paso() === 'clave'" [class.rc-hecho]="paso() === 'listo'">{{ 'login.contrasena' | t }}</li>
       </ol>
 
       @if (paso() !== 'listo') {
@@ -52,7 +56,7 @@
                   name="usuario"
                   type="text"
                   autocomplete="username"
-                  placeholder="Usuario"
+                  [placeholder]="'rec.pasoUsuario' | t"
                   spellcheck="false"
                   [value]="usuario()"
                   (input)="usuario.set($any($event.target).value)"
@@ -69,7 +73,7 @@
                   inputmode="numeric"
                   autocomplete="one-time-code"
                   maxlength="6"
-                  placeholder="Código de 6 cifras"
+                  [placeholder]="'rec.codigo6' | t"
                   class="rc-codigo"
                   [value]="codigo()"
                   (input)="codigo.set($any($event.target).value.replace(/\D/g, ''))"
@@ -77,8 +81,8 @@
                 />
               </div>
               <div class="rc-acciones">
-                <button type="button" class="rc-enlace" (click)="reenviar()" [disabled]="enviando()">Reenviar código</button>
-                <button type="button" class="rc-enlace" (click)="cambiarUsuario()" [disabled]="enviando()">Cambiar usuario</button>
+                <button type="button" class="rc-enlace" (click)="reenviar()" [disabled]="enviando()">{{ 'rec.reenviar' | t }}</button>
+                <button type="button" class="rc-enlace" (click)="cambiarUsuario()" [disabled]="enviando()">{{ 'rec.cambiarUsuario' | t }}</button>
               </div>
             }
             @case ('clave') {
@@ -88,14 +92,14 @@
                   name="clave"
                   [type]="verClave() ? 'text' : 'password'"
                   autocomplete="new-password"
-                  placeholder="Contraseña nueva"
+                  [placeholder]="'rec.claveNueva' | t"
                   [value]="clave()"
                   (input)="clave.set($any($event.target).value)"
                   [disabled]="enviando()"
                 />
                 <button type="button" class="login__reveal" (click)="verClave.set(!verClave())"
-                  [attr.aria-label]="verClave() ? 'Ocultar contraseña' : 'Mostrar contraseña'">
-                  {{ verClave() ? 'Ocultar' : 'Ver' }}
+                  [attr.aria-label]="(verClave() ? 'login.ocultarContrasena' : 'login.mostrarContrasena') | t">
+                  {{ (verClave() ? 'comun.ocultar' : 'comun.ver') | t }}
                 </button>
               </div>
               <div class="login__field">
@@ -104,14 +108,14 @@
                   name="clave2"
                   [type]="verClave() ? 'text' : 'password'"
                   autocomplete="new-password"
-                  placeholder="Repite la contraseña"
+                  [placeholder]="'rec.repite' | t"
                   [value]="clave2()"
                   (input)="clave2.set($any($event.target).value)"
                   [disabled]="enviando()"
                 />
               </div>
               <p class="rc-ayuda" [class.rc-ayuda-mal]="faltaEnClave()">
-                {{ faltaEnClave() || 'Al menos ' + largoMinimo + ' caracteres.' }}
+                {{ faltaEnClave() || ('rec.alMenos' | t: { n: largoMinimo }) + '.' }}
               </p>
             }
           }
@@ -129,18 +133,18 @@
             }
             <span>
               @switch (paso()) {
-                @case ('usuario') { Enviar código }
-                @case ('codigo') { Validar código }
-                @default { Cambiar contraseña }
+                @case ('usuario') { {{ 'rec.enviarCodigo' | t }} }
+                @case ('codigo') { {{ 'rec.validarCodigo' | t }} }
+                @default { {{ 'rec.cambiarClave' | t }} }
               }
             </span>
           </button>
         </form>
       } @else {
-        <button type="button" class="login__submit" (click)="irAlLogin()">Ir a iniciar sesión</button>
+        <button type="button" class="login__submit" (click)="irAlLogin()">{{ 'rec.irLogin' | t }}</button>
       }
 
-      <p class="rc-volver"><a routerLink="/login">Volver a iniciar sesión</a></p>
+      <p class="rc-volver"><a routerLink="/login">{{ 'rec.volverLogin' | t }}</a></p>
     </div>
   </main>
 </div>

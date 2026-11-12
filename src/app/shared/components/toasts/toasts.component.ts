@@ -2,6 +2,7 @@ import { Component, inject } from '@angular/core';
 
 import { Toast, ToastService } from '../../../core/services/toast.service';
 import { IconComponent } from '../icon/icon.component';
+import { TPipe } from '../../../core/i18n/t.pipe';
 
 /**
  * Los avisos emergentes en pantalla.
@@ -16,7 +17,7 @@ import { IconComponent } from '../icon/icon.component';
 @Component({
   selector: 'vt-toasts',
   standalone: true,
-  imports: [IconComponent],
+  imports: [IconComponent, TPipe],
   template: `
     @if (toasts.toasts().length > 0) {
       <div class="toasts" role="status" aria-live="polite">
@@ -43,7 +44,7 @@ import { IconComponent } from '../icon/icon.component';
               type="button"
               class="toast__close"
               (click)="toasts.dismiss(toast.id)"
-              aria-label="Cerrar aviso"
+              [attr.aria-label]="'comun.cerrarAviso' | t"
             >
               <vt-icon name="close" [size]="16" />
             </button>

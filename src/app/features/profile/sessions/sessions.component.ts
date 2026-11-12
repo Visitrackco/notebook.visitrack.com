@@ -4,7 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { SessionsApi, UserSession } from '../../../core/services/sessions.api';
 import { ToastService } from '../../../core/services/toast.service';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
-import { localeActual } from '../../../core/i18n/idioma.service';
+import { localeActual, traducir } from '../../../core/i18n/idioma.service';
+import { TPipe } from '../../../core/i18n/t.pipe';
 
 /** Lo que se está intentando cerrar. */
 type Target = { sessionId?: number; others?: boolean; label: string } | null;
@@ -29,7 +30,7 @@ type Target = { sessionId?: number; others?: boolean; label: string } | null;
 @Component({
   selector: 'vt-sessions',
   standalone: true,
-  imports: [FormsModule, IconComponent],
+  imports: [FormsModule, IconComponent, TPipe],
   templateUrl: './sessions.component.html',
   styleUrl: './sessions.component.scss',
 })
@@ -69,7 +70,7 @@ export class SessionsComponent {
 
     this.open({
       others: true,
-      label: count === 1 ? 'la otra sesión' : `las otras ${count} sesiones`,
+      label: count === 1 ? traducir('ses.laOtra') : traducir('ses.lasOtras', { n: count }),
     });
   }
 
@@ -91,7 +92,7 @@ export class SessionsComponent {
     if (!target || this.working()) return;
 
     if (!this.password()) {
-      this.error.set('Escribe tu contraseña.');
+      this.error.set(traducir('ses.escribeClave'));
       return;
     }
 
@@ -108,7 +109,7 @@ export class SessionsComponent {
     if (!result.ok) {
       // El error se queda dentro del diálogo, no en un aviso flotante: quien se
       // equivocó de contraseña la va a volver a escribir ahí mismo.
-      this.error.set(result.error ?? 'No se pudo cerrar.');
+      this.error.set(result.error ?? traducir('ses.noCerro'));
       return;
     }
 
@@ -116,8 +117,8 @@ export class SessionsComponent {
     await this.reload();
 
     this.toast.success(
-      result.closed === 1 ? 'Sesión cerrada' : `${result.closed} sesiones cerradas`,
-      'Ese equipo tendrá que iniciar sesión de nuevo.',
+      result.closed === 1 ? traducir('ses.cerrada') : traducir('ses.cerradas', { n: result.closed }),
+      traducir('ses.deNuevo'),
     );
   }
 
@@ -126,7 +127,7 @@ export class SessionsComponent {
   nameOf(session: UserSession): string {
     if (session.DeviceName) return session.DeviceName;
 
-    return session.Platform === 'web' ? 'Un navegador' : 'Un teléfono';
+    return traducir(session.Platform === 'web' ? 'ses.unNavegador' : 'ses.unTelefono');
   }
 
   /** Cuándo se usó por última vez, en palabras. */
@@ -141,16 +142,16 @@ export class SessionsComponent {
 
     const minutes = Math.floor((Date.now() - date.getTime()) / 60_000);
 
-    if (minutes < 2) return 'ahora mismo';
-    if (minutes < 60) return `hace ${minutes} minutos`;
+    if (minutes < 2) return traducir('ses.ahora');
+    if (minutes < 60) return traducir('ses.haceMin', { n: minutes });
 
     const hours = Math.floor(minutes / 60);
 
-    if (hours < 24) return `hace ${hours} ${hours === 1 ? 'hora' : 'horas'}`;
+    if (hours < 24) return traducir(hours === 1 ? 'ses.haceHora' : 'ses.haceHoras', { n: hours });
 
     const days = Math.floor(hours / 24);
 
-    if (days < 30) return `hace ${days} ${days === 1 ? 'día' : 'días'}`;
+    if (days < 30) return traducir(days === 1 ? 'ses.haceDia' : 'ses.haceDias', { n: days });
 
     return date.toLocaleDateString(localeActual(), { dateStyle: 'medium' });
   }

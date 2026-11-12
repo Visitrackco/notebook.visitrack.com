@@ -7,7 +7,8 @@ import { AuthService } from '../../../core/services/auth.service';
 import { SurveyRepository } from '../../../core/repositories/entity.repositories';
 import { ConnectivityService } from '../../../core/services/connectivity.service';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
-import { localeActual } from '../../../core/i18n/idioma.service';
+import { localeActual, traducir } from '../../../core/i18n/idioma.service';
+import { TPipe } from '../../../core/i18n/t.pipe';
 
 /**
  * La descarga que va entre entrar y trabajar.
@@ -39,7 +40,7 @@ import { localeActual } from '../../../core/i18n/idioma.service';
 @Component({
   selector: 'vt-loading',
   standalone: true,
-  imports: [IconComponent],
+  imports: [IconComponent, TPipe],
   templateUrl: './loading.component.html',
   styleUrl: './loading.component.scss',
 })
@@ -73,7 +74,10 @@ export class LoadingComponent {
     const { total, processed } = this.sync.state();
     if (total === 0) return '';
 
-    return `${processed.toLocaleString(localeActual())} de ${total.toLocaleString(localeActual())}`;
+    return traducir('carga.contador', {
+      hechos: processed.toLocaleString(localeActual()),
+      total: total.toLocaleString(localeActual()),
+    });
   });
 
   constructor() {
@@ -125,9 +129,7 @@ export class LoadingComponent {
 
       // Que falle no impide entrar: puede haber datos de antes, y la
       // aplicación reintenta sola. Lo que no puede es pasar en silencio.
-      this.failed.set(
-        'No se pudieron traer tus datos. Puedes entrar y reintentar desde Sincronización.',
-      );
+      this.failed.set(traducir('carga.fallo'));
 
       return;
     }

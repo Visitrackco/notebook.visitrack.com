@@ -21,7 +21,9 @@ import { IconComponent } from '../icon/icon.component';
 import { entityDescriptors } from '../../utils/descriptors';
 import { normalizar } from '../../utils/resaltado';
 import { ResaltadoComponent } from '../resaltado/resaltado.component';
-import { localeActual } from '../../../core/i18n/idioma.service';
+import { localeActual, traducir } from '../../../core/i18n/idioma.service';
+import { TEXTOS, type ClaveTexto } from '../../../core/i18n/textos';
+import { TPipe } from '../../../core/i18n/t.pipe';
 
 /** Algo a lo que se puede saltar. */
 interface Entry {
@@ -61,7 +63,7 @@ const LIMIT = 12;
 @Component({
   selector: 'vt-command-palette',
   standalone: true,
-  imports: [IconComponent, ResaltadoComponent],
+  imports: [IconComponent, ResaltadoComponent, TPipe],
   templateUrl: './command-palette.component.html',
   styleUrl: './command-palette.component.scss',
 })
@@ -93,7 +95,7 @@ export class CommandPaletteComponent {
     if (!needle) {
       // Sin escribir nada se ofrecen las pantallas: es el uso más frecuente y
       // evita que la paleta abra en blanco.
-      return all.filter((entry) => entry.group === 'Ir a').slice(0, LIMIT);
+      return all.filter((entry) => entry.id.startsWith('screen:')).slice(0, LIMIT);
     }
 
     return all.filter((entry) => entry.haystack.includes(needle)).slice(0, LIMIT);
@@ -158,9 +160,9 @@ export class CommandPaletteComponent {
           .slice(0, 40)
           .map((answer) => ({
             id: `answer:${answer.GUID}`,
-            label: answer.LocationName || answer.AssetName || 'Actividad',
+            label: answer.LocationName || answer.AssetName || traducir('pal.actividad'),
             hint: this.when(answer.UpdatedOn || answer.CreatedOn),
-            group: 'Actividades recientes',
+            group: traducir('pal.recientes'),
             icon: 'clipboard',
             haystack: [answer.LocationName, answer.AssetName, answer.Titles]
               .join(' ')
@@ -178,42 +180,47 @@ export class CommandPaletteComponent {
   }
 
   private screens(): Entry[] {
-    const make = (label: string, icon: string, route: string): Entry => ({
-      id: `screen:${route}`,
-      label,
-      hint: route,
-      group: 'Ir a',
-      icon,
-      haystack: `${label} ${route}`.toLowerCase(),
-      route: [route],
-    });
+    // En el idioma actual, y en lo que se busca también el español: quien
+    // trabaja en inglés pero escribe «sincro» por costumbre lo sigue encontrando.
+    const make = (clave: ClaveTexto, icon: string, route: string): Entry => {
+      const label = traducir(clave);
+      return {
+        id: `screen:${route}`,
+        label,
+        hint: route,
+        group: traducir('pal.irA'),
+        icon,
+        haystack: `${label} ${TEXTOS[clave][0]} ${route}`.toLowerCase(),
+        route: [route],
+      };
+    };
 
     return [
-      make('Mis consignas', 'send', '/consignas'),
-      make('Formularios', 'clipboard', '/formularios'),
-      make('Borradores', 'pen', '/borradores'),
-      make('Pendientes por subir', 'cloud-upload', '/pendientes'),
-      make('Correos del flujo', 'mail', '/correos-flujo'),
-      make('Notificaciones del flujo', 'bell', '/avisos-flujo'),
+      make('atajo.consignas', 'send', '/consignas'),
+      make('atajo.formularios', 'clipboard', '/formularios'),
+      make('atajo.borradores', 'pen', '/borradores'),
+      make('atajo.pendientes', 'cloud-upload', '/pendientes'),
+      make('atajo.correosFlujo', 'mail', '/correos-flujo'),
+      make('atajo.avisosFlujo', 'bell', '/avisos-flujo'),
       // Con «cerca» y «entradas» en lo que se busca: nadie piensa en «evento».
       // Solo con el seguimiento por geocercas, como el menú y el atajo.
       ...(this.permisosDeModule.seguimientoGeocercas()
         ? [
             {
-              ...make('Eventos de geocerca', 'geocerca-eventos', '/geocerca-eventos'),
+              ...make('atajo.geocercas', 'geocerca-eventos', '/geocerca-eventos'),
               haystack:
-                'eventos de geocerca geocercas cerca entradas salidas llegadas historial /geocerca-eventos',
+                'eventos de geocerca geocercas cerca entradas salidas llegadas historial geofence events /geocerca-eventos',
             },
           ]
         : []),
-      make('Ubicaciones', 'map-pin', '/ubicaciones'),
+      make('atajo.ubicaciones', 'map-pin', '/ubicaciones'),
       // Con «etiqueta» y «qr» en lo que se busca: nadie escribe «escanear»
       // cuando lo que tiene delante es un código pegado en un equipo.
-      { ...make('Escanear código', 'scan', '/escanear'), haystack: 'escanear codigo código qr barras etiqueta tag comenzar actividad /escanear' },
-      make('Sincronización', 'refresh', '/sincronizacion'),
-      make('Archivos', 'file', '/archivos'),
-      make('Inicio', 'home', '/inicio'),
-      make('Mi perfil', 'user', '/perfil'),
+      { ...make('shell.escanearAria', 'scan', '/escanear'), haystack: 'escanear codigo código qr barras etiqueta tag comenzar actividad scan code barcode /escanear' },
+      make('atajo.sync', 'refresh', '/sincronizacion'),
+      make('atajo.archivos', 'file', '/archivos'),
+      make('atajo.inicio', 'home', '/inicio'),
+      make('nav.profile', 'user', '/perfil'),
     ];
   }
 
@@ -221,8 +228,8 @@ export class CommandPaletteComponent {
     return {
       id: `survey:${survey.SurveyID}`,
       label: survey.Title,
-      hint: 'Abrir sus actividades',
-      group: 'Formularios',
+      hint: traducir('pal.abrirActividades'),
+      group: traducir('atajo.formularios'),
       icon: 'clipboard',
       haystack: `${survey.Title} ${survey.Description ?? ''}`.toLowerCase(),
       route: ['/formularios', survey.SurveyID],
@@ -232,9 +239,9 @@ export class CommandPaletteComponent {
   private fromLocation(location: LocationForm): Entry {
     return {
       id: `location:${location.GUID}`,
-      label: location.Name || 'Sin nombre',
-      hint: location.typeTitle || 'Ubicación',
-      group: 'Ubicaciones',
+      label: location.Name || traducir('pal.sinNombre'),
+      hint: location.typeTitle || traducir('pal.ubicacion'),
+      group: traducir('atajo.ubicaciones'),
       icon: 'map-pin',
       // Con los valores de sus descriptivos: el código o la placa también la encuentran.
       haystack: [

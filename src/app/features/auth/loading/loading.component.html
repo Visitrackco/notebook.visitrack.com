@@ -1,7 +1,7 @@
 <section class="load">
   <div class="load__brand">
     <span class="load__mark"><vt-icon name="clipboard" [size]="30" /></span>
-    <h1>Preparando tus datos</h1>
+    <h1>{{ 'carga.titulo' | t }}</h1>
   </div>
 
   @if (failed()) {
@@ -10,8 +10,8 @@
       <p>{{ failed() }}</p>
 
       <div class="load__actions">
-        <button type="button" class="load__retry" (click)="retry()">Reintentar</button>
-        <button type="button" class="load__skip" (click)="enter()">Entrar de todos modos</button>
+        <button type="button" class="load__retry" (click)="retry()">{{ 'comun.reintentar' | t }}</button>
+        <button type="button" class="load__skip" (click)="enter()">{{ 'carga.entrarIgual' | t }}</button>
       </div>
     </div>
   } @else {
@@ -32,7 +32,7 @@
       <div class="load__bar load__bar--waiting"><span></span></div>
     }
 
-    <p class="load__message">{{ sync.state().message || 'Conectando…' }}</p>
+    <p class="load__message">{{ sync.state().message || ('carga.conectando' | t) }}</p>
 
     @if (counter()) {
       <p class="load__counter vt-figure">{{ counter() }}</p>
@@ -45,7 +45,7 @@
     }
 
     <p class="load__note">
-      Solo se trae lo que cambió. La primera vez es la más larga.
+      {{ 'carga.nota' | t }}
     </p>
   }
 </section>

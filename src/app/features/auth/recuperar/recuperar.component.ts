@@ -5,6 +5,9 @@ import { firstValueFrom } from 'rxjs';
 
 import { environment } from '../../../../environments/environment';
 import { ConnectivityService } from '../../../core/services/connectivity.service';
+import { traducir } from '../../../core/i18n/idioma.service';
+import { SelectorIdiomaComponent } from '../../../core/i18n/selector-idioma.component';
+import { TPipe } from '../../../core/i18n/t.pipe';
 
 /** Lo que responden las tres rutas de cloud-server (`RecuperarClave.js`). */
 interface Respuesta {
@@ -32,7 +35,7 @@ const LARGO_MINIMO = 8;
 @Component({
   selector: 'vt-recuperar',
   standalone: true,
-  imports: [RouterLink],
+  imports: [RouterLink, SelectorIdiomaComponent, TPipe],
   templateUrl: './recuperar.component.html',
   styleUrls: ['../login/login.component.scss', './recuperar.component.scss'],
 })
@@ -72,17 +75,17 @@ export class RecuperarComponent {
   /** Por qué el botón no se deja pulsar en el paso de la clave. */
   readonly faltaEnClave = computed(() => {
     if (!this.clave()) return '';
-    if (this.clave().length < LARGO_MINIMO) return `Al menos ${LARGO_MINIMO} caracteres`;
-    if (this.clave2() && this.clave() !== this.clave2()) return 'Las contraseñas no coinciden';
+    if (this.clave().length < LARGO_MINIMO) return traducir('rec.alMenos', { n: LARGO_MINIMO });
+    if (this.clave2() && this.clave() !== this.clave2()) return traducir('rec.noCoinciden');
     return '';
   });
 
   private async llamar(ruta: string, cuerpo: Record<string, string>): Promise<Respuesta> {
     try {
       const r = await firstValueFrom(this.http.post<Respuesta>(`${environment.apiUrl}${ruta}`, cuerpo));
-      return r ?? { status: false, error: 'Respuesta inválida del servidor' };
+      return r ?? { status: false, error: traducir('rec.respuestaInvalida') };
     } catch (e: any) {
-      return { status: false, error: e?.error?.error ?? 'No se pudo contactar el servidor. Revisa tu conexión.' };
+      return { status: false, error: e?.error?.error ?? traducir('rec.sinServidor') };
     }
   }
 
@@ -102,7 +105,7 @@ export class RecuperarComponent {
             login: this.usuario().trim(),
             code: this.codigo().trim(),
           });
-          if (!r.status) return this.error.set(r.error ?? 'El código no es correcto');
+          if (!r.status) return this.error.set(r.error ?? traducir('rec.codigoMal'));
           this.aviso.set('');
           this.paso.set('clave');
           break;
@@ -112,7 +115,7 @@ export class RecuperarComponent {
             login: this.usuario().trim(),
             newPassword: this.clave(),
           });
-          if (!r.status) return this.error.set(r.error ?? 'No se pudo cambiar la contraseña');
+          if (!r.status) return this.error.set(r.error ?? traducir('rec.noCambio'));
           this.paso.set('listo');
           break;
         }
@@ -126,7 +129,7 @@ export class RecuperarComponent {
   async pedirCodigo(): Promise<void> {
     const r = await this.llamar('/sendResetCode', { login: this.usuario().trim() });
     if (!r.status) {
-      this.error.set(r.error ?? 'No se pudo enviar el código');
+      this.error.set(r.error ?? traducir('rec.noEnvio'));
       return;
     }
     this.correo.set(r.email ?? '');

@@ -6,6 +6,9 @@
  * leen de esta lista, así que agregar una sección es tocar un solo archivo.
  */
 
+import { traducir } from '../i18n/idioma.service';
+import { TEXTOS, type ClaveTexto } from '../i18n/textos';
+
 export interface NavItem {
   /** Identificador estable. Coincide con el `ModuleKey` de los permisos. */
   key: string;
@@ -215,4 +218,29 @@ export const ALL_NAV_ITEMS: NavItem[] = NAVIGATION.flatMap((section) => section.
 /** Busca la sección que corresponde a una ruta. */
 export function findNavItem(route: string): NavItem | undefined {
   return ALL_NAV_ITEMS.find((item) => route.startsWith(item.route));
+}
+
+/**
+ * El texto de una sección o una opción del menú en el idioma actual.
+ *
+ * Las claves salen del `key` de la opción (`nav.forms`, `nav.forms.desc`) y del
+ * título de la sección (`nav.sec.Datos`). Si a una le faltara su traducción se
+ * queda el texto en español escrito arriba, que nunca deja el menú vacío.
+ */
+export function textoDeNav(clave: string, respaldo: string): string {
+  return clave in TEXTOS ? traducir(clave as ClaveTexto) : respaldo;
+}
+
+/** La sección con títulos, etiquetas y descripciones ya traducidos. */
+export function traducirSeccion(section: NavSection): NavSection {
+  return {
+    title: section.title ? textoDeNav(`nav.sec.${section.title}`, section.title) : '',
+    items: section.items.map((item) => ({
+      ...item,
+      label: textoDeNav(`nav.${item.key}`, item.label),
+      description: item.description
+        ? textoDeNav(`nav.${item.key}.desc`, item.description)
+        : item.description,
+    })),
+  };
 }

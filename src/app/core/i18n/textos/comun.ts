@@ -18,4 +18,6 @@ export const textosComun = {
   'comun.idioma': ['Idioma', 'Language'],
   'comun.ver': ['Ver', 'Show'],
   'comun.ocultar': ['Ocultar', 'Hide'],
+  'comun.cerrarAviso': ['Cerrar aviso', 'Dismiss'],
+  'comun.volverArriba': ['Volver arriba', 'Back to top'],
 } as const;

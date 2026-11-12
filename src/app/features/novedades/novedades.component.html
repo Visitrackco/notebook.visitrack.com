@@ -1,19 +1,19 @@
 <section class="nv">
   <header>
-    <h1 class="nv__titulo">Novedades</h1>
-    <p class="nv__sub">Qué trae cada versión.</p>
+    <h1 class="nv__titulo">{{ 'nav.novedades' | t }}</h1>
+    <p class="nv__sub">{{ 'nov.sub' | t }}</p>
   </header>
 
   @if (cargando()) {
-    <p class="nv__sub">Cargando novedades…</p>
+    <p class="nv__sub">{{ 'nov.cargando' | t }}</p>
   } @else if (error()) {
-    <p class="nv__sub">No se pudieron cargar las novedades. Revisa tu conexión.</p>
-    <button type="button" class="nv__btn" (click)="cargar()">Reintentar</button>
+    <p class="nv__sub">{{ 'nov.error' | t }}</p>
+    <button type="button" class="nv__btn" (click)="cargar()">{{ 'comun.reintentar' | t }}</button>
   } @else {
     @for (n of novedades(); track n.id) {
       <article class="nv__tarjeta">
         <header>
-          <span class="nv__version">Versión {{ n.version }}</span>
+          <span class="nv__version">{{ 'perfil.version' | t }} {{ n.version }}</span>
           @if (n.titulo) {
             <h2 class="nv__nombre">{{ n.titulo }}</h2>
           }
@@ -31,7 +31,7 @@
               <iframe
                 class="nv__video"
                 [src]="marco(v.url)"
-                title="Video de la versión {{ n.version }}"
+                [title]="'nov.video' | t: { v: n.version }"
                 allow="fullscreen; picture-in-picture"
                 allowfullscreen
               ></iframe>
@@ -40,13 +40,13 @@
               <video class="nv__video" [src]="v.url" controls preload="metadata"></video>
             }
             @default {
-              <a [href]="v.url" target="_blank" rel="noopener">Ver el video</a>
+              <a [href]="v.url" target="_blank" rel="noopener">{{ 'nov.verVideo' | t }}</a>
             }
           }
         }
       </article>
     } @empty {
-      <p class="nv__sub">Todavía no hay novedades.</p>
+      <p class="nv__sub">{{ 'nov.ninguna' | t }}</p>
     }
   }
 </section>

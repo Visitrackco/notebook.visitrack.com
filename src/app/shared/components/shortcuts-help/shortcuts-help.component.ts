@@ -2,6 +2,7 @@ import { Component, inject } from '@angular/core';
 
 import { ShortcutsService } from '../../../core/services/shortcuts.service';
 import { IconComponent } from '../icon/icon.component';
+import { TPipe } from '../../../core/i18n/t.pipe';
 
 /**
  * El panel con los atajos disponibles.
@@ -17,15 +18,15 @@ import { IconComponent } from '../icon/icon.component';
 @Component({
   selector: 'vt-shortcuts-help',
   standalone: true,
-  imports: [IconComponent],
+  imports: [IconComponent, TPipe],
   template: `
     @if (shortcuts.helpOpen()) {
       <div class="help" (click)="close()">
         <div class="help__panel" (click)="$event.stopPropagation()">
           <header class="help__head">
-            <strong>Atajos de teclado</strong>
+            <strong>{{ 'atajo.titulo' | t }}</strong>
 
-            <button type="button" (click)="close()" aria-label="Cerrar">
+            <button type="button" (click)="close()" [attr.aria-label]="'comun.cerrar' | t">
               <vt-icon name="close" [size]="18" />
             </button>
           </header>
@@ -53,8 +54,7 @@ import { IconComponent } from '../icon/icon.component';
           </div>
 
           <footer class="help__foot">
-            Los atajos no funcionan mientras escribes en un campo, salvo los que
-            llevan <kbd>Ctrl</kbd>.
+            {{ 'atajo.pie1' | t }} <kbd>Ctrl</kbd>.
           </footer>
         </div>
       </div>

@@ -4,6 +4,7 @@ import { FirmaGuardada } from '../../../core/models/entities.model';
 import { FirmaRepository } from '../../../core/repositories/entity.repositories';
 import { UserRepository } from '../../../core/repositories/user.repository';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
+import { TPipe } from '../../../core/i18n/t.pipe';
 import { SignaturePadComponent } from '../../activities/form/fields/signature-pad/signature-pad.component';
 
 /**
@@ -20,21 +21,21 @@ import { SignaturePadComponent } from '../../activities/form/fields/signature-pa
 @Component({
   selector: 'vt-mis-firmas',
   standalone: true,
-  imports: [IconComponent, SignaturePadComponent],
+  imports: [IconComponent, SignaturePadComponent, TPipe],
   template: `
     <div class="firmas">
       @if (lista().length) {
         <ul class="firmas__lista">
           @for (f of lista(); track f.ID) {
             <li class="firmas__una">
-              <img [src]="f.url" [alt]="'Firma de ' + f.Name" />
+              <img [src]="f.url" [alt]="'firmas.firmaDe' | t: { n: f.Name }" />
               <span class="firmas__nombre" [title]="f.Name">{{ f.Name }}</span>
               <button
                 type="button"
                 class="firmas__quitar"
                 (click)="quitar(f)"
-                [attr.aria-label]="'Quitar la firma de ' + f.Name"
-                title="Quitar de mis firmas"
+                [attr.aria-label]="'firmas.quitarDe' | t: { n: f.Name }"
+                [title]="'firmas.quitar' | t"
               >
                 <vt-icon name="trash" [size]="14" />
               </button>
@@ -43,14 +44,13 @@ import { SignaturePadComponent } from '../../activities/form/fields/signature-pa
         </ul>
       } @else {
         <p class="firmas__nada">
-          Todavía no tienes firmas guardadas. Crea una y en cada actividad la
-          eliges en vez de volver a firmar.
+          {{ 'firmas.ninguna' | t }}
         </p>
       }
 
       <button type="button" class="firmas__nueva" (click)="dibujando.set(true)">
         <vt-icon name="pen" [size]="16" />
-        Nueva firma
+        {{ 'firmas.nueva' | t }}
       </button>
     </div>
 
