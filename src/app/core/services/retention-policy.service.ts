@@ -10,6 +10,7 @@ import { UploadApiService } from '../sync/upload-api.service';
 import { AuthService } from './auth.service';
 import { BinaryStorageService } from './binary-storage.service';
 import { ConnectivityService } from './connectivity.service';
+import { traducir } from '../i18n/idioma.service';
 
 /**
  * Unidad de la política de borrado del formulario.
@@ -263,10 +264,10 @@ export class RetentionPolicyService {
 function unitName(unit: number, value: number): string {
   const one = value === 1;
 
-  if (unit === MAINT_UNIT.MINUTES) return one ? 'minuto' : 'minutos';
-  if (unit === MAINT_UNIT.HOURS) return one ? 'hora' : 'horas';
+  if (unit === MAINT_UNIT.MINUTES) return traducir(one ? 'ret.minuto' : 'ret.minutos');
+  if (unit === MAINT_UNIT.HOURS) return traducir(one ? 'ret.hora' : 'ret.horas');
 
-  return one ? 'día' : 'días';
+  return traducir(one ? 'ret.dia' : 'ret.dias');
 }
 
 /**
@@ -278,14 +279,14 @@ function unitName(unit: number, value: number): string {
 export function timeLeft(expires: Date): string {
   const ms = expires.getTime() - Date.now();
 
-  if (ms <= 0) return 'se retirará en la próxima limpieza';
+  if (ms <= 0) return traducir('ret.proxima');
 
   const minutes = Math.round(ms / 60_000);
-  if (minutes < 60) return minutes <= 1 ? 'se retira en menos de un minuto' : `se retira en ${minutes} min`;
+  if (minutes < 60) return minutes <= 1 ? traducir('ret.menosMin') : traducir('ret.enMin', { n: minutes });
 
   const hours = Math.round(minutes / 60);
-  if (hours < 24) return hours === 1 ? 'se retira en 1 hora' : `se retira en ${hours} horas`;
+  if (hours < 24) return hours === 1 ? traducir('ret.enHora') : traducir('ret.enHoras', { n: hours });
 
   const days = Math.round(hours / 24);
-  return days === 1 ? 'se retira mañana' : `se retira en ${days} días`;
+  return days === 1 ? traducir('ret.manana') : traducir('ret.enDias', { n: days });
 }

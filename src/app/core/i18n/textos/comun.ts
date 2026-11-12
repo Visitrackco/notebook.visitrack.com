@@ -21,6 +21,21 @@ export const textosComun = {
   'comun.cerrarAviso': ['Cerrar aviso', 'Dismiss'],
   'comun.volverArriba': ['Volver arriba', 'Back to top'],
 
+  // ── Retiro de actividades (RetentionPolicyService) ────────────────────────
+  'ret.minuto': ['minuto', 'minute'],
+  'ret.minutos': ['minutos', 'minutes'],
+  'ret.hora': ['hora', 'hour'],
+  'ret.horas': ['horas', 'hours'],
+  'ret.dia': ['día', 'day'],
+  'ret.dias': ['días', 'days'],
+  'ret.proxima': ['se retirará en la próxima limpieza', 'will be removed at the next cleanup'],
+  'ret.menosMin': ['se retira en menos de un minuto', 'removed in less than a minute'],
+  'ret.enMin': ['se retira en {n} min', 'removed in {n} min'],
+  'ret.enHora': ['se retira en 1 hora', 'removed in 1 hour'],
+  'ret.enHoras': ['se retira en {n} horas', 'removed in {n} hours'],
+  'ret.manana': ['se retira mañana', 'removed tomorrow'],
+  'ret.enDias': ['se retira en {n} días', 'removed in {n} days'],
+
   // ── Cámara (compartido por fotos y escáner) ───────────────────────────────
   'cam.https': [
     'La cámara solo funciona en una conexión segura (HTTPS). Abre Visitrack desde su dirección https:// y vuelve a intentarlo.',
