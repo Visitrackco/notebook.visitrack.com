@@ -336,6 +336,14 @@ export function valorDeHijos(
       return existen.filter((h) => h.estado === ref.estado).length;
     case 'todos':
       return existen.length > 0 && existen.every((h) => h.estado === ref.estado) ? 'Sí' : 'No';
+
+    // Alguno o ninguno de los que existen está en ese estado. Sin hijos no se
+    // cumple ninguna de las dos, igual que «todos»: quien escribe «ningún hijo
+    // está rechazado» está pensando en hijos que existen.
+    case 'alguno':
+      return existen.some((h) => h.estado === ref.estado) ? 'Sí' : 'No';
+    case 'ninguno':
+      return existen.length > 0 && !existen.some((h) => h.estado === ref.estado) ? 'Sí' : 'No';
     default:
       return undefined;
   }

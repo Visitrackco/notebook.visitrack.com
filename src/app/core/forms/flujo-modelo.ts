@@ -3477,6 +3477,9 @@ export const PREFIJO_HIJO = 'HIJO:';
  * - `HIJOS@estado:<id>` — cuántos hijos están en ese estado;
  * - `HIJOS@todos:<id>` — «Sí» si todos los hijos que existen están en ese
  *   estado (y hay al menos uno), «No» si no.
+ * - `HIJOS@alguno:<id>` — «Sí» si alguno de los que existen está en ese estado;
+ * - `HIJOS@ninguno:<id>` — «Sí» si hay al menos un hijo y ninguno está en ese
+ *   estado. Sin hijos, ni `todos` ni `alguno` ni `ninguno` se cumplen.
  *
  * Con `HIJOS:<fid>@…` se cuentan solo los hijos de ese formulario —el `fid`
  * del campo vinculado—, para un padre que tiene vinculados a varios.
