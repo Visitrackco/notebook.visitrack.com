@@ -8,6 +8,7 @@ import { BinaryData, BinaryResource, BinaryState, BinaryType } from '../models/s
 import { BinaryResourceRepository } from '../repositories/binary.repository';
 import { DataRevisionService } from '../sync/data-revision.service';
 import { AuthService } from './auth.service';
+import { ExifDeFoto, leerDatosDelArchivo, leerExif } from './datos-del-archivo';
 import { SettingsRepository } from '../repositories/settings.repository';
 import {
   IMAGE_QUALITY_DEFAULT,
@@ -48,6 +49,12 @@ export interface SaveBinaryInput {
   replaces?: string;
   /** De dónde salió: `camara`, `galeria` o `firma`. Ver `BinaryResource.Origen`. */
   origen?: string;
+  /**
+   * El EXIF de la foto, leído del archivo elegido antes de editarlo o
+   * reducirlo. Sin indicar (`undefined`) y con origen `galeria`, se lee del
+   * propio `blob`; `null` es que no hay.
+   */
+  exif?: ExifDeFoto | null;
 }
 
 /**
@@ -131,6 +138,12 @@ export class BinaryStorageService {
 
     if (input.replaces) await this.remove(input.replaces);
 
+    // Hora y lugar: el EXIF si es de galería y lo trae (antes de reducir la
+    // foto, que lo pierde); si no, la ubicación del navegador.
+    const exif =
+      input.exif !== undefined ? input.exif : input.origen === 'galeria' ? await leerExif(input.blob) : null;
+    const datos = await leerDatosDelArchivo(exif);
+
     /**
      * Las fotografías se reducen antes de guardarse.
      *
@@ -145,7 +158,6 @@ export class BinaryStorageService {
 
     const guid = nuevoGuid().slice(0, 49);
     const bytes = await aBytes(blob);
-    const now = Date.now();
 
     await this.db.transaction('BinariesData', 'readwrite', (tx) =>
       this.db.request(
@@ -170,9 +182,10 @@ export class BinaryStorageService {
       Uploaded: 0,
       AnswerGUID: input.answerGuid,
       IDField: input.fieldId,
-      Lat: '',
-      Lng: '',
-      tim: String(now),
+      Lat: String(datos.lat),
+      Lng: String(datos.lng),
+      tim: String(datos.tim),
+      tph: String(datos.tph),
       UserID: user.UserID,
       IsSync: 0,
       Ext: input.ext,
@@ -210,12 +223,7 @@ export class BinaryStorageService {
     return {
       bin: guid,
       sig: input.sig ?? '',
-      lat: '',
-      lng: '',
-      acc: 0,
-      pro: 'gps',
-      tim: now,
-      tph: now,
+      ...datos,
     };
   }
 

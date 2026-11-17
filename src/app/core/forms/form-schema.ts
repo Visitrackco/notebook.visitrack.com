@@ -283,8 +283,9 @@ export interface GeoValue {
 export interface FileValue {
   bin: string;
   sig: string;
-  lat: string;
-  lng: string;
+  /** Grados decimales, o `''` sin ubicación. Ver `datos-del-archivo.ts`. */
+  lat: number | string;
+  lng: number | string;
   acc: number;
   pro: string;
   tim: number;

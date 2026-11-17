@@ -16,6 +16,11 @@ import {
   BinaryValue,
 } from '../../../../../core/services/binary-storage.service';
 import { FILE_ACCEPT, checkFile } from '../../../../../core/services/file-policy';
+import {
+  ExifDeFoto,
+  adelantarUbicacion,
+  leerExif,
+} from '../../../../../core/services/datos-del-archivo';
 import { ConfirmDialogComponent } from '../../../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { IconComponent } from '../../../../../shared/components/icon/icon.component';
 import { AudioPlayerComponent } from '../audio-player/audio-player.component';
@@ -342,6 +347,8 @@ export class BinaryFieldComponent implements OnDestroy {
   start(): void {
     if (this.readOnly() || this.busy()) return;
     this.error.set('');
+    // La ubicación empieza a pedirse mientras se toma la foto, se firma o se graba.
+    adelantarUbicacion();
 
     switch (this.fty()) {
       case 'picture':
@@ -442,6 +449,7 @@ export class BinaryFieldComponent implements OnDestroy {
    * abrirlo semanas después, cuando ya nadie recuerda qué se grabó.
    */
   private async acceptFile(file: File): Promise<void> {
+    adelantarUbicacion();
     const expected = this.config().drop;
 
     if (expected !== '*' && expected !== '' && !file.type.startsWith(expected)) {
@@ -481,6 +489,9 @@ export class BinaryFieldComponent implements OnDestroy {
     // Una imagen pasa por el editor, venga de donde venga: recortar y marcar es
     // lo que la convierte en evidencia.
     if (this.isImage()) {
+      // El EXIF (fecha y GPS de la foto) se lee del archivo elegido: el que
+      // sale del editor ya no lo trae.
+      this.exifPendiente = await leerExif(file);
       this.pendingImage.set(file);
       this.origenPendiente = 'galeria';
       this.overlay.set('editor');
@@ -496,8 +507,12 @@ export class BinaryFieldComponent implements OnDestroy {
    */
   private origenPendiente = '';
 
+  /** El EXIF de la foto de galería que está en el editor; `null` en cámara. */
+  private exifPendiente: ExifDeFoto | null = null;
+
   /** La cámara entregó una foto: pasa al editor. */
   onCaptured(blob: Blob): void {
+    this.exifPendiente = null;
     this.pendingImage.set(blob);
     this.origenPendiente = 'camara';
     this.overlay.set('editor');
@@ -507,7 +522,8 @@ export class BinaryFieldComponent implements OnDestroy {
   async onEdited(blob: Blob): Promise<void> {
     this.overlay.set('none');
     this.pendingImage.set(null);
-    await this.store(blob, '', 'jpg', this.origenPendiente);
+    await this.store(blob, '', 'jpg', this.origenPendiente, this.exifPendiente);
+    this.exifPendiente = null;
   }
 
   /** La firma terminó. */
@@ -543,7 +559,13 @@ export class BinaryFieldComponent implements OnDestroy {
    * escribir, para no dejar contenido huérfano ocupando espacio que nadie va a
    * reclamar.
    */
-  private async store(blob: Blob, sig: string, ext: string, origen = ''): Promise<void> {
+  private async store(
+    blob: Blob,
+    sig: string,
+    ext: string,
+    origen = '',
+    exif?: ExifDeFoto | null,
+  ): Promise<void> {
     this.busy.set(true);
     this.error.set('');
 
@@ -557,6 +579,7 @@ export class BinaryFieldComponent implements OnDestroy {
         sig,
         replaces: this.value()?.bin,
         origen,
+        exif,
       });
 
       this.valueChange.emit(value);

@@ -195,7 +195,13 @@ export interface BinaryResource {
 
   Lat: string;
   Lng: string;
+  /** Milisegundos epoch del momento de adjuntarlo. */
   tim: string;
+  /**
+   * Milisegundos epoch de cuando se tomó la foto: el EXIF en una de galería;
+   * si no, el mismo `tim`. Los registros viejos no lo traen.
+   */
+  tph?: string;
 
   /** Bandera heredada: 1 cuando el servidor lo recibió. */
   IsSync: number;
