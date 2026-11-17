@@ -18,7 +18,16 @@ import { Survey, SurveyAnswer } from '../models/entities.model';
 import { SurveyRepository } from '../repositories/entity.repositories';
 import { SurveyAnswerRepository } from '../repositories/survey-answer.repository';
 import { ActivityService } from '../services/activity.service';
-import { Campo, Encargo, EncargoDeHijo, PREFIJO_HIJO, PREFIJO_PADRE } from './flujo-modelo';
+import {
+  Campo,
+  Encargo,
+  EncargoDeHijo,
+  HIJOS_VISTOS,
+  PREFIJO_HIJO,
+  PREFIJO_PADRE,
+  SEPARADOR_DE_CAMPOS_VISTOS,
+} from './flujo-modelo';
+import { camposVistosDeHijos, mismosHijos } from './flujo-motor';
 import { Injector } from '@angular/core';
 import { FlujoSinPantallaService } from './flujo-sin-pantalla.service';
 import { FormField, parseAnswerFields, parseQuestions } from './form-schema';
@@ -63,7 +72,16 @@ export class ParientesService {
       );
     }
 
-    return partes.join(';');
+    /*
+     * Y detrás, la huella corta de cada campo respondido de cada hijo: es lo
+     * que deja a `HIJOS:<fid>:<CAMPO>@cambio` saber si **ese** campo cambió
+     * desde que el padre miró. Se arma con los mismos valores que ve el
+     * motor, y con la función del motor, para que el teléfono huellee igual.
+     */
+    const deFuera: LoDeFuera = { valores: {}, campos: {} };
+    await this.deLosHijos(answer, survey, deFuera);
+
+    return partes.join(';') + SEPARADOR_DE_CAMPOS_VISTOS + camposVistosDeHijos(deFuera.valores);
   }
 
   /** Apunta en el padre cómo están sus hijos ahora mismo. */
@@ -100,8 +118,12 @@ export class ParientesService {
 
     // Nada cambió desde la última vez que el padre miró: no hay a qué
     // reaccionar. Es también lo que corta el ida y vuelta cuando el padre
-    // le escribe al hijo y eso vuelve a avisarle.
-    if (huella === String(padre.HijosVistos ?? '')) return;
+    // le escribe al hijo y eso vuelve a avisarle. Una huella de antes, sin
+    // la parte de campos, solo se completa.
+    if (mismosHijos(huella, String(padre.HijosVistos ?? ''))) {
+      if (huella !== String(padre.HijosVistos ?? '')) await this.answers.update(padre.ID, { HijosVistos: huella });
+      return;
+    }
 
     // Se evalúa sin pantalla y se hace todo lo que decida; la huella queda
     // apuntada en la misma escritura. Sin reglas de ese momento solo se
@@ -135,6 +157,19 @@ export class ParientesService {
       await this.deLosHijos(answer, survey, salida);
     } catch (error) {
       console.warn('[flujo] no se pudieron leer los hijos', error);
+    }
+
+    /*
+     * Lo que el padre vio de sus hijos la última vez, para
+     * `HIJOS:<fid>:<CAMPO>@cambio`. Se lee de la base y no de `answer`: la
+     * pantalla puede tener una copia de antes de apuntar la huella, y con
+     * ella el mismo cambio se vería dos veces.
+     */
+    try {
+      const fresca = answer.GUID ? await this.answers.findByGuid(String(answer.GUID)) : null;
+      salida.valores[HIJOS_VISTOS] = String((fresca ?? answer).HijosVistos ?? '');
+    } catch {
+      salida.valores[HIJOS_VISTOS] = String(answer.HijosVistos ?? '');
     }
 
     return salida;
@@ -171,6 +206,10 @@ export class ParientesService {
       salida.campos[`${prefijo}@guardado`] = { apiId: `${prefijo}@guardado`, fty: 'text' };
 
       if (!hijo) continue;
+
+      // Cuándo se tocó, para `HIJOS:<fid>:<CAMPO>@ultimo`.
+      salida.valores[`${prefijo}@actualizado`] = String(hijo.UpdatedOn ?? '');
+      salida.campos[`${prefijo}@actualizado`] = { apiId: `${prefijo}@actualizado`, fty: 'text' };
 
       const suyo = await this.surveys.findBySurveyId(String(hijo.SurveyID));
       this.volcar(hijo, suyo, `${prefijo}:`, salida);

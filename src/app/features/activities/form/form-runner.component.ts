@@ -69,6 +69,7 @@ import { MasterDetailSourceService } from '../../../core/forms/master-detail-sou
 import {
   comoLoGuarda,
   datoDeLaRuta,
+  mismosHijos,
   normalizar,
   textoDeLaRespuesta,
 } from '../../../core/forms/flujo-motor';
@@ -2606,6 +2607,14 @@ export class FormRunnerComponent {
     try {
       const huella = await this.parientes.huellaDeHijos(answer, survey);
       if (huella === String(answer.HijosVistos ?? '')) return;
+
+      // Los mismos hijos, con una huella de antes sin la parte de campos:
+      // solo se completa, sin reaccionar.
+      if (mismosHijos(huella, String(answer.HijosVistos ?? ''))) {
+        await this.answers.update(answer.ID, { HijosVistos: huella });
+        return;
+      }
+
       if (this.engine() !== engine) return;
 
       engine.correrHijo();

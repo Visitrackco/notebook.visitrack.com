@@ -48,6 +48,8 @@ import {
   PREFIJO_FORMULARIO,
   PREFIJO_HIJO,
   PREFIJO_HIJOS,
+  HIJOS_VISTOS,
+  SEPARADOR_DE_CAMPOS_VISTOS,
   TIPOS_VINCULADOS,
   EstadoDelTimer,
   TimerDeFlujo,
@@ -308,10 +310,7 @@ export function valorDeHijos(
     (c) => esCampoVinculado(c) && !c.esPagina && (!ref.fid || String(c.fid ?? '').trim() === ref.fid),
   );
 
-  const esSi = (v: unknown): boolean => {
-    const t = String(v ?? '').trim().toLowerCase();
-    return t === 'sí' || t === 'si' || t === 'true' || t === '1';
-  };
+  const esSi = esSiDeHijo;
 
   const hijos = vinculados.map((c) => {
     const llave = `${PREFIJO_HIJO}${c.apiId}`;
@@ -340,6 +339,357 @@ export function valorDeHijos(
     default:
       return undefined;
   }
+}
+
+/** «Sí», como lo deja quien llama en `HIJO:<v>@existe` y `@guardado`. */
+function esSiDeHijo(v: unknown): boolean {
+  const t = String(v ?? '').trim().toLowerCase();
+  return t === 'sí' || t === 'si' || t === 'true' || t === '1';
+}
+
+// -- Campos de los hijos -----------------------------------------------------
+
+/**
+ * Lo que se le puede preguntar a un campo de los hijos:
+ * `HIJOS:<fid>:<CAMPO>@<agregado>`. Ver `PREFIJO_HIJOS`.
+ */
+export const AGREGADOS_DE_HIJOS: readonly string[] = [
+  'alguno',
+  'todos',
+  'ninguno',
+  'veces',
+  'ultimo',
+  'suma',
+  'promedio',
+  'maximo',
+  'minimo',
+  'cuenta',
+  'cambio',
+];
+
+/**
+ * Los que no son un número sino un «en cuántos se cumple»: la condición se
+ * evalúa **hijo por hijo**, igual que una condición sobre una columna de una
+ * tabla se evalúa fila por fila.
+ */
+export const CUANTIFICADORES_DE_HIJOS: readonly string[] = ['alguno', 'todos', 'ninguno'];
+
+/** Una pregunta sobre un campo de los hijos, ya desarmada. */
+export interface ReferenciaCampoDeHijos {
+  /** Solo los hijos de este formulario; vacío, los de todos los vinculados. */
+  fid: string;
+  /** El `apiId` del campo en el formulario hijo. */
+  campo: string;
+  /** Uno de `AGREGADOS_DE_HIJOS`. */
+  agregado: string;
+  /** El valor que se cuenta con `veces`, tal como se escribió. */
+  valor: string;
+}
+
+/**
+ * Desarma `HIJOS:<fid>:<CAMPO>@<agregado>` y `HIJOS:<fid>:<CAMPO>@veces=<valor>`.
+ *
+ * `null` si no es una de estas: sin campo, sin agregado conocido, o con
+ * `veces` sin valor (contar «cuántos tienen nada» no significa nada). Se
+ * distingue de `HIJOS:<fid>@…` por los dos puntos antes de la arroba: un
+ * `fid` no los lleva.
+ */
+export function referenciaCampoDeHijos(apiId: string): ReferenciaCampoDeHijos | null {
+  if (!apiId.startsWith(PREFIJO_HIJOS + ':')) return null;
+
+  const cuerpo = apiId.slice(PREFIJO_HIJOS.length + 1);
+  const arroba = cuerpo.indexOf('@');
+  if (arroba < 0) return null;
+
+  const antes = cuerpo.slice(0, arroba);
+  const puntos = antes.indexOf(':');
+  if (puntos < 0) return null;
+
+  const fid = antes.slice(0, puntos).trim();
+  const campo = antes.slice(puntos + 1).trim();
+  if (!campo) return null;
+
+  let agregado = cuerpo.slice(arroba + 1);
+  let valor = '';
+  const igual = agregado.indexOf('=');
+
+  if (igual >= 0) {
+    valor = agregado.slice(igual + 1).trim();
+    agregado = agregado.slice(0, igual);
+  }
+
+  agregado = agregado.trim().toLowerCase();
+
+  if (!AGREGADOS_DE_HIJOS.includes(agregado)) return null;
+  if (agregado === 'veces' ? !valor : igual >= 0) return null;
+
+  return { fid, campo, agregado, valor };
+}
+
+/** Un hijo que existe, con lo que respondió en el campo por el que se pregunta. */
+interface HijoConCampo {
+  vinculado: string;
+  valor: unknown;
+  campo?: Campo;
+  guardado: boolean;
+  actualizado: string;
+}
+
+/**
+ * Los hijos que existen de los vinculados de ese formulario, en el orden de
+ * los campos, con lo que cada uno respondió en el campo pedido.
+ */
+function hijosConElCampo(
+  ref: ReferenciaCampoDeHijos,
+  valores: Record<ApiId, unknown>,
+  campos: Record<ApiId, Campo>,
+): HijoConCampo[] {
+  const salida: HijoConCampo[] = [];
+
+  for (const c of Object.values(campos)) {
+    if (!esCampoVinculado(c) || c.esPagina) continue;
+    if (ref.fid && String(c.fid ?? '').trim() !== ref.fid) continue;
+
+    const raiz = `${PREFIJO_HIJO}${c.apiId}`;
+    if (!esSiDeHijo(valores[`${raiz}@existe`])) continue;
+
+    const llave = `${raiz}:${ref.campo}`;
+
+    salida.push({
+      vinculado: c.apiId,
+      valor: valores[llave],
+      campo: campos[llave],
+      guardado: esSiDeHijo(valores[`${raiz}@guardado`]),
+      actualizado: String(valores[`${raiz}@actualizado`] ?? '').trim(),
+    });
+  }
+
+  return salida;
+}
+
+/**
+ * La definición del campo del hijo, para comparar con sus opciones.
+ *
+ * Todos los hijos de un mismo formulario tienen el mismo campo, así que vale
+ * la del primero que la traiga.
+ */
+function campoDeLosHijos(
+  ref: ReferenciaCampoDeHijos,
+  campos: Record<ApiId, Campo>,
+): Campo | undefined {
+  for (const c of Object.values(campos)) {
+    if (!esCampoVinculado(c) || c.esPagina) continue;
+    if (ref.fid && String(c.fid ?? '').trim() !== ref.fid) continue;
+
+    const suyo = campos[`${PREFIJO_HIJO}${c.apiId}:${ref.campo}`];
+    if (suyo) return suyo;
+  }
+
+  return undefined;
+}
+
+/**
+ * ¿Lo respondido es ese valor? Por el ID de la opción o del ítem, o por su
+ * texto, sin distinguir mayúsculas. Una casilla con varias marcadas lo tiene
+ * si alguna de las marcadas lo es.
+ */
+function tieneElValor(valor: unknown, campo: Campo | undefined, buscado: string): boolean {
+  if (!tieneRespuesta(valor)) return false;
+
+  const llave = llaveDeItem(buscado);
+  const texto = normalizar(buscado, 'insensible');
+  const partes = Array.isArray(valor) ? valor : [valor];
+
+  return partes.some(
+    (p) =>
+      llaveDeItem(idDeItem(p)) === llave ||
+      normalizar(comoTexto(p, campo), 'insensible') === texto,
+  );
+}
+
+/**
+ * La fecha de un hijo para ordenarlos: como momento si se entiende, si no
+ * como texto. Lo que no trae fecha va el primero.
+ */
+function compararActualizados(a: string, b: string): number {
+  const ma = a ? aMomento(a) : null;
+  const mb = b ? aMomento(b) : null;
+
+  if (ma !== null && mb !== null) return ma - mb;
+
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/** Lo que vale una pregunta sobre un campo de los hijos. Ver `PREFIJO_HIJOS`. */
+export function valorDeCampoDeHijos(
+  ref: ReferenciaCampoDeHijos,
+  valores: Record<ApiId, unknown>,
+  campos: Record<ApiId, Campo>,
+): unknown {
+  const hijos = hijosConElCampo(ref, valores, campos);
+
+  switch (ref.agregado) {
+    // Lo que respondió cada uno; la condición se evalúa hijo por hijo en
+    // `evaluarCondicion`. Leído suelto —en una fórmula, en la traza— es la
+    // lista, como la columna de una tabla.
+    case 'alguno':
+    case 'todos':
+    case 'ninguno':
+      return hijos.map((h) => h.valor);
+
+    case 'veces':
+      return hijos.filter((h) => tieneElValor(h.valor, h.campo, ref.valor)).length;
+
+    /*
+     * El del hijo guardado más reciente.
+     *
+     * Solo los guardados: uno a medio diligenciar no «respondió» todavía. Con
+     * la misma fecha, o sin fecha, gana el último en el orden de los campos.
+     */
+    case 'ultimo': {
+      let elegido: HijoConCampo | null = null;
+
+      for (const h of hijos) {
+        if (!h.guardado) continue;
+        if (!elegido || compararActualizados(h.actualizado, elegido.actualizado) >= 0) elegido = h;
+      }
+
+      return elegido?.valor;
+    }
+
+    case 'cambio':
+      return cambioEnLosHijos(ref, hijos, valores) ? 'Sí' : 'No';
+
+    default: {
+      const numeros: number[] = [];
+      let respondidos = 0;
+
+      for (const h of hijos) {
+        if (!tieneRespuesta(h.valor)) continue;
+
+        respondidos++;
+
+        const n = aNumero(comoTexto(h.valor, h.campo));
+        if (n !== null) numeros.push(n);
+      }
+
+      return cuentaDeNumeros(ref.agregado, numeros, respondidos);
+    }
+  }
+}
+
+/**
+ * ¿Ese campo cambió en algún hijo desde que el padre miró?
+ *
+ * Se compara la huella de lo que responde cada hijo ahora con la que quedó
+ * en `HIJOS_VISTOS`. Un hijo que no estaba en la huella vieja se compara
+ * contra vacío: nació y respondió, eso es un cambio.
+ *
+ * Sin la parte de campos en la huella vieja —el padre nunca miró con esto, o
+ * se apuntó con una versión de antes— **no hay cambio**: esta primera vez
+ * solo se apunta. Si no, actualizar la app dispararía de golpe todas las
+ * reglas de «cambia» de todos los padres.
+ */
+function cambioEnLosHijos(
+  ref: ReferenciaCampoDeHijos,
+  hijos: HijoConCampo[],
+  valores: Record<ApiId, unknown>,
+): boolean {
+  const vistos = camposVistosDeLaHuella(String(valores[HIJOS_VISTOS] ?? ''));
+  if (!vistos) return false;
+
+  return hijos.some(
+    (h) => huellaDeValorDeHijo(h.valor) !== (vistos[`${h.vinculado}:${ref.campo}`] ?? ''),
+  );
+}
+
+/**
+ * El texto con el que se huellea una respuesta: el ID de la opción o del
+ * ítem si lo tiene, si no lo que se ve. Un número entero sin decimales,
+ * para que `5` y `5.0` sean lo mismo en el navegador y en el teléfono.
+ */
+function textoParaHuella(valor: unknown): string {
+  if (!tieneRespuesta(valor)) return '';
+
+  if (Array.isArray(valor)) return valor.map((v) => textoParaHuella(v)).join(',');
+
+  if (typeof valor === 'object') return idDeItem(valor) || comoTexto(valor);
+
+  if (typeof valor === 'number') return Number.isFinite(valor) ? String(valor) : '';
+
+  return String(valor).trim();
+}
+
+/**
+ * La huella corta de una respuesta: vacía si no hay respuesta, y si la hay
+ * el mismo djb2 en base 36 que usa la huella de los hijos.
+ */
+export function huellaDeValorDeHijo(valor: unknown): string {
+  const texto = textoParaHuella(valor);
+  if (!texto) return '';
+
+  let h = 5381;
+  for (let i = 0; i < texto.length; i++) h = ((h * 33) ^ texto.charCodeAt(i)) >>> 0;
+
+  return h.toString(36);
+}
+
+/**
+ * La parte de campos de `HijosVistos`: `vinculado:CAMPO=huella`, separados
+ * por `;` y en orden, de cada campo **respondido** de cada hijo.
+ *
+ * Se arma con los mismos valores que recibe el motor —los `HIJO:<v>:<CAMPO>`
+ * que deja quien llama—, así que el web y el teléfono huellean igual.
+ */
+export function camposVistosDeHijos(valores: Record<ApiId, unknown>): string {
+  const partes: string[] = [];
+
+  for (const llave of Object.keys(valores)) {
+    const ref = referenciaHijo(llave);
+    if (!ref || !ref.resto.startsWith(':')) continue;
+
+    const campo = ref.resto.slice(1);
+    if (!campo || campo === 'estado' || campo.includes('@') || campo.includes(':')) continue;
+
+    const huella = huellaDeValorDeHijo(valores[llave]);
+    if (huella) partes.push(`${ref.vinculado}:${campo}=${huella}`);
+  }
+
+  return partes.sort().join(';');
+}
+
+/**
+ * Lee la parte de campos de un `HijosVistos`. `null` si no la tiene: es una
+ * huella de antes, o el padre todavía no ha mirado.
+ */
+export function camposVistosDeLaHuella(huella: string): Record<string, string> | null {
+  const corte = huella.indexOf(SEPARADOR_DE_CAMPOS_VISTOS);
+  if (corte < 0) return null;
+
+  const salida: Record<string, string> = {};
+
+  for (const parte of huella.slice(corte + 1).split(';')) {
+    const igual = parte.lastIndexOf('=');
+    if (igual <= 0) continue;
+    salida[parte.slice(0, igual)] = parte.slice(igual + 1);
+  }
+
+  return salida;
+}
+
+/**
+ * ¿Dos huellas de hijos dicen lo mismo? Se mira solo la parte de siempre:
+ * la de campos sale de las mismas respuestas, así que no puede cambiar sin
+ * que cambie la otra. Es lo que deja pasar sin reaccionar una huella vieja
+ * que solo difiere en que todavía no tenía la parte de campos.
+ */
+export function mismosHijos(a: string, b: string): boolean {
+  const base = (h: string): string => {
+    const corte = h.indexOf(SEPARADOR_DE_CAMPOS_VISTOS);
+    return corte < 0 ? h : h.slice(0, corte);
+  };
+
+  return base(String(a ?? '')) === base(String(b ?? ''));
 }
 
 export function referenciaDetalle(apiId: string): ReferenciaDetalle | null {
@@ -897,6 +1247,11 @@ export function leerValor(
 
     return datoDeLaRuta(datos, apiId.slice(PREFIJO_RESPUESTA.length));
   }
+
+  // Un campo de los hijos: alguno, todos, la suma, el último, si cambió.
+  // Va antes que la pregunta por los hijos, que también empieza por `HIJOS:`.
+  const deLosHijos = referenciaCampoDeHijos(apiId);
+  if (deLosHijos) return valorDeCampoDeHijos(deLosHijos, valores, campos);
 
   // Y lo que se pregunta de todos los hijos a la vez: cuántos hay, cuántos
   // están en un estado. Se cuenta sobre lo que quien llama dejó por hijo.
@@ -1735,10 +2090,41 @@ function evaluarCondicion(
     }
   }
 
+  /*
+   * Un campo de los hijos se responde **hijo por hijo**, como una columna de
+   * una tabla fila por fila: «alguno», «todos» o «ninguno» de los hijos que
+   * existen. Sin hijos no se cumple nada, ni siquiera «ninguno», por lo mismo
+   * que una tabla vacía.
+   */
+  const deLosHijos = referenciaCampoDeHijos(cond.campo);
+
+  if (deLosHijos && CUANTIFICADORES_DE_HIJOS.includes(deLosHijos.agregado)) {
+    const hijos = hijosConElCampo(deLosHijos, valores, campos);
+    if (!hijos.length) return false;
+
+    const suya = conLaReferenciaResuelta(cond, valores, campos);
+    if (suya === null) return false;
+
+    const cumplen = hijos.map((h) => comparar(suya, h.valor, h.campo));
+
+    switch (deLosHijos.agregado) {
+      case 'ninguno':
+        return !cumplen.some((x) => x);
+      case 'todos':
+        return cumplen.every((x) => x);
+      default:
+        return cumplen.some((x) => x);
+    }
+  }
+
   const resuelta = conLaReferenciaResuelta(cond, valores, campos);
   if (resuelta === null) return false;
 
-  return comparar(resuelta, leerValor(cond.campo, valores, campos), campos[cond.campo]);
+  // El último de los hijos se compara con las opciones de su campo.
+  const campo = campos[cond.campo]
+    ?? (deLosHijos?.agregado === 'ultimo' ? campoDeLosHijos(deLosHijos, campos) : undefined);
+
+  return comparar(resuelta, leerValor(cond.campo, valores, campos), campo);
 }
 
 /**

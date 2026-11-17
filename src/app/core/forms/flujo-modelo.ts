@@ -3480,8 +3480,42 @@ export const PREFIJO_HIJO = 'HIJO:';
  *
  * Con `HIJOS:<fid>@…` se cuentan solo los hijos de ese formulario —el `fid`
  * del campo vinculado—, para un padre que tiene vinculados a varios.
+ *
+ * Y con `HIJOS:<fid>:<CAMPO>@<agregado>` se pregunta por **un campo de los
+ * hijos** de ese formulario (el `apiId` del campo en el formulario hijo):
+ *
+ * - `@alguno`, `@todos`, `@ninguno` — la condición se evalúa hijo por hijo,
+ *   con su comparador y su valor, y cuenta si se cumple en alguno, en todos o
+ *   en ninguno de los hijos que existen. Sin hijos no se cumple nada;
+ * - `@veces=<valor>` — cuántos hijos tienen ese valor (por ID de la opción o
+ *   del ítem, o por su texto);
+ * - `@ultimo` — lo que respondió el hijo guardado más reciente;
+ * - `@suma`, `@promedio`, `@maximo`, `@minimo`, `@cuenta` — sobre los hijos
+ *   que lo respondieron;
+ * - `@cambio` — «Sí» si en algún hijo ese campo vale distinto de lo que el
+ *   padre vio la última vez (ver `HIJOS_VISTOS`), «No» si no.
+ *
+ * Con `fid` vacío —`HIJOS::CAMPO@…`— se miran los hijos de todos los
+ * vinculados. Los valores salen de lo que quien llama dejó en `valores` con
+ * `HIJO:<vinculado>:<CAMPO>`, igual que para un solo hijo.
  */
 export const PREFIJO_HIJOS = 'HIJOS';
+
+/**
+ * Lo que el padre vio de sus hijos la última vez: su `HijosVistos` **antes**
+ * de apuntar el de ahora.
+ *
+ * Quien llama lo deja en `valores` con esta llave. Es una huella en dos
+ * partes separadas por un salto de línea: la de siempre (qué hija, en qué
+ * estado, un resumen de lo respondido) y, detrás, una huella corta de cada
+ * campo respondido de cada hijo (`camposVistosDeHijos`). Con la segunda,
+ * `HIJOS:<fid>:<CAMPO>@cambio` sabe si **ese** campo cambió, y una acción de
+ * una sola vez no se repite cada vez que cambia otra cosa del hijo.
+ */
+export const HIJOS_VISTOS = 'HIJOS@vistos';
+
+/** Lo que separa, en `HijosVistos`, la huella de siempre de la de los campos. */
+export const SEPARADOR_DE_CAMPOS_VISTOS = '\n';
 
 /** Los tipos de campo que apuntan a una actividad hija. */
 export const TIPOS_VINCULADOS: readonly string[] = ['form', 'linkedform', 'webform'];
