@@ -1452,6 +1452,18 @@ export function evaluar(flujo: Flujo, contexto: Contexto): Resultado {
   otroTimerDelContexto = contexto.otroTimerCorriendo === true;
   timerRechazado = '';
 
+  /*
+   * Un timer que corre pero el flujo ya no define —se borró en el lienzo—
+   * se para aquí, como si una regla dijera «detener el timer». Sin su
+   * definición no tiene duración ni hitos, así que no terminaría nunca, y
+   * seguiría ocupando el único timer del aparato. Quien llama lo escribe
+   * parado y cancela su alarma y su aviso, igual que con `detener-timer`.
+   */
+  if (timerHuerfano(flujo, timerDelContexto)) {
+    timerDeLaPasada = { ...timerDelContexto!, terminado: true, detenido: true };
+    timerTocado = true;
+  }
+
   const ambito = contexto.ambito ?? 'actividad';
   const tablaDeFila = contexto.tabla ?? '';
   const origen = contexto.origen ?? {};
@@ -2407,6 +2419,12 @@ function arrancarTimer(id: string, ahora: string): boolean {
   const hechas = Math.max(0, Math.floor(Number(corridas[id]) || 0));
 
   const definido = (flujoDelContexto?.timers ?? []).find((t) => String(t?.id ?? '') === id);
+
+  // Un timer que el flujo ya no tiene no arranca: sin duración no terminaría
+  // nunca, y como solo corre uno por aparato, frenaría a todos los demás.
+  // Pasa cuando se borra el timer y queda una acción «arrancar» que lo nombra.
+  if (!definido) return false;
+
   const tope = Math.max(0, Math.floor(Number(definido?.veces) || 0));
   if (tope > 0 && hechas >= tope) return false;
 
@@ -2460,6 +2478,22 @@ export function claveDelHito(en: number | string): string {
 }
 
 /** Cuántos minutos dura un timer del flujo; cero si no está definido. */
+/**
+ * ¿Corre un timer que el flujo ya no define? Ver la parada al entrar en `evaluar`.
+ * Quien llama lo usa para pararlo aunque el flujo no tenga reglas que evaluar.
+ */
+export function timerHuerfano(flujo: Flujo | null | undefined, timer: EstadoDelTimer | null | undefined): boolean {
+  if (!timer || timer.terminado || timer.detenido) return false;
+
+  const id = String(timer.id ?? '').trim();
+  return !(flujo?.timers ?? []).some((t) => String(t?.id ?? '').trim() === id);
+}
+
+/** El timer parado, como lo deja `detener-timer`. */
+export function timerParado(timer: EstadoDelTimer): EstadoDelTimer {
+  return { ...timer, terminado: true, detenido: true };
+}
+
 export function duracionDelTimer(flujo: Flujo, id: string): number {
   const t = (flujo?.timers ?? []).find((x) => String(x?.id ?? '') === id);
   return Math.max(0, Math.floor(Number(t?.duracion) || 0));

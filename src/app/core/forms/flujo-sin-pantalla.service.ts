@@ -24,6 +24,7 @@ import { EncargosDelFlujoService } from './encargos.service';
 import { EstadoDelTimer, Flujo, Momento } from './flujo-modelo';
 import { FlujoService } from './flujo.service';
 import { FormEngine, leerTimer } from './form-engine';
+import { timerHuerfano, timerParado } from './flujo-motor';
 import { ParientesService } from './parientes.service';
 import { TimerGlobalService } from './timer-global.service';
 
@@ -59,6 +60,24 @@ export class FlujoSinPantallaService {
     return this.injector.get(TimerGlobalService);
   }
 
+  /**
+   * Para el timer de la actividad si el flujo ya no lo define, y lo dice.
+   * `null` si no había que parar nada.
+   */
+  async pararTimerHuerfano(answer: SurveyAnswer): Promise<LoQueDecidio | null> {
+    const timer = leerTimer(answer.Timer);
+    if (!timer || answer.ID == null) return null;
+
+    const flujo = await this.flujos.paraFormulario(answer.SurveyID);
+    if (!timerHuerfano(flujo, timer)) return null;
+
+    const parado = timerParado(timer);
+    await this.answers.update(answer.ID, { Timer: JSON.stringify(parado) });
+    this.timers().apuntar(answer.GUID, parado);
+
+    return { cambios: ['Timer'], timer: parado, siguienteHito: null };
+  }
+
   /** El flujo de la actividad, si tiene reglas de ese momento (o timers). */
   async flujoQueCorre(answer: SurveyAnswer, momento: Momento): Promise<Flujo | null> {
     const flujo = await this.flujos.paraFormulario(answer.SurveyID);
@@ -79,6 +98,18 @@ export class FlujoSinPantallaService {
    */
   async evaluar(answer: SurveyAnswer, momento: 'hijo' | 'timer', extra: Partial<SurveyAnswer> = {}): Promise<LoQueDecidio | null> {
     if (answer.ID == null) return null;
+
+    /*
+     * Un timer que corre pero el flujo ya no define se para aquí, aunque el
+     * flujo no tenga nada que evaluar. Al borrar un timer en el lienzo se van
+     * también sus hitos, así que `flujoQueCorre` ya no encuentra reglas de
+     * timer y el que estaba corriendo se quedaba así para siempre: sin duración
+     * no termina, sigue en la barra y no deja arrancar otro.
+     */
+    if (momento === 'timer') {
+      const parado = await this.pararTimerHuerfano(answer);
+      if (parado) return parado;
+    }
 
     const flujo = await this.flujoQueCorre(answer, momento);
     if (!flujo) return null;
