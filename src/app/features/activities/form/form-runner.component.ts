@@ -3039,6 +3039,22 @@ ${enlace.url}`)) abrir();
 
     if (engineAlGuardar) {
       /*
+       * El estado de completada, ya visto por el flujo.
+       *
+       * Se escribe después de estas pasadas (ver [completarEstado] más abajo),
+       * así que una regla «si el estado es PAGO COMPLETO, manda el correo» no
+       * se cumplía en el guardado que lo ponía. Si la actividad se guarda
+       * completa y le va a tocar, las pasadas de «al guardar» evalúan con él.
+       *
+       * Un estado que pida el propio flujo manda: con él no se supone nada.
+       */
+      const supuesto = incomplete ? null : ((await this.companyLogic.estadoAlCompletar(answer))?.nuevo ?? null);
+
+      const conEstadoDeCompletada = () => {
+        if (supuesto && !engineAlGuardar.estadoDelFlujo()) engineAlGuardar.estadoActividad.set(supuesto);
+      };
+
+      /*
        * Evaluar, esperar, y volver a evaluar.
        *
        * La primera pasada puede hacer **nacer** llamadas que no existían: una
@@ -3047,11 +3063,17 @@ ${enlace.url}`)) abrir();
        * puede escribir campos y también poner un bloqueo, y guardar sin volver
        * a mirar dejaría pasar una actividad que la regla quería frenar.
        */
+      conEstadoDeCompletada();
       engineAlGuardar.revisarFlujoAlGuardar();
 
       await this.esperarLasLlamadasDelGuardado(engineAlGuardar);
 
+      conEstadoDeCompletada();
       const bloqueos = engineAlGuardar.revisarFlujoAlGuardar();
+
+      // Y vuelve a lo que de verdad tiene: el estado se escribe más abajo, y
+      // al escribirse llega al motor por el `effect` de siempre.
+      if (supuesto) engineAlGuardar.estadoActividad.set(String(this.answer()?.Status ?? ''));
 
       /*
        * Y lo que la regla quiso decir, **antes** de seguir.
