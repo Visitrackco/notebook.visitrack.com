@@ -429,8 +429,13 @@ export function referenciaCampoDeHijos(apiId: string): ReferenciaCampoDeHijos | 
 /** Un hijo que existe, con lo que respondió en el campo por el que se pregunta. */
 interface HijoConCampo {
   vinculado: string;
+  /** Lo que vale para el padre: una tabla, cuántos registros tiene. */
   valor: unknown;
+  /** Cómo se compara: una tabla, como número. */
   campo?: Campo;
+  /** Lo respondido y la definición tal cual, para la huella de `@cambio`. */
+  crudo: unknown;
+  definido?: Campo;
   guardado: boolean;
   actualizado: string;
 }
@@ -457,14 +462,39 @@ function hijosConElCampo(
 
     salida.push({
       vinculado: c.apiId,
-      valor: valores[llave],
-      campo: campos[llave],
+      valor: valorDelCampoDeHijo(valores[llave], campos[llave]),
+      campo: comoSeLeeElCampoDeHijo(campos[llave]),
+      crudo: valores[llave],
+      definido: campos[llave],
       guardado: esSiDeHijo(valores[`${raiz}@guardado`]),
       actualizado: String(valores[`${raiz}@actualizado`] ?? '').trim(),
     });
   }
 
   return salida;
+}
+
+/** ¿El campo del hijo es una tabla de detalle (MasterDetail)? */
+function esTablaDeHijo(campo: Campo | undefined): boolean {
+  return String(campo?.fty ?? '').toLowerCase() === 'masterdetail';
+}
+
+/**
+ * Lo que vale el campo de un hijo para el padre.
+ *
+ * Una tabla de detalle vale **cuántos registros tiene**: es lo que el padre
+ * puede contar y comparar —«si algún hijo tiene menos de 3 registros», «la
+ * suma de los registros de todos»—. Se cuentan las filas que el hijo tiene
+ * guardadas en este aparato; sin ninguna, o sin la tabla, cero. Lo demás,
+ * tal cual.
+ */
+export function valorDelCampoDeHijo(valor: unknown, campo: Campo | undefined): unknown {
+  return esTablaDeHijo(campo) ? filasDe(valor).length : valor;
+}
+
+/** Una tabla del hijo se compara como el número que vale. */
+function comoSeLeeElCampoDeHijo(campo: Campo | undefined): Campo | undefined {
+  return campo && esTablaDeHijo(campo) ? { ...campo, fty: 'numeric', opt: [] } : campo;
 }
 
 /**
@@ -482,7 +512,7 @@ function campoDeLosHijos(
     if (ref.fid && String(c.fid ?? '').trim() !== ref.fid) continue;
 
     const suyo = campos[`${PREFIJO_HIJO}${c.apiId}:${ref.campo}`];
-    if (suyo) return suyo;
+    if (suyo) return comoSeLeeElCampoDeHijo(suyo);
   }
 
   return undefined;
@@ -599,8 +629,20 @@ function cambioEnLosHijos(
   if (!vistos) return false;
 
   return hijos.some(
-    (h) => huellaDeValorDeHijo(h.valor) !== (vistos[`${h.vinculado}:${ref.campo}`] ?? ''),
+    (h) => huellaDelCampoDeHijo(h.crudo, h.definido) !== (vistos[`${h.vinculado}:${ref.campo}`] ?? ''),
   );
+}
+
+/**
+ * La huella del campo de un hijo tal como la lee el padre: una tabla, por
+ * cuántos registros tiene, y sin registros como sin respuesta (vacía), igual
+ * que un campo que nunca se respondió.
+ */
+function huellaDelCampoDeHijo(crudo: unknown, campo: Campo | undefined): string {
+  const valor = valorDelCampoDeHijo(crudo, campo);
+  if (esTablaDeHijo(campo) && valor === 0) return '';
+
+  return huellaDeValorDeHijo(valor);
 }
 
 /**
@@ -641,7 +683,10 @@ export function huellaDeValorDeHijo(valor: unknown): string {
  * Se arma con los mismos valores que recibe el motor —los `HIJO:<v>:<CAMPO>`
  * que deja quien llama—, así que el web y el teléfono huellean igual.
  */
-export function camposVistosDeHijos(valores: Record<ApiId, unknown>): string {
+export function camposVistosDeHijos(
+  valores: Record<ApiId, unknown>,
+  campos: Record<ApiId, Campo> = {},
+): string {
   const partes: string[] = [];
 
   for (const llave of Object.keys(valores)) {
@@ -651,7 +696,9 @@ export function camposVistosDeHijos(valores: Record<ApiId, unknown>): string {
     const campo = ref.resto.slice(1);
     if (!campo || campo === 'estado' || campo.includes('@') || campo.includes(':')) continue;
 
-    const huella = huellaDeValorDeHijo(valores[llave]);
+    // Una tabla se huellea por cuántos registros tiene, igual que la lee
+    // `@cambio`; sin `campos` se huellearía la lista y nunca casarían.
+    const huella = huellaDelCampoDeHijo(valores[llave], campos[llave]);
     if (huella) partes.push(`${ref.vinculado}:${campo}=${huella}`);
   }
 

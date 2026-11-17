@@ -71,7 +71,26 @@ describe('Campos de los hijos', () => {
     expect(mismosHijos('A=g|5|1|0|x\nA:B=1', 'A=g|5|1|0|y\nA:B=1')).toBe(false);
   });
 
-  it('@cambio mira lo que el padre vio', () => {
+  it('una tabla del hijo vale cuántos registros tiene, y sin registros no deja huella', () => {
+    const campos: Record<string, Campo> = {
+      INSP1: { apiId: 'INSP1', fty: 'form', fid: 'F' },
+      INSP2: { apiId: 'INSP2', fty: 'form', fid: 'F' },
+      'HIJO:INSP1:EQ': { apiId: 'HIJO:INSP1:EQ', fty: 'MasterDetail' },
+      'HIJO:INSP2:EQ': { apiId: 'HIJO:INSP2:EQ', fty: 'masterdetail' },
+    };
+    const valores: Record<string, unknown> = {
+      'HIJO:INSP1@existe': 'Sí',
+      'HIJO:INSP2@existe': 'Sí',
+      'HIJO:INSP1:EQ': [{ GUID: 'a' }, { GUID: 'b' }],
+      'HIJO:INSP2:EQ': [],
+    };
+
+    expect(leerValor('HIJOS:F:EQ@suma', valores, campos)).toBe(2);
+    expect(leerValor('HIJOS:F:EQ@minimo', valores, campos)).toBe(0);
+    expect(camposVistosDeHijos(valores, campos)).toBe('INSP1:EQ=3t07');
+  });
+
+    it('@cambio mira lo que el padre vio', () => {
     const campos: Record<string, Campo> = {
       INSP1: { apiId: 'INSP1', fty: 'form', fid: 'F' },
     };

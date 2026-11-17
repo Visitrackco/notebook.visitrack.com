@@ -81,7 +81,7 @@ export class ParientesService {
     const deFuera: LoDeFuera = { valores: {}, campos: {} };
     await this.deLosHijos(answer, survey, deFuera);
 
-    return partes.join(';') + SEPARADOR_DE_CAMPOS_VISTOS + camposVistosDeHijos(deFuera.valores);
+    return partes.join(';') + SEPARADOR_DE_CAMPOS_VISTOS + camposVistosDeHijos(deFuera.valores, deFuera.campos);
   }
 
   /** Apunta en el padre cómo están sus hijos ahora mismo. */
@@ -198,7 +198,10 @@ export class ParientesService {
 
       const guardado = respuestas.find((r) => r.id === v.id);
       const gui = String((guardado?.val as { gui?: unknown })?.gui ?? '').trim();
-      const hijo = gui ? await this.answers.findByGuid(gui) : null;
+      const encontrada = gui ? await this.answers.findByGuid(gui) : null;
+
+      // Una hija eliminada no es una hija, igual que en el teléfono.
+      const hijo = encontrada && String(encontrada.IsDelete ?? '0') !== '1' ? encontrada : null;
 
       salida.valores[`${prefijo}@existe`] = hijo ? 'Sí' : 'No';
       salida.campos[`${prefijo}@existe`] = { apiId: `${prefijo}@existe`, fty: 'text' };

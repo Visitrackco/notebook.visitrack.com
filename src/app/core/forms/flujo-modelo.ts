@@ -3495,6 +3495,11 @@ export const PREFIJO_HIJO = 'HIJO:';
  * - `@cambio` — «Sí» si en algún hijo ese campo vale distinto de lo que el
  *   padre vio la última vez (ver `HIJOS_VISTOS`), «No» si no.
  *
+ * Un campo del hijo que es una tabla de detalle (MasterDetail) vale **cuántos
+ * registros tiene** en el aparato (cero si no tiene, o si la tabla no está):
+ * `HIJOS:<fid>:EQUIPOS@alguno` «menor que 3», `@suma`, `@maximo`, `@cambio`
+ * (si cambió el número de registros). `@veces` y `@cuenta` no aplican.
+ *
  * Con `fid` vacío —`HIJOS::CAMPO@…`— se miran los hijos de todos los
  * vinculados. Los valores salen de lo que quien llama dejó en `valores` con
  * `HIJO:<vinculado>:<CAMPO>`, igual que para un solo hijo.
