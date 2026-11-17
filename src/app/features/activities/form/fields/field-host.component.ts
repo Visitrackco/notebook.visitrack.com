@@ -32,7 +32,7 @@ import {
   isDisplayOnly,
 } from '../../../../core/forms/form-schema';
 import { FormEngine } from '../../../../core/forms/form-engine';
-import { Flujo } from '../../../../core/forms/flujo-modelo';
+import { Flujo, NoRepetirItems } from '../../../../core/forms/flujo-modelo';
 import { GpsReading } from '../../../../core/services/geolocation.service';
 import { CodeScannerComponent } from '../../../../shared/components/code-scanner/code-scanner.component';
 import { IconComponent } from '../../../../shared/components/icon/icon.component';
@@ -257,6 +257,12 @@ export class FieldHostComponent {
 
   /** Cuántas filas admite una tabla, si una regla lo decidió. */
   readonly maxFilasDelFlujo = input<number | null>(null);
+
+  /** Cuántas veces se puede escoger un mismo ítem en la tabla. Ver `no-repetir-items`. */
+  readonly noRepetirDelFlujo = input<NoRepetirItems[] | null>(null);
+
+  /** Ítems de un desplegable que ya llegaron a su tope. Ver `ListFieldComponent.alTope`. */
+  readonly alTopeDelFlujo = input<Readonly<Record<string, string>>>({});
 
   /*
    * Qué se puede hacer con las filas, si una regla lo decidió.

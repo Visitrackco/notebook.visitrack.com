@@ -99,6 +99,9 @@
                 class="picker__item"
                 [class.picker__item--on]="selectedId() === choice.id"
                 [class.picker__item--used]="isUsed(choice)"
+                [class.picker__item--bloqueado]="!!avisoDe(choice)"
+                [disabled]="!!avisoDe(choice)"
+                [attr.title]="avisoDe(choice) || null"
                 (click)="select(choice)"
               >
                 <!-- La inicial ayuda a recorrer una lista larga con la vista:
@@ -114,7 +117,9 @@
                     <!-- Ya usado: se avisa, no se impide. Repetir un ítem puede
                          ser legítimo —dos revisiones del mismo equipo— pero
                          hacerlo sin darse cuenta casi nunca lo es. -->
-                    @if (isUsed(choice)) {
+                    @if (avisoDe(choice)) {
+                      <em class="picker__tope">{{ avisoDe(choice) }}</em>
+                    } @else if (isUsed(choice)) {
                       <em class="picker__used">{{ 'campo.yaAgregado' | t }}</em>
                     }
                   </span>

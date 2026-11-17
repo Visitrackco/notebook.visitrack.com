@@ -1,6 +1,7 @@
 import { Component, computed, inject, input, output, signal } from '@angular/core';
 
 import { ListChoice, ListSource } from '../../../../../core/forms/list-source.service';
+import { llaveDeItem } from '../../../../../core/forms/flujo-motor';
 import { ListDefinition, ListDetail } from '../../../../../core/models/entities.model';
 import { PermissionsService } from '../../../../../core/services/permissions.service';
 import { IconComponent } from '../../../../../shared/components/icon/icon.component';
@@ -49,6 +50,16 @@ export class ListPickerComponent {
    * verlo antes de pulsar evita el duplicado por descuido. La app hace lo mismo.
    */
   readonly usedNames = input<readonly string[]>([]);
+
+  /**
+   * Ítems que **no** se pueden escoger, por la llave de su ID (`llaveDeItem`),
+   * con el aviso que se enseña al lado.
+   *
+   * Los cierra una regla `no-repetir-items` cuando el ítem ya llegó a su tope en
+   * las demás filas. Se dejan a la vista, deshabilitados: que desaparezcan haría
+   * pensar que el ítem no existe.
+   */
+  readonly bloqueados = input<Readonly<Record<string, string>>>({});
 
   /**
    * Lista a la que se pueden añadir ítems.
@@ -172,8 +183,15 @@ export class ListPickerComponent {
   }
 
   select(choice: ListChoice): void {
+    if (this.avisoDe(choice)) return;
+
     clearTimeout(this.timer);
     this.choose.emit(choice);
+  }
+
+  /** Por qué no se puede escoger este ítem. Vacío si se puede. */
+  avisoDe(choice: ListChoice): string {
+    return this.bloqueados()[llaveDeItem(choice.id)] ?? '';
   }
 
   /** ¿Este ítem ya tiene una fila? */

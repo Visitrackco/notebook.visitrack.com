@@ -12,6 +12,7 @@ import { FlujoGraficaComponent } from '../flujo-grafica/flujo-grafica.component'
 import { MissingEntry } from '../required-dialog/required-dialog.component';
 import { MasterDetailPanelsService } from './master-detail-panels.service';
 import { MasterDetailStackService, RowLevel } from './master-detail-stack.service';
+import { idDeItem, llaveDeItem } from '../../../../core/forms/flujo-motor';
 import { traducir } from '../../../../core/i18n/idioma.service';
 import { TPipe } from '../../../../core/i18n/t.pipe';
 
@@ -61,6 +62,12 @@ export class MasterDetailRowComponent implements OnDestroy {
 
   /** Se está avisando de que faltan obligatorios. */
   readonly asking = signal(false);
+
+  /**
+   * Por qué no se puede guardar la fila aunque esté completa: un desplegable
+   * con un ítem que ya llegó a su tope en las otras filas. Ver `repetido`.
+   */
+  readonly aviso = signal('');
 
   /*
    * Las gráficas que un botón destapó, mientras la fila esté abierta.
@@ -134,7 +141,54 @@ export class MasterDetailRowComponent implements OnDestroy {
   }
 
   onValue(level: RowLevel, field: FormField, value: FieldValue): void {
+    this.aviso.set('');
     level.engine.setValue(field, value);
+  }
+
+  /**
+   * Los ítems de este desplegable que ya no se pueden escoger, por la llave de
+   * su ID y con su aviso. Los cierra `no-repetir-items`; ver `RowLevel.topes`.
+   */
+  alTopeDe(level: RowLevel, field: FormField): Record<string, string> {
+    const salida: Record<string, string> = {};
+    const nombre = apiIdDe(field);
+
+    for (const tope of level.topes) {
+      if (tope.apiId.toLowerCase() !== nombre) continue;
+
+      for (const cuenta of tope.alTope) {
+        salida[llaveDeItem(cuenta.id)] = traducir('md.itemAlTope', { n: cuenta.max });
+      }
+    }
+
+    return salida;
+  }
+
+  /**
+   * ¿Algún desplegable de la fila tiene un ítem que ya llegó a su tope en las
+   * otras filas? Devuelve el mensaje, o vacío.
+   *
+   * El selector ya no deja escogerlo, pero el valor puede haber llegado de
+   * otro lado —un valor por omisión, una regla que lo escribió, una fila vieja—
+   * y la fila no se guarda con él.
+   */
+  private repetido(level: RowLevel): string {
+    for (const tope of level.topes) {
+      for (const page of level.engine.pages) {
+        for (const field of page.fie) {
+          if (apiIdDe(field) !== tope.apiId.toLowerCase()) continue;
+
+          const llave = llaveDeItem(idDeItem(level.engine.valueOf(field.id)));
+          const cuenta = llave ? tope.alTope.find((c) => llaveDeItem(c.id) === llave) : undefined;
+
+          if (cuenta) {
+            return traducir('md.itemAlTopeFila', { item: cuenta.txt || cuenta.id, n: cuenta.max });
+          }
+        }
+      }
+    }
+
+    return '';
   }
 
   /**
@@ -233,7 +287,19 @@ export class MasterDetailRowComponent implements OnDestroy {
       return;
     }
 
+    if (this.detenidoPorRepetido(level)) return;
+
     this.stack.close('save');
+  }
+
+  /** Con un ítem que se pasa de su tope, avisa y dice que no se guarde. */
+  private detenidoPorRepetido(level: RowLevel): boolean {
+    const motivo = this.repetido(level);
+    this.aviso.set(motivo);
+
+    if (motivo) void this.sound.warn();
+
+    return !!motivo;
   }
 
   /**
@@ -251,6 +317,8 @@ export class MasterDetailRowComponent implements OnDestroy {
       this.alert();
       return;
     }
+
+    if (this.detenidoPorRepetido(level)) return;
 
     this.stack.close('save');
   }
@@ -324,4 +392,9 @@ function locate(engine: FormEngine, fieldId: string): MissingEntry | null {
   }
 
   return null;
+}
+
+/** El nombre con el que una regla habla de un campo, sin distinguir mayúsculas. */
+function apiIdDe(field: FormField): string {
+  return ((field.apiId ?? '').toString().trim() || field.id).toLowerCase();
 }

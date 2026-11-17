@@ -12,7 +12,8 @@ import {
 
 import { allowsBulkPhotos } from '../../../../../core/config/company-rules';
 import { FormEngine } from '../../../../../core/forms/form-engine';
-import { Flujo } from '../../../../../core/forms/flujo-modelo';
+import { COLUMNA_DEL_ITEM, Campo, Flujo, NoRepetirItems } from '../../../../../core/forms/flujo-modelo';
+import { itemsAlTope, llaveDeItem } from '../../../../../core/forms/flujo-motor';
 import {
   FieldValue,
   FormField,
@@ -154,6 +155,15 @@ export class MasterDetailFieldComponent {
    */
   readonly maxFilasDelFlujo = input<number | null>(null);
 
+  /**
+   * Cuántas veces se puede escoger un mismo ítem, si una regla lo decidió.
+   *
+   * Ver `no-repetir-items`. Las reglas sobre el ítem de la fila cierran ítems en
+   * el selector de agregar; las de un desplegable de dentro, en ese desplegable
+   * al abrir la fila.
+   */
+  readonly noRepetirDelFlujo = input<NoRepetirItems[] | null>(null);
+
   /*
    * Lo que el flujo decidió sobre las filas. `null` es «no dijo nada».
    *
@@ -235,6 +245,48 @@ export class MasterDetailFieldComponent {
 
     return delEsquema > 0 ? delEsquema : deLaRegla;
   });
+
+  /**
+   * Los ítems que el selector de agregar deja a la vista pero sin poder
+   * escogerse: los que ya llegaron a su tope. Por la llave de su ID, con el
+   * aviso que se enseña al lado.
+   *
+   * En el primer paso de una lista de dos niveles no se cierra nada: ahí se
+   * escoge la ubicación, no el ítem de la fila.
+   */
+  readonly cerradosAlAgregar = computed(() => {
+    const salida: Record<string, string> = {};
+
+    if (this.config()?.origin === 'location-l2' && this.step() === 1) return salida;
+
+    for (const regla of this.noRepetirDelFlujo() ?? []) {
+      if (!esColumnaDelItem(regla.columna)) continue;
+
+      for (const cuenta of itemsAlTope(regla, this.rows(), this.campoDeLaTabla())) {
+        salida[llaveDeItem(cuenta.id)] = traducir('md.itemAlTope', { n: cuenta.max });
+      }
+    }
+
+    return salida;
+  });
+
+  /**
+   * La tabla como la ve el motor: con los campos de dentro, para que una regla
+   * sobre un desplegable de la fila encuentre el `id` con el que se guardó.
+   */
+  private campoDeLaTabla(): Campo {
+    return {
+      apiId: this.apiIdDelCampo(),
+      fty: 'masterdetail',
+      detalle: (this.config()?.schema ?? []).flatMap((pagina) =>
+        pagina.fie.map((f) => ({
+          apiId: (f.apiId ?? '').toString().trim() || f.id,
+          id: f.id,
+          fty: f.fty,
+        })),
+      ),
+    };
+  }
 
   readonly atLimit = computed(() => {
     const limit = this.limit();
@@ -895,6 +947,13 @@ export class MasterDetailFieldComponent {
       return;
     }
 
+    // Y el tope por ítem, por lo mismo: el selector ya lo deja cerrado, pero
+    // entre abrirlo y escoger pudo cambiar la tabla.
+    if (this.cerradosAlAgregar()[llaveDeItem(choice.id)]) {
+      this.feedback.set(traducir('md.itemAlTopeFila', { item: choice.txt, n: this.topeDelItem(choice.id) }));
+      return;
+    }
+
     const field = this.field();
     const src = choice.src ?? {};
 
@@ -989,6 +1048,15 @@ export class MasterDetailFieldComponent {
       engine,
       answerGuid: this.answerGuid(),
       fresh,
+
+      // Lo que `no-repetir-items` cierra en los desplegables de la fila,
+      // contando las demás filas y no esta: escoger otra vez lo suyo no repite.
+      topes: (this.noRepetirDelFlujo() ?? [])
+        .filter((regla) => !esColumnaDelItem(regla.columna))
+        .map((regla) => ({
+          apiId: regla.columna,
+          alTope: itemsAlTope(regla, this.rows(), this.campoDeLaTabla(), row.GUID),
+        })),
     });
 
     /**
@@ -1244,6 +1312,19 @@ export class MasterDetailFieldComponent {
         'FILA:nombre': { apiId: 'FILA:nombre', fty: 'text' },
       },
     });
+  }
+
+  /** El tope que tiene un ítem de la fila, para el aviso. */
+  private topeDelItem(id: string): number {
+    for (const regla of this.noRepetirDelFlujo() ?? []) {
+      if (!esColumnaDelItem(regla.columna)) continue;
+
+      const propio = regla.items.find((x) => llaveDeItem(x.id) === llaveDeItem(id));
+      const max = propio ? propio.max : regla.tope;
+      if (max > 0) return max;
+    }
+
+    return 0;
   }
 
   /** Con qué nombre habla una regla de este campo. */
@@ -1537,4 +1618,9 @@ async function shrinkImage(file: File): Promise<Blob> {
   } catch {
     return file;
   }
+}
+
+/** ¿La regla habla del ítem de la fila y no de un desplegable de dentro? */
+function esColumnaDelItem(columna: string): boolean {
+  return !columna || columna.toLowerCase() === COLUMNA_DEL_ITEM;
 }

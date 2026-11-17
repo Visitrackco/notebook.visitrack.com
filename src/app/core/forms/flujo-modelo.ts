@@ -2014,6 +2014,25 @@ export type TipoAccion =
    */
   | 'limitar-filas'
   /**
+   * Cuántas veces se puede escoger un mismo ítem en una tabla.
+   *
+   * `campo` es la tabla y `valor` un [NoRepetirItems]: de qué columna sale el
+   * ítem —el de la fila o un desplegable de dentro—, un tope para todos y, si
+   * hace falta, un tope por ítem. Los ítems se comparan **por su ID**, nunca
+   * por el título: dos ítems pueden llamarse igual y uno puede cambiar de
+   * nombre sin dejar de ser el mismo.
+   *
+   * Hace dos cosas, y las dos hacen falta:
+   *
+   * - **Anota** la restricción en el estado de la tabla (`noRepetir`), como
+   *   `limitar-filas`. Con eso el selector de la app y el de la web dejan a la
+   *   vista, pero sin poder escogerlos, los ítems que ya llegaron a su tope en
+   *   las demás filas. Ver `itemsAlTope`.
+   * - **No deja guardar** si alguno ya se pasó: una fila que llegó de otro lado
+   *   —una tabla heredada, una actividad vieja— no pasa por el selector.
+   */
+  | 'no-repetir-items'
+  /**
    * Qué se puede hacer con las filas de una tabla: añadir, editar y borrar.
    *
    * `valor` es un [PermisosDeTabla]. Cada permiso va por su cuenta y **el que no
@@ -2633,6 +2652,16 @@ export interface EstadoCampo {
   maxFilas?: number;
 
   /**
+   * Cuántas veces se puede escoger un mismo ítem, por columna de la tabla.
+   *
+   * Lo anota `no-repetir-items`. Es una restricción del editor, como
+   * [maxFilas]: quien dibuja el selector pregunta a `itemsAlTope` cuáles
+   * quedan cerrados —sin contar la fila que se está editando— y los deja a la
+   * vista deshabilitados, con un aviso.
+   */
+  noRepetir?: NoRepetirItems[];
+
+  /**
    * ¿Se pueden añadir filas a esta tabla?
    *
    * `undefined` no es «no»: es que **ninguna regla lo decidió**, y entonces la
@@ -2647,6 +2676,49 @@ export interface EstadoCampo {
 
   /** ¿Se pueden borrar filas? Ver [agregar]. */
   eliminar?: boolean;
+}
+
+/**
+ * La columna que guarda **el ítem de la fila**, el que se escogió al agregarla.
+ *
+ * Es el identificador literal con el que la app escribe la cabecera de cada
+ * fila en `JSONValues` —`{id: 'name', val: {id, txt}}`—, así que en una regla
+ * se nombra igual: `DETALLE:TABLA:name@veces=<id>`.
+ */
+export const COLUMNA_DEL_ITEM = 'name';
+
+/** Un tope por ítem dentro de `no-repetir-items`. */
+export interface TopeDeItem {
+  /** El ID del ítem: el `val.id` del desplegable o el ítem de la lista de la fila. */
+  id: string;
+  /** Su nombre, para enseñarlo. No se compara con él. */
+  txt?: string;
+  /** Cuántas veces se puede escoger como mucho. */
+  max: number;
+}
+
+/**
+ * La configuración de `no-repetir-items`.
+ *
+ * Con [tope] y sin [items] es «ningún ítem se repite»; con [items], cada uno
+ * con su tope. Las dos a la vez valen: los nombrados con el suyo y el resto
+ * con el general.
+ */
+export interface NoRepetirItems {
+  /**
+   * De dónde sale el ítem de cada fila: [COLUMNA_DEL_ITEM] —o vacío— para el
+   * de la fila, o el `apiId` de un desplegable del sub-formulario.
+   */
+  columna: string;
+  /** Tope para todos los ítems que no estén en [items]. Cero: sin tope general. */
+  tope: number;
+  /** Topes de ítems concretos. Mandan sobre [tope]. */
+  items: TopeDeItem[];
+  /**
+   * El mensaje al no dejar guardar. Admite `{item}`, `{veces}` y `{max}`.
+   * Vacío, el del motor.
+   */
+  mensaje?: string;
 }
 
 /**

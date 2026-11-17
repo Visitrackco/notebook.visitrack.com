@@ -241,11 +241,20 @@
   position: sticky;
   bottom: 0;
   display: flex;
+  flex-wrap: wrap;
   gap: var(--vt-space-3);
   justify-content: flex-end;
   padding: var(--vt-space-3) var(--vt-space-4);
   background: var(--vt-surface-2);
   border-top: 1px solid var(--vt-rule);
+}
+
+.row__aviso {
+  flex: 1 1 100%;
+  margin: 0;
+  font-size: var(--vt-text-sm);
+  font-weight: 600;
+  color: var(--vt-danger);
 }
 
 .row__leave {

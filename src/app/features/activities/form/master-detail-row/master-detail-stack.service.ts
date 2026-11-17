@@ -4,6 +4,20 @@ import { Router, Scroll } from '@angular/router';
 import { filter, firstValueFrom, race, timer } from 'rxjs';
 
 import { FormEngine } from '../../../../core/forms/form-engine';
+import { CuentaDeItem } from '../../../../core/forms/flujo-motor';
+
+/**
+ * Los ítems de un desplegable de la fila que ya no se pueden escoger.
+ *
+ * Los cierra una regla `no-repetir-items` sobre esa columna: son los que ya
+ * llegaron a su tope **en las otras filas** —la que se edita no cuenta—. Se
+ * calculan al abrir la fila: mientras está abierta, las demás no cambian.
+ */
+export interface TopeDeColumna {
+  /** El `apiId` del desplegable de dentro de la fila. */
+  apiId: string;
+  alTope: CuentaDeItem[];
+}
 
 /** Cómo se cerró una fila. */
 export type RowOutcome =
@@ -40,6 +54,9 @@ export interface RowLevel {
 
   /** Se creó ahora y todavía no se ha guardado nada en ella. */
   fresh: boolean;
+
+  /** Lo que `no-repetir-items` cierra en los desplegables de la fila. */
+  topes: TopeDeColumna[];
 
   /** Avisa del cierre a quien la abrió. Se llama una sola vez. */
   settle: (outcome: RowOutcome) => void;
@@ -105,6 +122,7 @@ export class MasterDetailStackService {
     engine: FormEngine;
     answerGuid: string;
     fresh: boolean;
+    topes?: TopeDeColumna[];
   }): Promise<RowOutcome> {
     const parent = this.current()?.trail ?? '';
     const step = `${input.fieldId}~${input.rowGuid}`;
@@ -121,6 +139,7 @@ export class MasterDetailStackService {
         engine: input.engine,
         answerGuid: input.answerGuid,
         fresh: input.fresh,
+        topes: input.topes ?? [],
         settle: (outcome) => {
           // Una fila puede cerrarse por el botón y a la vez por el cambio de
           // dirección que ese botón provoca. Solo cuenta la primera.

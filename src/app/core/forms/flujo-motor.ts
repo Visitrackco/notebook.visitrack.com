@@ -80,6 +80,9 @@ import {
   Regla,
   Resultado,
   Tramo, PasoDeCondicion, PasoDeRegla,
+  COLUMNA_DEL_ITEM,
+  NoRepetirItems,
+  TopeDeItem,
 } from './flujo-modelo';
 
 /**
@@ -209,6 +212,15 @@ export const AGREGADOS = new Set([
    */
   'completas',
   'amedias',
+
+  /*
+   * Cuántas filas tienen un ítem concreto: `DETALLE:TABLA:CAMPO@veces=<id>`.
+   *
+   * Es el único agregado que lleva algo detrás —el ID del ítem— y por eso se
+   * desarma aparte en `referenciaDetalle`. Con él se escribe «si GRANADILLA se
+   * escogió más de dos veces» sin depender de cómo se llame el ítem.
+   */
+  'veces',
 ]);
 
 /** Un identificador de detalle, ya desarmado. */
@@ -219,6 +231,9 @@ export interface ReferenciaDetalle {
   campo: string;
   /** `suma`, `cuenta`, `promedio`, `maximo`, `minimo`, `filas`; vacío si no hay. */
   agregado: string;
+
+  /** El ID del ítem que se cuenta, solo con `veces`. Tal como se escribió. */
+  item?: string;
 }
 
 /** Desarma `DETALLE:TABLA:CAMPO@agregado`. `null` si no es uno de estos. */
@@ -335,14 +350,36 @@ export function referenciaDetalle(apiId: string): ReferenciaDetalle | null {
 
   const arroba = resto.lastIndexOf('@');
 
+  let item = '';
+
   if (arroba > 0) {
-    const pedido = resto.slice(arroba + 1).toLowerCase();
+    let pedido = resto.slice(arroba + 1);
+
+    /*
+     * `@veces=<id>` lleva el ítem detrás del igual.
+     *
+     * El ID se guarda **tal como se escribió**: el nombre del agregado da igual
+     * en mayúsculas, pero el ID es del catálogo y no se toca. Sin ID no es un
+     * agregado: contar «cuántas veces nada» no significa nada.
+     */
+    const igual = pedido.indexOf('=');
+
+    if (igual >= 0) {
+      item = pedido.slice(igual + 1).trim();
+      pedido = pedido.slice(0, igual);
+    }
+
+    pedido = pedido.toLowerCase();
+
+    const valido = pedido === 'veces' ? !!item : igual < 0;
 
     // Un `@` que no nombra un agregado conocido no se toca: puede formar parte
     // del identificador, y quedarse sin campo es peor que ignorar el sufijo.
-    if (AGREGADOS.has(pedido)) {
+    if (valido && AGREGADOS.has(pedido)) {
       agregado = pedido;
       resto = resto.slice(0, arroba);
+    } else {
+      item = '';
     }
   }
 
@@ -358,7 +395,7 @@ export function referenciaDetalle(apiId: string): ReferenciaDetalle | null {
 
   if (!tabla || !campo) return null;
 
-  return { tabla, campo, agregado };
+  return item ? { tabla, campo, agregado, item } : { tabla, campo, agregado };
 }
 
 /** Las filas de una tabla de detalle, tal como las guarda la actividad. */
@@ -534,6 +571,219 @@ function filaCompleta(fila: Record<string, unknown>, tabla?: Campo): boolean {
   return true;
 }
 
+// -- Ítems que no se repiten -------------------------------------------------
+
+/**
+ * El ID de un ítem, sea cual sea la forma en que se guardó.
+ *
+ * Un desplegable guarda `{id, txt}`, un radio `{txt, val}`, y hay listas viejas
+ * que guardan el ID a secas. Lo que se compara es **el ID**, nunca el título:
+ * dos ítems pueden llamarse igual, y uno puede cambiar de nombre sin dejar de
+ * ser el mismo.
+ */
+export function idDeItem(valor: unknown): string {
+  if (valor === null || valor === undefined) return '';
+
+  if (Array.isArray(valor)) return valor.length === 1 ? idDeItem(valor[0]) : '';
+
+  if (typeof valor === 'object') {
+    const o = valor as Record<string, unknown>;
+    const id = String(o['id'] ?? '').trim();
+
+    return id || String(o['val'] ?? '').trim();
+  }
+
+  return String(valor).trim();
+}
+
+/**
+ * Con qué se compara un ID: sin espacios y sin distinguir mayúsculas.
+ *
+ * Un GUID llega en mayúsculas de un lado y en minúsculas del otro según quién
+ * lo escribió, y sigue siendo el mismo ítem.
+ */
+export function llaveDeItem(id: unknown): string {
+  return String(id ?? '').trim().toLowerCase();
+}
+
+/**
+ * El ítem de una fila en una columna: su ID y su nombre.
+ *
+ * Con [COLUMNA_DEL_ITEM] —o vacía— es **el ítem de la fila**, el que se escogió
+ * al agregarla: la cabecera `name` de `JSONValues`, y si no está, el
+ * `ListDetGUID` con el que nació. Con cualquier otra, el desplegable de dentro
+ * de la fila que se llama así.
+ */
+export function itemDeFila(
+  fila: Record<string, unknown>,
+  columna: string,
+  tabla?: Campo,
+): { id: string; txt: string } {
+  if (!columna || columna.toLowerCase() === COLUMNA_DEL_ITEM) {
+    const respuestas = Array.isArray(fila['JSONValues'])
+      ? (fila['JSONValues'] as Record<string, unknown>[])
+      : [];
+    const cabecera = respuestas.find((d) => String(d?.['id'] ?? '') === COLUMNA_DEL_ITEM);
+    const val = cabecera?.['val'];
+
+    const id =
+      idDeItem(val) ||
+      String(fila['ListDetGUID'] ?? '').trim() ||
+      String(fila['MasterListDetGUID'] ?? '').trim();
+
+    const txt =
+      (val && typeof val === 'object' ? String((val as Record<string, unknown>)['txt'] ?? '') : '') ||
+      String(fila['ListDetName'] ?? fila['Name'] ?? '');
+
+    return { id, txt: txt.trim() };
+  }
+
+  const valor = valorDeFila(fila, columna, tabla);
+  const id = idDeItem(valor);
+
+  return { id, txt: id ? comoTexto(valor, campoDeDetalle(tabla, columna)).trim() : '' };
+}
+
+/**
+ * Lee la configuración de `no-repetir-items`.
+ *
+ * `null` si no limita nada: sin tope general y sin ningún ítem con tope. Un
+ * tope que no se entiende —cero, negativo, una letra— no limita, por lo mismo
+ * que en `limitar-filas`: dejar un ítem sin poder escogerse por una errata es
+ * peor que no limitarlo.
+ */
+export function leerNoRepetir(valor: unknown): NoRepetirItems | null {
+  const config = leerJson(valor);
+  if (!config || typeof config !== 'object' || Array.isArray(config)) return null;
+
+  const entero = (x: unknown): number => {
+    const n = Math.floor(Number(String(x ?? '').trim()));
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  };
+
+  const columna = String(config['columna'] ?? '').trim() || COLUMNA_DEL_ITEM;
+  const tope = entero(config['tope']);
+
+  const items: TopeDeItem[] = [];
+
+  for (const crudo of Array.isArray(config['items']) ? (config['items'] as unknown[]) : []) {
+    if (!crudo || typeof crudo !== 'object') continue;
+
+    const o = crudo as Record<string, unknown>;
+    const id = String(o['id'] ?? '').trim();
+    const max = entero(o['max']);
+    if (!id || !max) continue;
+
+    const txt = String(o['txt'] ?? '').trim();
+    items.push(txt ? { id, txt, max } : { id, max });
+  }
+
+  if (!tope && !items.length) return null;
+
+  const mensaje = String(config['mensaje'] ?? '').trim();
+
+  return mensaje ? { columna, tope, items, mensaje } : { columna, tope, items };
+}
+
+/** Dos reglas sobre la misma columna, juntas: en lo que coincidan, el tope más bajo. */
+function juntarNoRepetir(a: NoRepetirItems, b: NoRepetirItems): NoRepetirItems {
+  const tope = a.tope && b.tope ? Math.min(a.tope, b.tope) : a.tope || b.tope;
+  const items = [...a.items];
+
+  for (const nuevo of b.items) {
+    const i = items.findIndex((x) => llaveDeItem(x.id) === llaveDeItem(nuevo.id));
+
+    if (i < 0) {
+      items.push(nuevo);
+      continue;
+    }
+
+    const txt = items[i].txt || nuevo.txt;
+    const max = Math.min(items[i].max, nuevo.max);
+    items[i] = txt ? { id: items[i].id, txt, max } : { id: items[i].id, max };
+  }
+
+  const mensaje = a.mensaje || b.mensaje;
+
+  return mensaje ? { columna: a.columna, tope, items, mensaje } : { columna: a.columna, tope, items };
+}
+
+/** Cuántas veces se puede escoger un ítem. Cero: las que quiera. */
+export function topeDeItem(regla: NoRepetirItems, id: string): number {
+  const llave = llaveDeItem(id);
+  const propio = regla.items.find((x) => llaveDeItem(x.id) === llave);
+
+  return propio ? propio.max : regla.tope;
+}
+
+/** Un ítem con su cuenta y su tope. Lo que devuelven `itemsAlTope` e `itemsPasados`. */
+export interface CuentaDeItem {
+  id: string;
+  txt: string;
+  veces: number;
+  max: number;
+}
+
+/**
+ * Cuántas veces está cada ítem en la tabla, con su tope.
+ *
+ * `sinFila` es el GUID de la fila que se está editando, que **no se cuenta**: al
+ * reabrir una fila con GRANADILLA, esa GRANADILLA es la suya y escogerla otra vez
+ * no la repite.
+ *
+ * Salen en el orden en que aparecen en la tabla, para que el mensaje al no
+ * dejar guardar salga siempre igual en la app y en la web.
+ */
+function cuentasDeItems(
+  regla: NoRepetirItems,
+  filas: unknown,
+  tabla: Campo | undefined,
+  sinFila: string,
+): CuentaDeItem[] {
+  const cuentas = new Map<string, CuentaDeItem>();
+  const fuera = llaveDeItem(sinFila);
+
+  for (const fila of filasDe(filas)) {
+    if (fuera && llaveDeItem(fila['GUID']) === fuera) continue;
+
+    const { id, txt } = itemDeFila(fila, regla.columna, tabla);
+    if (!id) continue;
+
+    const llave = llaveDeItem(id);
+    const ya = cuentas.get(llave);
+
+    if (ya) {
+      ya.veces++;
+    } else {
+      const propio = regla.items.find((x) => llaveDeItem(x.id) === llave);
+      cuentas.set(llave, { id, txt: txt || propio?.txt || '', veces: 1, max: topeDeItem(regla, id) });
+    }
+  }
+
+  return [...cuentas.values()].filter((c) => c.max > 0);
+}
+
+/**
+ * Los ítems que **ya no se pueden escoger** otra vez: los que llegaron a su tope.
+ *
+ * Es lo que pregunta el selector antes de pintarse —el de agregar una fila y el
+ * desplegable de dentro de una— para dejarlos a la vista deshabilitados. Con
+ * `sinFila`, la fila que se está editando no cuenta.
+ */
+export function itemsAlTope(
+  regla: NoRepetirItems,
+  filas: unknown,
+  tabla?: Campo,
+  sinFila = '',
+): CuentaDeItem[] {
+  return cuentasDeItems(regla, filas, tabla, sinFila).filter((c) => c.veces >= c.max);
+}
+
+/** Los ítems que **se pasaron** de su tope. Con alguno, no se guarda. */
+export function itemsPasados(regla: NoRepetirItems, filas: unknown, tabla?: Campo): CuentaDeItem[] {
+  return cuentasDeItems(regla, filas, tabla, '').filter((c) => c.veces > c.max);
+}
+
 /** El campo de dentro de la tabla, para poder comparar por texto. */
 function campoDeDetalle(tabla: Campo | undefined, apiId: string): Campo | undefined {
   return (tabla?.detalle ?? []).find((c) => c.apiId === apiId);
@@ -699,6 +949,13 @@ export function leerValor(
     const terminadas = filas.filter((f) => filaCompleta(f, tabla)).length;
 
     return ref.agregado === 'completas' ? terminadas : filas.length - terminadas;
+  }
+
+  // Cuántas filas tienen ese ítem, comparando por ID. Ver `itemDeFila`.
+  if (ref.agregado === 'veces') {
+    const buscado = llaveDeItem(ref.item ?? '');
+
+    return filas.filter((f) => llaveDeItem(itemDeFila(f, ref.campo, tabla).id) === buscado).length;
   }
 
   const crudos = filas.map((fila) => valorDeFila(fila, ref.campo, tabla));
@@ -5440,6 +5697,43 @@ function aplicar(
     }
 
     /*
+     * Cuántas veces se puede escoger un mismo ítem en la tabla.
+     *
+     * Se anota en la tabla, como el tope de filas, y quien dibuja el selector
+     * pregunta a `itemsAlTope` qué ítems quedan cerrados. Dos reglas sobre la
+     * misma columna se juntan —una pone GRANADILLA y otra ARMA— y en lo que
+     * coincidan manda el tope más bajo, que es lo que haría cumplir las dos.
+     *
+     * Y si alguno ya se pasó, **no se guarda**: una fila que no pasó por el
+     * selector —heredada, de una actividad vieja— también cuenta.
+     */
+    case 'no-repetir-items': {
+      const nueva = leerNoRepetir(accion.valor);
+      if (!nueva) break;
+
+      const lista = [...(estado.noRepetir ?? [])];
+      const igual = lista.findIndex((r) => r.columna === nueva.columna);
+
+      if (igual >= 0) lista[igual] = juntarNoRepetir(lista[igual], nueva);
+      else lista.push(nueva);
+
+      estado.noRepetir = lista;
+
+      for (const pasado of itemsPasados(nueva, valores[apiId], campos[apiId])) {
+        const motivo = nueva.mensaje
+          ? nueva.mensaje
+              .split('{item}').join(pasado.txt || pasado.id)
+              .split('{veces}').join(String(pasado.veces))
+              .split('{max}').join(String(pasado.max))
+          : traducir('flujo.itemRepetido', { item: pasado.txt || pasado.id, veces: pasado.veces, max: pasado.max });
+
+        if (!resultado.bloqueos.includes(motivo)) resultado.bloqueos.push(motivo);
+      }
+
+      break;
+    }
+
+    /*
      * Qué se puede hacer con las filas: añadir, editar, borrar.
      *
      * Cada permiso se escribe solo si la regla lo nombra. Lo que no viene se
@@ -6081,7 +6375,11 @@ export function calcular(formula: string, valores: Record<ApiId, unknown>, campo
 function trocear(formula: string): string[] | null {
   // Los dos puntos y la arroba entran en el nombre: `DETALLE:EQUIPOS:IMPORTE@suma`
   // es **un** identificador, y trocearlo dejaria una formula sin sentido.
-  const piezas = (formula ?? '').match(/\d+\.?\d*|[A-Za-z_][A-Za-z0-9_:@]*|[+\-*/%(),]/g);
+  // Y el igual de `@veces=<id>` también, con el ID detrás: en una fórmula no
+  // hay comparaciones, así que un `=` suelto nunca fue válido.
+  const piezas = (formula ?? '').match(
+    /\d+\.?\d*|[A-Za-z_][A-Za-z0-9_:@]*(?:=[A-Za-z0-9_\-]+)?|[+\-*/%(),]/g,
+  );
   if (!piezas) return null;
 
   // Lo que no encajó en ningún hueco es un carácter que no se entiende.

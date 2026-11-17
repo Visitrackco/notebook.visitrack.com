@@ -63,6 +63,14 @@ export class ListFieldComponent {
    */
   readonly bloqueadas = input<string[]>([]);
 
+  /**
+   * Los ítems que una regla `no-repetir-items` cerró, por la llave de su ID y
+   * con el aviso que se enseña al lado. Al revés que [bloqueadas], **no se
+   * quitan**: se ven deshabilitados, para que se sepa por qué no se pueden
+   * escoger.
+   */
+  readonly alTope = input<Readonly<Record<string, string>>>({});
+
   /** Lo elegido, o `null`. */
   readonly value = input<ListSelection | null>(null);
 

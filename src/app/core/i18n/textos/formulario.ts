@@ -640,4 +640,7 @@ export const textosFormulario = {
   'flujo.correoVacio': ['El correo no dice nada.', 'The email is empty.'],
   'flujo.avisoSinDestino': ['El aviso no tiene a quién ir.', 'The notification has no recipient.'],
   'flujo.avisoVacio': ['El aviso no dice nada.', 'The notification is empty.'],
+  'flujo.itemRepetido': ['«{item}» se escogió {veces} veces y solo se permite {max}.', '“{item}” was chosen {veces} times and only {max} is allowed.'],
+  'md.itemAlTope': ['Ya se escogió el máximo ({n})', 'Maximum already chosen ({n})'],
+  'md.itemAlTopeFila': ['«{item}» ya se escogió el máximo de veces ({n}) en otros registros. Escoge otro.', '“{item}” was already chosen the maximum number of times ({n}) in other records. Choose another one.'],
 } as const;

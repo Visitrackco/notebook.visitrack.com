@@ -288,6 +288,26 @@
   opacity: 0.72;
 }
 
+/* Cerrado por una regla: a la vista, pero sin poder escogerse. */
+.picker__item--bloqueado {
+  cursor: not-allowed;
+  opacity: 0.6;
+
+  &:hover {
+    background: transparent;
+    border-color: transparent;
+  }
+}
+
+.picker__tope {
+  flex-shrink: 0;
+  padding: 2px 7px;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 600;
+  color: var(--vt-danger);
+}
+
 .picker__used {
   flex-shrink: 0;
   padding: 2px 7px;

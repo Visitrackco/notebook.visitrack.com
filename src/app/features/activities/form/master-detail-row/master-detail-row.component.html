@@ -116,6 +116,7 @@
             [obligatorioDelFlujo]="deLaRegla?.obligatorio ?? null"
             [limites]="limitesDe(deLaRegla)"
             [opcionesDelFlujo]="opcionesDe(deLaRegla)"
+            [alTopeDelFlujo]="alTopeDe(level, field)"
             [textoDelFlujo]="deLaRegla?.texto ?? null"
             [imagenDelFlujo]="deLaRegla?.imagen ?? null"
             [invalid]="level.engine.showsError(field)"
@@ -158,6 +159,10 @@
     </div>
 
     <footer class="row__foot">
+      @if (aviso() && isTop(level)) {
+        <p class="row__aviso" role="alert">{{ aviso() }}</p>
+      }
+
       <button type="button" class="row__leave" (click)="leave()">
         {{ (discardsOnExit() ? 'md.descartar' : 'md.salir') | t }}
       </button>
