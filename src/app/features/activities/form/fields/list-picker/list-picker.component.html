@@ -137,6 +137,9 @@
                       }
                     </span>
                   }
+
+                  <!-- El stock, si el ítem es un producto de Inventario. -->
+                  <vt-disponible [guid]="choice.id" />
                 </span>
 
                 @if (selectedId() === choice.id) {

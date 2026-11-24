@@ -438,6 +438,23 @@
       (close)="askingRequired.set(false)"
     />
 
+    <!-- El stock que no alcanza (perfil de inventario del formulario). Con
+         «bloquear» solo informa; con «avisar» deja guardar de todos modos. -->
+    @if (avisoDeStock(); as aviso) {
+      <vt-confirm-dialog
+        [open]="true"
+        [tone]="aviso.revision.accion === 'bloquear' ? 'danger' : 'warning'"
+        icon="box"
+        [title]="(aviso.revision.accion === 'bloquear' ? 'inv.noAlcanzaTitulo' : 'inv.avisoTitulo') | t"
+        [message]="textoDelStock()"
+        [detail]="fechaDelStock()"
+        [confirmLabel]="(aviso.revision.accion === 'bloquear' ? 'inv.entendido' : 'inv.guardarIgual') | t"
+        [cancelLabel]="aviso.revision.accion === 'bloquear' ? '' : ('inv.revisar' | t)"
+        (confirm)="aviso.revision.accion === 'bloquear' ? avisoDeStock.set(null) : alGuardarSinStock()"
+        (cancel)="avisoDeStock.set(null)"
+      />
+    }
+
     <!-- A quién se le despacha, cuando la regla no lo trae decidido. De aquí
          solo se sale eligiendo, o cancelando el guardado entero. -->
     <vt-destinatario-dialog

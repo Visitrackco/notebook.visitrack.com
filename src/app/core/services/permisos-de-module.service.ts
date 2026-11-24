@@ -23,6 +23,14 @@ const AL_VOLVER_MS = 60_000;
 interface RespuestaDeCampo {
   status?: boolean;
   permissions?: { moduleKey?: unknown; permissionCode?: unknown }[];
+  /** Las listas «Solo se modifica desde Inventario» de la compañía (Module 19-nov-2026 en adelante). */
+  listasSoloInventario?: unknown[];
+}
+
+/** Lo que vale de una respuesta: las claves y, si vinieron, las listas de solo inventario. */
+interface LoQueDijo {
+  claves: ReadonlySet<string>;
+  listas?: ReadonlySet<string>;
 }
 
 /**
@@ -63,6 +71,13 @@ export class PermisosDeModuleService {
 
   /** Si Module ya contestó alguna vez para quien tiene la sesión. */
   readonly conocidos = computed(() => this.claves() !== null);
+
+  /**
+   * Las listas cuyos items solo se crean y editan desde Inventario (por
+   * `ListID`). Aquí no se les ofrece «Crear ítem». Si Module no manda la
+   * clave (versión vieja, error), se conserva lo último que se supo.
+   */
+  private readonly listasSoloInventario = signal<ReadonlySet<string>>(new Set());
 
   /** Seguir por geocercas: vigía, momentos e historial. */
   readonly seguimientoGeocercas: Signal<boolean>;
@@ -118,6 +133,12 @@ export class PermisosDeModuleService {
     return s;
   }
 
+  /** ¿Los items de la lista [listId] se manejan solo desde Inventario? */
+  esListaSoloInventario(listId: unknown): boolean {
+    const id = String(listId ?? '').trim();
+    return id !== '' && this.listasSoloInventario().has(id);
+  }
+
   /**
    * Espera a la pregunta en curso, si hay una. Para quien tiene que decidir
    * ya —un guardia, un momento de la app— y no quiere decidir con «aún no sé».
@@ -144,12 +165,16 @@ export class PermisosDeModuleService {
     this.ultimaPregunta = Date.now();
 
     const pregunta = this.preguntar(token)
-      .then((claves) => {
+      .then((dijo) => {
         // Mientras viajaba cambió la sesión: esto ya no es de nadie.
         if (generacion !== this.generacion || id !== this.usuario) return;
-        if (claves === undefined) return;
-        this.claves.set(claves);
-        this.guardar(id, claves);
+        if (dijo === undefined) return;
+        this.claves.set(dijo.claves);
+        this.guardar(id, dijo.claves);
+        if (dijo.listas) {
+          this.listasSoloInventario.set(dijo.listas);
+          this.guardarListas(id, dijo.listas);
+        }
       })
       .finally(() => {
         if (this.enCurso === pregunta) this.enCurso = null;
@@ -168,6 +193,7 @@ export class PermisosDeModuleService {
 
     // Sin sesión, nada. Con sesión, lo último que se supo de ella mientras se pregunta.
     this.claves.set(id ? this.leer(id) : null);
+    this.listasSoloInventario.set(id ? this.leerListas(id) : new Set());
     if (id) void this.refrescar();
   }
 
@@ -177,7 +203,7 @@ export class PermisosDeModuleService {
    * `fetch` directo y no `HttpClient`: el interceptor cerraría la sesión con
    * un 401 de Module, y no poder preguntar por un permiso no es motivo.
    */
-  private async preguntar(token: string): Promise<ReadonlySet<string> | undefined> {
+  private async preguntar(token: string): Promise<LoQueDijo | undefined> {
     const corte = new AbortController();
     const reloj = setTimeout(() => corte.abort(), 20_000);
     try {
@@ -186,17 +212,21 @@ export class PermisosDeModuleService {
         signal: corte.signal,
       });
 
-      if (respuesta.status === 401 || respuesta.status === 403) return new Set();
+      if (respuesta.status === 401 || respuesta.status === 403) return { claves: new Set() };
       if (!respuesta.ok) return undefined;
 
       const cuerpo = (await respuesta.json().catch(() => null)) as RespuestaDeCampo | null;
       if (!cuerpo || cuerpo.status === false || !Array.isArray(cuerpo.permissions)) return undefined;
 
-      return new Set(
+      const claves = new Set(
         cuerpo.permissions
           .map((p) => String(p?.moduleKey ?? '').trim())
           .filter((clave) => clave.length > 0),
       );
+      const listas = Array.isArray(cuerpo.listasSoloInventario)
+        ? new Set(cuerpo.listasSoloInventario.map((l) => String(l ?? '').trim()).filter(Boolean))
+        : undefined;
+      return { claves, listas };
     } catch {
       // Sin red o Module caído: se queda lo que se sabía.
       return undefined;
@@ -216,6 +246,23 @@ export class PermisosDeModuleService {
       return Array.isArray(leido) ? new Set(leido.map(String)) : null;
     } catch {
       return null;
+    }
+  }
+
+  private leerListas(userId: string): ReadonlySet<string> {
+    try {
+      const leido = JSON.parse(localStorage.getItem(`visitrack.listasSoloInventario::${userId}`) ?? '[]');
+      return new Set(Array.isArray(leido) ? leido.map(String) : []);
+    } catch {
+      return new Set();
+    }
+  }
+
+  private guardarListas(userId: string, listas: ReadonlySet<string>): void {
+    try {
+      localStorage.setItem(`visitrack.listasSoloInventario::${userId}`, JSON.stringify([...listas]));
+    } catch {
+      // Sin almacenamiento: vale para esta pestaña.
     }
   }
 

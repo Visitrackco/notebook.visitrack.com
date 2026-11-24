@@ -4,6 +4,8 @@ import { ListChoice, ListSource } from '../../../../../core/forms/list-source.se
 import { llaveDeItem } from '../../../../../core/forms/flujo-motor';
 import { ListDefinition, ListDetail } from '../../../../../core/models/entities.model';
 import { PermissionsService } from '../../../../../core/services/permissions.service';
+import { PermisosDeModuleService } from '../../../../../core/services/permisos-de-module.service';
+import { DisponibleComponent } from '../disponible/disponible.component';
 import { IconComponent } from '../../../../../shared/components/icon/icon.component';
 import { ListItemFormComponent } from './list-item-form.component';
 import { localeActual, traducir } from '../../../../../core/i18n/idioma.service';
@@ -23,7 +25,7 @@ import { TPipe } from '../../../../../core/i18n/t.pipe';
 @Component({
   selector: 'vt-list-picker',
   standalone: true,
-  imports: [IconComponent, ListItemFormComponent, TPipe],
+  imports: [DisponibleComponent, IconComponent, ListItemFormComponent, TPipe],
   templateUrl: './list-picker.component.html',
   styleUrl: './list-picker.component.scss',
 })
@@ -98,14 +100,21 @@ export class ListPickerComponent {
    * ninguna razón de negocio detrás.
    */
   readonly canCreate = computed(
-    () => Boolean(this.listDefinition()) && this.permissions.canCreateListItems(),
+    () => Boolean(this.listDefinition()) && this.permissions.canCreateListItems() && !this.soloInventario(),
   );
 
-  readonly createBlocked = computed(() =>
-    this.listDefinition() && !this.permissions.canCreateListItems()
-      ? this.permissions.listsReason()
-      : '',
-  );
+  /**
+   * La lista se maneja desde Inventario (marca de Module): sus items solo los
+   * crea y edita Inventario. El servidor revertiría lo creado aquí, así que no
+   * se ofrece. Igual que en el teléfono.
+   */
+  readonly soloInventario = computed(() => this.permisosDeModule.esListaSoloInventario(this.listDefinition()?.ID));
+
+  readonly createBlocked = computed(() => {
+    if (!this.listDefinition()) return '';
+    if (this.soloInventario()) return traducir('inv.soloDesdeInventario');
+    return this.permissions.canCreateListItems() ? '' : this.permissions.listsReason();
+  });
 
   startCreate(): void {
     if (this.canCreate()) this.creating.set(true);
@@ -144,6 +153,7 @@ export class ListPickerComponent {
   readonly message = computed(() => this.source()?.message ?? '');
 
   private readonly permissions = inject(PermissionsService);
+  private readonly permisosDeModule = inject(PermisosDeModuleService);
 
   private readonly used = computed(
     () => new Set(this.usedNames().map((name) => name.trim().toLowerCase())),

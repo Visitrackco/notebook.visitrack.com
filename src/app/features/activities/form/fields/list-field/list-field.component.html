@@ -34,6 +34,11 @@
   }
 
   <div class="lst__foot">
+    <!-- El stock del ítem elegido, si es un producto de Inventario. -->
+    @if (selected(); as elegido) {
+      <vt-disponible [guid]="elegido.id" />
+    }
+
     @if (field().hel) {
       <small class="lst__help">{{ field().hel }}</small>
     }

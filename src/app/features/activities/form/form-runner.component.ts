@@ -92,7 +92,10 @@ import { PageNavComponent } from './page-nav/page-nav.component';
 import { MasterDetailPanelsService } from './master-detail-row/master-detail-panels.service';
 import { MissingEntry, RequiredDialogComponent } from './required-dialog/required-dialog.component';
 import { CompanyLogicService } from '../../../core/rules/company-logic.service';
-import { traducir } from '../../../core/i18n/idioma.service';
+import { localeActual, traducir } from '../../../core/i18n/idioma.service';
+import { InventarioDeCampoService, RevisionDeStock } from '../../../core/inventario/inventario-de-campo.service';
+import { cifraDeStock } from './fields/disponible/disponible.component';
+import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { TPipe } from '../../../core/i18n/t.pipe';
 
 /**
@@ -132,6 +135,7 @@ const PREFIJO_DESCRIPTIVO_DE_FLUJO = 'flujo:';
     MatTooltipModule,
     PageNavComponent,
     RequiredDialogComponent,
+    ConfirmDialogComponent,
     DestinatarioDialogComponent,
     ToTopComponent,
     TPipe,
@@ -156,6 +160,7 @@ export class FormRunnerComponent {
   private readonly sound = inject(AlertSoundService);
   private readonly shortcuts = inject(ShortcutsService);
   private readonly companyLogic = inject(CompanyLogicService);
+  private readonly inventario = inject(InventarioDeCampoService);
   private readonly inherits = inject(ActivityInheritsService);
   private readonly estados = inject(DispatchStatusRepository);
   private readonly auth = inject(AuthService);
@@ -613,6 +618,81 @@ export class FormRunnerComponent {
   readonly askingRequired = signal(false);
 
   /**
+   * El stock que no alcanza, mientras se pregunta (ver [revisarStock]).
+   * `incomplete` es con qué se estaba guardando, para seguir igual si se
+   * elige «Guardar de todos modos».
+   */
+  readonly avisoDeStock = signal<{ revision: RevisionDeStock; incomplete: boolean } | null>(null);
+
+  /** Ya se eligió «Guardar de todos modos» para este guardado: no se vuelve a preguntar. */
+  private stockAceptado = false;
+
+  readonly textoDelStock = computed(() => {
+    const aviso = this.avisoDeStock();
+    if (!aviso) return '';
+    return aviso.revision.faltantes
+      .map((f) =>
+        traducir('inv.faltante', {
+          nombre: f.nombre,
+          pide: cifraDeStock(f.pide),
+          hay: cifraDeStock(f.hay),
+          unidad: f.unidad,
+        }).trim(),
+      )
+      .join(' · ');
+  });
+
+  readonly fechaDelStock = computed(() => {
+    const al = this.inventario.al();
+    if (!this.avisoDeStock() || !al) return '';
+    const fecha = al.toLocaleString(localeActual(), {
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+    return traducir('inv.segunSync', { fecha });
+  });
+
+  /** «Guardar de todos modos» del aviso de stock. */
+  async alGuardarSinStock(): Promise<void> {
+    const aviso = this.avisoDeStock();
+    this.avisoDeStock.set(null);
+    if (!aviso || aviso.revision.accion !== 'avisar') return;
+    this.stockAceptado = true;
+    try {
+      await this.commit(aviso.incomplete);
+    } finally {
+      this.stockAceptado = false;
+    }
+  }
+
+  /**
+   * ¿Se puede seguir guardando según el stock? Gemelo de `_revisarStock` del
+   * móvil; ver `InventarioDeCampoService.revisar`.
+   *
+   * Con `negativo = bloquear` enseña qué falta y no deja guardar (ni de todos
+   * modos); con `avisar` deja elegir. Sin perfil, sin datos de stock o si
+   * alcanza, no pregunta nada. Una actividad que se guarda incompleta en un
+   * perfil «al completar» no se revisa: no es su momento de mover.
+   */
+  private async revisarStock(engine: FormEngine, incomplete: boolean): Promise<boolean> {
+    if (this.stockAceptado) return true;
+
+    const answer = this.answer();
+    // El estado con el que va a quedar, si el flujo pidió uno por su ID.
+    const pedido = String(engine.estadoDelFlujo() ?? '').trim();
+    const estado = /^\d+$/.test(pedido) ? pedido : answer.Status;
+    const revision = await this.inventario.revisar({ ...answer, Status: estado }, engine.toAnswerFields(), !incomplete);
+    if (!revision.accion) return true;
+
+    this.avisoDeStock.set({ revision, incomplete });
+    void this.sound.warn();
+    return false;
+  }
+
+  /**
    * «Guardar de todos modos» **no** se ofrece en un enlace público.
    *
    * Con sesión sigue: quien trabaja en la aplicación tiene un listado donde
@@ -888,6 +968,9 @@ export class FormRunnerComponent {
    * el formulario funciona.
    */
   private async mount(survey: Survey, answer: SurveyAnswer): Promise<void> {
+    // El stock, fresco si el formulario mueve inventario (sin esperarlo).
+    if (this.inventario.perfilDe(answer.SurveyID)) void this.inventario.sincronizarSiViejo();
+
     const inherits = await this.inherits.forAnswer(answer, survey.JSONQuestion);
 
     /*
@@ -3096,6 +3179,15 @@ ${enlace.url}`)) abrir();
         this.avisarQueNoSePuedeGuardar(bloqueos);
         return;
       }
+
+      /*
+       * El stock, si el formulario tiene perfil de inventario.
+       *
+       * Después de los bloqueos del flujo y antes de escribir nada: con
+       * «bloquear» no se guarda, ni siquiera por «guardar de todos modos» de
+       * los obligatorios (que también pasa por aquí).
+       */
+      if (!(await this.revisarStock(engineAlGuardar, incomplete))) return;
     }
 
     // Lo elegido en un guardado anterior no se arrastra: puede que la regla ya

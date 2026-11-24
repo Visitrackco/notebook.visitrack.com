@@ -11,6 +11,7 @@ import { CompanyLogoService } from '../../core/services/company-logo.service';
 import { ConnectivityService } from '../../core/services/connectivity.service';
 import { GeocercasService } from '../../core/geocercas/geocercas.service';
 import { PermisosDeModuleService } from '../../core/services/permisos-de-module.service';
+import { InventarioDeCampoService } from '../../core/inventario/inventario-de-campo.service';
 import { ConfigDeCompaniaService } from '../../core/services/config-de-compania.service';
 import { PendingUploadService } from '../../core/sync/pending-upload.service';
 import { PushService } from '../../core/services/push.service';
@@ -98,6 +99,8 @@ export class ShellComponent {
   private readonly configCompania = inject(ConfigDeCompaniaService);
 
   private readonly permisosDeModule = inject(PermisosDeModuleService);
+  /** Se crea aquí para que el stock llegue con la sesión, no al abrir el primer formulario. */
+  private readonly inventarioDeCampo = inject(InventarioDeCampoService);
 
   /**
    * El menú, sin lo que pide una clave de Module que no se tiene.

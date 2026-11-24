@@ -643,4 +643,18 @@ export const textosFormulario = {
   'flujo.itemRepetido': ['«{item}» se escogió {veces} veces y solo se permite {max}.', '“{item}” was chosen {veces} times and only {max} is allowed.'],
   'md.itemAlTope': ['Ya se escogió el máximo ({n})', 'Maximum already chosen ({n})'],
   'md.itemAlTopeFila': ['«{item}» ya se escogió el máximo de veces ({n}) en otros registros. Escoge otro.', '“{item}” was already chosen the maximum number of times ({n}) in other records. Choose another one.'],
+
+  // ── Inventario (stock de las listas de productos) ─────────────────────────
+  'inv.disponible': ['Disponible: {cantidad} {unidad}', 'Available: {cantidad} {unidad}'],
+  'inv.noAlcanzaTitulo': ['No hay stock suficiente', 'Not enough stock'],
+  'inv.avisoTitulo': ['El stock no alcanza', 'Stock is not enough'],
+  'inv.faltante': ['{nombre}: pides {pide} y hay {hay} {unidad}', '{nombre}: you ask for {pide} and there are {hay} {unidad}'],
+  'inv.segunSync': ['Según el stock sincronizado el {fecha}.', 'According to the stock synced on {fecha}.'],
+  'inv.revisar': ['Revisar', 'Review'],
+  'inv.guardarIgual': ['Guardar de todos modos', 'Save anyway'],
+  'inv.entendido': ['Entendido', 'Got it'],
+  'inv.soloDesdeInventario': [
+    'Esta lista se maneja desde Inventario: sus items no se crean aquí.',
+    'This list is managed from Inventory: its items are not created here.',
+  ],
 } as const;
