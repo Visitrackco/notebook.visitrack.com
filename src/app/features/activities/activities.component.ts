@@ -108,6 +108,9 @@ type SortField = 'UpdatedOn' | 'CreatedOn' | 'DueDate';
  * memoria: cada paso lleva el GUID de la actividad en la URL, así que recargar
  * la página en mitad del flujo lo retoma donde iba en vez de empezar de cero.
  */
+import { InventarioDeCampoService } from '../../core/inventario/inventario-de-campo.service';
+import { SinStockBandaComponent } from './inventario/sin-stock-banda.component';
+
 @Component({
   selector: 'vt-activities',
   standalone: true,
@@ -123,11 +126,15 @@ type SortField = 'UpdatedOn' | 'CreatedOn' | 'DueDate';
     ReassignDialogComponent,
     RouterLink,
     PdfPreviewComponent,
+    SinStockBandaComponent,
   ],
   templateUrl: './activities.component.html',
   styleUrl: './activities.component.scss',
 })
 export class ActivitiesComponent {
+  /** Inventario: qué actividades frenó el servidor por falta de stock. */
+  readonly inventario = inject(InventarioDeCampoService);
+
   private readonly router = inject(Router);
   private readonly activities = inject(ActivityService);
   private readonly pendingUploads = inject(PendingUploadService);

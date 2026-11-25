@@ -43,10 +43,12 @@ type SortMode = 'title' | 'activity';
  * formulario lleva su propio color, igual que en la app móvil, porque en campo
  * se reconoce antes por el color que leyendo el título.
  */
+import { MarcaInventarioComponent } from '../activities/inventario/marca-inventario.component';
+
 @Component({
   selector: 'vt-forms',
   standalone: true,
-  imports: [IconComponent, RouterLink, TPipe],
+  imports: [IconComponent, MarcaInventarioComponent, RouterLink, TPipe],
   templateUrl: './forms.component.html',
   styleUrl: './forms.component.scss',
 })

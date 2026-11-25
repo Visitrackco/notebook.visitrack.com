@@ -59,6 +59,8 @@ import type { ClaveTexto } from '../../core/i18n/textos';
  * El botón Guardar del formulario hace otra cosa: marca la actividad como
  * terminada y lista para subir. No es «escribir en disco», que ya pasó.
  */
+import { InventarioCabeceraComponent } from './inventario/inventario-cabecera.component';
+
 @Component({
   selector: 'vt-activity-detail',
   standalone: true,
@@ -68,6 +70,7 @@ import type { ClaveTexto } from '../../core/i18n/textos';
     CorreosDelFlujoComponent,
     FormRunnerComponent,
     IconComponent,
+    InventarioCabeceraComponent,
     MatButtonModule,
     MatTooltipModule,
     RouterLink,

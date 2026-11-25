@@ -124,6 +124,8 @@
             @if (card.survey.Description) {
               <p class="forms__desc">{{ card.survey.Description }}</p>
             }
+            <!-- Si mueve inventario: «Inventario · Salida», como en la app. -->
+            <vt-marca-inventario [surveyId]="card.survey.SurveyID" />
             <!-- Cuándo cambió el formato por última vez, en la hora de quien
                  mira: así se sabe si se tiene la última versión sin preguntar. -->
             @if (cuandoSeActualizo(card.survey); as actualizado) {

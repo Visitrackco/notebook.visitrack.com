@@ -52,6 +52,10 @@ import { Component, input } from '@angular/core';
           <path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11Z" />
           <circle cx="12" cy="10" r="2.6" />
         }
+        @case ('tag') {
+          <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+          <line x1="7" y1="7" x2="7.01" y2="7" />
+        }
         @case ('box') {
           <path d="M3.5 7.5 12 3l8.5 4.5v9L12 21l-8.5-4.5v-9Z" />
           <path d="M3.5 7.5 12 12l8.5-4.5" />

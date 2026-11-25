@@ -210,6 +210,9 @@
       }
     </div>
 
+    <!-- Las que el servidor frenó por falta de stock: para corregirlas. -->
+    <vt-sin-stock-banda />
+
     <!-- ── Filtros ─────────────────────────────────────────────────────────── -->
     @if (showFilters()) {
       <section class="acts__filters">
@@ -396,6 +399,14 @@
 
                 <span class="acts__tags">
                   <span class="acts__state">{{ estadoLabel(card.state) }}</span>
+
+                  <!-- Frenada en el servidor por falta de stock: hay que corregirla. -->
+                  @if (inventario.bloqueadaDe(card.answer.GUID); as sinStock) {
+                    <span class="acts__sinstock" [matTooltip]="sinStock.mensaje">
+                      <vt-icon name="alert" [size]="13" />
+                      {{ 'inv.sinStockChip' | t }}
+                    </span>
+                  }
 
                   <!-- Cuánto le queda en el equipo. Solo sale cuando el
                        formulario tiene regla de borrado y la actividad ya está

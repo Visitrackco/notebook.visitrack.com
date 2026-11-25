@@ -669,6 +669,29 @@ export class FormRunnerComponent {
   }
 
   /**
+   * Después de guardar, si el formulario mueve inventario: un aviso con cómo
+   * va el descuento (ya se descontó, ya cumple o qué le falta). Gemelo de
+   * `_avisarComoVaElInventario` del móvil. Con la actividad ya escrita.
+   */
+  private async avisarComoVaElInventario(id: number | undefined): Promise<void> {
+    try {
+      const guardada = id == null ? null : await this.answers.getByKey(id);
+      if (!guardada || !this.inventario.perfilDe(guardada.SurveyID)) return;
+      const como = await this.inventario.comoVaElDescuento(guardada);
+      if (!como) return;
+      this.toasts.show({
+        title: como.texto,
+        tone: como.estado === 'falta' ? 'warning' : como.estado === 'hecho' ? 'info' : 'success',
+        icon: 'tag',
+        duration: 8000,
+        sonido: 'ninguno',
+      });
+    } catch {
+      // Es solo un aviso.
+    }
+  }
+
+  /**
    * ¿Se puede seguir guardando según el stock? Gemelo de `_revisarStock` del
    * móvil; ver `InventarioDeCampoService.revisar`.
    *
@@ -3308,7 +3331,16 @@ ${enlace.url}`)) abrir();
        * Es el mismo criterio de la app: allí solo se sella cuando la actividad
        * pasa a un estado de completada.
        */
-      const completedOn = incomplete ? '' : answer.CompletedOn || new Date().toISOString();
+      /*
+       * Y solo si le tocó un estado de completada, como en la app: guardarla
+       * sin obligatorios en un estado «cerrado» que no es de base Completado
+       * (p. ej. «TAREA RECHAZADA») no la completa. Antes se sellaba siempre, y
+       * el servidor la daba por completada (inventario «al completar»
+       * descontaba) aunque la actividad siguiera en otro estado. Se mira con
+       * el estado ya escrito (el del flujo, el de la compañía).
+       */
+      const leCompleta = incomplete ? false : !!(await this.companyLogic.estadoAlCompletar(answer))?.nuevo;
+      const completedOn = incomplete ? '' : answer.CompletedOn || (leCompleta ? new Date().toISOString() : '');
 
       /*
        * Lo que escribieron las reglas de «al guardar», a la base.
@@ -3334,6 +3366,9 @@ ${enlace.url}`)) abrir();
 
       this.activities.notifyChanged();
       this.feedback.set(this.describeSave(incomplete, pendingFiles));
+
+      // Si el formulario mueve inventario: ya se descontó, ya cumple o qué le falta.
+      void this.avisarComoVaElInventario(answer.ID);
 
       // El envío arranca aquí mismo, sin esperar al proceso del minuto: el
       // usuario acaba de pulsar Guardar y es cuando más probable es que tenga

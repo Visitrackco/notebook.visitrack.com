@@ -26,6 +26,11 @@ export interface PerfilInventario {
   };
   lineas: { origen: 'tabla' | 'campos'; tabla?: string; producto?: string; cantidad: string };
   negativo: 'bloquear' | 'avisar' | 'permitir';
+  /**
+   * Si la actividad se vuelve a guardar después de mover: `una_vez` (no toca
+   * más el inventario; por defecto) o `ajustar` (mueve la diferencia).
+   */
+  repetir: 'una_vez' | 'ajustar';
 }
 
 /** Una línea pedida: el item de la lista (GUID) y su cantidad. */
@@ -91,6 +96,7 @@ export function leerPerfil(crudo: unknown): PerfilInventario {
       cantidad: texto(v?.lineas?.cantidad) ?? '',
     },
     negativo: ['bloquear', 'avisar', 'permitir'].includes(v?.negativo) ? v.negativo : 'avisar',
+    repetir: v?.repetir === 'ajustar' ? 'ajustar' : 'una_vez',
   };
 }
 

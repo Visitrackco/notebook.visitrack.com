@@ -81,6 +81,11 @@
       <!-- Estado de despacho, sincronización y autoguardado en la misma línea:
            las tres señales que se consultan de reojo mientras se diligencia. -->
       <div class="detail__signals">
+        <!-- Inventario: la etiqueta amarilla (este formulario mueve stock y
+             cómo va el descuento) y el aviso rojo si el servidor la frenó por
+             falta de stock. Como en la barra del formulario de la app. -->
+        <vt-inventario-cabecera [answer]="act" />
+
         <span [class]="'detail__saving detail__saving--' + autosaveTone()">
           <span class="detail__saving-dot" aria-hidden="true"></span>
           <span class="detail__saving-text">{{ autosaveLabel() }}</span>
