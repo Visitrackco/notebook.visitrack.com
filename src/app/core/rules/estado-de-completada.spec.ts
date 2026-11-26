@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { elegirEstadoDeCompletada, idsDelFormulario, queLeToca } from './estado-de-completada';
+import { elegirEstadoDeCompletada, esDeTrabajo, idsDelFormulario, queLeToca } from './estado-de-completada';
 
 /** El catálogo de Solarpy (3870): el caso que originó la regla. */
 const solarpy = [
@@ -61,3 +61,20 @@ describe('estado de completada', () => {
     expect(queLeToca({ meta: '1', compania: 2259, formulario: '16681', actual: '', cerrado: false })).toBeNull();
   });
 });
+
+describe('estado de trabajo de una consigna', () => {
+  const base = { actual: '15589', cerrado: true, meta: '15587', compania: 1932, formulario: '21374' };
+
+  it('«Abierto» sin tocarlo al llenarla pasa a «Completado»', () => {
+    expect(queLeToca({ ...base, deTrabajo: true, elegidoAlEditar: false })).toBe('15587');
+  });
+
+  it('lo elegido al llenarla, o un estado que no es de trabajo, se conserva', () => {
+    expect(queLeToca({ ...base, deTrabajo: true, elegidoAlEditar: true })).toBeNull();
+    expect(queLeToca({ ...base, deTrabajo: false, elegidoAlEditar: false })).toBeNull();
+    expect(esDeTrabajo(5)).toBe(true);
+    expect(esDeTrabajo('8')).toBe(true);
+    expect(esDeTrabajo(4)).toBe(false);
+  });
+});
+

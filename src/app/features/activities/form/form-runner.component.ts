@@ -991,6 +991,10 @@ export class FormRunnerComponent {
    * el formulario funciona.
    */
   private async mount(survey: Survey, answer: SurveyAnswer): Promise<void> {
+    // Con qué estado se abre: uno «de trabajo» que no se cambie al llenarla
+    // (el «Abierto» de una consigna) pasa al de completada al completarla.
+    this.companyLogic.anotarEstadoAlAbrir(answer);
+
     // El stock, fresco si el formulario mueve inventario (sin esperarlo).
     if (this.inventario.perfilDe(answer.SurveyID)) void this.inventario.sincronizarSiViejo();
 

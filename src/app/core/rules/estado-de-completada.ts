@@ -25,6 +25,18 @@ import { DispatchStatus } from '../models/entities.model';
 /** La base «Completado» de los estados de despacho. */
 export const BASE_COMPLETADO = 3;
 
+/**
+ * Bases de los estados «de trabajo»: la actividad todavía está en curso (1
+ * Creado, 2 Asignado, 5 Abierto, 8 En progreso / Recibido). Una consigna llega
+ * con uno de estos; al completarla pasa al de completada. Gemela de
+ * `EstadoDeCompletada.basesDeTrabajo` del móvil.
+ */
+export const BASES_DE_TRABAJO: ReadonlySet<number> = new Set([1, 2, 5, 8]);
+
+export function esDeTrabajo(baseStatusId: unknown): boolean {
+  return BASES_DE_TRABAJO.has(Number(baseStatusId));
+}
+
 const BRILLANTEX = 2259;
 
 /** Las que pasan **siempre** a completada aunque ya tuvieran otro estado. */
@@ -105,9 +117,17 @@ export function queLeToca(input: {
   meta: string | null;
   compania: number;
   formulario: string;
+  /** El estado actual es de una base «de trabajo» ([BASES_DE_TRABAJO]). */
+  deTrabajo?: boolean;
+  /** El estado cambió mientras se llenaba (lo eligió el usuario o una regla). */
+  elegidoAlEditar?: boolean;
 }): string | null {
   const { actual, cerrado, meta, compania, formulario } = input;
   if (!meta) return null;
+
+  // Un estado de trabajo que no se eligió al llenarla (el «Abierto» o
+  // «Asignado» que traía la consigna) pasa al de completada.
+  if (cerrado && input.deTrabajo && !input.elegidoAlEditar) return meta;
 
   if (!cerrado) {
     if (compania === BRILLANTEX && formulario === PLANEADOR_SURVEY && actual !== meta) return null;

@@ -9,7 +9,7 @@ import { AuthService } from '../services/auth.service';
 import { Indicator, evaluate } from './brillantex';
 import { CRONOGRAMA, FieldWrite, PLANEADOR, PlanConfig, planificar } from './planificador';
 import { cubrimientos } from './diamante';
-import { BASE_COMPLETADO, elegirEstadoDeCompletada, idsDelFormulario, queLeToca } from './estado-de-completada';
+import { BASE_COMPLETADO, elegirEstadoDeCompletada, esDeTrabajo, idsDelFormulario, queLeToca } from './estado-de-completada';
 import { STATUS_RULES, statusFor } from './status-rules';
 
 /** Compañías con reglas propias al guardar. */
@@ -173,6 +173,14 @@ export class CompanyLogicService {
    *
    * `nuevo` es `null` cuando el guardado no toca el estado.
    */
+  /** GUID → el estado con que se abrió la actividad. Lo anota el formulario al montarse. */
+  private readonly estadosAlAbrir = new Map<string, string>();
+
+  /** Anota con qué estado se abre la actividad (ver [estadoAlCompletar]). */
+  anotarEstadoAlAbrir(answer: SurveyAnswer): void {
+    if (answer?.GUID) this.estadosAlAbrir.set(answer.GUID, String(answer.Status ?? '').trim());
+  }
+
   async estadoAlCompletar(answer: SurveyAnswer): Promise<{ actual: string; nuevo: string | null } | null> {
     const user = this.auth.currentUser();
     if (!user) return null;
@@ -198,6 +206,9 @@ export class CompanyLogicService {
         meta: completada ? String(completada.DispatchID) : null,
         compania: Number(user.CompanyID),
         formulario: String(fresh.SurveyID),
+        deTrabajo: esDeTrabajo(propios.find((s) => String(s.DispatchID) === actual)?.BaseStatusID),
+        // Sin saber con qué se abrió, se supone que sí se eligió: se conserva.
+        elegidoAlEditar: !this.estadosAlAbrir.has(fresh.GUID) || this.estadosAlAbrir.get(fresh.GUID) !== actual,
       });
 
       return { actual, nuevo };
