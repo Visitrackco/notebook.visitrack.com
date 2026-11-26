@@ -58,6 +58,9 @@ export interface RowLevel {
   /** Lo que `no-repetir-items` cierra en los desplegables de la fila. */
   topes: TopeDeColumna[];
 
+  /** `guardar-filas-incompletas`: se puede guardar con obligatorios sin llenar. */
+  guardarIncompletas: boolean;
+
   /** Avisa del cierre a quien la abrió. Se llama una sola vez. */
   settle: (outcome: RowOutcome) => void;
 }
@@ -123,6 +126,7 @@ export class MasterDetailStackService {
     answerGuid: string;
     fresh: boolean;
     topes?: TopeDeColumna[];
+    guardarIncompletas?: boolean;
   }): Promise<RowOutcome> {
     const parent = this.current()?.trail ?? '';
     const step = `${input.fieldId}~${input.rowGuid}`;
@@ -140,6 +144,7 @@ export class MasterDetailStackService {
         answerGuid: input.answerGuid,
         fresh: input.fresh,
         topes: input.topes ?? [],
+        guardarIncompletas: input.guardarIncompletas === true,
         settle: (outcome) => {
           // Una fila puede cerrarse por el botón y a la vez por el cambio de
           // dirección que ese botón provoca. Solo cuenta la primera.

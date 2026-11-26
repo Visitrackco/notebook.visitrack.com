@@ -2047,6 +2047,16 @@ export type TipoAccion =
    */
   | 'permisos-tabla'
   /**
+   * Que las filas de una tabla se puedan guardar con obligatorios sin llenar.
+   *
+   * `campo` es la tabla; no lleva valor. Sin esto, el aviso de obligatorios de
+   * una fila solo deja seguir llenando o salir, y salir **borra la fila** —en
+   * una tabla que nace de una lista, un registro por ítem, se perdía el ítem—.
+   * Con esto el aviso ofrece «Guardar de todos modos»: la fila se queda con lo
+   * que tenga. Solo vale para la tabla que nombra la regla.
+   */
+  | 'guardar-filas-incompletas'
+  /**
    * Deja la actividad entera en solo lectura, con el motivo a la vista.
    *
    * `solo-lectura` es por campo; esta cierra el formulario completo. Es para
@@ -2676,6 +2686,12 @@ export interface EstadoCampo {
 
   /** ¿Se pueden borrar filas? Ver [agregar]. */
   eliminar?: boolean;
+
+  /**
+   * ¿Se puede guardar una fila con obligatorios sin llenar? Lo pone
+   * `guardar-filas-incompletas`. Ver [agregar].
+   */
+  guardarIncompletas?: boolean;
 }
 
 /**

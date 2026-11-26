@@ -191,7 +191,9 @@
             {{ missing().length === 1 ? ('form.faltaUnObligatorio' | t) : ('form.faltanNObligatorios' | t: { n: missing().length }) }}
           </strong>
           <small>
-            @if (discardsOnExit()) {
+            @if (guardaIncompleta()) {
+              {{ 'md.puedesGuardarIncompleta' | t }}
+            } @else if (discardsOnExit()) {
               {{ 'md.siSalesDescarta' | t }}
             } @else {
               {{ 'md.siSalesQueda' | t }}
@@ -218,9 +220,16 @@
       </ul>
 
       <footer class="warn__foot">
-        <button type="button" class="warn__leave" (click)="discard()">
-          {{ (discardsOnExit() ? 'md.descartarRegistro' : 'md.salirSinGuardar') | t }}
-        </button>
+        @if (guardaIncompleta()) {
+          <!-- Con la regla de la tabla: se guarda como esté, sin borrarla. -->
+          <button type="button" class="warn__leave" (click)="saveAnyway()">
+            {{ 'form.guardarDeTodosModos' | t }}
+          </button>
+        } @else {
+          <button type="button" class="warn__leave" (click)="discard()">
+            {{ (discardsOnExit() ? 'md.descartarRegistro' : 'md.salirSinGuardar') | t }}
+          </button>
+        }
 
         <button type="button" class="warn__stay" (click)="keepEditing()">
           <vt-icon name="pen" [size]="15" />

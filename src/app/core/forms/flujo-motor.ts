@@ -6218,6 +6218,16 @@ function aplicar(
      * Se acepta el valor como objeto o como texto: en el lienzo se guarda igual
      * que las demás configuraciones, y hay flujos que lo mandan ya serializado.
      */
+    /*
+     * Que una fila de la tabla se pueda guardar con obligatorios sin llenar:
+     * el aviso de la fila ofrece «Guardar de todos modos» en vez de salir
+     * borrándola. Se anota en la tabla, como los permisos.
+     */
+    case 'guardar-filas-incompletas': {
+      estado.guardarIncompletas = true;
+      break;
+    }
+
     case 'permisos-tabla': {
       const config = leerJson(accion.valor);
       if (!config) break;

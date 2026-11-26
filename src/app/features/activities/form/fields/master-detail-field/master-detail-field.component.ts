@@ -200,6 +200,8 @@ export class MasterDetailFieldComponent {
   readonly agregarDelFlujo = input<boolean | null>(null);
   readonly editarDelFlujo = input<boolean | null>(null);
   readonly eliminarDelFlujo = input<boolean | null>(null);
+  /** Una regla `guardar-filas-incompletas`: la fila se guarda aunque le falten obligatorios. */
+  readonly guardarIncompletasDelFlujo = input<boolean | null>(null);
   readonly readOnly = input(false);
   readonly invalid = input(false);
   readonly answerGuid = input('');
@@ -1087,6 +1089,7 @@ export class MasterDetailFieldComponent {
       engine,
       answerGuid: this.answerGuid(),
       fresh,
+      guardarIncompletas: this.guardarIncompletasDelFlujo() === true,
 
       // Lo que `no-repetir-items` cierra en los desplegables de la fila,
       // contando las demás filas y no esta: escoger otra vez lo suyo no repite.

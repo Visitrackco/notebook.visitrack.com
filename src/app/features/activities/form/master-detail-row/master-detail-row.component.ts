@@ -369,6 +369,23 @@ export class MasterDetailRowComponent implements OnDestroy {
     });
   }
 
+  /** La tabla tiene `guardar-filas-incompletas`: el aviso deja guardar igual. */
+  readonly guardaIncompleta = computed(() => this.current()?.guardarIncompletas === true);
+
+  /**
+   * «Guardar de todos modos»: guarda la fila con lo que tenga, sin borrarla.
+   * Solo con la regla; un ítem que se pasa de su tope sigue sin guardarse.
+   */
+  saveAnyway(): void {
+    const level = this.current();
+    if (!level || !this.guardaIncompleta()) return;
+
+    this.asking.set(false);
+    if (this.detenidoPorRepetido(level)) return;
+
+    this.stack.close('save');
+  }
+
   /** Sale dejando la fila. Quien la abrió decide si la descarta. */
   discard(): void {
     this.asking.set(false);

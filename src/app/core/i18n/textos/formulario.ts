@@ -242,6 +242,7 @@ export const textosFormulario = {
   'md.guardarRegistro': ['Guardar registro', 'Save record'],
   'md.siSalesDescarta': ['Si sales ahora, el registro se descarta.', 'If you leave now, the record is discarded.'],
   'md.siSalesQueda': ['Si sales ahora, el registro queda como estaba.', 'If you leave now, the record stays as it was.'],
+  'md.puedesGuardarIncompleta': ['Puedes seguir llenando o guardarlo así, sin todos sus obligatorios.', 'You can keep filling it in or save it as it is, without all its required fields.'],
   'md.descartarRegistro': ['Descartar registro', 'Discard record'],
   'md.salirSinGuardar': ['Salir sin guardar', 'Leave without saving'],
   'md.seguirLlenando': ['Seguir llenando', 'Keep filling in'],

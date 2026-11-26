@@ -273,6 +273,8 @@ export class FieldHostComponent {
   readonly agregarDelFlujo = input<boolean | null>(null);
   readonly editarDelFlujo = input<boolean | null>(null);
   readonly eliminarDelFlujo = input<boolean | null>(null);
+  /** `guardar-filas-incompletas` sobre esta tabla. */
+  readonly guardarIncompletasDelFlujo = input<boolean | null>(null);
 
 
   /** El enunciado que toca enseñar: el de la regla, si lo hay. */
