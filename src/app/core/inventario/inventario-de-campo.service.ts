@@ -10,7 +10,7 @@ import { SurveyAnswerRepository } from '../repositories/survey-answer.repository
 import { CompanyLogicService } from '../rules/company-logic.service';
 import { AuthService } from '../services/auth.service';
 import { SyncService } from '../sync/sync.service';
-import { PerfilInventario, calcularLineas, efecto, leerPerfil, numero, productosSinCantidad, tocaMover } from './perfil-inventario';
+import { PerfilInventario, calcularLineas, efecto, itemElegido, leerPerfil, numero, productosSinCantidad, tocaMover } from './perfil-inventario';
 
 /**
  * Una actividad de este usuario que el servidor no pudo mover por falta de
@@ -118,6 +118,15 @@ export class InventarioDeCampoService {
 
   /** Las actividades de este usuario que el servidor frenó por falta de stock. */
   readonly bloqueadas = computed(() => [...this.frenadas().values()]);
+
+  /**
+   * GUID de actividad → GUIDs de las filas de productos guardadas en el
+   * momento de mover inventario: de solo lectura (ver [filasBloqueadasDe]).
+   */
+  private readonly filasGuardadas = signal<ReadonlyMap<string, ReadonlySet<string>>>(new Map());
+
+  /** Sube cuando cambian las filas anotadas o lo que dijo Module. */
+  readonly versionDeFilas = computed(() => [this.filasGuardadas(), this.movidas(), this.frenadas(), this.perfiles()]);
 
   /** Cuándo se supo el stock (hora del servidor), o `null` si nunca. */
   readonly al = signal<Date | null>(null);
@@ -368,6 +377,7 @@ export class InventarioDeCampoService {
 
     // Lo de la cuenta anterior no vale para la siguiente.
     this.aplicar(id ? this.leer(id) : null);
+    this.filasGuardadas.set(id ? this.leerFilas(id) : new Map());
     if (id) void this.sincronizar();
   }
 
@@ -480,6 +490,78 @@ export class InventarioDeCampoService {
     this.al.set(al && !Number.isNaN(al.getTime()) ? al : null);
   }
 
+  // ── Filas de productos de solo lectura ──
+
+  /**
+   * Al guardar la actividad: si queda en el momento de mover inventario, se
+   * anotan las filas de productos (con su cantidad) de la tabla del perfil.
+   * Desde ahí no se editan ni se borran, sea entrada, salida, ajuste o
+   * traslado. Gemelo de `anotarFilasGuardadas` del móvil.
+   */
+  async anotarFilasGuardadas(answer: SurveyAnswer | null): Promise<void> {
+    try {
+      if (!answer || !this.usuario) return;
+      const perfil = this.perfilDe(answer.SurveyID);
+      if (!perfil || perfil.lineas.origen !== 'tabla' || !perfil.lineas.tabla) return;
+      const como = await this.comoQueda(answer, false);
+      if (!tocaMover(perfil, como.completada, como.estado)) return;
+
+      const guids = filasDeLaTabla(answer.Fields, perfil.lineas.tabla)
+        .filter((f) => filaConProducto(perfil, f))
+        .map((f) => String(f?.GUID ?? '').trim())
+        .filter(Boolean);
+      const g = String(answer.GUID ?? '').trim().toLowerCase();
+      if (!g) return;
+      const nuevo = new Map(this.filasGuardadas());
+      nuevo.set(g, new Set([...(nuevo.get(g) ?? []), ...guids]));
+      this.filasGuardadas.set(nuevo);
+      localStorage.setItem(this.claveDeFilas(this.usuario), JSON.stringify([...nuevo].map(([k, v]) => [k, [...v]])));
+    } catch {
+      // Anotar no puede tumbar el guardado.
+    }
+  }
+
+  /**
+   * Las filas (GUID) de la tabla [mdId] de la actividad que ya movieron
+   * inventario: de solo lectura. Solo la tabla de productos del perfil; nada
+   * si el servidor la frenó por falta de stock (hay que corregirla). Si el
+   * servidor dice que ya movió y este navegador no la anotó (guardada en otro
+   * aparato), todas las filas con producto. Gemelo de `filaBloqueada` del móvil.
+   */
+  filasBloqueadasDe(answer: SurveyAnswer | null, mdId: string, filas: readonly { GUID: string }[]): Set<string> {
+    const vacio = new Set<string>();
+    try {
+      if (!answer) return vacio;
+      const g = String(answer.GUID ?? '').trim().toLowerCase();
+      if (!g || this.bloqueadaDe(g)) return vacio;
+      const perfil = this.perfilDe(answer.SurveyID);
+      if (!perfil || perfil.lineas.origen !== 'tabla' || perfil.lineas.tabla !== mdId) return vacio;
+      const anotadas = this.filasGuardadas().get(g);
+      if (anotadas) return new Set(filas.map((f) => f.GUID).filter((x) => anotadas.has(x)));
+      if (this.movidaDe(g) === null) return vacio;
+      return new Set(filas.filter((f) => filaConProducto(perfil, f)).map((f) => f.GUID));
+    } catch {
+      return vacio;
+    }
+  }
+
+  private claveDeFilas(userId: string): string {
+    return `visitrack.inventarioFilas::${userId}`;
+  }
+
+  private leerFilas(userId: string): Map<string, Set<string>> {
+    try {
+      const crudo = JSON.parse(localStorage.getItem(this.claveDeFilas(userId)) ?? '[]');
+      return new Map(
+        (Array.isArray(crudo) ? crudo : [])
+          .filter((e: unknown) => Array.isArray(e) && Array.isArray(e[1]))
+          .map((e: any[]) => [String(e[0]), new Set<string>(e[1].map(String))] as [string, Set<string>]),
+      );
+    } catch {
+      return new Map();
+    }
+  }
+
   private claveDeCache(userId: string): string {
     return `visitrack.inventarioDeCampo::${userId}`;
   }
@@ -527,4 +609,28 @@ function efectoPorItem(p: PerfilInventario, campos: unknown, estadoID: number | 
     salida.set(g, (salida.get(g) ?? 0) + efecto(r.tipo, l.cantidad));
   }
   return salida;
+}
+
+/** Las filas de la tabla [tabla] en unas respuestas (`Fields`). */
+function filasDeLaTabla(campos: unknown, tabla: string): any[] {
+  let lista: unknown = campos;
+  if (typeof campos === 'string') {
+    try {
+      lista = JSON.parse(campos);
+    } catch {
+      return [];
+    }
+  }
+  if (!Array.isArray(lista)) return [];
+  const campo = lista.find((c: any) => c && String(c.id) === tabla);
+  return Array.isArray(campo?.val) ? campo.val.filter((f: unknown) => f && typeof f === 'object') : [];
+}
+
+/** ¿La fila trae un producto, como lo lee `calcularLineas`? */
+function filaConProducto(p: PerfilInventario, fila: any): boolean {
+  if (p.lineas.producto) {
+    const v = (Array.isArray(fila?.JSONValues) ? fila.JSONValues : []).find((x: any) => x && String(x.id) === p.lineas.producto);
+    return itemElegido(v?.val) !== null;
+  }
+  return String(fila?.ListDetGUID || fila?.MasterListDetGUID || '').trim() !== '';
 }

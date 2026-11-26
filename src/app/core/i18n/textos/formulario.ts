@@ -657,6 +657,10 @@ export const textosFormulario = {
     'This form moves inventory: every product needs a quantity greater than zero. Fix: {lista}',
   ],
   'inv.productoSinNombre': ['Producto sin nombre', 'Unnamed product'],
+  'inv.filaSoloLectura': [
+    '«{nombre}» ya movió inventario: queda de solo lectura y no se puede editar ni eliminar.',
+    '«{nombre}» already moved inventory: it is read-only and cannot be edited or deleted.',
+  ],
   'inv.stockDeDonde': [
     'El disponible de los productos sale de Module › Inventario (suma de todas las bodegas). Se descarga al iniciar sesión y al abrir un formulario con inventario.',
     'Product availability comes from Module › Inventory (sum of all warehouses). It is downloaded when signing in and when opening a form with inventory.',

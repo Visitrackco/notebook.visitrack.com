@@ -3385,6 +3385,9 @@ ${enlace.url}`)) abrir();
       this.activities.notifyChanged();
       this.feedback.set(this.describeSave(incomplete, pendingFiles));
 
+      // Las filas de productos que mueven inventario quedan de solo lectura.
+      await this.inventario.anotarFilasGuardadas(await this.answers.getByKey(answer.ID));
+
       // Si el formulario mueve inventario: ya se descontó, ya cumple o qué le falta.
       void this.avisarComoVaElInventario(answer.ID);
 

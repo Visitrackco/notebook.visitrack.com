@@ -158,6 +158,12 @@
               }
 
               <td class="md__actions">
+                @if (filasDeInventario().has(row.GUID)) {
+                  <!-- Ya movió inventario: solo lectura, sin editar ni eliminar. -->
+                  <span class="md__candado" [attr.title]="'inv.filaSoloLectura' | t: { nombre: row.Name }">
+                    <vt-icon name="lock" [size]="16" />
+                  </span>
+                } @else {
                 @if (!emptySchema() && !unavailable()) {
                   <button
                     type="button"
@@ -177,6 +183,7 @@
                   >
                     <vt-icon name="trash" [size]="16" />
                   </button>
+                }
                 }
               </td>
             </tr>

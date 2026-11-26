@@ -23,6 +23,9 @@ import {
 import { ListDetail } from '../../../../../core/models/entities.model';
 import { BinaryType } from '../../../../../core/models/sync.model';
 import { AuthService } from '../../../../../core/services/auth.service';
+import { InventarioDeCampoService } from '../../../../../core/inventario/inventario-de-campo.service';
+import { SurveyAnswer } from '../../../../../core/models/entities.model';
+import { SurveyAnswerRepository } from '../../../../../core/repositories/survey-answer.repository';
 import { BinaryStorageService } from '../../../../../core/services/binary-storage.service';
 import { adelantarUbicacion, leerExif } from '../../../../../core/services/datos-del-archivo';
 import { InheritedSource } from '../../../../../core/forms/inherited-defaults';
@@ -117,6 +120,27 @@ export class MasterDetailFieldComponent {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly auth = inject(AuthService);
   private readonly binaries = inject(BinaryStorageService);
+  private readonly inventario = inject(InventarioDeCampoService);
+  private readonly respuestas = inject(SurveyAnswerRepository);
+
+  /** La actividad, para saber qué filas ya movieron inventario. */
+  private readonly actividad = signal<SurveyAnswer | null>(null);
+
+  /**
+   * Las filas (GUID) que ya movieron inventario: de solo lectura, ni se abren
+   * para editar ni se borran. Ver `InventarioDeCampoService.filasBloqueadasDe`.
+   */
+  readonly filasDeInventario = computed(() => {
+    this.inventario.versionDeFilas();
+    return this.inventario.filasBloqueadasDe(this.actividad(), String(this.field().id ?? ''), this.rows());
+  });
+
+  /** Si la fila ya movió inventario, lo dice y devuelve `true`. */
+  private yaMovioInventario(row: MasterDetailRow): boolean {
+    if (!this.filasDeInventario().has(row.GUID)) return false;
+    this.feedback.set(traducir('inv.filaSoloLectura', { nombre: row.Name ?? '' }));
+    return true;
+  }
 
   readonly field = input.required<FormField>();
   readonly value = input<FieldValue>(null);
@@ -478,6 +502,20 @@ export class MasterDetailFieldComponent {
       const answerGuid = this.answerGuid();
 
       untracked(() => void this.prepare(field, answerGuid));
+    });
+
+    // La actividad, para el candado de inventario. Se relee al guardar
+    // (cambian sus filas anotadas, no la actividad) con `versionDeFilas`.
+    effect(() => {
+      const guid = this.answerGuid();
+      this.inventario.versionDeFilas();
+      untracked(() => {
+        if (!guid) {
+          this.actividad.set(null);
+          return;
+        }
+        void this.respuestas.findByGuid(guid).then((a) => this.actividad.set(a)).catch(() => this.actividad.set(null));
+      });
     });
 
     this.trackRowStates();
@@ -999,6 +1037,7 @@ export class MasterDetailFieldComponent {
   /** Abre una fila guardada. */
   async edit(row: MasterDetailRow): Promise<void> {
     if (this.emptySchema() || this.unavailable()) return;
+    if (this.yaMovioInventario(row)) return;
 
     if (!this.canEdit()) {
       this.feedback.set(traducir('md.sinPermisoEditar', { nombre: this.field().lab }));
@@ -1402,6 +1441,7 @@ export class MasterDetailFieldComponent {
   // ───────────────────────────────────────────────────────────────────────────
 
   askRemove(row: MasterDetailRow): void {
+    if (this.yaMovioInventario(row)) return;
     if (!this.canDelete()) {
       this.feedback.set(traducir('md.sinPermisoEliminar', { nombre: this.field().lab }));
       return;
@@ -1424,6 +1464,7 @@ export class MasterDetailFieldComponent {
 
   /** Quita una fila. Quien llama ya confirmó. */
   private removeRow(row: MasterDetailRow): void {
+    if (this.yaMovioInventario(row)) return;
     this.valueChange.emit(this.rows().filter((entry) => entry.GUID !== row.GUID));
   }
 
