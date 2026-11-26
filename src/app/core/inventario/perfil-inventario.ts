@@ -223,3 +223,55 @@ export function efecto(tipo: TipoMovimiento, cantidad: number): number {
   if (tipo === 'SALIDA' || tipo === 'TRASLADO') return -Math.abs(cantidad);
   return cantidad;
 }
+
+/** Un producto elegido en la actividad al que le falta la cantidad. */
+export interface ProductoSinCantidad {
+  /** GUID del item de la lista de productos. */
+  producto: string;
+  /** El nombre como lo trae la fila o el desplegable (puede venir vacío). */
+  nombre: string;
+}
+
+/**
+ * Los productos elegidos sin una cantidad válida: vacía, cero o (si el
+ * movimiento es fijo y no es un ajuste) negativa. Gemela de
+ * `productosSinCantidad` del móvil. [calcularLineas] se salta esas líneas —el
+ * servidor también—, así que se guardaban sin mover nada y sin avisar.
+ */
+export function productosSinCantidad(p: PerfilInventario, campos: unknown): ProductoSinCantidad[] {
+  if (!p.lineas.cantidad) return [];
+  const respuestas = respuestasPorId(campos);
+  const negativoNoVale = p.tipo.modo === 'fijo' && !!p.tipo.valor && p.tipo.valor !== 'AJUSTE';
+
+  const sinCantidad = (valores: Map<string, any>): boolean => {
+    const c = numero(valores.get(p.lineas.cantidad));
+    return c === null || c === 0 || (negativoNoVale && c < 0);
+  };
+  const textoDe = (val: unknown): string => {
+    if (Array.isArray(val)) return val.length ? textoDe(val[0]) : '';
+    if (val && typeof val === 'object') return String((val as any).txt ?? '').trim();
+    return '';
+  };
+
+  const salida: ProductoSinCantidad[] = [];
+  if (p.lineas.origen === 'campos') {
+    const elegido = respuestas.get(p.lineas.producto ?? '');
+    const producto = itemElegido(elegido);
+    if (producto && sinCantidad(respuestas)) salida.push({ producto, nombre: textoDe(elegido) });
+    return salida;
+  }
+
+  const filas = respuestas.get(p.lineas.tabla ?? '');
+  for (const f of Array.isArray(filas) ? filas : []) {
+    if (!f || typeof f !== 'object') continue;
+    const valores = respuestasPorId((f as any).JSONValues);
+    const elegido = p.lineas.producto ? valores.get(p.lineas.producto) : undefined;
+    const producto = p.lineas.producto
+      ? itemElegido(elegido)
+      : String((f as any).ListDetGUID || (f as any).MasterListDetGUID || '').trim() || null;
+    if (!producto || !sinCantidad(valores)) continue;
+    const nombre = textoDe(elegido) || String((f as any).ListDetName ?? (f as any).Name ?? '').trim();
+    salida.push({ producto, nombre });
+  }
+  return salida;
+}

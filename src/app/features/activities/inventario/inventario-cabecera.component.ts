@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
+import { localeActual, traducir } from '../../../core/i18n/idioma.service';
 import { TPipe } from '../../../core/i18n/t.pipe';
 import { DescuentoDeInventario, InventarioDeCampoService } from '../../../core/inventario/inventario-de-campo.service';
 import { SurveyAnswer } from '../../../core/models/entities.model';
@@ -73,7 +74,20 @@ const yaAvisadas = new Set<string>();
         cancelLabel=""
         (confirm)="viendo.set(false)"
         (cancel)="viendo.set(false)"
-      />
+      >
+        <!-- De dónde sale el stock, cuándo se supo y «Actualizar stock». -->
+        <div class="invc-stock">
+          <p>{{ 'inv.stockDeDonde' | t }}</p>
+          <p class="invc-stock__al">{{ ultimaVez() }}</p>
+          @if (resultado()) {
+            <p class="invc-stock__res">{{ resultado() }}</p>
+          }
+          <button type="button" class="invc-stock__btn" [disabled]="actualizando()" (click)="actualizar()">
+            <vt-icon name="refresh" [size]="15" />
+            {{ (actualizando() ? 'inv.stockActualizando' : 'inv.stockActualizar') | t }}
+          </button>
+        </div>
+      </vt-confirm-dialog>
     }
   `,
   styles: `
@@ -86,6 +100,18 @@ const yaAvisadas = new Set<string>();
     .invc--amarillo:hover { border-color: rgba(245, 180, 0, 0.5); }
     .invc--rojo { color: #d32f2f; background: rgba(211, 47, 47, 0.1); }
     .invc--rojo:hover { border-color: rgba(211, 47, 47, 0.45); }
+    .invc-stock {
+      margin: 12px 0 4px; padding: 10px 12px; border-radius: 8px; text-align: left;
+      background: var(--surface-2, rgba(127, 127, 127, 0.1)); font-size: 13px; line-height: 1.45;
+    }
+    .invc-stock p { margin: 0 0 6px; }
+    .invc-stock__al { font-weight: 600; }
+    .invc-stock__res { opacity: 0.85; }
+    .invc-stock__btn {
+      display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; font: inherit; font-weight: 600;
+      border: 1px solid currentColor; border-radius: 8px; background: transparent; color: inherit; cursor: pointer;
+    }
+    .invc-stock__btn:disabled { opacity: 0.6; cursor: default; }
   `,
 })
 export class InventarioCabeceraComponent {
@@ -99,6 +125,27 @@ export class InventarioCabeceraComponent {
   readonly viendo = signal(false);
   readonly viendoSinStock = signal(false);
   readonly descuento = signal<DescuentoDeInventario | null>(null);
+
+  readonly actualizando = signal(false);
+  readonly resultado = signal('');
+
+  /** «Última actualización del stock: …» o que nunca se descargó. */
+  readonly ultimaVez = computed(() => {
+    const al = this.inventario.al();
+    if (!al) return traducir('inv.stockNunca');
+    const fecha = al.toLocaleString(localeActual(), {
+      day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false,
+    });
+    return traducir('inv.stockUltimaVez', { fecha });
+  });
+
+  async actualizar(): Promise<void> {
+    this.actualizando.set(true);
+    this.resultado.set('');
+    const ok = await this.inventario.actualizarAhora();
+    this.actualizando.set(false);
+    this.resultado.set(traducir(ok ? 'inv.stockActualizado' : 'inv.stockNoActualizado'));
+  }
 
   readonly mensaje = computed(() => {
     const p = this.perfil();
@@ -117,6 +164,7 @@ export class InventarioCabeceraComponent {
   }
 
   async abrir(): Promise<void> {
+    this.resultado.set('');
     this.descuento.set(null);
     this.viendo.set(true);
     this.descuento.set(await this.inventario.comoVaElDescuento(this.answer()));

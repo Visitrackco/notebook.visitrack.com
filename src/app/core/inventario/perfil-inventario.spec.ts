@@ -1,4 +1,4 @@
-import { calcularLineas, efecto, leerPerfil, numero, tocaMover } from './perfil-inventario';
+import { calcularLineas, efecto, leerPerfil, numero, tocaMover, productosSinCantidad } from './perfil-inventario';
 
 /**
  * Mismos casos que `perfil-inventario.spec.ts` de cloud-gold y
@@ -95,3 +95,36 @@ describe('perfil de inventario', () => {
     expect(leerPerfil('no es json').negativo).toBe('avisar');
   });
 });
+
+describe('productosSinCantidad', () => {
+  it('tabla: vacía, cero o negativa en una salida', () => {
+    const p = leerPerfil({
+      tipo: { modo: 'fijo', valor: 'SALIDA' },
+      lineas: { origen: 'tabla', tabla: 'PRODS', cantidad: 'CANT' },
+    });
+    const r = productosSinCantidad(p, [
+      {
+        id: 'PRODS',
+        val: [
+          { ListDetGUID: 'A', ListDetName: 'Tornillo', JSONValues: [{ id: 'CANT', val: '2' }] },
+          { ListDetGUID: 'B', Name: 'Tuerca', JSONValues: [{ id: 'CANT', val: '0' }] },
+          { ListDetGUID: 'C', ListDetName: 'Arandela', JSONValues: [] },
+          { ListDetGUID: 'D', JSONValues: [{ id: 'CANT', val: '-1' }] },
+          { ListDetGUID: '', JSONValues: [{ id: 'CANT', val: '' }] },
+        ],
+      },
+    ]);
+    expect(r.map((x) => `${x.producto}:${x.nombre}`)).toEqual(['B:Tuerca', 'C:Arandela', 'D:']);
+  });
+
+  it('campos: en un ajuste el negativo vale; sin producto no pide nada', () => {
+    const p = leerPerfil({
+      tipo: { modo: 'fijo', valor: 'AJUSTE' },
+      lineas: { origen: 'campos', producto: 'PROD', cantidad: 'CANT' },
+    });
+    expect(productosSinCantidad(p, [{ id: 'PROD', val: { id: 'G1', txt: 'Pintura' } }, { id: 'CANT', val: '' }]).map((x) => x.nombre)).toEqual(['Pintura']);
+    expect(productosSinCantidad(p, [{ id: 'PROD', val: { id: 'G1', txt: 'Pintura' } }, { id: 'CANT', val: '-3' }])).toEqual([]);
+    expect(productosSinCantidad(p, [{ id: 'CANT', val: '' }])).toEqual([]);
+  });
+});
+

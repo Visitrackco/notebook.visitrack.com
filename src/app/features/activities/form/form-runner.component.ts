@@ -3210,6 +3210,24 @@ ${enlace.url}`)) abrir();
        * «bloquear» no se guarda, ni siquiera por «guardar de todos modos» de
        * los obligatorios (que también pasa por aquí).
        */
+      /*
+       * Cada producto elegido con su cantidad (mayor que cero). Vacía o en 0
+       * no se guarda, ni a medias ni completa: el servidor se salta esa línea
+       * y no movería nada sin que nadie se enterara. Gemelo de
+       * `_revisarCantidades` del móvil.
+       */
+      const sinCantidad = this.inventario.productosSinCantidadDe(answer.SurveyID, engineAlGuardar.toAnswerFields());
+      if (sinCantidad.length) {
+        this.feedback.set(traducir('inv.sinCantidadTexto', { lista: sinCantidad.join(', ') }));
+        this.toasts.show({
+          title: traducir('inv.sinCantidadTitulo'),
+          detail: traducir('inv.sinCantidadTexto', { lista: sinCantidad.join(', ') }),
+          tone: 'error',
+          sonido: 'alerta',
+        });
+        return;
+      }
+
       if (!(await this.revisarStock(engineAlGuardar, incomplete))) return;
     }
 

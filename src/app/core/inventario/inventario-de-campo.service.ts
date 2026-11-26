@@ -10,7 +10,7 @@ import { SurveyAnswerRepository } from '../repositories/survey-answer.repository
 import { CompanyLogicService } from '../rules/company-logic.service';
 import { AuthService } from '../services/auth.service';
 import { SyncService } from '../sync/sync.service';
-import { PerfilInventario, calcularLineas, efecto, leerPerfil, numero, tocaMover } from './perfil-inventario';
+import { PerfilInventario, calcularLineas, efecto, leerPerfil, numero, productosSinCantidad, tocaMover } from './perfil-inventario';
 
 /**
  * Una actividad de este usuario que el servidor no pudo mover por falta de
@@ -129,6 +129,8 @@ export class InventarioDeCampoService {
   private generacion = 0;
   private enCurso: Promise<void> | null = null;
   private ultimoIntento = 0;
+  /** Si la última pregunta a Module tuvo respuesta. */
+  private ultimoOk = false;
 
   constructor() {
     // Con cada sesión, lo suyo: iniciar, cambiar de cuenta, «entrar como», cerrar.
@@ -181,6 +183,29 @@ export class InventarioDeCampoService {
    * intentó hace menos de un minuto): para abrir un formulario sin ir a la red
    * cada vez.
    */
+  /** Pide a Module lo último ya, sin mirar la edad, y dice si respondió. Para «Actualizar stock». */
+  async actualizarAhora(): Promise<boolean> {
+    await this.sincronizar();
+    return this.ultimoOk;
+  }
+
+  /**
+   * Los nombres de los productos de la actividad sin cantidad (vacía o cero).
+   * Vacío si su formulario no mueve inventario o si todos la tienen. No depende
+   * del stock ni del momento. Gemelo de `productosSinCantidadDe` del móvil.
+   */
+  productosSinCantidadDe(surveyId: unknown, campos: unknown): string[] {
+    try {
+      const perfil = this.perfilDe(surveyId);
+      if (!perfil) return [];
+      return productosSinCantidad(perfil, campos).map(
+        (x) => x.nombre || this.stock().get(x.producto.toLowerCase())?.nombre || traducir('inv.productoSinNombre'),
+      );
+    } catch {
+      return [];
+    }
+  }
+
   async sincronizarSiViejo(edadMs = 2 * 60_000): Promise<void> {
     const ahora = Date.now();
     if (ahora - this.ultimoIntento < 60_000) return;
@@ -359,6 +384,7 @@ export class InventarioDeCampoService {
 
     const generacion = this.generacion;
     this.ultimoIntento = Date.now();
+    this.ultimoOk = false;
 
     const corte = new AbortController();
     const reloj = setTimeout(() => corte.abort(), 30_000);
@@ -375,6 +401,7 @@ export class InventarioDeCampoService {
       const cuerpo = (await respuesta.json().catch(() => null)) as Respuesta | null;
       // Mientras viajaba cambió la sesión: esto ya no es de nadie.
       if (!cuerpo || cuerpo.status !== true || generacion !== this.generacion || id !== this.usuario) return;
+      this.ultimoOk = true;
 
       if (cuerpo.sinCambios) {
         this.al.set(new Date());

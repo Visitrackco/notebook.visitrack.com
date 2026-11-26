@@ -14,6 +14,9 @@
       <p class="cdlg__detail">{{ detail() }}</p>
     }
 
+    <!-- Contenido extra de quien lo usa (por ejemplo, el bloque de stock del inventario). -->
+    <ng-content />
+
     <footer class="cdlg__actions">
       @if (cancelLabel() !== '') {
         <button type="button" class="cdlg__cancel" (click)="cancel.emit()">

@@ -651,6 +651,22 @@ export const textosFormulario = {
   'inv.faltante': ['{nombre}: pides {pide} y hay {hay} {unidad}', '{nombre}: you ask for {pide} and there are {hay} {unidad}'],
   'inv.segunSync': ['Según el stock sincronizado el {fecha}.', 'According to the stock synced on {fecha}.'],
   'inv.revisar': ['Revisar', 'Review'],
+  'inv.sinCantidadTitulo': ['Falta la cantidad', 'Quantity missing'],
+  'inv.sinCantidadTexto': [
+    'Este formulario mueve inventario: cada producto debe llevar una cantidad mayor que cero. Corrige: {lista}',
+    'This form moves inventory: every product needs a quantity greater than zero. Fix: {lista}',
+  ],
+  'inv.productoSinNombre': ['Producto sin nombre', 'Unnamed product'],
+  'inv.stockDeDonde': [
+    'El disponible de los productos sale de Module › Inventario (suma de todas las bodegas). Se descarga al iniciar sesión y al abrir un formulario con inventario.',
+    'Product availability comes from Module › Inventory (sum of all warehouses). It is downloaded when signing in and when opening a form with inventory.',
+  ],
+  'inv.stockUltimaVez': ['Última actualización del stock: {fecha}.', 'Last stock update: {fecha}.'],
+  'inv.stockNunca': ['Todavía no se ha descargado el stock.', 'Stock has not been downloaded yet.'],
+  'inv.stockActualizar': ['Actualizar stock', 'Refresh stock'],
+  'inv.stockActualizando': ['Actualizando…', 'Refreshing…'],
+  'inv.stockActualizado': ['Stock actualizado.', 'Stock updated.'],
+  'inv.stockNoActualizado': ['No se pudo actualizar el stock; se sigue usando el último descargado.', 'Could not refresh the stock; the last download is still in use.'],
   'inv.guardarIgual': ['Guardar de todos modos', 'Save anyway'],
   'inv.entendido': ['Entendido', 'Got it'],
   'inv.soloDesdeInventario': [
