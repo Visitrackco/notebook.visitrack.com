@@ -89,6 +89,13 @@ export interface Comportamiento {
    * un desplegable con opciones escritas.
    */
   opcionesBloqueadas?: string[];
+
+  /**
+   * En una tabla (MasterDetail): sus filas se pueden guardar con obligatorios
+   * sin llenar, de fondo para toda la actividad. Es lo mismo que la acción
+   * `guardar-filas-incompletas`, sin tener que escribir una regla.
+   */
+  guardarIncompletas?: boolean;
 }
 
 export interface Punto {

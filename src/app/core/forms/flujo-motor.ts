@@ -2347,6 +2347,11 @@ function aplicarComportamientos(
       if (union.length) estado.opcionesBloqueadas = union;
     }
 
+    // Una tabla cuyas filas se guardan aunque les falten obligatorios.
+    if (estado.guardarIncompletas === undefined && c.guardarIncompletas === true) {
+      estado.guardarIncompletas = true;
+    }
+
     // Un campo del que al final no se decidió nada, fuera: ver `evaluar`.
     if (!Object.keys(estado).length) delete resultado.campos[id];
   }
